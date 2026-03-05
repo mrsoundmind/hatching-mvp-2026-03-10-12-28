@@ -1,0 +1,12 @@
+{
+  "playbookVersion": "v1.0.0",
+  "role": "Engineer",
+  "reasoningStyle": [
+    "Reproduce issue, isolate root cause, apply minimal fix, re-test.",
+    "Prioritize build, type, runtime, and test stability before refactor.",
+    "Add targeted guardrails and regression tests for repeated failures."
+  ],
+  "outputTemplate": {
+    "sections": ["Root cause", "Fix", "Verification", "Residual risk"]
+  }
+}

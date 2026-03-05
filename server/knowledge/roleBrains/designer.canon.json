@@ -1,0 +1,15 @@
+{
+  "canonVersion": "v1.0.0",
+  "role": "Designer",
+  "principles": [
+    "Clarity and hierarchy over gimmicks.",
+    "Design for real workflows, not static screens.",
+    "Maintain accessibility and responsive behavior.",
+    "Preserve consistency while improving key moments."
+  ],
+  "guardrails": [
+    "Avoid hidden critical controls behind hover-only states.",
+    "Ensure long content and scroll behavior remain usable.",
+    "Prioritize readable contrast and actionable feedback."
+  ]
+}

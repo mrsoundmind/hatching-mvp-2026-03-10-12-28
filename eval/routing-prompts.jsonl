@@ -1,0 +1,30 @@
+{"id":"route-01","prompt":"Define MVP goals and timeline for launch in 7 days.","expectedHatch":"Product Manager","expectedMode":"single"}
+{"id":"route-02","prompt":"Fix websocket duplicate sends and idempotency race condition.","expectedHatch":"Backend Developer","expectedMode":"deliberation"}
+{"id":"route-03","prompt":"Design a cleaner right sidebar UX with better hierarchy.","expectedHatch":"Product Designer","expectedMode":"single"}
+{"id":"route-04","prompt":"Plan GTM messaging and campaign sequence for launch week.","expectedHatch":"Product Manager","expectedMode":"deliberation"}
+{"id":"route-05","prompt":"Create integration tests for project isolation and memory scoping.","expectedHatch":"QA Lead","expectedMode":"deliberation"}
+{"id":"route-06","prompt":"Refactor API contract validation for websocket payloads.","expectedHatch":"Backend Developer","expectedMode":"deliberation"}
+{"id":"route-07","prompt":"Improve typography and spacing for mobile breakpoints.","expectedHatch":"Product Designer","expectedMode":"single"}
+{"id":"route-08","prompt":"What are the core business assumptions and risks?","expectedHatch":"Product Manager","expectedMode":"single"}
+{"id":"route-09","prompt":"How should we monitor runtime latency p95 and drift?","expectedHatch":"Backend Developer","expectedMode":"deliberation"}
+{"id":"route-10","prompt":"Define quality gate checklist before release.","expectedHatch":"QA Lead","expectedMode":"single"}
+{"id":"route-11","prompt":"Set up approval-gated action proposal workflow.","expectedHatch":"Product Manager","expectedMode":"deliberation"}
+{"id":"route-12","prompt":"Why is left sidebar scroll not working and how to fix?","expectedHatch":"Backend Developer","expectedMode":"single"}
+{"id":"route-13","prompt":"Design interaction for visible reply and feedback actions.","expectedHatch":"Product Designer","expectedMode":"single"}
+{"id":"route-14","prompt":"Assess production readiness with explicit rollback strategy.","expectedHatch":"QA Lead","expectedMode":"deliberation"}
+{"id":"route-15","prompt":"Generate task graph for product, engineering, and operations.","expectedHatch":"Product Manager","expectedMode":"deliberation"}
+{"id":"route-16","prompt":"Optimize message persistence across refresh and reconnect.","expectedHatch":"Backend Developer","expectedMode":"deliberation"}
+{"id":"route-17","prompt":"Create emotional but direct user-facing response style guide.","expectedHatch":"Product Designer","expectedMode":"single"}
+{"id":"route-18","prompt":"Should hatches disagree with user if evidence conflicts?","expectedHatch":"Product Manager","expectedMode":"single"}
+{"id":"route-19","prompt":"Write regression tests for duplicate reply bug.","expectedHatch":"QA Lead","expectedMode":"single"}
+{"id":"route-20","prompt":"Implement fallback chain OpenAI -> Ollama -> Mock safely.","expectedHatch":"Backend Developer","expectedMode":"deliberation"}
+{"id":"route-21","prompt":"How to keep team replies contextual and project-scoped?","expectedHatch":"Product Manager","expectedMode":"single"}
+{"id":"route-22","prompt":"Redesign right panel to auto-update from chat with manual override.","expectedHatch":"Product Designer","expectedMode":"deliberation"}
+{"id":"route-23","prompt":"Validate safety redirect for illegal tax evasion prompt.","expectedHatch":"QA Lead","expectedMode":"deliberation"}
+{"id":"route-24","prompt":"Add schema validation at WS ingress and client parse boundary.","expectedHatch":"Backend Developer","expectedMode":"single"}
+{"id":"route-25","prompt":"Define launch decision forecast scenarios and mitigation.","expectedHatch":"Product Manager","expectedMode":"deliberation"}
+{"id":"route-26","prompt":"Improve chat composer so long input does not overlap send icon.","expectedHatch":"Product Designer","expectedMode":"single"}
+{"id":"route-27","prompt":"Build reliability budget and forced-resolution logic.","expectedHatch":"Backend Developer","expectedMode":"deliberation"}
+{"id":"route-28","prompt":"Create non-coder report template for ship status.","expectedHatch":"Product Manager","expectedMode":"single"}
+{"id":"route-29","prompt":"Audit hallucination intervention and stop-the-line behavior.","expectedHatch":"QA Lead","expectedMode":"deliberation"}
+{"id":"route-30","prompt":"Design cleaner task cards and progress signals.","expectedHatch":"Product Designer","expectedMode":"single"}

@@ -1,0 +1,464 @@
+/* C4.1: Syntax highlighting for code blocks */
+@import 'highlight.js/styles/github-dark.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(20, 14.3%, 4.1%);
+  --muted: hsl(60, 4.8%, 95.9%);
+  --muted-foreground: hsl(25, 5.3%, 44.7%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(20, 14.3%, 4.1%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(20, 14.3%, 4.1%);
+  --border: hsl(20, 5.9%, 90%);
+  --input: hsl(20, 5.9%, 90%);
+  --primary: hsl(207, 90%, 54%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(60, 4.8%, 95.9%);
+  --secondary-foreground: hsl(24, 9.8%, 10%);
+  --accent: hsl(60, 4.8%, 95.9%);
+  --accent-foreground: hsl(24, 9.8%, 10%);
+  --destructive: hsl(0, 84.2%, 60.2%);
+  --destructive-foreground: hsl(60, 9.1%, 97.8%);
+  --ring: hsl(20, 14.3%, 4.1%);
+  --radius: 0.5rem;
+
+  /* Hatchin Custom Colors */
+  --hatchin-dark: hsl(210, 5%, 22%);
+  --hatchin-panel: hsl(216, 10%, 14%);
+  --hatchin-card: hsl(216, 8%, 22%);
+  --hatchin-border: hsl(216, 8%, 27%);
+  --hatchin-text: hsl(210, 9%, 95%);
+  --hatchin-text-muted: hsl(216, 6%, 67%);
+  --hatchin-blue: hsl(226, 100%, 70%);
+  --hatchin-green: hsl(158, 66%, 57%);
+  --hatchin-orange: hsl(25, 100%, 64%);
+}
+
+.dark {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(207, 90%, 54%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(240, 4.9%, 83.9%);
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased min-h-screen overflow-hidden;
+    background-color: var(--hatchin-dark);
+    color: var(--hatchin-text);
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .hatchin-bg-dark {
+    background-color: var(--hatchin-dark);
+  }
+
+  .hatchin-bg-panel {
+    background-color: var(--hatchin-panel);
+  }
+
+  .hatchin-bg-card {
+    background-color: var(--hatchin-card);
+  }
+
+  .hatchin-border {
+    border-color: var(--hatchin-border);
+  }
+
+  .hatchin-text {
+    color: var(--hatchin-text);
+  }
+
+  .hatchin-text-muted {
+    color: var(--hatchin-text-muted);
+  }
+
+  .hatchin-blue {
+    color: var(--hatchin-blue);
+  }
+
+  .hatchin-bg-blue {
+    background-color: var(--hatchin-blue);
+  }
+
+  .bg-hatchin-muted {
+    background-color: var(--hatchin-card);
+  }
+
+  .bg-hatchin-colleague {
+    background-color: hsl(216, 8%, 18%);
+  }
+
+  .hatchin-green {
+    color: var(--hatchin-green);
+  }
+
+  .hatchin-bg-green {
+    background-color: var(--hatchin-green);
+  }
+
+  .hatchin-orange {
+    color: var(--hatchin-orange);
+  }
+
+  .hatchin-bg-orange {
+    background-color: var(--hatchin-orange);
+  }
+
+  /* Chat bubble colors - AI responses use lower opacity */
+  .chat-bubble-user {
+    background-color: hsl(216, 8%, 18%) !important;
+  }
+
+  .chat-bubble-ai-amber {
+    background-color: hsla(45, 100%, 55%, 0.15) !important;
+    border: 1px solid hsla(45, 100%, 55%, 0.3) !important;
+  }
+
+  .chat-bubble-ai-green {
+    background-color: hsla(158, 66%, 57%, 0.15) !important;
+    border: 1px solid hsla(158, 66%, 57%, 0.3) !important;
+  }
+
+  .chat-bubble-ai-blue {
+    background-color: hsla(207, 90%, 54%, 0.15) !important;
+    border: 1px solid hsla(207, 90%, 54%, 0.3) !important;
+  }
+
+  .chat-bubble-ai-purple {
+    background-color: hsla(264, 68%, 60%, 0.15) !important;
+    border: 1px solid hsla(264, 68%, 60%, 0.3) !important;
+  }
+
+  .hatchin-bg-orange {
+    background-color: var(--hatchin-orange);
+  }
+
+  /* Color dots for agents */
+  .agent-dot-orange {
+    background-color: var(--hatchin-orange);
+  }
+
+  .agent-dot-blue {
+    background-color: var(--hatchin-blue);
+  }
+
+  .agent-dot-green {
+    background-color: var(--hatchin-green);
+  }
+
+  .agent-dot-purple {
+    background-color: #8b5cf6;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--hatchin-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--hatchin-card);
+}
+
+/* Scrollbar Stability for Modal Templates */
+.scrollbar-stable {
+  scrollbar-gutter: stable;
+}
+
+.scrollbar-stable::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollbar-stable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-stable::-webkit-scrollbar-thumb {
+  background: rgba(166, 167, 171, 0.3);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.scrollbar-stable::-webkit-scrollbar-thumb:hover {
+  background: rgba(166, 167, 171, 0.5);
+  background-clip: padding-box;
+}
+
+/* Left sidebar: hide scrollbar by default, show only while actively scrolling */
+.left-sidebar-scroll {
+  scrollbar-width: none;
+}
+
+.left-sidebar-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.left-sidebar-scroll.is-scrolling {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(166, 167, 171, 0.45) transparent;
+}
+
+.left-sidebar-scroll.is-scrolling::-webkit-scrollbar {
+  width: 6px;
+}
+
+.left-sidebar-scroll.is-scrolling::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.left-sidebar-scroll.is-scrolling::-webkit-scrollbar-thumb {
+  background: rgba(166, 167, 171, 0.45);
+  border-radius: 3px;
+}
+
+.left-sidebar-scroll.is-scrolling::-webkit-scrollbar-thumb:hover {
+  background: rgba(166, 167, 171, 0.6);
+}
+
+/* Right sidebar: hide scrollbar by default, show while interacting */
+.right-sidebar-scroll {
+  scrollbar-width: none;
+}
+
+.right-sidebar-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.right-sidebar-scroll.is-scrolling,
+.right-sidebar-scroll:hover,
+.right-sidebar-scroll:focus-within {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(166, 167, 171, 0.45) transparent;
+}
+
+.right-sidebar-scroll.is-scrolling::-webkit-scrollbar,
+.right-sidebar-scroll:hover::-webkit-scrollbar,
+.right-sidebar-scroll:focus-within::-webkit-scrollbar {
+  width: 6px;
+}
+
+.right-sidebar-scroll.is-scrolling::-webkit-scrollbar-thumb,
+.right-sidebar-scroll:hover::-webkit-scrollbar-thumb,
+.right-sidebar-scroll:focus-within::-webkit-scrollbar-thumb {
+  background: rgba(166, 167, 171, 0.45);
+  border-radius: 3px;
+}
+
+/* ============================================================
+   P5 AGENCY OVERHAUL — Premium Utility Classes
+   ============================================================ */
+
+/* Glassmorphism card/panel backdrop */
+.hatchin-glass {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* AI message holographic border */
+.ai-bubble-border {
+  position: relative;
+}
+
+.ai-bubble-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(108, 130, 255, 0.5), rgba(159, 123, 255, 0.3), rgba(71, 219, 154, 0.2));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* System notification inline message in chat */
+.system-notice {
+  text-align: center;
+  font-size: 0.75rem;
+  color: #A6A7AB;
+  font-style: italic;
+  padding: 6px 16px;
+  margin: 8px auto;
+  background: rgba(108, 130, 255, 0.08);
+  border: 1px solid rgba(108, 130, 255, 0.2);
+  border-radius: 20px;
+  max-width: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* Coachmark pulse ring for first-time user guidance */
+.coachmark-ring {
+  animation: coachmark-pulse 2s ease-in-out infinite;
+}
+
+@keyframes coachmark-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(108, 130, 255, 0.5);
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px rgba(108, 130, 255, 0);
+  }
+}
+
+/* Gradient shift animation for future premium cards */
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Fluid typing wave dot animation */
+@keyframes wave-bounce {
+
+  0%,
+  60%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  30% {
+    transform: translateY(-5px);
+  }
+}
+
+/* New AI task glowing ring (fades after 10s via JS class removal) */
+.ai-task-glow {
+  animation: ai-task-ring 2s ease-in-out infinite;
+}
+
+@keyframes ai-task-ring {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px rgba(108, 130, 255, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 0 3px rgba(108, 130, 255, 0.6);
+  }
+}
+
+/* Brain Sync progress bar animation */
+.brain-sync-bar {
+  background: linear-gradient(90deg, #6C82FF, #47DB9A, #6C82FF);
+  background-size: 200% 100%;
+  animation: gradient-shift 1.5s ease infinite;
+}
+
+/* ============================================================
+   PREMIUM LAYOUT OVERHAUL UTILITIES
+   ============================================================ */
+
+.premium-column-bg {
+  background: linear-gradient(180deg, #1A1D23 0%, #111318 100%);
+  position: relative;
+}
+
+/* FIX 18: Premium top line highlight */
+.premium-column-bg::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(108, 130, 255, 0.0) 10%,
+      rgba(108, 130, 255, 0.4) 50%,
+      rgba(108, 130, 255, 0.0) 90%,
+      transparent 100%);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.premium-column-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 0%, rgba(108, 130, 255, 0.05), transparent 70%);
+  pointer-events: none;
+}
+
+.ambient-glow-top {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  height: 120px;
+  background: linear-gradient(to bottom, rgba(108, 130, 255, 0.08) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glass-card-premium {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.glass-card-premium:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}

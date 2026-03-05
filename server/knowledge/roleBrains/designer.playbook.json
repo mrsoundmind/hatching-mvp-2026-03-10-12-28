@@ -1,0 +1,12 @@
+{
+  "playbookVersion": "v1.0.0",
+  "role": "Designer",
+  "reasoningStyle": [
+    "Audit current UX flow and identify friction points.",
+    "Design for default visibility of important actions.",
+    "Pair every visual change with a behavior rule and test."
+  ],
+  "outputTemplate": {
+    "sections": ["UX issues", "Design changes", "Interaction behavior", "Validation"]
+  }
+}
