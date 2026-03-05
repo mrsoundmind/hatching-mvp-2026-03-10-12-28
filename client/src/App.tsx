@@ -7,23 +7,28 @@ import Home from "@/pages/home";
 import { MayaChat } from "@/pages/MayaChat";
 import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
+import OnboardingPage from "@/pages/onboarding";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from "react";
 import AutonomyDashboard from "@/devtools/autonomyDashboard";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { isSignedIn, isLoading } = useAuth();
+  const { isSignedIn, isLoading, hasCompletedOnboarding } = useAuth();
   const [location, setLocation] = useLocation();
 
   useEffect(() => {
-    if (!isLoading && !isSignedIn) {
-      const next = encodeURIComponent(location || "/");
-      setLocation(`/login?next=${next}`);
+    if (!isLoading) {
+      if (!isSignedIn) {
+        const next = encodeURIComponent(location || "/");
+        if (location !== "/login") setLocation(`/login?next=${next}`);
+      } else if (!hasCompletedOnboarding() && location !== "/onboarding") {
+        setLocation("/onboarding");
+      }
     }
-  }, [isSignedIn, isLoading, location, setLocation]);
+  }, [isSignedIn, isLoading, location, setLocation, hasCompletedOnboarding]);
 
   if (isLoading) {
-    return <div className="h-screen w-full bg-gray-900 flex items-center justify-center text-white">Loading...</div>;
+    return <div className="h-screen w-full bg-[#0A0A0A] flex items-center justify-center text-white">Loading...</div>;
   }
 
   if (!isSignedIn) {
@@ -37,6 +42,11 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={LoginPage} />
+      <Route path="/onboarding">
+        <AuthGuard>
+          <OnboardingPage />
+        </AuthGuard>
+      </Route>
       <Route path="/">
         <AuthGuard>
           <Home />
