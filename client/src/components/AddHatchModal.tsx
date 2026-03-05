@@ -337,6 +337,7 @@ export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, exis
           name: templateAgent.role, // Use role as default name
           role: templateAgent.role,
           color: templateAgent.color,
+          userId: 'current-user',
           teamId: newTeam.id, // Assign to the newly created team
           projectId: activeProject.id,
           personality: {
@@ -405,6 +406,7 @@ export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, exis
         name: agent.role, // Use role as default name
         role: agent.role,
         color: agent.color,
+        userId: 'current-user',
         teamId: targetTeamId!, // Assign to selected team or Individual Agents team
         projectId: activeProject.id,
         personality: {

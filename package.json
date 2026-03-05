@@ -12,7 +12,7 @@
     "lint": "npm run check",
     "db:push": "drizzle-kit push",
     "qa:full": "npm run lint && npm run typecheck && npm run build",
-    "qa:autonomy": "npm run test:dto && npm run test:integrity && npm run test:memory && npm run test:memory:restart && npm run test:recovery && npm run test:injection && npm run eval:routing && npm run gate:conductor && npm run gate:safety && npm run gate:performance && npm run eval:bench && npm run eval:alive && npm run eval:smartness",
+    "qa:autonomy": "npm run test:dto && npm run test:integrity && npm run test:memory && npm run test:memory:restart && npm run test:recovery && npm run test:injection && npm run test:tone && npm run eval:routing && npm run gate:conductor && npm run gate:safety && npm run gate:performance && npm run eval:bench && npm run eval:alive && npm run eval:smartness",
     "qa:autonomy:live": "npm run test:ws-race && npm run test:ws-reconnect",
     "evidence:export": "tsx scripts/export-evidence.ts",
     "eval:bench": "tsx scripts/eval-bench.ts",
@@ -29,6 +29,7 @@
     "test:recovery": "tsx scripts/test-failure-recovery.ts",
     "test:injection": "tsx scripts/test-prompt-injection.ts",
     "test:dto": "tsx scripts/test-dto-contracts.ts",
+    "test:tone": "tsx scripts/test-tone-guard.ts",
     "test:ws-race": "tsx scripts/test-ws-race.ts",
     "test:ws-reconnect": "tsx scripts/test-ws-reconnect.ts"
   },

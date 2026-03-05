@@ -1,9 +1,10 @@
-import type { Express } from 'express';
+import type { Express, Request } from 'express';
 import { storage } from '../storage.js';
 import { evaluateConductorDecision, buildRoleIdentity } from '../ai/conductor.js';
 import { evaluateSafetyScore } from '../ai/safety.js';
 import {
   createDeliberationSession,
+  getActionProposal,
   getDeliberationSession,
   createActionProposal,
   updateActionProposalStatus,
@@ -27,6 +28,21 @@ import { readConfigSnapshot, writeConfigSnapshot } from '../utils/configSnapshot
 import { detectDrift, loadRecentScores } from '../eval/drift/driftMonitor.js';
 
 export function registerAutonomyRoutes(app: Express): void {
+  const getSessionUserId = (req: Request): string | undefined => (req.session as any)?.userId as string | undefined;
+
+  const getOwnedProjectIds = async (userId: string): Promise<Set<string>> => {
+    const projects = await storage.getProjects();
+    return new Set(projects.filter((project: any) => project.userId === userId).map((project) => project.id));
+  };
+
+  const requireOwnedProject = async (projectId: string, userId: string) => {
+    const project = await storage.getProject(projectId);
+    if (!project) {
+      return null;
+    }
+    return (project as any).userId === userId ? project : null;
+  };
+
   app.post('/api/conductor/evaluate-turn', async (req, res) => {
     try {
       const {
@@ -41,7 +57,11 @@ export function registerAutonomyRoutes(app: Express): void {
         return res.status(400).json({ error: 'userMessage and projectId are required' });
       }
 
-      const project = await storage.getProject(projectId);
+      const userId = getSessionUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const project = await requireOwnedProject(projectId, userId);
       if (!project) {
         return res.status(404).json({ error: 'Project not found' });
       }
@@ -117,7 +137,11 @@ export function registerAutonomyRoutes(app: Express): void {
         return res.status(400).json({ error: 'projectId, conversationId, and objective are required' });
       }
 
-      const project = await storage.getProject(projectId);
+      const userId = getSessionUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const project = await requireOwnedProject(projectId, userId);
       if (!project) {
         return res.status(404).json({ error: 'Project not found' });
       }
@@ -132,6 +156,7 @@ export function registerAutonomyRoutes(app: Express): void {
 
       await createDeliberationTrace({
         traceId: session.id,
+        userId: (req.session as any)?.userId || 'unknown-user',
         projectId,
         conversationId,
         objective,
@@ -159,8 +184,16 @@ export function registerAutonomyRoutes(app: Express): void {
 
   app.get('/api/deliberations/:id', async (req, res) => {
     try {
+      const userId = getSessionUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
       const session = getDeliberationSession(req.params.id);
       if (!session) {
+        return res.status(404).json({ error: 'Deliberation session not found' });
+      }
+      const ownedProject = await requireOwnedProject(session.projectId, userId);
+      if (!ownedProject) {
         return res.status(404).json({ error: 'Deliberation session not found' });
       }
       const trace = await getDeliberationTrace(req.params.id);
@@ -217,6 +250,14 @@ export function registerAutonomyRoutes(app: Express): void {
       if (!projectId || !conversationId) {
         return res.status(400).json({ error: 'projectId and conversationId are required' });
       }
+      const userId = getSessionUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const ownedProject = await requireOwnedProject(projectId, userId);
+      if (!ownedProject) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
 
       const roleIdentity = buildRoleIdentity({
         projectId,
@@ -248,6 +289,14 @@ export function registerAutonomyRoutes(app: Express): void {
       if (!roleId || !projectId) {
         return res.status(400).json({ error: 'roleId and projectId are required' });
       }
+      const userId = getSessionUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const ownedProject = await requireOwnedProject(projectId, userId);
+      if (!ownedProject) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
 
       const status = runTrainingForRole({ roleId, projectId });
       res.json(status);
@@ -263,6 +312,14 @@ export function registerAutonomyRoutes(app: Express): void {
       const projectId = String(req.query.projectId || '');
       if (!projectId) {
         return res.status(400).json({ error: 'projectId query parameter is required' });
+      }
+      const userId = getSessionUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const ownedProject = await requireOwnedProject(projectId, userId);
+      if (!ownedProject) {
+        return res.status(404).json({ error: 'Project not found' });
       }
 
       const status = getTrainingStatus({ roleId, projectId });
@@ -281,6 +338,14 @@ export function registerAutonomyRoutes(app: Express): void {
       const { projectId, source, actionType, payload, riskLevel = 'medium' } = req.body || {};
       if (!projectId || !source || !actionType) {
         return res.status(400).json({ error: 'projectId, source, and actionType are required' });
+      }
+      const userId = getSessionUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const ownedProject = await requireOwnedProject(projectId, userId);
+      if (!ownedProject) {
+        return res.status(404).json({ error: 'Project not found' });
       }
 
       const proposal = createActionProposal({
@@ -318,6 +383,18 @@ export function registerAutonomyRoutes(app: Express): void {
 
   app.post('/api/action-proposals/:id/approve', async (req, res) => {
     try {
+      const userId = getSessionUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const proposalBeforeUpdate = getActionProposal(req.params.id);
+      if (!proposalBeforeUpdate) {
+        return res.status(404).json({ error: 'Action proposal not found' });
+      }
+      const ownedProject = await requireOwnedProject(proposalBeforeUpdate.projectId, userId);
+      if (!ownedProject) {
+        return res.status(404).json({ error: 'Action proposal not found' });
+      }
       const proposal = updateActionProposalStatus(req.params.id, 'approved');
       if (!proposal) {
         return res.status(404).json({ error: 'Action proposal not found' });
@@ -346,6 +423,18 @@ export function registerAutonomyRoutes(app: Express): void {
 
   app.post('/api/action-proposals/:id/reject', async (req, res) => {
     try {
+      const userId = getSessionUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const proposalBeforeUpdate = getActionProposal(req.params.id);
+      if (!proposalBeforeUpdate) {
+        return res.status(404).json({ error: 'Action proposal not found' });
+      }
+      const ownedProject = await requireOwnedProject(proposalBeforeUpdate.projectId, userId);
+      if (!ownedProject) {
+        return res.status(404).json({ error: 'Action proposal not found' });
+      }
       const proposal = updateActionProposalStatus(req.params.id, 'rejected');
       if (!proposal) {
         return res.status(404).json({ error: 'Action proposal not found' });
@@ -385,6 +474,14 @@ export function registerAutonomyRoutes(app: Express): void {
 
       if (!projectId || !conversationId || !objective) {
         return res.status(400).json({ error: 'projectId, conversationId, and objective are required' });
+      }
+      const userId = getSessionUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const ownedProject = await requireOwnedProject(projectId, userId);
+      if (!ownedProject) {
+        return res.status(404).json({ error: 'Project not found' });
       }
 
       const graph = createTaskGraph({
@@ -455,6 +552,14 @@ export function registerAutonomyRoutes(app: Express): void {
           error: 'projectId, conversationId, role, userMessage, and draftResponse are required',
         });
       }
+      const userId = getSessionUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const ownedProject = await requireOwnedProject(projectId, userId);
+      if (!ownedProject) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
 
       const runtime = getCurrentRuntimeConfig();
       const result = await runAutonomousKnowledgeLoop({
@@ -476,40 +581,69 @@ export function registerAutonomyRoutes(app: Express): void {
     }
   });
 
-  app.get('/api/autonomy/events', async (_req, res) => {
+  app.get('/api/autonomy/events', async (req, res) => {
     try {
       const events = await readAutonomyEvents(1000);
-      res.json({ events });
+      const userId = getSessionUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const ownedProjectIds = await getOwnedProjectIds(userId);
+      const filteredEvents = events.filter((event) => {
+        if (!event.projectId) {
+          return true;
+        }
+        return ownedProjectIds.has(event.projectId);
+      });
+      res.json({ events: filteredEvents });
     } catch (error) {
       console.error('Autonomy events read error:', error);
       res.status(500).json({ error: 'Failed to read autonomy events' });
     }
   });
 
-  app.get('/api/autonomy/traces', async (_req, res) => {
+  app.get('/api/autonomy/traces', async (req, res) => {
     try {
       const traces = await listDeliberationTraces(200);
-      res.json({ traces });
+      const userId = getSessionUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const ownedProjectIds = await getOwnedProjectIds(userId);
+      const filteredTraces = traces.filter((trace) => ownedProjectIds.has(trace.projectId));
+      res.json({ traces: filteredTraces });
     } catch (error) {
       console.error('Deliberation traces read error:', error);
       res.status(500).json({ error: 'Failed to read deliberation traces' });
     }
   });
 
-  app.get('/api/autonomy/evidence-pack', async (_req, res) => {
+  app.get('/api/autonomy/evidence-pack', async (req, res) => {
     try {
       const snapshotResult = await writeConfigSnapshot('evidence_export');
       const currentSnapshot = await readConfigSnapshot();
       const events = await readAutonomyEvents(2000);
       const traces = await listDeliberationTraces(300);
-      const latency = await summarizeLatency(events);
+      const userId = getSessionUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const ownedProjectIds = await getOwnedProjectIds(userId);
+      const filteredEvents = events.filter((event) => {
+        if (!event.projectId) {
+          return true;
+        }
+        return ownedProjectIds.has(event.projectId);
+      });
+      const filteredTraces = traces.filter((trace) => ownedProjectIds.has(trace.projectId));
+      const latency = await summarizeLatency(filteredEvents);
       const recentScores = await loadRecentScores(5);
       const currentScore = recentScores.length > 0 ? recentScores[recentScores.length - 1] : 0;
       const drift = detectDrift({
         currentScore,
         history: recentScores.slice(0, -1),
       });
-      const eventTypeCounts = events.reduce<Record<string, number>>((acc, event) => {
+      const eventTypeCounts = filteredEvents.reduce<Record<string, number>>((acc, event) => {
         acc[event.eventType] = (acc[event.eventType] || 0) + 1;
         return acc;
       }, {});
@@ -538,9 +672,9 @@ export function registerAutonomyRoutes(app: Express): void {
           snapshot: currentSnapshot.snapshot,
           diffFromPrevious: snapshotResult.diffFromPrevious,
         },
-        events,
+        events: filteredEvents,
         eventTypeCounts,
-        traces,
+        traces: filteredTraces,
         performance: latency,
         drift,
       };

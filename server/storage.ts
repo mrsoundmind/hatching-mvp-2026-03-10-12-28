@@ -18,6 +18,14 @@ export type StorageMode = "memory" | "db";
  */
 export const STORAGE_MODE: StorageMode = (process.env.STORAGE_MODE as StorageMode) || "memory";
 
+export interface OAuthUserInput {
+  email: string;
+  name: string;
+  avatarUrl?: string | null;
+  provider: "google";
+  providerSub: string;
+}
+
 /**
  * Get storage mode information for status endpoints and logging.
  */
@@ -44,8 +52,11 @@ export function getStorageModeInfo() {
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByProviderSub(provider: string, providerSub: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  upsertOAuthUser(input: OAuthUserInput): Promise<User>;
 
   // Projects
   getProjects(): Promise<Project[]>;
@@ -147,9 +158,24 @@ export class MemStorage implements IStorage {
   }
 
   private initializeSampleData() {
+    const seedUser: User = {
+      id: "seed-user",
+      email: "seed@hatchin.local",
+      name: "Seed User",
+      avatarUrl: null,
+      provider: "legacy",
+      providerSub: "seed-user",
+      username: "seed",
+      password: "seed",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.users.set(seedUser.id, seedUser);
+
     // Create SaaS Startup project
     const saasProject: Project = {
       id: "saas-startup",
+      userId: seedUser.id,
       name: "SaaS Startup",
       emoji: "🚀",
       description: "Building the next generation SaaS platform",
@@ -167,6 +193,7 @@ export class MemStorage implements IStorage {
     // Create Design Team
     const designTeam: Team = {
       id: "design-team",
+      userId: seedUser.id,
       name: "Design Team",
       emoji: "🎨",
       projectId: saasProject.id,
@@ -177,6 +204,7 @@ export class MemStorage implements IStorage {
     // Create Product Team
     const productTeam: Team = {
       id: "product-team",
+      userId: seedUser.id,
       name: "Product Team",
       emoji: "📊",
       projectId: saasProject.id,
@@ -187,6 +215,7 @@ export class MemStorage implements IStorage {
     // Create Design Team agents
     const productDesigner: Agent = {
       id: "product-designer",
+      userId: seedUser.id,
       name: "Product Designer",
       role: "Product Designer",
       color: "orange",
@@ -199,6 +228,7 @@ export class MemStorage implements IStorage {
 
     const uiEngineer: Agent = {
       id: "ui-engineer",
+      userId: seedUser.id,
       name: "UI Engineer",
       role: "UI Engineer",
       color: "blue",
@@ -212,6 +242,7 @@ export class MemStorage implements IStorage {
     // Create Product Team agents
     const productManager: Agent = {
       id: "product-manager",
+      userId: seedUser.id,
       name: "Product Manager",
       role: "Product Manager",
       color: "green",
@@ -224,6 +255,7 @@ export class MemStorage implements IStorage {
 
     const backendDev: Agent = {
       id: "backend-developer",
+      userId: seedUser.id,
       name: "Backend Developer",
       role: "Backend Developer",
       color: "blue",
@@ -236,6 +268,7 @@ export class MemStorage implements IStorage {
 
     const qaLead: Agent = {
       id: "qa-lead",
+      userId: seedUser.id,
       name: "QA Lead",
       role: "QA Lead",
       color: "orange",
@@ -273,6 +306,7 @@ export class MemStorage implements IStorage {
     // Fix 16: Seed canonical conversation so Phase 1 invariants pass
     const seedConversation: Conversation = {
       id: "project:saas-startup",
+      userId: seedUser.id,
       projectId: "saas-startup",
       teamId: null,
       agentId: null,
@@ -290,6 +324,18 @@ export class MemStorage implements IStorage {
     return this.users.get(id);
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.email.toLowerCase() === email.toLowerCase(),
+    );
+  }
+
+  async getUserByProviderSub(provider: string, providerSub: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.provider === provider && user.providerSub === providerSub,
+    );
+  }
+
   async getUserByUsername(username: string): Promise<User | undefined> {
     return Array.from(this.users.values()).find(
       (user) => user.username === username,
@@ -298,9 +344,50 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
-    const user: User = { ...insertUser, id };
+    const now = new Date();
+    const user: User = {
+      id,
+      email: insertUser.email,
+      name: insertUser.name,
+      avatarUrl: insertUser.avatarUrl || null,
+      provider: insertUser.provider || "google",
+      providerSub: insertUser.providerSub,
+      username: insertUser.username || null,
+      password: insertUser.password || null,
+      createdAt: now,
+      updatedAt: now,
+    };
     this.users.set(id, user);
     return user;
+  }
+
+  async upsertOAuthUser(input: OAuthUserInput): Promise<User> {
+    const existing =
+      (await this.getUserByProviderSub(input.provider, input.providerSub)) ||
+      (await this.getUserByEmail(input.email));
+    if (existing) {
+      const updated: User = {
+        ...existing,
+        email: input.email,
+        name: input.name,
+        avatarUrl: input.avatarUrl || null,
+        provider: input.provider,
+        providerSub: input.providerSub,
+        updatedAt: new Date(),
+      };
+      this.users.set(existing.id, updated);
+      return updated;
+    }
+
+    return this.createUser({
+      email: input.email,
+      name: input.name,
+      avatarUrl: input.avatarUrl || null,
+      provider: input.provider,
+      providerSub: input.providerSub,
+      username: null,
+      password: null,
+    } as InsertUser);
   }
 
   // Project methods
@@ -313,10 +400,15 @@ export class MemStorage implements IStorage {
   }
 
   async createProject(insertProject: InsertProject): Promise<Project> {
+    const resolvedUserId = (insertProject as any).userId;
+    if (!resolvedUserId) {
+      throw new Error("createProject requires userId");
+    }
     const id = randomUUID();
     const project: Project = {
       ...insertProject,
       id,
+      userId: resolvedUserId,
       description: insertProject.description || null,
       emoji: insertProject.emoji || "🚀",
       color: insertProject.color || "blue",
@@ -385,10 +477,15 @@ export class MemStorage implements IStorage {
   }
 
   async createTeam(insertTeam: InsertTeam): Promise<Team> {
+    const resolvedUserId = (insertTeam as any).userId || this.projects.get(insertTeam.projectId)?.userId;
+    if (!resolvedUserId) {
+      throw new Error("createTeam requires userId or an owned project");
+    }
     const id = randomUUID();
     const team: Team = {
       ...insertTeam,
       id,
+      userId: resolvedUserId,
       isExpanded: insertTeam.isExpanded ?? true,
     };
     this.teams.set(id, team);
@@ -440,10 +537,18 @@ export class MemStorage implements IStorage {
   }
 
   async createAgent(insertAgent: InsertAgent): Promise<Agent> {
+    const resolvedUserId =
+      (insertAgent as any).userId ||
+      this.teams.get(insertAgent.teamId)?.userId ||
+      this.projects.get(insertAgent.projectId)?.userId;
+    if (!resolvedUserId) {
+      throw new Error("createAgent requires userId or an owned team/project");
+    }
     const id = randomUUID();
     const agent: Agent = {
       ...insertAgent,
       id,
+      userId: resolvedUserId,
       color: insertAgent.color || "blue",
       personality: insertAgent.personality || {} as any,
       isSpecialAgent: insertAgent.isSpecialAgent || false,
@@ -466,9 +571,13 @@ export class MemStorage implements IStorage {
   }
 
   async initializeIdeaProject(projectId: string): Promise<void> {
+    const project = this.projects.get(projectId);
+    if (!project) return;
+
     // Create "Core Team" for the project
     const coreTeam: Team = {
       id: randomUUID(),
+      userId: project.userId,
       name: "Core Team",
       emoji: "⭐",
       projectId: projectId,
@@ -479,6 +588,7 @@ export class MemStorage implements IStorage {
     // Create Maya agent
     const mayaAgent: Agent = {
       id: randomUUID(),
+      userId: project.userId,
       name: "Maya",
       role: "AI Idea Partner",
       color: "purple",
@@ -495,7 +605,6 @@ export class MemStorage implements IStorage {
     this.agents.set(mayaAgent.id, mayaAgent);
 
     // Initialize project brain with Idea Development document
-    const project = this.projects.get(projectId);
     if (project) {
       const updatedProject = {
         ...project,
@@ -515,6 +624,9 @@ export class MemStorage implements IStorage {
   }
 
   async initializeStarterPackProject(projectId: string, starterPackId: string): Promise<void> {
+    const project = this.projects.get(projectId);
+    if (!project) return;
+
     // Find the starter pack from templates
     let starterPack = null;
     for (const category of Object.values(starterPacksByCategory)) {
@@ -563,6 +675,7 @@ export class MemStorage implements IStorage {
       const teamInfo = teamData[teamKey as keyof typeof teamData];
       const team: Team = {
         id: randomUUID(),
+        userId: project.userId,
         name: teamInfo.name,
         emoji: teamInfo.emoji,
         projectId: projectId,
@@ -592,6 +705,7 @@ export class MemStorage implements IStorage {
         if (team) {
           const agent: Agent = {
             id: randomUUID(),
+            userId: project.userId,
             name: hatchTemplate.name,
             role: hatchTemplate.role,
             color: hatchTemplate.color,
@@ -611,7 +725,6 @@ export class MemStorage implements IStorage {
     }
 
     // Initialize project brain with starter pack welcome message
-    const project = this.projects.get(projectId);
     if (project) {
       const updatedProject = {
         ...project,
@@ -648,8 +761,16 @@ export class MemStorage implements IStorage {
       return this.conversations.get(conversationId)!;
     }
 
+    const resolvedUserId =
+      (conversation as any).userId ||
+      this.projects.get(conversation.projectId)?.userId;
+    if (!resolvedUserId) {
+      throw new Error("createConversation requires userId or an owned project");
+    }
+
     const newConversation: Conversation = {
       id: conversationId,
+      userId: resolvedUserId,
       projectId: conversation.projectId,
       teamId: conversation.teamId || null,
       agentId: conversation.agentId || null,
@@ -1012,8 +1133,13 @@ export class MemStorage implements IStorage {
 
   async createTask(task: InsertTask): Promise<Task> {
     const t = task as any;
+    const resolvedUserId = t.userId || this.projects.get(t.projectId)?.userId;
+    if (!resolvedUserId) {
+      throw new Error("createTask requires userId or an owned project");
+    }
     const newTask: Task = {
       id: t.id || randomUUID(),
+      userId: resolvedUserId,
       title: t.title,
       description: t.description || null,
       priority: t.priority || 'medium',
@@ -1070,6 +1196,17 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db.select().from(schema.users).where(eq(schema.users.id, id));
     return user;
   }
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(schema.users).where(eq(schema.users.email, email));
+    return user;
+  }
+  async getUserByProviderSub(provider: string, providerSub: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(schema.users)
+      .where(and(eq(schema.users.provider, provider), eq(schema.users.providerSub, providerSub)));
+    return user;
+  }
   async getUserByUsername(username: string): Promise<User | undefined> {
     const [user] = await db.select().from(schema.users).where(eq(schema.users.username, username));
     return user;
@@ -1077,6 +1214,40 @@ export class DatabaseStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db.insert(schema.users).values(insertUser).returning();
     return user;
+  }
+  async upsertOAuthUser(input: OAuthUserInput): Promise<User> {
+    const existing =
+      (await this.getUserByProviderSub(input.provider, input.providerSub)) ||
+      (await this.getUserByEmail(input.email));
+    if (existing) {
+      const [updated] = await db
+        .update(schema.users)
+        .set({
+          email: input.email,
+          name: input.name,
+          avatarUrl: input.avatarUrl || null,
+          provider: input.provider,
+          providerSub: input.providerSub,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.users.id, existing.id))
+        .returning();
+      return updated;
+    }
+
+    const [created] = await db
+      .insert(schema.users)
+      .values({
+        email: input.email,
+        name: input.name,
+        avatarUrl: input.avatarUrl || null,
+        provider: input.provider,
+        providerSub: input.providerSub,
+        username: null,
+        password: null,
+      } as any)
+      .returning();
+    return created;
   }
 
   // Projects
@@ -1088,7 +1259,9 @@ export class DatabaseStorage implements IStorage {
     return proj;
   }
   async createProject(insertProject: InsertProject): Promise<Project> {
-    const [proj] = await db.insert(schema.projects).values(insertProject as any).returning();
+    const resolvedUserId = (insertProject as any).userId;
+    if (!resolvedUserId) throw new Error("createProject requires userId");
+    const [proj] = await db.insert(schema.projects).values({ ...(insertProject as any), userId: resolvedUserId }).returning();
     return proj;
   }
   async updateProject(id: string, updates: Partial<Project>): Promise<Project | undefined> {
@@ -1122,7 +1295,11 @@ export class DatabaseStorage implements IStorage {
     return team;
   }
   async createTeam(insertTeam: InsertTeam): Promise<Team> {
-    const [team] = await db.insert(schema.teams).values(insertTeam).returning();
+    const resolvedUserId =
+      (insertTeam as any).userId ||
+      (await this.getProject((insertTeam as any).projectId))?.userId;
+    if (!resolvedUserId) throw new Error("createTeam requires userId or owned project");
+    const [team] = await db.insert(schema.teams).values({ ...(insertTeam as any), userId: resolvedUserId }).returning();
     return team;
   }
   async updateTeam(id: string, updates: Partial<Team>): Promise<Team | undefined> {
@@ -1156,7 +1333,11 @@ export class DatabaseStorage implements IStorage {
     return agent;
   }
   async createAgent(insertAgent: InsertAgent): Promise<Agent> {
-    const [agent] = await db.insert(schema.agents).values(insertAgent as any).returning();
+    const team = await this.getTeam((insertAgent as any).teamId);
+    const project = await this.getProject((insertAgent as any).projectId);
+    const resolvedUserId = (insertAgent as any).userId || team?.userId || project?.userId;
+    if (!resolvedUserId) throw new Error("createAgent requires userId or owned team/project");
+    const [agent] = await db.insert(schema.agents).values({ ...(insertAgent as any), userId: resolvedUserId }).returning();
     return agent;
   }
   async updateAgent(id: string, updates: Partial<Agent>): Promise<Agent | undefined> {
@@ -1170,8 +1351,10 @@ export class DatabaseStorage implements IStorage {
 
   // Special project initializers (delegate to MemStorage pattern; data goes to DB via createTeam/createAgent)
   async initializeIdeaProject(projectId: string): Promise<void> {
-    const [team] = await db.insert(schema.teams).values({ name: 'Core Team', emoji: '⭐', projectId, isExpanded: true }).returning();
-    await db.insert(schema.agents).values({ name: 'Maya', role: 'AI Idea Partner', color: 'purple', teamId: team.id, projectId, isSpecialAgent: true, personality: { traits: ['Creative', 'Analytical', 'Encouraging'], communicationStyle: 'Friendly and insightful, helps turn ideas into actionable plans', expertise: ['Idea Development', 'Strategic Thinking', 'Project Planning'], welcomeMessage: "Hi! I'm Maya, your AI idea partner. What's on your mind?" } });
+    const project = await this.getProject(projectId);
+    if (!project) return;
+    const [team] = await db.insert(schema.teams).values({ userId: project.userId, name: 'Core Team', emoji: '⭐', projectId, isExpanded: true }).returning();
+    await db.insert(schema.agents).values({ userId: project.userId, name: 'Maya', role: 'AI Idea Partner', color: 'purple', teamId: team.id, projectId, isSpecialAgent: true, personality: { traits: ['Creative', 'Analytical', 'Encouraging'], communicationStyle: 'Friendly and insightful, helps turn ideas into actionable plans', expertise: ['Idea Development', 'Strategic Thinking', 'Project Planning'], welcomeMessage: "Hi! I'm Maya, your AI idea partner. What's on your mind?" } });
   }
   async initializeStarterPackProject(projectId: string, starterPackId: string): Promise<void> {
     // Delegate to in-memory logic then persist — use MemStorage helper pattern
@@ -1188,6 +1371,8 @@ export class DatabaseStorage implements IStorage {
       if (starterPack) break;
     }
     if (!starterPack) return;
+    const project = await this.getProject(projectId);
+    if (!project) return;
     const teamMap: Record<string, string> = {};
     for (const memberName of (starterPack as any).members) {
       const tpl = allHatchTemplates.find((h: any) => h.name === memberName);
@@ -1196,10 +1381,10 @@ export class DatabaseStorage implements IStorage {
       const tKey = catMap[(tpl as any).category] || 'strategy';
       if (!teamMap[tKey]) {
         const teamData: Record<string, { name: string, emoji: string }> = { development: { name: 'Development', emoji: '💻' }, design: { name: 'Design', emoji: '🎨' }, marketing: { name: 'Marketing', emoji: '📈' }, strategy: { name: 'Strategy', emoji: '🎯' }, operations: { name: 'Operations', emoji: '⚙️' }, content: { name: 'Content', emoji: '✍️' } };
-        const [team] = await db.insert(schema.teams).values({ name: teamData[tKey].name, emoji: teamData[tKey].emoji, projectId, isExpanded: true }).returning();
+        const [team] = await db.insert(schema.teams).values({ userId: project.userId, name: teamData[tKey].name, emoji: teamData[tKey].emoji, projectId, isExpanded: true }).returning();
         teamMap[tKey] = team.id;
       }
-      await db.insert(schema.agents).values({ name: (tpl as any).name, role: (tpl as any).role, color: (tpl as any).color, teamId: teamMap[tKey], projectId, isSpecialAgent: false, personality: { traits: (tpl as any).skills?.slice(0, 3) || [], communicationStyle: (tpl as any).description, expertise: (tpl as any).skills || [], welcomeMessage: `Hi! I'm ${(tpl as any).name}, your ${(tpl as any).role}.` } });
+      await db.insert(schema.agents).values({ userId: project.userId, name: (tpl as any).name, role: (tpl as any).role, color: (tpl as any).color, teamId: teamMap[tKey], projectId, isSpecialAgent: false, personality: { traits: (tpl as any).skills?.slice(0, 3) || [], communicationStyle: (tpl as any).description, expertise: (tpl as any).skills || [], welcomeMessage: `Hi! I'm ${(tpl as any).name}, your ${(tpl as any).role}.` } });
     }
   }
 
@@ -1230,7 +1415,9 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(schema.tasks).where(eq(schema.tasks.assignee, assigneeId));
   }
   async createTask(task: InsertTask): Promise<Task> {
-    const [t] = await db.insert(schema.tasks).values(task as any).returning();
+    const resolvedUserId = (task as any).userId || (await this.getProject((task as any).projectId))?.userId;
+    if (!resolvedUserId) throw new Error("createTask requires userId or owned project");
+    const [t] = await db.insert(schema.tasks).values({ ...(task as any), userId: resolvedUserId }).returning();
     return t;
   }
   async updateTask(id: string, updates: Partial<Task>): Promise<Task | undefined> {
@@ -1251,7 +1438,9 @@ export class DatabaseStorage implements IStorage {
     // Upsert: if already exists return it
     const existing = await db.select().from(schema.conversations).where(eq(schema.conversations.id, id));
     if (existing.length > 0) return existing[0];
-    const [conv] = await db.insert(schema.conversations).values({ ...conversation, id } as any).returning();
+    const resolvedUserId = (conversation as any).userId || (await this.getProject(conversation.projectId))?.userId;
+    if (!resolvedUserId) throw new Error("createConversation requires userId or owned project");
+    const [conv] = await db.insert(schema.conversations).values({ ...conversation, userId: resolvedUserId, id } as any).returning();
     return conv;
   }
   async hasConversation(id: string): Promise<boolean> {
@@ -1336,4 +1525,3 @@ function createStorage(): IStorage {
 }
 
 export const storage = createStorage();
-

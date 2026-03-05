@@ -824,9 +824,10 @@ export default function Home() {
       // Debug shortcut to reset onboarding and auth
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'R') {
         e.preventDefault();
-        localStorage.removeItem('hasCompletedOnboarding');
-        localStorage.removeItem('hatchin_user');
-        devLog('🔄 Onboarding and auth reset! Refresh to see onboarding modal.');
+        Object.keys(localStorage)
+          .filter((key) => key.startsWith('hasCompletedOnboarding:'))
+          .forEach((key) => localStorage.removeItem(key));
+        devLog('🔄 Onboarding state reset for all local users. Refresh to see onboarding modal.');
         window.location.reload();
       }
     };

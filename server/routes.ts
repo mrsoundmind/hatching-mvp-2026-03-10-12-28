@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { insertProjectSchema, insertTeamSchema, insertAgentSchema, insertMessageSchema, insertConversationSchema, insertTaskSchema, type Task, type Project } from "@shared/schema";
-import { parseConversationId } from "@shared/conversationId";
+import { buildConversationId, parseConversationId } from "@shared/conversationId";
 import { wsClientMessageSchema } from "@shared/dto/wsSchemas";
 import { randomUUID } from "crypto";
 import { z } from "zod";
@@ -14,6 +14,7 @@ const devLog = (...args: any[]) => {
   }
 };
 import { OpenAIConfigurationError, generateIntelligentResponse, generateStreamingResponse } from "./ai/openaiService.js";
+import { applyTeammateToneGuard } from "./ai/responsePostProcessing.js";
 import { personalityEngine } from "./ai/personalityEvolution.js";
 import { trainingSystem } from "./ai/trainingSystem.js";
 import { initializePreTrainedColleagues, devTrainingTools } from "./ai/devTrainingTools.js";
@@ -65,8 +66,20 @@ import { createTaskGraph } from "./autonomy/taskGraph/taskGraphEngine.js";
 import { BUDGETS } from "./autonomy/config/policies.js";
 import { registerHealthRoute } from "./routes/health.js";
 import { registerAutonomyRoutes } from "./routes/autonomy.js";
+import {
+  buildGoogleAuthorizationUrl,
+  exchangeGoogleAuthorizationCode,
+  generateCodeChallenge,
+  generateCodeVerifier,
+  generateOAuthNonce,
+  generateOAuthState,
+  isGoogleAuthConfigured,
+} from "./auth/googleOAuth.js";
 
-export async function registerRoutes(app: Express): Promise<Server> {
+type SessionParser = (req: any, res: any, next: (err?: unknown) => void) => void;
+type AuthedWebSocket = WebSocket & { __userId?: string };
+
+export async function registerRoutes(app: Express, sessionParser?: SessionParser): Promise<Server> {
   // Initialize pre-trained AI colleagues on server start
   initializePreTrainedColleagues();
 
@@ -293,11 +306,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     requireAuth(req, res, next);
   });
 
+  const getSessionUserId = (req: Request): string => (req.session as any).userId as string;
+
+  const getOwnedProjectIds = async (userId: string): Promise<Set<string>> => {
+    const projects = await storage.getProjects();
+    return new Set(projects.filter((project: any) => project.userId === userId).map((project) => project.id));
+  };
+
+  const getOwnedProject = async (projectId: string, userId: string) => {
+    const project = await storage.getProject(projectId);
+    if (!project) return null;
+    return (project as any).userId === userId ? project : null;
+  };
+
+  const getOwnedTeam = async (teamId: string, userId: string) => {
+    const team = await storage.getTeam(teamId);
+    if (!team) return null;
+    const project = await getOwnedProject((team as any).projectId, userId);
+    return project ? team : null;
+  };
+
+  const getOwnedAgent = async (agentId: string, userId: string) => {
+    const agent = await storage.getAgent(agentId);
+    if (!agent) return null;
+    const project = await getOwnedProject((agent as any).projectId, userId);
+    return project ? agent : null;
+  };
+
+  const conversationOwnedByUser = async (conversationId: string, userId: string): Promise<boolean> => {
+    const ownedProjectIds = await getOwnedProjectIds(userId);
+    for (const projectId of ownedProjectIds) {
+      const conversations = await storage.getConversationsByProject(projectId);
+      if (conversations.some((conversation) => conversation.id === conversationId)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   // Projects
   app.get("/api/projects", async (req, res) => {
     try {
       const projects = await storage.getProjects();
-      res.json(projects);
+      const userId = getSessionUserId(req);
+      const ownedProjects = projects.filter((project: any) => project.userId === userId);
+      res.json(ownedProjects);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch projects" });
     }
@@ -305,7 +358,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/projects/:id", async (req, res) => {
     try {
-      const project = await storage.getProject(req.params.id);
+      const project = await getOwnedProject(req.params.id, getSessionUserId(req));
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
       }
@@ -317,10 +370,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/projects", async (req, res) => {
     try {
+      const userId = getSessionUserId(req);
       const validatedData = insertProjectSchema.extend({
         starterPackId: z.string().optional(),
         projectType: z.string().optional()
-      }).parse(req.body);
+      }).parse({ ...req.body, userId });
       const { starterPackId, projectType, ...projectData } = validatedData;
       const project = await storage.createProject(projectData);
 
@@ -337,6 +391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Type assertion needed because InsertConversation omits id, but we support it
         await storage.createConversation({
           id: conversationId, // Use canonical ID instead of UUID
+          userId,
           projectId: project.id,
           teamId: null,
           agentId: null,
@@ -370,6 +425,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/projects/:id", async (req, res) => {
     try {
+      const ownedProject = await getOwnedProject(req.params.id, getSessionUserId(req));
+      if (!ownedProject) {
+        return res.status(404).json({ error: "Project not found" });
+      }
       const project = await storage.updateProject(req.params.id, req.body);
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
@@ -382,6 +441,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/projects/:id", async (req, res) => {
     try {
+      const ownedProject = await getOwnedProject(req.params.id, getSessionUserId(req));
+      if (!ownedProject) {
+        return res.status(404).json({ error: "Project not found" });
+      }
       // Partial update support for right sidebar saves
       const project = await storage.updateProject(req.params.id, req.body);
       if (!project) {
@@ -397,6 +460,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/projects/:id", async (req, res) => {
     devLog('🗑️ DELETE /api/projects/:id called with id:', req.params.id);
     try {
+      const ownedProject = await getOwnedProject(req.params.id, getSessionUserId(req));
+      if (!ownedProject) {
+        return res.status(404).json({ error: "Project not found" });
+      }
       devLog('🗑️ Calling storage.deleteProject with id:', req.params.id);
       const success = await storage.deleteProject(req.params.id);
       devLog('🗑️ Storage deleteProject result:', success);
@@ -416,7 +483,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Project Brain API Endpoints (P1-4 Fix)
   app.post("/api/projects/:id/brain/documents", async (req, res) => {
     try {
-      const project = await storage.getProject(req.params.id);
+      const project = await getOwnedProject(req.params.id, getSessionUserId(req));
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
       }
@@ -445,7 +512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/projects/:id/brain", async (req, res) => {
     try {
-      const project = await storage.getProject(req.params.id);
+      const project = await getOwnedProject(req.params.id, getSessionUserId(req));
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
       }
@@ -468,7 +535,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/teams", async (req, res) => {
     try {
       const teams = await storage.getTeams();
-      res.json(teams);
+      const ownedProjectIds = await getOwnedProjectIds(getSessionUserId(req));
+      res.json(teams.filter((team) => ownedProjectIds.has((team as any).projectId)));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch teams" });
     }
@@ -476,6 +544,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/projects/:projectId/teams", async (req, res) => {
     try {
+      const ownedProject = await getOwnedProject(req.params.projectId, getSessionUserId(req));
+      if (!ownedProject) {
+        return res.status(404).json({ error: "Project not found" });
+      }
       const teams = await storage.getTeamsByProject(req.params.projectId);
       res.json(teams);
     } catch (error) {
@@ -485,13 +557,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/teams", async (req, res) => {
     try {
-      const validatedData = insertTeamSchema.parse(req.body);
+      const userId = getSessionUserId(req);
+      const project = await getOwnedProject(req.body.projectId, userId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      const validatedData = insertTeamSchema.parse({ ...req.body, userId });
       const team = await storage.createTeam(validatedData);
 
       // Auto-create initial conversation for the new team
       try {
         await storage.createConversation({
-          id: `team:${team.id}`,
+          id: buildConversationId('team', team.projectId, team.id),
+          userId,
           projectId: team.projectId,
           teamId: team.id,
           agentId: null,
@@ -514,6 +592,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/teams/:id", async (req, res) => {
     try {
+      const team = await getOwnedTeam(req.params.id, getSessionUserId(req));
+      if (!team) {
+        return res.status(404).json({ error: "Team not found" });
+      }
       const success = await storage.deleteTeam(req.params.id);
       if (!success) {
         return res.status(404).json({ error: "Team not found" });
@@ -526,11 +608,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/teams/:id", async (req, res) => {
     try {
-      const team = await storage.updateTeam(req.params.id, req.body);
-      if (!team) {
+      const ownedTeam = await getOwnedTeam(req.params.id, getSessionUserId(req));
+      if (!ownedTeam) {
         return res.status(404).json({ error: "Team not found" });
       }
-      res.json(team);
+      const updatedTeam = await storage.updateTeam(req.params.id, req.body);
+      if (!updatedTeam) {
+        return res.status(404).json({ error: "Team not found" });
+      }
+      res.json(updatedTeam);
     } catch (error) {
       res.status(500).json({ error: "Failed to update team" });
     }
@@ -539,11 +625,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Fix 11: PATCH for partial team updates (RightSidebar save)
   app.patch("/api/teams/:id", async (req, res) => {
     try {
-      const team = await storage.updateTeam(req.params.id, req.body);
-      if (!team) {
+      const ownedTeam = await getOwnedTeam(req.params.id, getSessionUserId(req));
+      if (!ownedTeam) {
         return res.status(404).json({ error: "Team not found" });
       }
-      res.json(team);
+      const updatedTeam = await storage.updateTeam(req.params.id, req.body);
+      if (!updatedTeam) {
+        return res.status(404).json({ error: "Team not found" });
+      }
+      res.json(updatedTeam);
     } catch (error) {
       res.status(500).json({ error: "Failed to update team" });
     }
@@ -553,7 +643,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/agents", async (req, res) => {
     try {
       const agents = await storage.getAgents();
-      res.json(agents);
+      const ownedProjectIds = await getOwnedProjectIds(getSessionUserId(req));
+      res.json(agents.filter((agent) => ownedProjectIds.has((agent as any).projectId)));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch agents" });
     }
@@ -561,6 +652,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/projects/:projectId/agents", async (req, res) => {
     try {
+      const ownedProject = await getOwnedProject(req.params.projectId, getSessionUserId(req));
+      if (!ownedProject) {
+        return res.status(404).json({ error: "Project not found" });
+      }
       const agents = await storage.getAgentsByProject(req.params.projectId);
       res.json(agents);
     } catch (error) {
@@ -570,6 +665,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/teams/:teamId/agents", async (req, res) => {
     try {
+      const team = await getOwnedTeam(req.params.teamId, getSessionUserId(req));
+      if (!team) {
+        return res.status(404).json({ error: "Team not found" });
+      }
       const agents = await storage.getAgentsByTeam(req.params.teamId);
       res.json(agents);
     } catch (error) {
@@ -579,13 +678,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/agents", async (req, res) => {
     try {
-      const validatedData = insertAgentSchema.parse(req.body);
+      const userId = getSessionUserId(req);
+      const team = await getOwnedTeam(req.body.teamId, userId);
+      if (!team) {
+        return res.status(404).json({ error: "Team not found" });
+      }
+      const validatedData = insertAgentSchema.parse({
+        ...req.body,
+        userId,
+        projectId: (team as any).projectId,
+      });
       const agent = await storage.createAgent(validatedData);
 
       // Auto-create initial conversation for the new agent
       try {
         await storage.createConversation({
-          id: `agent:${agent.id}`,
+          id: buildConversationId('agent', agent.projectId, agent.id),
+          userId,
           projectId: agent.projectId,
           teamId: agent.teamId || null,
           agentId: agent.id,
@@ -608,6 +717,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/agents/:id", async (req, res) => {
     try {
+      const ownedAgent = await getOwnedAgent(req.params.id, getSessionUserId(req));
+      if (!ownedAgent) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
       const success = await storage.deleteAgent(req.params.id);
       if (!success) {
         return res.status(404).json({ error: "Agent not found" });
@@ -620,6 +733,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/agents/:id", async (req, res) => {
     try {
+      const ownedAgent = await getOwnedAgent(req.params.id, getSessionUserId(req));
+      if (!ownedAgent) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
       const agent = await storage.updateAgent(req.params.id, req.body);
       if (!agent) {
         return res.status(404).json({ error: "Agent not found" });
@@ -633,6 +750,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Fix 11: PATCH for partial agent updates (RightSidebar save)
   app.patch("/api/agents/:id", async (req, res) => {
     try {
+      const ownedAgent = await getOwnedAgent(req.params.id, getSessionUserId(req));
+      if (!ownedAgent) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
       const agent = await storage.updateAgent(req.params.id, req.body);
       if (!agent) {
         return res.status(404).json({ error: "Agent not found" });
@@ -646,6 +767,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Chat API Routes
   app.get("/api/conversations/:projectId", async (req, res) => {
     try {
+      const ownedProject = await getOwnedProject(req.params.projectId, getSessionUserId(req));
+      if (!ownedProject) {
+        return res.status(404).json({ error: "Project not found" });
+      }
       const conversations = await storage.getConversationsByProject(req.params.projectId);
       res.json(conversations);
     } catch (error) {
@@ -655,7 +780,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/conversations", async (req, res) => {
     try {
-      const validatedData = insertConversationSchema.parse(req.body);
+      const userId = getSessionUserId(req);
+      const ownedProject = await getOwnedProject(req.body.projectId, userId);
+      if (!ownedProject) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      const validatedData = insertConversationSchema.parse({ ...req.body, userId });
       const conversation = await storage.createConversation(validatedData);
       res.status(201).json(conversation);
     } catch (error) {
@@ -669,6 +799,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // D1.2: Enhanced message loading with pagination and filtering
   app.get("/api/conversations/:conversationId/messages", async (req, res) => {
     try {
+      const isOwned = await conversationOwnedByUser(req.params.conversationId, getSessionUserId(req));
+      if (!isOwned) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
       const { page = "1", limit = "50", before, after, messageType } = req.query;
       const pageNum = parseInt(page as string);
       const limitNum = parseInt(limit as string);
@@ -694,6 +828,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/conversations/:conversationId/messages", async (req, res) => {
     try {
       const { conversationId } = req.params;
+      const isOwned = await conversationOwnedByUser(conversationId, getSessionUserId(req));
+      if (!isOwned) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
       const messageData = {
         ...req.body,
         conversationId: conversationId
@@ -722,6 +860,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/messages", async (req, res) => {
     try {
+      const messageConversationId = req.body.conversationId;
+      if (!messageConversationId || !(await conversationOwnedByUser(messageConversationId, getSessionUserId(req)))) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
       // Phase 1.2: Resolve actual userId from session
       const sessIdGlobal = (req as any).session?.userId;
       const uidGlobal = (req.body.userId === 'user' || req.body.userId === 'current-user' || !req.body.userId)
@@ -745,6 +887,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // D1.3: Conversation management API routes
   app.put("/api/conversations/:conversationId/archive", async (req, res) => {
     try {
+      const isOwned = await conversationOwnedByUser(req.params.conversationId, getSessionUserId(req));
+      if (!isOwned) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
       const success = await storage.archiveConversation(req.params.conversationId);
       if (!success) {
         return res.status(404).json({ error: "Conversation not found" });
@@ -757,6 +903,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/conversations/:conversationId/unarchive", async (req, res) => {
     try {
+      const isOwned = await conversationOwnedByUser(req.params.conversationId, getSessionUserId(req));
+      if (!isOwned) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
       const success = await storage.unarchiveConversation(req.params.conversationId);
       if (!success) {
         return res.status(404).json({ error: "Conversation not found" });
@@ -769,6 +919,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/projects/:projectId/conversations/archived", async (req, res) => {
     try {
+      const ownedProject = await getOwnedProject(req.params.projectId, getSessionUserId(req));
+      if (!ownedProject) {
+        return res.status(404).json({ error: "Project not found" });
+      }
       const archivedConversations = await storage.getArchivedConversations(req.params.projectId);
       res.json(archivedConversations);
     } catch (error) {
@@ -778,6 +932,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/conversations/:conversationId", async (req, res) => {
     try {
+      const isOwned = await conversationOwnedByUser(req.params.conversationId, getSessionUserId(req));
+      if (!isOwned) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
       const success = await storage.deleteConversation(req.params.conversationId);
       if (!success) {
         return res.status(404).json({ error: "Conversation not found" });
@@ -923,8 +1081,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }
 
-  // Fix 2: Auth endpoints — login, who am I, logout
+  const sanitizeReturnTo = (value: unknown): string | undefined => {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return undefined;
+    if (trimmed.startsWith("/api/auth")) return undefined;
+    return trimmed;
+  };
+
+  const regenerateSession = (req: Request) =>
+    new Promise<void>((resolve, reject) => {
+      req.session.regenerate((err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve();
+      });
+    });
+
+  // Google OAuth entrypoint
+  app.get('/api/auth/google/start', async (req, res) => {
+    if (!isGoogleAuthConfigured()) {
+      const preferred = req.accepts(['html', 'json']);
+      if (preferred === 'html') {
+        return res.redirect('/login?error=google_not_configured');
+      }
+      return res.status(503).json({
+        error: "Google auth is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
+      });
+    }
+
+    try {
+      const state = generateOAuthState();
+      const nonce = generateOAuthNonce();
+      const codeVerifier = generateCodeVerifier();
+      const codeChallenge = await generateCodeChallenge(codeVerifier);
+      const returnTo = sanitizeReturnTo(req.query.returnTo);
+
+      req.session.oauthState = state;
+      req.session.oauthNonce = nonce;
+      req.session.pkceVerifier = codeVerifier;
+      req.session.returnTo = returnTo || "/";
+
+      const authorizationUrl = await buildGoogleAuthorizationUrl({
+        req,
+        state,
+        nonce,
+        codeChallenge,
+      });
+
+      return res.redirect(authorizationUrl.toString());
+    } catch (error) {
+      console.error("Google auth start failed:", error);
+      return res.status(500).json({ error: "Failed to start Google login" });
+    }
+  });
+
+  // Google OAuth callback
+  app.get('/api/auth/google/callback', async (req, res) => {
+    if (!isGoogleAuthConfigured()) {
+      return res.redirect('/login?error=google_not_configured');
+    }
+
+    const expectedState = req.session.oauthState;
+    const expectedNonce = req.session.oauthNonce;
+    const codeVerifier = req.session.pkceVerifier;
+    const returnTo = sanitizeReturnTo(req.session.returnTo) || "/";
+
+    delete req.session.oauthState;
+    delete req.session.oauthNonce;
+    delete req.session.pkceVerifier;
+    delete req.session.returnTo;
+
+    if (!expectedState || !expectedNonce || !codeVerifier) {
+      return res.redirect('/login?error=oauth_session_missing');
+    }
+
+    try {
+      const identity = await exchangeGoogleAuthorizationCode({
+        req,
+        expectedState,
+        expectedNonce,
+        codeVerifier,
+      });
+
+      const user = await storage.upsertOAuthUser(identity);
+      await regenerateSession(req);
+      req.session.userId = user.id;
+
+      req.session.save((saveError) => {
+        if (saveError) {
+          console.error("Failed to persist OAuth session:", saveError);
+          return res.redirect('/login?error=session_save_failed');
+        }
+        return res.redirect(returnTo);
+      });
+    } catch (error) {
+      console.error("Google auth callback failed:", error);
+      return res.redirect('/login?error=google_login_failed');
+    }
+  });
+
+  // Legacy name-based login (dev-only fallback).
   app.post('/api/auth/login', async (req, res) => {
+    const allowLegacyLogin = process.env.NODE_ENV === "development" && process.env.ALLOW_LEGACY_NAME_LOGIN !== "false";
+    if (!allowLegacyLogin) {
+      return res.status(403).json({
+        error: "Legacy name login is disabled. Use Google login.",
+      });
+    }
+
     try {
       const { name } = req.body;
       if (!name || typeof name !== 'string' || !name.trim()) {
@@ -932,35 +1199,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const trimmedName = name.trim();
-      const username = `session:${trimmedName.toLowerCase().replace(/\s+/g, '_')}`;
+      const slug = trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "user";
+      const username = `session:${slug}`;
+      const email = `${slug}+legacy@local.hatchin`;
 
       let user = await storage.getUserByUsername(username);
       if (!user) {
         user = await storage.createUser({
+          email,
+          name: trimmedName,
+          avatarUrl: null,
+          provider: "legacy",
+          providerSub: `legacy:${username}`,
           username,
           password: randomUUID(),
-        });
+        } as any);
       }
 
       req.session.userId = user.id;
-      req.session.userName = trimmedName;
-      return res.json({ id: req.session.userId, name: req.session.userName });
+      return res.json({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+      });
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('Legacy login failed:', error);
       return res.status(500).json({ error: 'Login failed' });
     }
   });
 
-  app.get('/api/auth/me', (req, res) => {
+  app.get('/api/auth/me', async (req, res) => {
     if (!req.session.userId) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
-    return res.json({ id: req.session.userId, name: req.session.userName });
+
+    const user = await storage.getUser(req.session.userId);
+    if (!user) {
+      req.session.destroy(() => undefined);
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    return res.json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      avatarUrl: user.avatarUrl,
+      provider: user.provider,
+    });
   });
 
   app.post('/api/auth/logout', (req, res) => {
     req.session.destroy((err) => {
       if (err) return res.status(500).json({ error: 'Logout failed' });
+      res.clearCookie('connect.sid');
       return res.json({ message: 'Logged out' });
     });
   });
@@ -1087,6 +1379,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     path: '/ws'
   });
 
+  const applySessionToWsRequest = async (req: any): Promise<void> => {
+    if (!sessionParser) return;
+    await new Promise<void>((resolve, reject) => {
+      const responseMock = {
+        getHeader: () => undefined,
+        setHeader: () => undefined,
+        writeHead: () => undefined,
+        end: () => undefined,
+      };
+      sessionParser(req, responseMock as any, (err?: unknown) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve();
+      });
+    });
+  };
+
   // Store active connections by conversation ID
   const activeConnections = new Map<string, Set<WebSocket>>();
 
@@ -1153,10 +1464,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return newConversation;
   };
 
-  wss.on('connection', (ws: WebSocket, req) => {
+  wss.on('connection', async (rawWs: WebSocket, req) => {
+    const ws = rawWs as AuthedWebSocket;
+    const pendingMessages: Buffer[] = [];
+    const queueMessage = (rawMessage: Buffer) => {
+      pendingMessages.push(rawMessage);
+    };
+    ws.on('message', queueMessage);
+
+    try {
+      await applySessionToWsRequest(req as any);
+    } catch (error) {
+      console.error('❌ WebSocket session parse failed:', error);
+      sendWsError(ws, {
+        code: "UNAUTHORIZED",
+        message: "Authentication required.",
+      });
+      ws.close(4401, 'Unauthorized');
+      return;
+    }
+
+    const socketUserId = (req as any)?.session?.userId as string | undefined;
+    if (!socketUserId) {
+      sendWsError(ws, {
+        code: "UNAUTHORIZED",
+        message: "Authentication required.",
+      });
+      ws.close(4401, 'Unauthorized');
+      return;
+    }
+    ws.__userId = socketUserId;
     devLog('New WebSocket connection established');
 
-    ws.on('message', async (rawMessage: Buffer) => {
+    const handleWsMessage = async (rawMessage: Buffer) => {
       try {
         const parsedData = JSON.parse(rawMessage.toString());
         const dtoCheck = wsClientMessageSchema.safeParse(parsedData);
@@ -1188,6 +1528,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 code: "INVALID_JOIN",
                 message: "conversationId must be project:, team:, or agent: format.",
                 details: {},
+              });
+              break;
+            }
+
+            const canAccessConversation = await conversationOwnedByUser(conversationId.trim(), ws.__userId!);
+            if (!canAccessConversation) {
+              sendWsError(ws, {
+                code: "FORBIDDEN",
+                message: "Conversation not accessible.",
               });
               break;
             }
@@ -1307,7 +1656,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             // Save initial user message 
             // Phase 1.2: Resolve actual userId from session if client sends generic placeholder
-            const sessionUserId = (req as any).session?.userId;
+            const sessionUserId = ws.__userId;
+            const canAccessStreamingConversation = await conversationOwnedByUser(envelope.conversationId, sessionUserId!);
+            if (!canAccessStreamingConversation) {
+              sendWsError(ws, {
+                code: "FORBIDDEN",
+                message: "Conversation not accessible.",
+              });
+              break;
+            }
             const finalUserId = (streamingData.userId === 'user' || streamingData.userId === 'current-user' || !streamingData.userId)
               ? sessionUserId
               : streamingData.userId;
@@ -1413,7 +1770,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           case 'send_message':
             // Phase 1.2: Resolve actual userId from session if client sends generic placeholder
-            const msgSessionId = (req as any).session?.userId;
+            const msgSessionId = ws.__userId;
+            const canAccessSendConversation = await conversationOwnedByUser(data.conversationId, msgSessionId!);
+            if (!canAccessSendConversation) {
+              sendWsError(ws, {
+                code: "FORBIDDEN",
+                message: "Conversation not accessible.",
+              });
+              break;
+            }
             const msgUserId = (data.message.userId === 'user' || data.message.userId === 'current-user' || !data.message.userId)
               ? msgSessionId
               : data.message.userId;
@@ -1472,7 +1837,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         });
       }
+    };
+
+    ws.off('message', queueMessage);
+    ws.on('message', (rawMessage: Buffer) => {
+      void handleWsMessage(rawMessage);
     });
+
+    if (pendingMessages.length > 0) {
+      for (const queuedMessage of pendingMessages.splice(0)) {
+        await handleWsMessage(queuedMessage);
+      }
+    }
 
     ws.on('close', () => {
       // Remove this connection from all conversation rooms
@@ -1858,6 +2234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const trace = await createDeliberationTrace({
+        userId: ((userMessage as any).userId || (validatedContext as any)?.userId || "unknown-user"),
         projectId,
         conversationId,
         objective: userMessage.content || "",
@@ -2470,6 +2847,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 blockedByHallucination: peerReviewDecision.blockedByHallucination,
               }));
             }
+          }
+
+          const toneGuard = applyTeammateToneGuard(accumulatedContent || "");
+          if (toneGuard.changed) {
+            accumulatedContent = toneGuard.content;
+            ws.send(JSON.stringify({
+              type: "streaming_chunk",
+              messageId: responseMessageId,
+              chunk: "",
+              accumulatedContent,
+            }));
+
+            await logAutonomyEvent({
+              eventType: "revision_completed",
+              projectId,
+              teamId: mode === "team" ? (contextId ?? null) : null,
+              conversationId,
+              hatchId: respondingAgent?.id || null,
+              provider: activeProvider,
+              mode: activeMode,
+              latencyMs: Date.now() - turnStartedAt,
+              confidence: conductorResult.decision.confidence,
+              riskScore: aggregateRisk,
+              payload: {
+                source: "tone_guard",
+                reasons: toneGuard.reasons,
+              },
+            });
           }
 
           // Save complete response to storage
@@ -3134,9 +3539,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Task Management Endpoints
   app.get("/api/tasks", async (req, res) => {
     try {
+      const userId = getSessionUserId(req);
       const { projectId } = req.query;
       if (!projectId) {
         return res.status(400).json({ error: "Project ID is required" });
+      }
+      const ownedProject = await getOwnedProject(projectId as string, userId);
+      if (!ownedProject) {
+        return res.status(404).json({ error: "Project not found" });
       }
 
       const tasks = await storage.getTasksByProject(projectId as string);
@@ -3149,7 +3559,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/tasks", async (req, res) => {
     try {
-      const validatedTask = insertTaskSchema.parse(req.body);
+      const userId = getSessionUserId(req);
+      const ownedProject = await getOwnedProject(req.body.projectId, userId);
+      if (!ownedProject) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      const validatedTask = insertTaskSchema.parse({ ...req.body, userId });
       const newTask = {
         ...validatedTask,
         id: crypto.randomUUID(),
@@ -3196,6 +3611,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/task-suggestions/analyze", async (req, res) => {
     try {
       const { conversationId, projectId, teamId, agentId, messages: providedMessages } = req.body;
+      const userId = getSessionUserId(req);
+      if (projectId) {
+        const ownedProject = await getOwnedProject(projectId, userId);
+        if (!ownedProject) {
+          return res.status(404).json({ error: "Project not found" });
+        }
+      } else if (conversationId) {
+        const isOwned = await conversationOwnedByUser(conversationId, userId);
+        if (!isOwned) {
+          return res.status(404).json({ error: "Conversation not found" });
+        }
+      }
 
       // Get conversation messages
       const messages = (providedMessages && Array.isArray(providedMessages) && providedMessages.length > 0)
@@ -3272,11 +3699,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/task-suggestions/approve", async (req, res) => {
     try {
       const { approvedTasks, projectId } = req.body;
+      const userId = getSessionUserId(req);
       if (!projectId || typeof projectId !== 'string') {
         return res.status(400).json({ error: "projectId is required" });
       }
 
-      const project = await storage.getProject(projectId);
+      const project = await getOwnedProject(projectId, userId);
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
       }
@@ -3321,13 +3749,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Broadcast task creation to all connected clients
-      if (wss) {
-        wss.clients.forEach((client) => {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({
-              type: 'task_created',
-              data: { tasks: createdTasks, projectId }
-            }));
+      for (const [conversationId, connections] of activeConnections.entries()) {
+        let parsed: { projectId: string } | null = null;
+        try {
+          parsed = parseConversationId(conversationId);
+        } catch {
+          parsed = null;
+        }
+        if (!parsed || parsed.projectId !== projectId) continue;
+
+        const payload = JSON.stringify({
+          type: 'task_created',
+          data: { tasks: createdTasks, projectId }
+        });
+        connections.forEach((connection) => {
+          if (connection.readyState === WebSocket.OPEN) {
+            connection.send(payload);
           }
         });
       }

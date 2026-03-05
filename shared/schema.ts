@@ -3,8 +3,26 @@ import { pgTable, text, varchar, integer, boolean, jsonb, timestamp, index } fro
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull().unique(),
+  name: text("name").notNull(),
+  avatarUrl: text("avatar_url"),
+  provider: text("provider").notNull().default("google"),
+  providerSub: text("provider_sub").notNull().unique(),
+  // Legacy fallback fields (deprecated)
+  username: text("username").unique(),
+  password: text("password"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  emailIdx: index("users_email_idx").on(table.email),
+  providerSubIdx: index("users_provider_sub_idx").on(table.providerSub),
+}));
+
 export const projects = pgTable("projects", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
   name: text("name").notNull(),
   emoji: text("emoji").notNull().default("🚀"),
   description: text("description"),
@@ -29,21 +47,26 @@ export const projects = pgTable("projects", {
   }>().default({}),
   executionRules: text("execution_rules"),
   teamCulture: text("team_culture"),
-});
+}, (table) => ({
+  userIdIdx: index("projects_user_id_idx").on(table.userId),
+}));
 
 export const teams = pgTable("teams", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
   name: text("name").notNull(),
   emoji: text("emoji").notNull(),
   projectId: varchar("project_id").references(() => projects.id).notNull(),
   isExpanded: boolean("is_expanded").notNull().default(true),
 }, (table) => ({
+  userIdIdx: index("teams_user_id_idx").on(table.userId),
   projectIdIdx: index("teams_project_id_idx").on(table.projectId),
 }));
 
 
 export const agents = pgTable("agents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
   name: text("name").notNull(),
   role: text("role").notNull(),
   color: text("color").notNull().default("blue"),
@@ -57,19 +80,16 @@ export const agents = pgTable("agents", {
   }>().default({}),
   isSpecialAgent: boolean("is_special_agent").notNull().default(false),
 }, (table) => ({
+  userIdIdx: index("agents_user_id_idx").on(table.userId),
   teamIdIdx: index("agents_team_id_idx").on(table.teamId),
   projectIdIdx: index("agents_project_id_idx").on(table.projectId),
 }));
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-});
 
 // Chat System Tables
 
 export const conversations = pgTable("conversations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
   projectId: varchar("project_id").references(() => projects.id).notNull(),
   teamId: varchar("team_id").references(() => teams.id), // null for project-level chats
   agentId: varchar("agent_id").references(() => agents.id), // null for team/project chats
@@ -79,6 +99,7 @@ export const conversations = pgTable("conversations", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
+  userIdIdx: index("conversations_user_id_idx").on(table.userId),
   projectIdIdx: index("conversations_project_id_idx").on(table.projectId),
   teamIdIdx: index("conversations_team_id_idx").on(table.teamId),
   agentIdIdx: index("conversations_agent_id_idx").on(table.agentId),
@@ -148,6 +169,7 @@ export const conversationMemory = pgTable("conversation_memory", {
 // Task Management Tables
 export const tasks = pgTable("tasks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
   title: text("title").notNull(),
   description: text("description"),
   status: text("status").notNull().$type<"todo" | "in_progress" | "completed" | "blocked">().default("todo"),
@@ -168,6 +190,7 @@ export const tasks = pgTable("tasks", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   completedAt: timestamp("completed_at"),
 }, (table) => ({
+  userIdIdx: index("tasks_user_id_idx").on(table.userId),
   projectIdIdx: index("tasks_project_id_idx").on(table.projectId),
   assigneeIdx: index("tasks_assignee_idx").on(table.assignee),
 }));
@@ -186,19 +209,34 @@ export const typingIndicators = pgTable("typing_indicators", {
 
 export const insertProjectSchema = createInsertSchema(projects).omit({
   id: true,
+}).extend({
+  userId: z.string().optional(),
 });
 
 export const insertTeamSchema = createInsertSchema(teams).omit({
   id: true,
+}).extend({
+  userId: z.string().optional(),
 });
 
 export const insertAgentSchema = createInsertSchema(agents).omit({
   id: true,
+}).extend({
+  userId: z.string().optional(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  email: z.string().email(),
+  name: z.string().min(1),
+  provider: z.string().default("google"),
+  providerSub: z.string().min(1),
+  avatarUrl: z.string().nullable().optional(),
+  username: z.string().nullable().optional(),
+  password: z.string().nullable().optional(),
 });
 
 // Chat Schema Validations
@@ -206,6 +244,8 @@ export const insertConversationSchema = createInsertSchema(conversations).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  userId: z.string().optional(),
 });
 
 export const insertMessageSchema = createInsertSchema(messages).omit({
@@ -224,6 +264,8 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   createdAt: true,
   updatedAt: true,
   completedAt: true,
+}).extend({
+  userId: z.string().optional(),
 });
 
 // Task Type Exports

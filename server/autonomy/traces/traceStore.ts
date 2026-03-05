@@ -34,6 +34,7 @@ async function writeAll(traces: DeliberationTrace[]): Promise<void> {
 }
 
 export async function createDeliberationTrace(input: {
+  userId: string;
   projectId: string;
   conversationId: string;
   objective: string;
@@ -46,6 +47,7 @@ export async function createDeliberationTrace(input: {
   const now = new Date().toISOString();
   const trace: DeliberationTrace = {
     traceId: input.traceId || `trace-${randomUUID()}`,
+    userId: input.userId,
     projectId: input.projectId,
     conversationId: input.conversationId,
     objective: input.objective,

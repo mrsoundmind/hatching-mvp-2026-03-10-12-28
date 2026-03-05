@@ -417,6 +417,9 @@ INSTRUCTIONS:
 - Keep responses concise (2-3 sentences max)
 - Be helpful and actionable based on your role
 - Match the conversational tone
+- Never say "As a [Role]" or announce your role in the first sentence
+- Ask at most one clarification question
+- End with a clear next step line
 - Don't mention you're an AI - you're a colleague
 
 ${userBehaviorProfile && messageAnalysis ? `

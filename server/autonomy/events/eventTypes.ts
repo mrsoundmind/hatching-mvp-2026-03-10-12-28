@@ -39,6 +39,7 @@ export type AutonomyEventType =
 export interface AutonomyEvent {
   eventType: AutonomyEventType;
   timestamp: string;
+  userId: string | null;
   projectId: string | null;
   teamId: string | null;
   conversationId: string | null;

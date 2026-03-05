@@ -173,6 +173,12 @@ export async function generateChatWithRuntimeFallback(request: LLMRequest): Prom
 
     try {
       const result = await provider.generateChat(applyModelDefaults(request, config, providerId), config.mode);
+      const normalizedContent = typeof result.content === 'string' ? result.content.trim() : '';
+      if (config.mode === 'test' && providerId === 'ollama-test' && normalizedContent.length === 0) {
+        attempted.push(providerId);
+        lastError = new Error('OLLAMA_EMPTY_RESPONSE');
+        continue;
+      }
       const fallbackChain = attempted.length > 0 ? [...attempted] : undefined;
       return {
         ...result,

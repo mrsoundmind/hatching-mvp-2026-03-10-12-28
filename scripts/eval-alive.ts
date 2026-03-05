@@ -1,4 +1,5 @@
 import { generateChatWithRuntimeFallback } from '../server/llm/providerResolver.js';
+import type { LLMGenerationResult } from '../server/llm/providerTypes.js';
 
 interface AliveMetric {
   metric: 'identity_consistency' | 'context_awareness' | 'introspection' | 'self_correction' | 'collaboration_quality' | 'scoped_learning';
@@ -24,23 +25,24 @@ function toStatus(score: number): 'PASS' | 'PARTIAL' | 'FAIL' {
   return 'FAIL';
 }
 
-async function runPrompt(prompt: string): Promise<string> {
-  const result = await generateChatWithRuntimeFallback({
+async function runPrompt(prompt: string): Promise<LLMGenerationResult> {
+  return generateChatWithRuntimeFallback({
     messages: [{ role: 'user', content: prompt }],
     temperature: process.env.LLM_MODE === 'test' ? 0 : 0.3,
     maxTokens: 300,
     seed: process.env.LLM_MODE === 'test' ? 42 : undefined,
   });
-  return result.content;
 }
 
 async function main() {
-  const deterministicMode = (process.env.LLM_MODE || '').toLowerCase() === 'test'
-    && (process.env.TEST_LLM_PROVIDER || '').toLowerCase() === 'mock';
-
-  const response = await runPrompt(
+  const llmResult = await runPrompt(
     'As project manager, summarize current project context, uncertainties, cross-team dependencies, and next actions with one clarification question.'
   );
+  const response = llmResult.content || '';
+  const deterministicMode =
+    ((process.env.LLM_MODE || '').toLowerCase() === 'test' &&
+      (process.env.TEST_LLM_PROVIDER || '').toLowerCase() === 'mock') ||
+    llmResult.metadata.provider === 'mock';
 
   const metrics: AliveMetric[] = [
     {
@@ -112,7 +114,7 @@ async function main() {
   }
 
   if (deterministicMode) {
-    console.log('[eval:alive] PARTIAL: deterministic mock mode cannot represent human-like teammate behavior.');
+    console.log('[eval:alive] PARTIAL: deterministic/mock fallback mode cannot represent human-like teammate behavior.');
     return;
   }
 

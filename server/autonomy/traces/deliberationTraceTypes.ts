@@ -18,6 +18,7 @@ export interface PeerReviewTrace {
 
 export interface DeliberationTrace {
   traceId: string;
+  userId: string;
   projectId: string;
   conversationId: string;
   objective: string;

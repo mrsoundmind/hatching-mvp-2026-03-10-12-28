@@ -8,12 +8,15 @@ async function ensureDir(): Promise<void> {
   await fs.mkdir(path.dirname(EVENTS_FILE), { recursive: true });
 }
 
-export async function logAutonomyEvent(event: Omit<AutonomyEvent, 'timestamp'> & { timestamp?: string }): Promise<AutonomyEvent> {
+export async function logAutonomyEvent(
+  event: Omit<AutonomyEvent, 'timestamp' | 'userId'> & { timestamp?: string; userId?: string | null }
+): Promise<AutonomyEvent> {
   await ensureDir();
 
   const fullEvent: AutonomyEvent = {
     timestamp: event.timestamp || new Date().toISOString(),
     eventType: event.eventType,
+    userId: event.userId ?? null,
     projectId: event.projectId ?? null,
     teamId: event.teamId ?? null,
     conversationId: event.conversationId ?? null,

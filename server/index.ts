@@ -41,6 +41,7 @@ const runtimeModeName = resolveRuntimeModeFromEnv(process.env);
 console.log(`[Hatchin][RuntimeMode] ${runtimeModeName}`);
 
 const app = express();
+app.set("trust proxy", 1);
 
 // Fix 3a: Security headers
 app.use(helmet({
@@ -75,6 +76,61 @@ app.use('/api/hatch/chat', aiLimiter);
 
 const PostgresqlStore = connectPgSimple(session);
 
+async function ensureSessionTableExists(): Promise<void> {
+  if (!process.env.DATABASE_URL) return;
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "session" (
+        "sid" varchar NOT NULL,
+        "sess" json NOT NULL,
+        "expire" timestamp(6) NOT NULL,
+        CONSTRAINT "session_pkey" PRIMARY KEY ("sid")
+      );
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");`);
+  } catch (error) {
+    console.error("[Hatchin] Failed to ensure session table exists:", error);
+    throw error;
+  }
+}
+
+async function ensureAuthSchemaCompatibility(): Promise<void> {
+  if (!process.env.DATABASE_URL) return;
+  try {
+    await pool.query(`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "email" text;`);
+    await pool.query(`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "name" text;`);
+    await pool.query(`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "avatar_url" text;`);
+    await pool.query(`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "provider" text;`);
+    await pool.query(`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "provider_sub" text;`);
+    await pool.query(`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "created_at" timestamp DEFAULT now();`);
+    await pool.query(`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "updated_at" timestamp DEFAULT now();`);
+
+    await pool.query(`
+      UPDATE "users"
+      SET
+        "email" = COALESCE("email", 'legacy+' || "id" || '@local.hatchin'),
+        "name" = COALESCE("name", COALESCE(NULLIF("username", ''), 'User')),
+        "provider" = COALESCE("provider", 'legacy'),
+        "provider_sub" = COALESCE("provider_sub", 'legacy:' || "id"),
+        "created_at" = COALESCE("created_at", now()),
+        "updated_at" = COALESCE("updated_at", now())
+      WHERE
+        "email" IS NULL
+        OR "name" IS NULL
+        OR "provider" IS NULL
+        OR "provider_sub" IS NULL
+        OR "created_at" IS NULL
+        OR "updated_at" IS NULL;
+    `);
+
+    await pool.query(`CREATE INDEX IF NOT EXISTS "users_email_idx" ON "users" ("email");`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS "users_provider_sub_idx" ON "users" ("provider_sub");`);
+  } catch (error) {
+    console.error("[Hatchin] Failed to ensure auth schema compatibility:", error);
+    throw error;
+  }
+}
+
 const sessionOptions: session.SessionOptions = {
   secret: process.env.SESSION_SECRET || 'hatchin-dev-secret-change-in-production',
   resave: false,
@@ -82,6 +138,7 @@ const sessionOptions: session.SessionOptions = {
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
+    sameSite: 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   },
 };
@@ -94,13 +151,18 @@ if (process.env.DATABASE_URL) {
 }
 
 // Fix 2: Session middleware (identity system)
-app.use(session(sessionOptions));
+const sessionMiddleware = session(sessionOptions);
+app.use(sessionMiddleware);
 
-// TypeScript: extend express-session to include userId and userName
+// TypeScript: extend express-session to include auth/session metadata.
 declare module 'express-session' {
   interface SessionData {
-    userId: string;
-    userName: string;
+    userId?: string;
+    userName?: string;
+    oauthState?: string;
+    oauthNonce?: string;
+    pkceVerifier?: string;
+    returnTo?: string;
   }
 }
 
@@ -139,6 +201,8 @@ app.use((req, res, next) => {
 
 (async () => {
   // Storage mode is announced by createStorage() in storage.ts on startup
+  await ensureSessionTableExists();
+  await ensureAuthSchemaCompatibility();
   await hydrateCacheStore();
   const snapshotResult = await writeConfigSnapshot('baseline_snapshot');
   const diagnostics = await runRuntimeStartupChecks();
@@ -151,7 +215,7 @@ app.use((req, res, next) => {
   console.log(`[Hatchin][ConfigSnapshot] ${snapshotResult.path} hash=${snapshotResult.hash}`);
 
 
-  const server = await registerRoutes(app);
+  const server = await registerRoutes(app, sessionMiddleware as any);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
