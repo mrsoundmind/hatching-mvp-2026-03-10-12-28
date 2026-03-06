@@ -307,8 +307,8 @@ export default function LoginPage() {
                         key={i}
                         className="w-full bg-gradient-to-t from-emerald-500/20 to-teal-400 rounded-t-sm"
                         initial={{ height: 0 }}
-                        animate={{ height: \`\${height}%\` }}
-                    transition={{ duration: 1, delay: i * 0.1, type: "spring", bounce: 0.4 }}
+                        animate={{ height: `${height}%` }}
+                        transition={{ duration: 1, delay: i * 0.1, type: "spring", bounce: 0.4 }}
                       />
                     ))}
                   </div>

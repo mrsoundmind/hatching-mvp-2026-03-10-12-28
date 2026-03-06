@@ -22,3 +22,5 @@ output/
 baseline/
 eval/results/
 eval/drift/
+.vercel
+.env*.local
