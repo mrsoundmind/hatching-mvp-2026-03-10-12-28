@@ -40,8 +40,9 @@ export default function OnboardingPage() {
                         >
                             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500" />
 
-                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mb-8 mx-auto shadow-lg shadow-blue-500/20">
-                                <span className="text-white font-bold text-2xl tracking-tighter">H</span>
+                            {/* Hatchin Text Logo */}
+                            <div className="flex justify-center mb-8 mx-auto">
+                                <span className="text-3xl font-bold tracking-tighter text-white">Hatchin<span className="text-indigo-500">.</span></span>
                             </div>
                             <h1 className="text-3xl font-semibold text-white mb-4 text-center tracking-tight">
                                 Welcome to Hatchin<br />

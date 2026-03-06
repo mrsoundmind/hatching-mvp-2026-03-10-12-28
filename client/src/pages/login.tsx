@@ -82,13 +82,8 @@ export default function LoginPage() {
           className="w-full max-w-[420px] relative z-10"
         >
           {/* Hatchin Logo */}
-          <div className="mb-10" style={{ background: "#000", display: "inline-block" }}>
-            <img
-              src="/logo.png"
-              alt="Hatchin"
-              className="h-16 w-auto object-contain pointer-events-none"
-              style={{ mixBlendMode: "screen", display: "block" }}
-            />
+          <div className="mb-12 flex items-center select-none">
+            <span className="text-3xl font-bold tracking-tighter text-white">Hatchin<span className="text-indigo-500">.</span></span>
           </div>
 
           <div className="mb-8">

@@ -4,11 +4,8 @@ export function AppHeader() {
   return (
     <header className="h-16 hatchin-border border-b flex items-center justify-between px-6 hatchin-bg-dark">
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-hatchin-blue to-hatchin-green rounded-lg flex items-center justify-center">
-            <span className="text-white font-semibold text-sm">H</span>
-          </div>
-          <span className="font-semibold text-lg hatchin-text">Hatchin</span>
+        <div className="flex items-center gap-3 select-none">
+          <span className="text-xl font-bold tracking-tighter text-white">Hatchin<span className="text-indigo-500">.</span></span>
         </div>
       </div>
 
@@ -21,6 +18,6 @@ export function AppHeader() {
           <ChevronDown className="w-3 h-3" />
         </button>
       </div>
-    </header>
+    </header >
   );
 }
