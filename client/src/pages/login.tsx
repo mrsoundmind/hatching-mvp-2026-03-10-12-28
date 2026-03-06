@@ -17,6 +17,7 @@ export default function LoginPage() {
   const { isSignedIn, isLoading } = useAuth();
   const [location, setLocation] = useLocation();
   const [activeSlide, setActiveSlide] = useState(0);
+  const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
 
   const nextPath = useMemo(() => {
     if (typeof window === "undefined") return "/";
@@ -59,34 +60,72 @@ export default function LoginPage() {
     <main className="min-h-[100dvh] w-full flex flex-col lg:flex-row bg-[#030303] overflow-y-auto lg:overflow-hidden font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
 
       {/* LEFT COLUMN: Authentication */}
-      <section className="relative w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 lg:p-16 z-10 min-h-[100dvh] lg:min-h-screen shrink-0 bg-[#030303]">
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute top-[-25%] left-[-25%] w-[70vw] h-[70vw] rounded-full bg-indigo-500/5 blur-[140px]" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-blue-500/5 blur-[100px]" />
+      <section className="relative w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 lg:p-16 z-10 min-h-[100dvh] lg:min-h-screen shrink-0 bg-[#030303] overflow-hidden">
+        {/* Animated Background Orbs */}
+        <div className="absolute inset-0 pointer-events-none">
+          <motion.div
+            animate={{ scale: [1, 1.1, 1], opacity: [0.4, 0.6, 0.4] }}
+            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-indigo-500/10 blur-[130px]"
+          />
+          <motion.div
+            animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
+            transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+            className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-purple-500/10 blur-[110px]"
+          />
         </div>
 
         <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full max-w-[420px]"
+          className="w-full max-w-[420px] relative z-10"
         >
-          {/* Enhanced Hatchin Logo */}
-          <div className="flex items-center gap-3 mb-16">
-            <div className="relative w-12 h-12 flex items-center justify-center">
-              <Hexagon className="absolute inset-0 w-12 h-12 text-blue-500 animate-[spin_10s_linear_infinite] opacity-50" strokeWidth={1} />
-              <Hexagon className="absolute inset-0 w-12 h-12 text-indigo-500 drop-shadow-[0_0_10px_rgba(99,102,241,0.5)] fill-indigo-500/10" strokeWidth={2} />
-              <span className="text-white font-bold text-xl tracking-tighter relative z-10">H</span>
-            </div>
-            <span className="text-2xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70">Hatchin</span>
+          {/* Enhanced Hatchin Logo using WebM */}
+          <div className="flex items-center gap-3 mb-12">
+            <video
+              src="/logo.webm"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-10 h-10 object-contain object-left pointer-events-none"
+            />
+            <span className="text-2xl font-semibold tracking-tight text-white drop-shadow-sm">Hatchin</span>
           </div>
 
-          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight text-white mb-4 drop-shadow-sm">
-            Welcome back
-          </h1>
-          <p className="text-lg text-slate-400 mb-12 leading-relaxed font-light">
-            Sign in to access your projects and collaborate with your AI team seamlessly.
-          </p>
+          <div className="mb-8">
+            {/* Custom Animated Tabs */}
+            <div className="flex pb-4 mb-8 border-b border-white/10 gap-8">
+              <button
+                onClick={() => setActiveTab("login")}
+                className={`relative pb-4 -mb-4 text-sm font-medium transition-colors ${activeTab === "login" ? "text-white" : "text-slate-400 hover:text-slate-300"}`}
+              >
+                Log In
+                {activeTab === "login" && (
+                  <motion.div layoutId="active-tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab("signup")}
+                className={`relative pb-4 -mb-4 text-sm font-medium transition-colors ${activeTab === "signup" ? "text-white" : "text-slate-400 hover:text-slate-300"}`}
+              >
+                Sign Up
+                {activeTab === "signup" && (
+                  <motion.div layoutId="active-tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
+                )}
+              </button>
+            </div>
+
+            <h1 className="text-3xl font-semibold tracking-tight text-white mb-3">
+              {activeTab === "login" ? "Welcome back" : "Create an account"}
+            </h1>
+            <p className="text-base text-slate-400 leading-relaxed font-light">
+              {activeTab === "login"
+                ? "Sign in to access your projects and collaborate with your AI team seamlessly."
+                : "Join Hatchin to start turning your visions into reality with an autonomous AI team."}
+            </p>
+          </div>
 
           {authError && (
             <motion.div
@@ -99,18 +138,20 @@ export default function LoginPage() {
           )}
 
           <a
-            className="group relative w-full inline-flex items-center justify-center gap-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 text-white text-[16px] font-medium px-4 py-4 transition-all duration-300 overflow-hidden shadow-2xl shadow-black/50"
+            className="group relative w-full inline-flex items-center justify-center gap-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 text-white text-[15px] font-medium px-4 py-3.5 transition-all duration-300 overflow-hidden shadow-2xl shadow-black/50"
             href={`/api/auth/google/start?returnTo=${encodeURIComponent(nextPath)}`}
           >
-            <FcGoogle className="w-6 h-6 z-10 drop-shadow-sm" />
-            <span className="z-10 tracking-wide font-medium text-white/90 group-hover:text-white transition-colors">Continue with Google</span>
+            <FcGoogle className="w-5 h-5 z-10 drop-shadow-sm" />
+            <span className="z-10 tracking-wide font-medium text-white/90 group-hover:text-white transition-colors">
+              {activeTab === "login" ? "Continue with Google" : "Sign up with Google"}
+            </span>
 
             {/* Hover state gradient border inner glow */}
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-500" />
           </a>
 
-          <p className="mt-8 text-sm text-slate-500">
+          <p className="mt-8 text-sm text-slate-500 font-light">
             By continuing, you agree to our <a href="#" className="text-slate-400 hover:text-white transition-colors underline decoration-slate-600 underline-offset-2">Terms of Service</a> and <a href="#" className="text-slate-400 hover:text-white transition-colors underline decoration-slate-600 underline-offset-2">Privacy Policy</a>.
           </p>
         </motion.div>

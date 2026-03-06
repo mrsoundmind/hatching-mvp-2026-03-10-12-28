@@ -22,33 +22,18 @@ export function WelcomeModal({ isOpen, onClose, onGetStarted }: WelcomeModalProp
           {/* Premium Startup Orb */}
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1, y: [0, -10, 0] }}
-            transition={{
-              opacity: { duration: 0.6 },
-              scale: { duration: 0.6 },
-              y: { duration: 3, repeat: Infinity, ease: "easeInOut" }
-            }}
-            className="relative w-24 h-28 mx-auto flex items-center justify-center pt-4"
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.6 }}
+            className="relative w-32 h-32 mx-auto flex items-center justify-center"
           >
-            {/* Outer glow ring */}
-            <div className="absolute inset-x-0 inset-y-4 rounded-full blur-2xl opacity-40 bg-gradient-to-br from-[#6C82FF] to-[#9F7BFF]" />
-
-            {/* Main orb — pearl highlight shape */}
-            <div className="relative w-20 h-24 rounded-full overflow-hidden"
-              style={{
-                background: 'linear-gradient(145deg, #ffffff 0%, #d0d8ff 30%, #a5b4fc 70%, #8b5cf6 100%)',
-                boxShadow: '0 0 40px rgba(108,130,255,0.3), inset 0 2px 4px rgba(255,255,255,0.8)',
-                borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%',
-              }}
-            >
-              {/* Shimmer highlight */}
-              <div className="absolute top-3 left-5 w-6 h-4 rounded-full opacity-80"
-                style={{ background: 'rgba(255,255,255,0.7)', filter: 'blur(3px)' }}
-              />
-              <div className="absolute top-5 left-8 w-3 h-2 rounded-full"
-                style={{ background: 'rgba(255,255,255,0.5)', filter: 'blur(1px)' }}
-              />
-            </div>
+            <video
+              src="/logo.webm"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-contain pointer-events-none"
+            />
           </motion.div>
 
           {/* Welcome text with stagger animations */}
