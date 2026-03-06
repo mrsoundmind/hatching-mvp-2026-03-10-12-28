@@ -154,66 +154,64 @@ export default function LoginPage() {
 
         {/* Dynamic Vibrant glowing background matching Framer AI aesthetic */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-[#050505]">
-          {/* Layer 1: Primary Top-Left Orb - Faster & Wider */}
+          {/* Layer 1: Primary Top-Left Orb */}
           <motion.div
-            className="absolute top-[-10%] left-[-10%] w-[140%] h-[140%] rounded-[100%] blur-[120px] opacity-70 mix-blend-screen will-change-transform"
+            className="absolute top-0 left-0 w-[150%] h-[150%] rounded-[100%] blur-[120px] opacity-60 mix-blend-screen will-change-transform"
             animate={{
               background: activeSlide === 0
-                ? "radial-gradient(circle at center, rgba(59,130,246,0.85) 0%, rgba(168,85,247,0.4) 35%, transparent 65%)"
+                ? "radial-gradient(circle at center, rgba(59,130,246,0.8) 0%, rgba(168,85,247,0.4) 30%, transparent 60%)"
                 : activeSlide === 1
-                  ? "radial-gradient(circle at center, rgba(236,72,153,0.85) 0%, rgba(249,115,22,0.4) 35%, transparent 65%)"
-                  : "radial-gradient(circle at center, rgba(16,185,129,0.85) 0%, rgba(6,182,212,0.4) 35%, transparent 65%)",
-              x: ["-15%", "15%", "-15%"],
-              y: ["-10%", "10%", "-10%"],
-              scale: [1, 1.15, 1],
+                  ? "radial-gradient(circle at center, rgba(236,72,153,0.8) 0%, rgba(249,115,22,0.4) 30%, transparent 60%)"
+                  : "radial-gradient(circle at center, rgba(16,185,129,0.8) 0%, rgba(6,182,212,0.4) 30%, transparent 60%)",
+              x: ["-10%", "10%", "-10%"],
+              y: ["-10%", "5%", "-10%"],
+              scale: [1, 1.1, 1],
             }}
             transition={{
-              background: { duration: 1.2, ease: "easeInOut" },
-              x: { duration: 12, repeat: Infinity, ease: "easeInOut" },
-              y: { duration: 15, repeat: Infinity, ease: "easeInOut" },
-              scale: { duration: 10, repeat: Infinity, ease: "easeInOut" }
+              background: { duration: 1.5, ease: "easeInOut" },
+              x: { duration: 20, repeat: Infinity, ease: "linear" },
+              y: { duration: 25, repeat: Infinity, ease: "linear" },
+              scale: { duration: 15, repeat: Infinity, ease: "easeInOut" }
             }}
           />
 
-          {/* Layer 2: Bottom-Right Shifting Orb - Faster & Wider */}
+          {/* Layer 2: Bottom-Right Shifting Orb */}
           <motion.div
-            className="absolute bottom-[-15%] right-[-15%] w-[120%] h-[120%] rounded-[100%] blur-[130px] opacity-75 mix-blend-screen will-change-transform"
+            className="absolute bottom-[-20%] right-[-20%] w-[130%] h-[130%] rounded-[100%] blur-[140px] opacity-70 mix-blend-screen will-change-transform"
             animate={{
               background: activeSlide === 0
-                ? "radial-gradient(circle at center, rgba(99,102,241,0.75) 0%, rgba(236,72,153,0.35) 45%, transparent 75%)"
+                ? "radial-gradient(circle at center, rgba(99,102,241,0.7) 0%, rgba(236,72,153,0.3) 40%, transparent 70%)"
                 : activeSlide === 1
-                  ? "radial-gradient(circle at center, rgba(239,68,68,0.75) 0%, rgba(234,179,8,0.35) 45%, transparent 75%)"
-                  : "radial-gradient(circle at center, rgba(20,184,166,0.75) 0%, rgba(59,130,246,0.35) 45%, transparent 75%)",
-              x: ["10%", "-20%", "10%"],
-              y: ["15%", "-10%", "15%"],
-              rotate: [0, 20, 0],
+                  ? "radial-gradient(circle at center, rgba(239,68,68,0.7) 0%, rgba(234,179,8,0.3) 40%, transparent 70%)"
+                  : "radial-gradient(circle at center, rgba(20,184,166,0.7) 0%, rgba(59,130,246,0.3) 40%, transparent 70%)",
+              x: ["5%", "-15%", "5%"],
+              y: ["10%", "-5%", "10%"],
+              rotate: [0, 15, 0],
             }}
             transition={{
-              background: { duration: 1.2, ease: "easeInOut" },
-              x: { duration: 14, repeat: Infinity, ease: "easeInOut" },
-              y: { duration: 18, repeat: Infinity, ease: "easeInOut" },
-              rotate: { duration: 12, repeat: Infinity, ease: "easeInOut" }
+              background: { duration: 1.5, ease: "easeInOut" },
+              x: { duration: 22, repeat: Infinity, ease: "linear" },
+              y: { duration: 28, repeat: Infinity, ease: "linear" },
+              rotate: { duration: 20, repeat: Infinity, ease: "easeInOut" }
             }}
           />
 
-          {/* Layer 3: Central Drifting Highlight - Parallax Layer */}
+          {/* Layer 3: Central Drifting Highlight */}
           <motion.div
-            className="absolute top-1/2 left-1/2 w-[80%] h-[80%] -translate-x-1/2 -translate-y-1/2 rounded-[100%] blur-[150px] opacity-45 mix-blend-screen will-change-transform"
+            className="absolute top-1/2 left-1/2 w-[100%] h-[100%] -translate-x-1/2 -translate-y-1/2 rounded-[100%] blur-[160px] opacity-40 mix-blend-screen will-change-transform"
             animate={{
               background: activeSlide === 0
-                ? "radial-gradient(circle at center, rgba(168,85,247,0.55) 0%, transparent 55%)"
+                ? "radial-gradient(circle at center, rgba(168,85,247,0.5) 0%, transparent 50%)"
                 : activeSlide === 1
-                  ? "radial-gradient(circle at center, rgba(249,115,22,0.55) 0%, transparent 55%)"
-                  : "radial-gradient(circle at center, rgba(6,182,212,0.55) 0%, transparent 55%)",
-              scale: [0.7, 1.3, 0.7],
-              x: ["-25%", "25%", "-25%"],
-              y: ["-10%", "15%", "-10%"],
+                  ? "radial-gradient(circle at center, rgba(249,115,22,0.5) 0%, transparent 50%)"
+                  : "radial-gradient(circle at center, rgba(6,182,212,0.5) 0%, transparent 50%)",
+              scale: [0.8, 1.2, 0.8],
+              x: ["-20%", "20%", "-20%"],
             }}
             transition={{
-              background: { duration: 1.2, ease: "easeInOut" },
-              scale: { duration: 9, repeat: Infinity, ease: "easeInOut" },
-              x: { duration: 16, repeat: Infinity, ease: "easeInOut" },
-              y: { duration: 13, repeat: Infinity, ease: "easeInOut" }
+              background: { duration: 1.5, ease: "easeInOut" },
+              scale: { duration: 18, repeat: Infinity, ease: "easeInOut" },
+              x: { duration: 30, repeat: Infinity, ease: "linear" }
             }}
           />
         </div>
