@@ -40,12 +40,9 @@ export default function OnboardingPage() {
                         >
                             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500" />
 
-                            <img
-                                src="/logo.png"
-                                alt="Hatchin"
-                                className="h-14 w-auto object-contain mx-auto mb-8 pointer-events-none"
-                                style={{ mixBlendMode: "screen" }}
-                            />
+                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mb-8 mx-auto shadow-lg shadow-blue-500/20">
+                                <span className="text-white font-bold text-2xl tracking-tighter">H</span>
+                            </div>
                             <h1 className="text-3xl font-semibold text-white mb-4 text-center tracking-tight">
                                 Welcome to Hatchin<br />
                                 <span className="text-blue-400">{user?.name || "Builder"}</span>
