@@ -61,42 +61,17 @@ export default function LoginPage() {
 
       {/* LEFT COLUMN: Authentication */}
       <section className="relative w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 lg:p-16 z-10 min-h-[100dvh] lg:min-h-screen shrink-0 bg-[#030303] overflow-hidden">
-        {/* Intense Animated Framer-Style Background Glows */}
-        <div className="absolute inset-x-0 top-0 h-[80vh] pointer-events-none overflow-hidden flex justify-center opacity-80 mix-blend-screen">
+        {/* Animated Background Orbs */}
+        <div className="absolute inset-0 pointer-events-none">
           <motion.div
-            animate={{
-              scale: [1, 1.2, 1],
-              opacity: [0.6, 0.8, 0.6],
-              rotate: [0, 90, 0]
-            }}
-            transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-[-20%] left-[10%] w-[60vw] h-[40vw] rounded-full blur-[120px]"
-            style={{
-              background: 'radial-gradient(circle, rgba(0,255,180,0.4) 0%, rgba(0,100,255,0.2) 50%, transparent 80%)'
-            }}
+            animate={{ scale: [1, 1.1, 1], opacity: [0.4, 0.6, 0.4] }}
+            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-indigo-500/10 blur-[130px]"
           />
           <motion.div
-            animate={{
-              scale: [1, 1.1, 1],
-              opacity: [0.5, 0.7, 0.5],
-              rotate: [0, -60, 0]
-            }}
-            transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-            className="absolute top-[10%] right-[10%] w-[50vw] h-[50vw] rounded-full blur-[140px]"
-            style={{
-              background: 'radial-gradient(circle, rgba(255,0,128,0.3) 0%, rgba(128,0,255,0.2) 50%, transparent 80%)'
-            }}
-          />
-          <motion.div
-            animate={{
-              scale: [1.1, 1, 1.1],
-              opacity: [0.4, 0.6, 0.4]
-            }}
-            transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            className="absolute top-[30%] left-[30%] w-[40vw] h-[40vw] rounded-full blur-[100px]"
-            style={{
-              background: 'radial-gradient(circle, rgba(255,100,0,0.25) 0%, rgba(255,0,50,0.15) 50%, transparent 80%)'
-            }}
+            animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
+            transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+            className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-purple-500/10 blur-[110px]"
           />
         </div>
 
@@ -180,21 +155,42 @@ export default function LoginPage() {
       </section>
 
       {/* RIGHT COLUMN: Showcase Carousel / Animations */}
-      <section className="hidden lg:flex w-1/2 relative flex-col items-center justify-center bg-[#000] overflow-hidden border-t lg:border-t-0 lg:border-l border-white/5 py-20 lg:py-0 min-h-[700px] lg:min-h-screen shrink-0">
+      <section className="relative w-full lg:w-1/2 flex flex-col items-center justify-center bg-slate-900 overflow-hidden border-t lg:border-t-0 lg:border-l border-white/5 py-20 lg:py-0 min-h-[700px] lg:min-h-screen shrink-0">
 
-        {/* Dynamic Background Grid */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:32px_32px]"></div>
-
-        {/* Dynamic Intense Glow following active slide */}
-        <div className="absolute inset-0 z-0 transition-colors duration-1000 ease-in-out mix-blend-screen opacity-90">
-          <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full blur-[120px] transition-all duration-1000 ${activeSlide === 0 ? 'bg-[radial-gradient(circle,rgba(0,120,255,0.4)_0%,rgba(0,255,200,0.2)_50%,transparent_80%)]' :
-              activeSlide === 1 ? 'bg-[radial-gradient(circle,rgba(255,0,200,0.3)_0%,rgba(100,0,255,0.2)_50%,transparent_80%)]' :
-                'bg-[radial-gradient(circle,rgba(255,100,0,0.3)_0%,rgba(255,0,50,0.2)_50%,transparent_80%)]'
-            }`} />
+        {/* Dynamic Vibrant glowing background matching Framer AI aesthetic */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-[#050505]">
+          <motion.div
+            className="absolute top-[20%] left-[20%] w-[120%] h-[120%] -translate-x-1/2 -translate-y-1/2 rounded-[100%] blur-[140px] opacity-80 mix-blend-screen will-change-transform"
+            animate={{
+              background: activeSlide === 0
+                ? "radial-gradient(circle at center, rgba(59,130,246,0.9) 0%, rgba(168,85,247,0.5) 40%, transparent 70%)" // Blue -> Purple
+                : activeSlide === 1
+                  ? "radial-gradient(circle at center, rgba(236,72,153,0.9) 0%, rgba(249,115,22,0.5) 40%, transparent 70%)" // Pink -> Orange
+                  : "radial-gradient(circle at center, rgba(16,185,129,0.9) 0%, rgba(6,182,212,0.5) 40%, transparent 70%)" // Emerald -> Cyan
+            }}
+            transition={{ duration: 1.2, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="absolute bottom-[-10%] right-[-10%] w-[100%] h-[100%] rounded-[100%] blur-[120px] opacity-70 mix-blend-screen will-change-transform"
+            animate={{
+              background: activeSlide === 0
+                ? "radial-gradient(circle at center, rgba(99,102,241,0.8) 0%, rgba(236,72,153,0.3) 50%, transparent 70%)" // Indigo -> Pink
+                : activeSlide === 1
+                  ? "radial-gradient(circle at center, rgba(239,68,68,0.8) 0%, rgba(234,179,8,0.3) 50%, transparent 70%)" // Red -> Yellow
+                  : "radial-gradient(circle at center, rgba(20,184,166,0.8) 0%, rgba(59,130,246,0.3) 50%, transparent 70%)", // Teal -> Blue
+              scale: [1, 1.05, 1],
+              rotate: [0, 5, 0]
+            }}
+            transition={{
+              background: { duration: 1.2, ease: "easeInOut" },
+              scale: { duration: 10, repeat: Infinity, ease: "easeInOut" },
+              rotate: { duration: 15, repeat: Infinity, ease: "easeInOut" }
+            }}
+          />
         </div>
 
-        <div className="absolute inset-0 bg-gradient-to-t from-[#000] via-transparent to-[#000] z-0" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#000] via-transparent to-transparent z-0" />
+        {/* Subtle dark texture overlay to make it look premium */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:40px_40px] z-0" style={{ maskImage: "radial-gradient(ellipse at center, transparent 20%, black 80%)", WebkitMaskImage: "radial-gradient(ellipse at center, transparent 20%, black 80%)" }} />
 
         <div className="relative z-10 w-full max-w-lg px-4 sm:px-8 flex flex-col items-center min-h-[550px] justify-center pb-12">
           <AnimatePresence mode="wait">
