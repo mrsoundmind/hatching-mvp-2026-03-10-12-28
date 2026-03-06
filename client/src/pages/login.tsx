@@ -180,12 +180,21 @@ export default function LoginPage() {
       </section>
 
       {/* RIGHT COLUMN: Showcase Carousel / Animations */}
-      <section className="relative w-full lg:w-1/2 flex flex-col items-center justify-center bg-slate-900 overflow-hidden border-t lg:border-t-0 lg:border-l border-white/5 py-20 lg:py-0 min-h-[700px] lg:min-h-screen shrink-0">
+      <section className="hidden lg:flex w-1/2 relative flex-col items-center justify-center bg-[#000] overflow-hidden border-t lg:border-t-0 lg:border-l border-white/5 py-20 lg:py-0 min-h-[700px] lg:min-h-screen shrink-0">
 
         {/* Dynamic Background Grid */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:32px_32px]"></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-[#050505] z-0" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#050505] via-transparent to-transparent z-0" />
+
+        {/* Dynamic Intense Glow following active slide */}
+        <div className="absolute inset-0 z-0 transition-colors duration-1000 ease-in-out mix-blend-screen opacity-90">
+          <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full blur-[120px] transition-all duration-1000 ${activeSlide === 0 ? 'bg-[radial-gradient(circle,rgba(0,120,255,0.4)_0%,rgba(0,255,200,0.2)_50%,transparent_80%)]' :
+              activeSlide === 1 ? 'bg-[radial-gradient(circle,rgba(255,0,200,0.3)_0%,rgba(100,0,255,0.2)_50%,transparent_80%)]' :
+                'bg-[radial-gradient(circle,rgba(255,100,0,0.3)_0%,rgba(255,0,50,0.2)_50%,transparent_80%)]'
+            }`} />
+        </div>
+
+        <div className="absolute inset-0 bg-gradient-to-t from-[#000] via-transparent to-[#000] z-0" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#000] via-transparent to-transparent z-0" />
 
         <div className="relative z-10 w-full max-w-lg px-4 sm:px-8 flex flex-col items-center min-h-[550px] justify-center pb-12">
           <AnimatePresence mode="wait">
