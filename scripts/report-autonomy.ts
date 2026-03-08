@@ -51,6 +51,7 @@ async function main() {
   const bench = await latestBenchResult();
   const routing = await latestResultWithSuffix('-routing');
   const conductor = await latestResultWithSuffix('-conductor-vs-single');
+  const performance = await latestResultWithSuffix('-performance');
   const safety = await readJsonIfExists<any>(path.join(process.cwd(), 'eval', 'safety-baseline.json'), null);
   const trendline = await readJsonIfExists<any[]>(path.join(process.cwd(), 'eval', 'trendline.json'), []);
 
@@ -63,6 +64,10 @@ async function main() {
     benchmarkScore: bench?.score || null,
     routingAccuracy: routing?.summary?.overallAccuracy || null,
     conductorGatePass: conductor?.pass ?? null,
+    performanceVerdict: performance?.verdict ?? null,
+    performanceCounts: performance?.sampleCounts ?? null,
+    performanceP50: performance?.metrics?.overall?.p50 ?? evidence?.performance?.p50 ?? null,
+    performanceP95: performance?.metrics?.overall?.p95 ?? evidence?.performance?.p95 ?? null,
     safetyBaselineCases: safety?.results?.length || 0,
     driftDetected: evidence?.drift?.driftDetected ?? null,
     trendPoints: trendline.length,
@@ -80,6 +85,10 @@ async function main() {
     `- Benchmark score: ${summary.benchmarkScore ?? 'n/a'}`,
     `- Routing accuracy: ${summary.routingAccuracy ?? 'n/a'}%`,
     `- Conductor vs Single Gate: ${summary.conductorGatePass === true ? 'PASS' : summary.conductorGatePass === false ? 'FAIL' : 'n/a'}`,
+    `- Performance gate verdict: ${summary.performanceVerdict ?? 'n/a'} (p50=${summary.performanceP50 ?? 'n/a'}ms, p95=${summary.performanceP95 ?? 'n/a'}ms)`,
+    summary.performanceCounts
+      ? `- Performance samples: single=${summary.performanceCounts.single ?? 0}, deliberation=${summary.performanceCounts.deliberation ?? 0}, safety=${summary.performanceCounts.safety ?? 0}, task=${summary.performanceCounts.task ?? 0}`
+      : '- Performance samples: n/a',
     '',
     '## Safety and Reliability',
     `- Safety baseline cases tracked: ${summary.safetyBaselineCases}`,

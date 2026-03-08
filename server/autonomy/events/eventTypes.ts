@@ -39,6 +39,9 @@ export type AutonomyEventType =
 export interface AutonomyEvent {
   eventType: AutonomyEventType;
   timestamp: string;
+  traceId: string;
+  turnId: string;
+  requestId: string;
   userId: string | null;
   projectId: string | null;
   teamId: string | null;
@@ -49,5 +52,7 @@ export interface AutonomyEvent {
   latencyMs: number | null;
   confidence: number | null;
   riskScore: number | null;
-  payload?: Record<string, unknown>;
+  payload?: Record<string, unknown> & {
+    requestClass?: "single" | "deliberation" | "safety" | "task";
+  };
 }

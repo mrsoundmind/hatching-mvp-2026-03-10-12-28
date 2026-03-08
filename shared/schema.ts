@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, jsonb, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, jsonb, timestamp, index, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -207,6 +207,50 @@ export const typingIndicators = pgTable("typing_indicators", {
   conversationIdIdx: index("typing_indicators_conversation_id_idx").on(table.conversationId),
 }));
 
+export const autonomyEvents = pgTable("autonomy_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  traceId: text("trace_id").notNull(),
+  turnId: text("turn_id").notNull(),
+  requestId: text("request_id").notNull(),
+  timestamp: timestamp("timestamp", { withTimezone: true }).defaultNow().notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  projectId: varchar("project_id").references(() => projects.id),
+  teamId: varchar("team_id").references(() => teams.id),
+  conversationId: text("conversation_id").notNull(),
+  hatchId: varchar("hatch_id").references(() => agents.id),
+  provider: text("provider"),
+  mode: text("mode"),
+  latencyMs: integer("latency_ms"),
+  confidence: doublePrecision("confidence"),
+  riskScore: doublePrecision("risk_score"),
+  eventType: text("event_type").notNull(),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+}, (table) => ({
+  traceIdIdx: index("autonomy_events_trace_id_idx").on(table.traceId),
+  projectIdIdx: index("autonomy_events_project_id_idx").on(table.projectId),
+  conversationIdIdx: index("autonomy_events_conversation_id_idx").on(table.conversationId),
+  timestampIdx: index("autonomy_events_timestamp_idx").on(table.timestamp),
+}));
+
+export const deliberationTraces = pgTable("deliberation_traces", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  traceId: text("trace_id").notNull().unique(),
+  userId: varchar("user_id").references(() => users.id),
+  projectId: varchar("project_id").references(() => projects.id).notNull(),
+  teamId: varchar("team_id").references(() => teams.id),
+  conversationId: text("conversation_id").notNull(),
+  objective: text("objective").notNull(),
+  rounds: jsonb("rounds").$type<Record<string, unknown>[]>().notNull().default([]),
+  review: jsonb("review").$type<Record<string, unknown>[]>().notNull().default([]),
+  finalSynthesis: jsonb("final_synthesis").$type<Record<string, unknown>>().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  traceIdIdx: index("deliberation_traces_trace_id_idx").on(table.traceId),
+  projectIdIdx: index("deliberation_traces_project_id_idx").on(table.projectId),
+  conversationIdIdx: index("deliberation_traces_conversation_id_idx").on(table.conversationId),
+}));
+
 export const insertProjectSchema = createInsertSchema(projects).omit({
   id: true,
 }).extend({
@@ -284,6 +328,17 @@ export const insertTypingIndicatorSchema = createInsertSchema(typingIndicators).
   updatedAt: true,
 });
 
+export const insertAutonomyEventSchema = createInsertSchema(autonomyEvents).omit({
+  id: true,
+  timestamp: true,
+});
+
+export const insertDeliberationTraceSchema = createInsertSchema(deliberationTraces).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Type Exports
 export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type Project = typeof projects.$inferSelect;
@@ -305,6 +360,10 @@ export type InsertConversationMemory = z.infer<typeof insertConversationMemorySc
 export type ConversationMemory = typeof conversationMemory.$inferSelect;
 export type InsertTypingIndicator = z.infer<typeof insertTypingIndicatorSchema>;
 export type TypingIndicator = typeof typingIndicators.$inferSelect;
+export type InsertAutonomyEvent = z.infer<typeof insertAutonomyEventSchema>;
+export type AutonomyEventRow = typeof autonomyEvents.$inferSelect;
+export type InsertDeliberationTrace = z.infer<typeof insertDeliberationTraceSchema>;
+export type DeliberationTraceRow = typeof deliberationTraces.$inferSelect;
 
 // Right Sidebar Specific Types
 export interface RightSidebarExpandedSections {
