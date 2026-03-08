@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1772798221630,
+      "tag": "0000_slim_weapon_omega",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1772852787360,
+      "tag": "0001_opposite_killmonger",
+      "breakpoints": true
+    }
+  ]
+}

@@ -20,11 +20,12 @@ export interface DeliberationTrace {
   traceId: string;
   userId: string;
   projectId: string;
+  teamId?: string | null;
   conversationId: string;
   objective: string;
   rounds: DeliberationRoundTrace[];
   review: PeerReviewTrace[];
-  finalSynthesis?: string;
+  finalSynthesis?: string | Record<string, unknown> | null;
   createdAt: string;
   updatedAt: string;
 }
