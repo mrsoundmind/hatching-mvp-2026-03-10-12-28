@@ -418,6 +418,19 @@ export async function registerRoutes(app: Express, sessionParser?: SessionParser
       }
 
       res.status(201).json(project);
+
+      // Broadcast project_created event so all open tabs update in real-time
+      setImmediate(() => {
+        try {
+          broadcastToConversation(`project:${project.id}`, {
+            type: 'project_created',
+            project,
+            userId,
+          });
+        } catch (_) {
+          // Non-fatal — broadcast is best-effort
+        }
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid project data", details: error.errors });

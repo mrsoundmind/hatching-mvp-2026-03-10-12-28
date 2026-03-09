@@ -146,6 +146,12 @@ const requiredServerSchemas = z.union([
   z.object({
     type: z.literal('task_created'),
   }).passthrough(),
+  // 🆕 Project realtime events
+  z.object({
+    type: z.literal('project_created'),
+    project: z.record(z.unknown()),
+    userId: z.string(),
+  }),
   // 🆕 Chat Intelligence Events
   z.object({
     type: z.literal('teams_auto_hatched'),
