@@ -1,6 +1,6 @@
 export type RuntimeMode = 'prod' | 'test';
 
-export type ProviderId = 'openai' | 'ollama-test' | 'mock';
+export type ProviderId = 'openai' | 'gemini' | 'ollama-test' | 'mock';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';

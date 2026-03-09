@@ -11,13 +11,16 @@ import type {
 import { OpenAIProvider } from './providers/openaiProvider.js';
 import { OllamaTestProvider } from './providers/ollamaProvider.js';
 import { MockProvider } from './providers/mockProvider.js';
+import { GeminiProvider } from './providers/geminiProvider.js';
 
 const openaiProvider = new OpenAIProvider();
+const geminiProvider = new GeminiProvider();
 const ollamaProvider = new OllamaTestProvider();
 const mockProvider = new MockProvider();
 
 const providerRegistry: Record<ProviderId, LLMProvider> = {
   openai: openaiProvider,
+  gemini: geminiProvider,
   'ollama-test': ollamaProvider,
   mock: mockProvider,
 };
@@ -53,6 +56,14 @@ export function resolveRuntimeConfig(env = process.env): RuntimeConfig {
     if (illegalProvider.includes('ollama')) {
       throw new Error('Ollama test provider cannot run in production mode.');
     }
+    // Prefer Gemini if key is set, fall back to OpenAI
+    if (env.GEMINI_API_KEY) {
+      return {
+        mode,
+        provider: 'gemini',
+        model: env.GEMINI_MODEL || 'gemini-1.5-flash',
+      };
+    }
     return {
       mode,
       provider: 'openai',
@@ -62,6 +73,15 @@ export function resolveRuntimeConfig(env = process.env): RuntimeConfig {
 
   const testProvider = parseTestProvider(env.TEST_LLM_PROVIDER);
   if (testProvider === 'openai') {
+    // Also prefer gemini in test mode when key is set
+    if (env.GEMINI_API_KEY) {
+      return {
+        mode,
+        provider: 'gemini',
+        testProvider: 'openai',
+        model: env.GEMINI_MODEL || 'gemini-1.5-flash',
+      };
+    }
     return {
       mode,
       provider: 'openai',
@@ -93,8 +113,8 @@ export function getCurrentRuntimeConfig(): RuntimeConfig {
 }
 
 export function assertRuntimeGuardrails(config = resolveRuntimeConfig()): void {
-  if (config.mode === 'prod' && config.provider !== 'openai') {
-    throw new Error('Production mode must use OpenAI provider only.');
+  if (config.mode === 'prod' && config.provider !== 'openai' && config.provider !== 'gemini') {
+    throw new Error('Production mode must use OpenAI or Gemini provider only.');
   }
 
   if (config.mode === 'prod' && process.env.TEST_LLM_PROVIDER?.toLowerCase() === 'ollama') {
@@ -128,11 +148,21 @@ function isRecoverableOpenAITestError(error: any): boolean {
 
 function buildProviderOrder(config: RuntimeConfig, priorError?: any): ProviderId[] {
   if (config.mode === 'prod') {
+    // In prod: Gemini primary, OpenAI fallback (if both keys set), otherwise just the configured one
+    if (config.provider === 'gemini') {
+      return process.env.OPENAI_API_KEY ? ['gemini', 'openai'] : ['gemini'];
+    }
     return ['openai'];
   }
 
   if (priorError && isOpenAIQuotaError(priorError)) {
     return ['ollama-test', 'mock'];
+  }
+
+  if (config.provider === 'gemini') {
+    return process.env.OPENAI_API_KEY
+      ? ['gemini', 'openai', 'ollama-test', 'mock']
+      : ['gemini', 'ollama-test', 'mock'];
   }
 
   if (config.provider === 'openai') {
@@ -149,6 +179,10 @@ function buildProviderOrder(config: RuntimeConfig, priorError?: any): ProviderId
 function applyModelDefaults(request: LLMRequest, config: RuntimeConfig, provider: ProviderId): LLMRequest {
   if (request.model) {
     return request;
+  }
+
+  if (provider === 'gemini') {
+    return { ...request, model: process.env.GEMINI_MODEL || config.model || 'gemini-1.5-flash' };
   }
 
   if (provider === 'openai') {
@@ -252,17 +286,20 @@ export async function runRuntimeStartupChecks(): Promise<RuntimeDiagnostics> {
   const details: string[] = [];
 
   if (config.mode === 'prod') {
-    const status = process.env.OPENAI_API_KEY ? 'ok' : 'down';
+    const hasGemini = Boolean(process.env.GEMINI_API_KEY);
+    const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
+    const status = (hasGemini || hasOpenAI) ? 'ok' : 'down';
+    const activeKey = config.provider === 'gemini' ? hasGemini : hasOpenAI;
     cachedDiagnostics = {
-      status,
+      status: activeKey ? 'ok' : 'down',
       mode: config.mode,
       provider: config.provider,
       model: config.model,
       ollamaReachable: false,
       modelAvailable: false,
-      details: process.env.OPENAI_API_KEY
-        ? ['Production mode active with OpenAI provider']
-        : ['OPENAI_API_KEY is missing'],
+      details: activeKey
+        ? [`Production mode active with ${config.provider === 'gemini' ? 'Gemini' : 'OpenAI'} provider`]
+        : [`${config.provider === 'gemini' ? 'GEMINI_API_KEY' : 'OPENAI_API_KEY'} is missing`],
     };
     return cachedDiagnostics;
   }
@@ -276,6 +313,22 @@ export async function runRuntimeStartupChecks(): Promise<RuntimeDiagnostics> {
       ollamaReachable: false,
       modelAvailable: false,
       details: ['Deterministic test mode active (Mock provider)'],
+    };
+    return cachedDiagnostics;
+  }
+
+  if (config.provider === 'gemini') {
+    const status = process.env.GEMINI_API_KEY ? 'ok' : 'down';
+    cachedDiagnostics = {
+      status,
+      mode: config.mode,
+      provider: config.provider,
+      model: config.model,
+      ollamaReachable: false,
+      modelAvailable: false,
+      details: process.env.GEMINI_API_KEY
+        ? ['Using Gemini with fallback chain to Ollama/Mock on errors']
+        : ['GEMINI_API_KEY missing'],
     };
     return cachedDiagnostics;
   }
@@ -332,14 +385,16 @@ export function getCachedRuntimeDiagnostics(): RuntimeDiagnostics | null {
 export async function getProviderHealthSummary(): Promise<Record<ProviderId, ProviderHealth>> {
   const config = resolveRuntimeConfig();
 
-  const [openai, ollama, mock] = await Promise.all([
+  const [openai, gemini, ollama, mock] = await Promise.all([
     openaiProvider.healthCheck?.(process.env.OPENAI_MODEL || 'gpt-4o-mini') || Promise.resolve({ status: 'down', details: 'Unavailable' } as ProviderHealth),
+    geminiProvider.healthCheck?.(process.env.GEMINI_MODEL || 'gemini-1.5-flash') || Promise.resolve({ status: 'down', details: 'Unavailable' } as ProviderHealth),
     ollamaProvider.healthCheck?.(process.env.TEST_OLLAMA_MODEL || 'llama3.1:8b') || Promise.resolve({ status: 'down', details: 'Unavailable' } as ProviderHealth),
     mockProvider.healthCheck?.() || Promise.resolve({ status: 'ok', details: 'Deterministic mock available' } as ProviderHealth),
   ]);
 
   return {
     openai,
+    gemini,
     'ollama-test': ollama,
     mock,
   };
