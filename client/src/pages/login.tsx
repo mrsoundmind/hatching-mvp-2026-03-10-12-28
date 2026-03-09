@@ -156,64 +156,58 @@ export default function LoginPage() {
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-[#050505]">
           {/* Layer 1: Primary Top-Left Orb */}
           <motion.div
-            className="absolute top-0 left-0 w-[150%] h-[150%] rounded-[100%] blur-[120px] opacity-60 mix-blend-screen will-change-transform"
+            className="absolute top-0 left-0 w-[150%] h-[150%] rounded-[100%] blur-[120px] mix-blend-screen will-change-transform"
             animate={{
-              background: activeSlide === 0
-                ? "radial-gradient(circle at center, rgba(59,130,246,0.8) 0%, rgba(168,85,247,0.4) 30%, transparent 60%)"
-                : activeSlide === 1
-                  ? "radial-gradient(circle at center, rgba(236,72,153,0.8) 0%, rgba(249,115,22,0.4) 30%, transparent 60%)"
-                  : "radial-gradient(circle at center, rgba(16,185,129,0.8) 0%, rgba(6,182,212,0.4) 30%, transparent 60%)",
               x: ["-10%", "10%", "-10%"],
               y: ["-10%", "5%", "-10%"],
               scale: [1, 1.1, 1],
             }}
             transition={{
-              background: { duration: 1.5, ease: "easeInOut" },
               x: { duration: 20, repeat: Infinity, ease: "linear" },
               y: { duration: 25, repeat: Infinity, ease: "linear" },
               scale: { duration: 15, repeat: Infinity, ease: "easeInOut" }
             }}
-          />
+          >
+            <div className={`absolute inset-0 transition-opacity duration-1500 ease-in-out ${activeSlide === 0 ? "opacity-60" : "opacity-0"}`} style={{ background: "radial-gradient(circle at center, rgba(59,130,246,0.8) 0%, rgba(168,85,247,0.4) 30%, transparent 60%)" }} />
+            <div className={`absolute inset-0 transition-opacity duration-1500 ease-in-out ${activeSlide === 1 ? "opacity-60" : "opacity-0"}`} style={{ background: "radial-gradient(circle at center, rgba(236,72,153,0.8) 0%, rgba(249,115,22,0.4) 30%, transparent 60%)" }} />
+            <div className={`absolute inset-0 transition-opacity duration-1500 ease-in-out ${activeSlide === 2 ? "opacity-60" : "opacity-0"}`} style={{ background: "radial-gradient(circle at center, rgba(16,185,129,0.8) 0%, rgba(6,182,212,0.4) 30%, transparent 60%)" }} />
+          </motion.div>
 
           {/* Layer 2: Bottom-Right Shifting Orb */}
           <motion.div
-            className="absolute bottom-[-20%] right-[-20%] w-[130%] h-[130%] rounded-[100%] blur-[140px] opacity-70 mix-blend-screen will-change-transform"
+            className="absolute bottom-[-20%] right-[-20%] w-[130%] h-[130%] rounded-[100%] blur-[140px] mix-blend-screen will-change-transform"
             animate={{
-              background: activeSlide === 0
-                ? "radial-gradient(circle at center, rgba(99,102,241,0.7) 0%, rgba(236,72,153,0.3) 40%, transparent 70%)"
-                : activeSlide === 1
-                  ? "radial-gradient(circle at center, rgba(239,68,68,0.7) 0%, rgba(234,179,8,0.3) 40%, transparent 70%)"
-                  : "radial-gradient(circle at center, rgba(20,184,166,0.7) 0%, rgba(59,130,246,0.3) 40%, transparent 70%)",
               x: ["5%", "-15%", "5%"],
               y: ["10%", "-5%", "10%"],
               rotate: [0, 15, 0],
             }}
             transition={{
-              background: { duration: 1.5, ease: "easeInOut" },
               x: { duration: 22, repeat: Infinity, ease: "linear" },
               y: { duration: 28, repeat: Infinity, ease: "linear" },
               rotate: { duration: 20, repeat: Infinity, ease: "easeInOut" }
             }}
-          />
+          >
+            <div className={`absolute inset-0 transition-opacity duration-1500 ease-in-out ${activeSlide === 0 ? "opacity-70" : "opacity-0"}`} style={{ background: "radial-gradient(circle at center, rgba(99,102,241,0.7) 0%, rgba(236,72,153,0.3) 40%, transparent 70%)" }} />
+            <div className={`absolute inset-0 transition-opacity duration-1500 ease-in-out ${activeSlide === 1 ? "opacity-70" : "opacity-0"}`} style={{ background: "radial-gradient(circle at center, rgba(239,68,68,0.7) 0%, rgba(234,179,8,0.3) 40%, transparent 70%)" }} />
+            <div className={`absolute inset-0 transition-opacity duration-1500 ease-in-out ${activeSlide === 2 ? "opacity-70" : "opacity-0"}`} style={{ background: "radial-gradient(circle at center, rgba(20,184,166,0.7) 0%, rgba(59,130,246,0.3) 40%, transparent 70%)" }} />
+          </motion.div>
 
           {/* Layer 3: Central Drifting Highlight */}
           <motion.div
-            className="absolute top-1/2 left-1/2 w-[100%] h-[100%] -translate-x-1/2 -translate-y-1/2 rounded-[100%] blur-[160px] opacity-40 mix-blend-screen will-change-transform"
+            className="absolute top-1/2 left-1/2 w-[100%] h-[100%] -translate-x-1/2 -translate-y-1/2 rounded-[100%] blur-[160px] mix-blend-screen will-change-transform"
             animate={{
-              background: activeSlide === 0
-                ? "radial-gradient(circle at center, rgba(168,85,247,0.5) 0%, transparent 50%)"
-                : activeSlide === 1
-                  ? "radial-gradient(circle at center, rgba(249,115,22,0.5) 0%, transparent 50%)"
-                  : "radial-gradient(circle at center, rgba(6,182,212,0.5) 0%, transparent 50%)",
               scale: [0.8, 1.2, 0.8],
               x: ["-20%", "20%", "-20%"],
             }}
             transition={{
-              background: { duration: 1.5, ease: "easeInOut" },
               scale: { duration: 18, repeat: Infinity, ease: "easeInOut" },
               x: { duration: 30, repeat: Infinity, ease: "linear" }
             }}
-          />
+          >
+            <div className={`absolute inset-0 transition-opacity duration-1500 ease-in-out ${activeSlide === 0 ? "opacity-40" : "opacity-0"}`} style={{ background: "radial-gradient(circle at center, rgba(168,85,247,0.5) 0%, transparent 50%)" }} />
+            <div className={`absolute inset-0 transition-opacity duration-1500 ease-in-out ${activeSlide === 1 ? "opacity-40" : "opacity-0"}`} style={{ background: "radial-gradient(circle at center, rgba(249,115,22,0.5) 0%, transparent 50%)" }} />
+            <div className={`absolute inset-0 transition-opacity duration-1500 ease-in-out ${activeSlide === 2 ? "opacity-40" : "opacity-0"}`} style={{ background: "radial-gradient(circle at center, rgba(6,182,212,0.5) 0%, transparent 50%)" }} />
+          </motion.div>
         </div>
 
         {/* Subtle dark texture overlay to make it look premium */}
