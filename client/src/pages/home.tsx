@@ -827,7 +827,7 @@ export default function Home() {
       <OnboardingManager
         onComplete={(path, templateData) => {
           if (path === 'idea') {
-            // Handle idea path - create Maya project
+            // Fallback only — normally onStartWithIdeaPromptName handles the idea path
             handleCreateIdeaProject('My Idea', 'Developing and structuring my raw idea with Maya\'s help');
           } else if (path === 'template' && templateData) {
             // Handle template path - create project from template
@@ -836,6 +836,10 @@ export default function Home() {
             // Handle scratch path - just continue with existing projects
             devLog('User chose to figure it out as they go');
           }
+        }}
+        onStartWithIdeaPromptName={() => {
+          setSelectedTemplate(null);
+          setShowProjectName(true);
         }}
       />
 
