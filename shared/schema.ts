@@ -70,7 +70,7 @@ export const agents = pgTable("agents", {
   name: text("name").notNull(),
   role: text("role").notNull(),
   color: text("color").notNull().default("blue"),
-  teamId: varchar("team_id").references(() => teams.id).notNull(),
+  teamId: varchar("team_id").references(() => teams.id), // nullable for project-level agents (e.g. Maya)
   projectId: varchar("project_id").references(() => projects.id).notNull(),
   personality: jsonb("personality").$type<{
     traits?: string[];

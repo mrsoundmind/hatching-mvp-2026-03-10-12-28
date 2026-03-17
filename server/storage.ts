@@ -558,7 +558,7 @@ export class MemStorage implements IStorage {
   async createAgent(insertAgent: InsertAgent): Promise<Agent> {
     const resolvedUserId =
       (insertAgent as any).userId ||
-      this.teams.get(insertAgent.teamId)?.userId ||
+      (insertAgent.teamId ? this.teams.get(insertAgent.teamId)?.userId : undefined) ||
       this.projects.get(insertAgent.projectId)?.userId;
     if (!resolvedUserId) {
       throw new Error("createAgent requires userId or an owned team/project");
@@ -568,6 +568,7 @@ export class MemStorage implements IStorage {
       ...insertAgent,
       id,
       userId: resolvedUserId,
+      teamId: insertAgent.teamId ?? null,
       color: insertAgent.color || "blue",
       personality: insertAgent.personality || {} as any,
       isSpecialAgent: insertAgent.isSpecialAgent || false,
@@ -1422,11 +1423,37 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  // Special project initializers (delegate to MemStorage pattern; data goes to DB via createTeam/createAgent)
+  // Special project initializers
   async initializeIdeaProject(projectId: string): Promise<void> {
     const project = await this.getProject(projectId);
     if (!project) return;
-    // Maya is NOT added automatically anymore. The project starts empty.
+
+    // Idempotency: check if Maya already exists for this project
+    const existingAgents = await db
+      .select()
+      .from(schema.agents)
+      .where(eq(schema.agents.projectId, projectId));
+
+    const mayaExists = existingAgents.some(a => a.name === 'Maya' && a.isSpecialAgent);
+    if (mayaExists) return;
+
+    // Create Maya as a project-level agent with no team (teamId: null)
+    await db.insert(schema.agents).values({
+      id: randomUUID(),
+      userId: project.userId,
+      name: 'Maya',
+      role: 'Product Manager',
+      color: 'teal',
+      teamId: null,
+      projectId,
+      isSpecialAgent: true,
+      personality: {
+        traits: ['strategic', 'supportive', 'analytical'],
+        communicationStyle: 'Warm, direct, and structured',
+        expertise: ['Product Strategy', 'Requirements Gathering', 'Idea Development'],
+        welcomeMessage: "Hi! I'm Maya. Tell me about your idea and I'll help you shape it into something real."
+      }
+    });
   }
   async initializeStarterPackProject(projectId: string, starterPackId: string): Promise<void> {
     // Delegate to in-memory logic then persist — use MemStorage helper pattern
