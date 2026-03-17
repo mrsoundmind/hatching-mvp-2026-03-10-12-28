@@ -55,14 +55,36 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 function Router() {
+  const { isSignedIn, isLoading } = useAuth();
   return (
     <Switch>
       <Route path="/landing" component={LandingPage} />
       <Route path="/login" component={LoginPage} />
       <Route path="/">
-        <AuthGuard>
+        {isLoading ? (
+          <div className="h-screen w-full bg-[#0A0A0A] flex flex-col items-center justify-center gap-5">
+            <div className="relative flex items-center justify-center">
+              <span
+                className="absolute w-14 h-14 rounded-full border border-indigo-500/40"
+                style={{ animation: "coachmark-ring 1.8s ease-out infinite" }}
+              />
+              <span
+                className="absolute w-20 h-20 rounded-full border border-indigo-500/20"
+                style={{ animation: "coachmark-ring 1.8s ease-out infinite 0.4s" }}
+              />
+              <div className="w-10 h-10 rounded-full bg-indigo-600/20 flex items-center justify-center">
+                <span className="text-lg">🥚</span>
+              </div>
+            </div>
+            <span className="text-2xl font-bold tracking-tighter text-white select-none">
+              Hatchin<span className="text-indigo-500">.</span>
+            </span>
+          </div>
+        ) : isSignedIn ? (
           <Home />
-        </AuthGuard>
+        ) : (
+          <LandingPage />
+        )}
       </Route>
       <Route path="/maya/:projectId">
         {(params) => (
