@@ -27,14 +27,14 @@ Focus: **Perfect the text/conversation layer.** Every Hatch must feel genuinely 
 
 ### User Journey (broken flows that block everything)
 
-- [ ] **UX-01**: User can create a project via the modal and land in the new project immediately (Create Project button currently does nothing)
+- [x] **UX-01**: User can create a project via the modal and land in the new project immediately (Create Project button currently does nothing)
 - [ ] **UX-02**: First-time user is onboarded into their first project with a compelling welcome that sets the tone
-- [ ] **UX-03**: User sees the landing page at `/` when not logged in — it communicates what Hatchin is and why it's different
+- [x] **UX-03**: User sees the landing page at `/` when not logged in — it communicates what Hatchin is and why it's different
 - [ ] **UX-04**: User can click a project in the sidebar to expand it (others auto-collapse)
-- [ ] **UX-05**: User can click a team in the sidebar to expand its agents (others auto-collapse)
+- [x] **UX-05**: User can click a team in the sidebar to expand its agents (others auto-collapse)
 - [ ] **UX-06**: Textarea in chat is always enabled — user can type while the AI is streaming
 - [ ] **UX-07**: Agent chat bubble color is consistent when navigating between projects and teams (no color reset on nav)
-- [ ] **UX-08**: Typing indicator appears in one place only — not both in the message list and above the input
+- [x] **UX-08**: Typing indicator appears in one place only — not both in the message list and above the input
 
 ### Hatch Presence (making them feel alive)
 
@@ -49,7 +49,7 @@ Focus: **Perfect the text/conversation layer.** Every Hatch must feel genuinely 
 - [ ] **DATA-01**: Message creation uses an idempotency key — no duplicate messages on network retry
 - [ ] **DATA-02**: Long conversations use cursor-based pagination — first 50 messages load, user can load more
 - [ ] **DATA-03**: Server asserts `STORAGE_MODE=db` at startup in production — prevents silent in-memory data loss
-- [ ] **DATA-04**: `agentRole` stored in message metadata at creation and backfilled at read time for old messages
+- [x] **DATA-04**: `agentRole` stored in message metadata at creation and backfilled at read time for old messages
 
 ### Architecture
 
@@ -109,14 +109,14 @@ Focus: **Perfect the text/conversation layer.** Every Hatch must feel genuinely 
 | AWARE-02 | Phase 1 | Pending |
 | AWARE-03 | Phase 1 | Pending |
 | AWARE-04 | Phase 1 | Pending |
-| UX-01 | Phase 2 | Pending |
+| UX-01 | Phase 2 | Complete |
 | UX-02 | Phase 2 | Pending |
-| UX-03 | Phase 2 | Pending |
+| UX-03 | Phase 2 | Complete |
 | UX-04 | Phase 2 | Pending |
-| UX-05 | Phase 2 | Pending |
+| UX-05 | Phase 2 | Complete |
 | UX-06 | Phase 2 | Pending |
 | UX-07 | Phase 2 | Pending |
-| UX-08 | Phase 2 | Pending |
+| UX-08 | Phase 2 | Complete |
 | PRES-01 | Phase 3 | Pending |
 | PRES-02 | Phase 3 | Pending |
 | PRES-03 | Phase 3 | Pending |
@@ -125,7 +125,7 @@ Focus: **Perfect the text/conversation layer.** Every Hatch must feel genuinely 
 | DATA-01 | Phase 4 | Pending |
 | DATA-02 | Phase 4 | Pending |
 | DATA-03 | Phase 4 | Pending |
-| DATA-04 | Phase 2 | Pending |
+| DATA-04 | Phase 2 | Complete |
 | ARCH-01 | Phase 5 | Pending |
 | ARCH-02 | Phase 5 | Pending |
 

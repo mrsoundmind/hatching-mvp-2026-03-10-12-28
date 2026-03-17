@@ -10,7 +10,7 @@ progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # State: Hatchin MVP
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-03-17)
 ## Current Position
 
 Phase: 2 — User Journey Fixes
-Plan: 3 of 3 complete
-Status: In progress
-Last activity: 2026-03-17 — Phase 2 Plan 03 complete: agentRole backfill in GET messages read path
+Plan: 4 of 4 complete
+Status: Phase complete
+Last activity: 2026-03-17 — Phase 2 Plan 01 complete: LandingPage for logged-out users + idea project creation fix
 Last session: 2026-03-17T15:09:59.208Z
 Stopped at: Completed 02-user-journey-fixes 02-01-PLAN.md
 
