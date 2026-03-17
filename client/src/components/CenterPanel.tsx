@@ -561,6 +561,7 @@ export function CenterPanel({
 
       setIsThinking(false);
       setIsStreaming(true);
+      setTypingColleagues([]);  // clear WS-driven indicator — streaming has begun
       streamingMessageId.current = message.messageId;
       setStreamingContent('');
       setStreamingConversationId(currentChatContext?.conversationId || null);
