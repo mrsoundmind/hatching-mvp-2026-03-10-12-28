@@ -89,6 +89,17 @@ None - no external service configuration required.
 - Typing indicator no longer creates confusing dual-location display
 - Ready for next plan in phase 02-user-journey-fixes
 
+## Self-Check: PASSED
+
+- FOUND: client/src/pages/home.tsx
+- FOUND: client/src/components/CenterPanel.tsx
+- FOUND: .planning/phases/02-user-journey-fixes/02-02-SUMMARY.md
+- FOUND: f1444e1 (Task 1 commit)
+- FOUND: c5fc9d3 (Task 2 commit)
+- typecheck: PASS
+- test:integrity: PASS
+- test:dto: PASS
+
 ---
 *Phase: 02-user-journey-fixes*
 *Completed: 2026-03-17*
