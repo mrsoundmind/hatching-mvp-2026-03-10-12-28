@@ -13,15 +13,57 @@
 
 **Requirements:** CONV-01, CONV-02, CONV-03, CONV-04, CONV-05, CONV-06, CONV-07, CONV-08, AWARE-01, AWARE-02, AWARE-03, AWARE-04
 
+### What exists vs what's missing (deep audit, 2026-03-17)
+
+**What's actually working:**
+- Streaming path in `openaiService.ts` injects: character voice (voicePrompt, tendencies, neverSays), project context (Brain direction), project memories (cross-session facts), user behavior profiling, personality adaptation, practitioner skills
+- `responsePostProcessing.ts` has 7-layer tone guard: strips role intros, removes AI-isms, strips bullet dumps, adapts length, applies human closing, single-question guard
+- `memoryExtractor.ts` extracts decisions/facts/preferences fire-and-forget after each response
+
+**Critical gaps (specific files, specific fixes needed):**
+
+**GAP 1 — `graph.ts` is a zombie that actively undermines everything**
+`server/ai/graph.ts` is used by `/api/hatch/chat` (non-streaming fallback route). It uses a completely separate `FOUNDATION` constant, NOT the character profiles from roleRegistry. It FORCES "Heard/Got it/Noted/Understood/Noticing" starters (the exact sycophantic openers the tone guard removes) and FORCES "Next step: / Next 10-minute move: / Smallest next action:" endings (the exact patterns the tone guard removes). It bypasses ALL character injection, project context, memory, and user behavior analysis. It has only 8 hardcoded roles via regex keyword matching.
+→ **Fix**: Either wire `graph.ts` through the same `openaiService.ts` path, or delete it and remove the `/api/hatch/chat` route entirely (the streaming WS path is the real one).
+
+**GAP 2 — Emotional signature defined but never injected**
+Every character in `shared/roleRegistry.ts` has an `emotionalSignature` with specific phrases for 4 emotional states (excited, challenged, uncertain, celebrating). These are NEVER passed to the LLM. When the user is frustrated, Alex's challenged-state phrase ("Alright, let's slow down and be systematic...") should be triggered. Currently it just uses generic emotion guidelines.
+→ **Fix**: In `openaiService.ts`, detect emotional state, look up the character's matching `emotionalSignature` phrase, inject it as an instruction: "The user seems [state]. Respond with energy matching: '[signature phrase]'".
+
+**GAP 3 — Memory extraction is heuristic regex, misses most facts**
+`memoryExtractor.ts` uses regex patterns like `/we(?:'re| are| will| should) (?:going to |going with |using |building |implement)/gi`. It will completely miss "let's go with Supabase", "the target audience is designers over 30", "we decided to scrap the mobile version". Most real decisions don't match these patterns.
+→ **Fix**: Add an LLM-based extraction pass for high-importance conversations (length > 200 chars). Use a lightweight prompt: "Extract up to 3 key decisions, facts, or preferences from this exchange. Be specific." Fire-and-forget, same as current. Falls back to heuristic if LLM fails.
+
+**GAP 4 — No first-message opener intelligence**
+When a user first messages a Hatch in a project that has Brain context, the Hatch has no instruction to DEMONSTRATE it read the Brain. It might respond generically. The "I already know your project" moment — the thing that makes it feel like a real teammate, not a chatbot — needs to be explicitly prompted.
+→ **Fix**: In `openaiService.ts`, detect if `conversationHistory.length === 0` (first message). Inject: "This is your FIRST message in this conversation. You already know this project — demonstrate that immediately. Reference something specific from the project context before responding to their question. Make them feel you've been waiting to work on this."
+
+**GAP 5 — No opinion / disagreement instruction**
+The prompt tells Hatches to show curiosity and match energy, but never instructs them to push back when something is wrong. A senior engineer who always agrees is not believable. Real team members challenge bad decisions.
+→ **Fix**: Add to the system prompt: "When you see a decision that has clear risks or a better alternative, say so directly — once, briefly, without lecturing. Real colleagues push back. 'That might work but here's what I'd watch out for...' is more valuable than agreement."
+
+**GAP 6 — Hatches only respond, never initiate**
+Currently Hatches are purely reactive. The "you're never alone" promise requires Hatches that occasionally surface something proactively — referencing a past decision, flagging something relevant, asking if the user wants to continue a thread. This doesn't exist anywhere.
+→ **Fix**: This is partially a backend feature (proactive message trigger), partially a prompt feature. For now: when project memory contains an open question (memoryType: 'open_question') and the user's new message is related, inject: "You have an open question from a previous conversation: [question]. If relevant, you can reference it."
+
+**GAP 7 — `userDesignation` is always null**
+`openaiService.ts` injects `userDesignation` (what role the USER has on the project) — a powerful context signal. But it reads from `project.coreDirection.userRole` which doesn't exist in the schema. `coreDirection` is `{whatBuilding, whyMatters, whoFor}` — no `userRole`. So this injection is always empty.
+→ **Fix**: Either add `userRole` to the `coreDirection` schema and collect it during project creation, OR derive it from the user's self-description in early messages (Maya usually extracts this).
+
+**GAP 8 — Team routing is invisible**
+When the conductor routes a message from Alex to Dev, the user just sees Dev respond. There's no "passing the baton" moment that makes the team feel real. The routing is technically correct but experientially invisible.
+→ **Fix**: When a Hatch receives a message that was routed from another Hatch (conductor decision), inject a brief transition: the Hatch should acknowledge the handoff naturally ("Alex was right to loop me in on this — [response]") rather than responding as if they received the message cold.
+
 **Success Criteria:**
-1. Send a technical question to the Engineer Hatch — response references specific technologies, asks a precise follow-up, and uses engineering vocabulary naturally
-2. Send a design question to the Designer Hatch — response references visual principles, asks about user context, and has a different tone than the Engineer
-3. Start a project, add Brain context, then ask a Hatch something — it references the Brain without being prompted ("given what you're building for X audience...")
-4. Have a 5-message conversation — the Hatch references something from message 2 in message 5 without being reminded
-5. Send a 3-word message — Hatch replies with a short, focused reply (not 3 paragraphs)
-6. Send a longer exploratory message — Hatch matches that energy with a fuller response
-7. No response in the test set begins with "Great!", "Sure!", "Of course!", or any variant
+1. Send a technical question to the Engineer Hatch — response uses engineering vocabulary, references project stack/context, asks a precise follow-up
+2. Send a design question to the Designer Hatch — different tone than Engineer, references visual thinking
+3. First message in a project with Brain context → Hatch references something specific from the Brain without being asked
+4. Have a 5-message conversation → Hatch references something from message 2 in message 5
+5. Send a 3-word message → Hatch replies in 1-2 sentences max
+6. State something architecturally questionable → Hatch pushes back once, briefly, naturally
+7. No response begins with "Great!", "Sure!", "Of course!", "Heard —", "Got it —" or any variant
 8. No response contains bullet points or markdown headers
+9. `graph.ts` path either deleted or wired through the same character/context system
 
 **Status:** not-started
 
