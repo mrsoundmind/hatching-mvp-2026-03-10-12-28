@@ -1,5 +1,6 @@
 import { devLog } from '@/lib/devLog';
 import React, { useState, useRef, useEffect } from "react";
+import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, ChevronRight, MoreHorizontal, FileText, Users, X, File, Folder, UserCircle, Edit, Trash2 } from "lucide-react";
 import type { Project, Team, Agent } from "@shared/schema";
 import { getAgentColors } from '@/lib/agentColors';
@@ -546,7 +547,16 @@ export function ProjectTree({
                           )}
                         </div>
                         {/* Team Agents */}
-                        {isTeamExpanded && (
+                        <AnimatePresence initial={false}>
+                          {isTeamExpanded && (
+                            <motion.div
+                              key={`agents-${team.id}`}
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.18, ease: 'easeInOut' }}
+                              className="overflow-hidden"
+                            >
                           <div className="ml-7 space-y-0.5">
                             {teamAgents.map(agent => {
                               const isAgentActive = agent.id === activeAgentId;
@@ -648,7 +658,9 @@ export function ProjectTree({
                               );
                             })}
                           </div>
-                        )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     );
                   })}
