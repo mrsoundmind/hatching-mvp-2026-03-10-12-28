@@ -173,13 +173,10 @@ export default function Home() {
 
   const toggleTeamExpanded = (teamId: string) => {
     setExpandedTeams(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(teamId)) {
-        newSet.delete(teamId);
-      } else {
-        newSet.add(teamId);
+      if (prev.has(teamId)) {
+        return new Set<string>();
       }
-      return newSet;
+      return new Set([teamId]);
     });
   };
 
@@ -228,13 +225,10 @@ export default function Home() {
     // Auto-expand selected team; toggle collapse if clicking the same team again
     if (normalizedTeamId) {
       setExpandedTeams(prev => {
-        const next = new Set(prev);
-        if (next.has(normalizedTeamId) && activeTeamId === normalizedTeamId) {
-          next.delete(normalizedTeamId);
-        } else {
-          next.add(normalizedTeamId);
+        if (prev.has(normalizedTeamId) && activeTeamId === normalizedTeamId) {
+          return new Set<string>();
         }
-        return next;
+        return new Set([normalizedTeamId]);
       });
     }
   };
