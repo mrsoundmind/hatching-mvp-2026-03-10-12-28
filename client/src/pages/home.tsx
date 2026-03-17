@@ -778,7 +778,7 @@ export default function Home() {
       if (selectedTemplate) {
         await handleCreateProjectFromTemplate(selectedTemplate, name, description || '');
       } else {
-        await handleCreateProject(name, description);
+        await handleCreateIdeaProject(name, description);
       }
     } catch (error) {
       console.error('Error creating project:', error);
