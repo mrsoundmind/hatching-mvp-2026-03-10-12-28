@@ -10,11 +10,26 @@ Hatchin solves the prompting problem. Most people can't use AI effectively becau
 
 No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
 
+## The Full Vision (where this is going)
+
+### Autonomous Execution
+The end state is a team that works while you sleep. Human conversation initiates and guides — but execution happens autonomously. Hatches hand off tasks to each other without being asked (Engineer picks up what the PM leaves, Designer gets looped in when UI decisions arise). Hatches police each other — quality gates, peer review, safety checks — all internally coordinated. The user wakes up to progress, not a blank canvas.
+
+This autonomous foundation is already partially built (LangGraph state machine, peer review gates, task detection). The next layer is closing the loop: autonomous handover, background execution, and a Hatch that knows when to act vs when to ask.
+
+### B2B: Company-Level Intelligence
+When selling to companies, Hatchin is curated to that company's DNA — once. Brand guidelines, tone of voice, design system, product knowledge, company values — uploaded at the company level, not per-project. Every project inside that company inherits this automatically. A Sales Hatch already knows the product. A Designer Hatch already knows the brand. An Engineer Hatch already knows the stack.
+
+The project brain is singular. No re-adding context. No onboarding every new project from scratch. The company's intelligence lives in Hatchin and every team member (human or Hatch) starts from a fully informed position.
+
+### Collaboration
+Future: multiple real humans working alongside their Hatch team in the same project. Real teammates and AI teammates in the same conversation — the Hatches serve the whole team, not just one person.
+
 ## Current Phase Focus
 
-**Text-first, conversation-perfect.** Before image generation, before coding integration, before anything else — every Hatch must feel genuinely expert, contextually aware, and deeply present. When a user messages their Engineer Hatch about a performance issue, the response should feel like a senior engineer who knows the project, not a generic AI answer. This is the foundation everything else builds on.
+**Text-first, conversation-perfect.** Before image generation, before coding integration, before autonomy expansion — every Hatch must feel genuinely expert, contextually aware, and deeply present in conversation. When a user messages their Engineer Hatch about a performance issue, the response should feel like a senior engineer who knows the project, not a generic AI answer. This is the foundation everything else builds on.
 
-**Future integrations (not now):** Image generation, Claude coding agent, voice input, GitHub/Linear sync.
+**Build order:** Text quality → User journey → Avatar presence → Data reliability → Architecture → then: image gen, coding agent, autonomous execution loop, B2B company brain, collaboration.
 
 ## Use Cases (What "Initiating Dreams" Looks Like)
 
