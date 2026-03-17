@@ -122,6 +122,7 @@ export const messages = pgTable("messages", {
     typingDuration?: number;
     responseTime?: number;
     personality?: string;
+    agentRole?: string | null;
     mentions?: string[];
     replyTo?: {
       id: string;

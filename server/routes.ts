@@ -850,6 +850,37 @@ export async function registerRoutes(app: Express, sessionParser?: SessionParser
         }
       );
 
+      // Backfill agentRole for agent messages missing it in metadata
+      // Batch: collect unique agentIds that need lookup, fetch each once
+      const messagesNeedingBackfill = messages.filter(
+        (msg) => msg.messageType === 'agent' && msg.agentId && !msg.metadata?.agentRole
+      );
+
+      if (messagesNeedingBackfill.length > 0) {
+        // Deduplicate agentIds to avoid redundant DB fetches
+        const agentIds = [...new Set(messagesNeedingBackfill.map((m) => m.agentId as string))];
+        const agentMap = new Map<string, string | null>();
+
+        await Promise.all(
+          agentIds.map(async (agentId: string) => {
+            const agent = await storage.getAgent(agentId);
+            agentMap.set(agentId, agent?.role ?? null);
+          })
+        );
+
+        const enriched = messages.map((msg) => {
+          if (msg.messageType === 'agent' && msg.agentId && !msg.metadata?.agentRole) {
+            return {
+              ...msg,
+              metadata: { ...(msg.metadata || {}), agentRole: agentMap.get(msg.agentId) ?? null }
+            };
+          }
+          return msg;
+        });
+
+        return res.json(enriched);
+      }
+
       res.json(messages);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch messages" });
