@@ -1071,6 +1071,34 @@ export async function registerRoutes(app: Express, sessionParser?: SessionParser
           '' // Agent response would need to be retrieved
         );
 
+        // PRES-05: Persist adapted personality traits to database
+        try {
+          const updatedProfile = personalityEngine.getPersonalityProfile(reactionData.agentId, userId);
+          const reactingAgent = await storage.getAgent(reactionData.agentId);
+          if (reactingAgent) {
+            const existingPersonality = (reactingAgent.personality as any) || {};
+            await storage.updateAgent(reactionData.agentId, {
+              personality: {
+                ...existingPersonality,
+                adaptedTraits: {
+                  ...(existingPersonality.adaptedTraits || {}),
+                  [userId]: updatedProfile.adaptedTraits
+                },
+                adaptationMeta: {
+                  ...(existingPersonality.adaptationMeta || {}),
+                  [userId]: {
+                    interactionCount: updatedProfile.interactionCount,
+                    adaptationConfidence: updatedProfile.adaptationConfidence,
+                    lastUpdated: new Date().toISOString()
+                  }
+                }
+              } as any
+            });
+          }
+        } catch (persistErr) {
+          console.error('Failed to persist personality adaptation:', persistErr);
+        }
+
         // P4/P6: Hook living skills feedback into skill learner
         try {
           const reactedAgent = await storage.getAgent(reactionData.agentId);
@@ -1365,6 +1393,33 @@ export async function registerRoutes(app: Express, sessionParser?: SessionParser
         agentResponse,
         timestamp: new Date().toISOString()
       });
+
+      // PRES-05: Persist adapted personality traits to database
+      try {
+        const agent = await storage.getAgent(agentId);
+        if (agent) {
+          const existingPersonality = (agent.personality as any) || {};
+          await storage.updateAgent(agentId, {
+            personality: {
+              ...existingPersonality,
+              adaptedTraits: {
+                ...(existingPersonality.adaptedTraits || {}),
+                [userId]: updatedProfile.adaptedTraits
+              },
+              adaptationMeta: {
+                ...(existingPersonality.adaptationMeta || {}),
+                [userId]: {
+                  interactionCount: updatedProfile.interactionCount,
+                  adaptationConfidence: updatedProfile.adaptationConfidence,
+                  lastUpdated: new Date().toISOString()
+                }
+              }
+            } as any
+          });
+        }
+      } catch (persistErr) {
+        console.error('Failed to persist personality adaptation:', persistErr);
+      }
 
       res.json({
         success: true,

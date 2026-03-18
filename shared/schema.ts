@@ -77,6 +77,8 @@ export const agents = pgTable("agents", {
     communicationStyle?: string;
     expertise?: string[];
     welcomeMessage?: string;
+    adaptedTraits?: Record<string, Record<string, number>>;
+    adaptationMeta?: Record<string, { interactionCount: number; adaptationConfidence: number; lastUpdated: string }>;
   }>().default({}),
   isSpecialAgent: boolean("is_special_agent").notNull().default(false),
 }, (table) => ({
