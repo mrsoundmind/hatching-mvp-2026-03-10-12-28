@@ -108,6 +108,11 @@ export function CenterPanel({
   }>>>({});
   const [messageQueue, setMessageQueue] = useState<Array<any>>([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  // D1.2 Pagination state: earlier messages loaded via "Load earlier messages" button
+  const [earlierMessages, setEarlierMessages] = useState<any[]>([]);
+  const [loadingEarlier, setLoadingEarlier] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [nextMessageCursor, setNextMessageCursor] = useState<string | null>(null);
   const [typingColleagues, setTypingColleagues] = useState<string[]>([]);
   const lastSendRef = useRef<{ conversationId: string; content: string; at: number } | null>(null);
 
@@ -1102,23 +1107,59 @@ export function CenterPanel({
   };
 
   // Memoized current messages for reactivity - ensure it updates when messages change
+  // D1.2: Prepend earlierMessages (from cursor pagination) before the API window
   const currentMessages = useMemo(() => {
-    const messages = getCurrentMessages();
+    const apiWindow = getCurrentMessages();
+    // Transform earlierMessages to the same shape as allMessages entries
+    const transformed = earlierMessages.map((msg: any) => {
+      const agentRoleFromId = msg.agentId
+        ? activeProjectAgents.find((a: any) => a.id === msg.agentId)?.role
+        : undefined;
+      return {
+        id: msg.id,
+        content: msg.content,
+        senderId: msg.messageType === 'system' ? 'system' : (msg.agentId || msg.userId || 'unknown'),
+        senderName: msg.messageType === 'system' ? 'System' : (msg.agentId ? (() => {
+          const agent = activeProjectAgents.find((a: any) => a.id === msg.agentId);
+          return agent ? agent.name : msg.agentId.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+        })() : 'You'),
+        messageType: msg.messageType,
+        timestamp: msg.createdAt,
+        conversationId: msg.conversationId,
+        status: 'delivered' as const,
+        isStreaming: false,
+        metadata: { ...(msg.metadata || {}), agentRole: msg.metadata?.agentRole ?? agentRoleFromId ?? null },
+      };
+    });
+    const messages = [...transformed, ...apiWindow];
     // Log for debugging
     if (messages.length > 0) {
       const lastMsg = messages[messages.length - 1];
       devLog('🔄 Current messages updated:', messages.length, 'last:', lastMsg.id, lastMsg.content?.slice(0, 30));
     }
     return messages;
-  }, [currentChatContext?.conversationId, allMessages]);
+  }, [currentChatContext?.conversationId, allMessages, earlierMessages, activeProjectAgents]);
 
   // D1.1 & D1.2: Enhanced message loading with pagination
-  const { data: apiMessages, isLoading: messagesLoading } = useQuery({
+  const { data: apiMessagesResponse, isLoading: messagesLoading } = useQuery<{
+    messages: any[];
+    hasMore: boolean;
+    nextCursor: string | null;
+  }>({
     queryKey: [`/api/conversations/${currentChatContext?.conversationId}/messages`],
     enabled: !!currentChatContext?.conversationId,
     staleTime: 0, // D1.x Fix: Show messages instantly instead of caching for 30s
     refetchOnWindowFocus: false, // Don't refetch when window gains focus
+    select: (data: any) => {
+      // Handle both old format (bare array) and new format (envelope)
+      if (Array.isArray(data)) {
+        return { messages: data, hasMore: false, nextCursor: null };
+      }
+      return data;
+    },
   });
+  // Flatten for backward-compatible use in the rest of the component
+  const apiMessages = apiMessagesResponse?.messages;
 
   const { data: runtimeHealth } = useQuery({
     queryKey: ['/health'],
@@ -1143,11 +1184,19 @@ export function CenterPanel({
 
   // Process API messages when they load
   useEffect(() => {
-    if (apiMessages && currentChatContext && Array.isArray(apiMessages)) {
+    if (apiMessagesResponse && currentChatContext) {
+      const apiMessages = apiMessagesResponse.messages;
+      if (!apiMessages || !Array.isArray(apiMessages)) return;
       // Guard: if activeProject has no agents loaded yet, defer transform to avoid
       // rendering all messages with null agentRole (green flash).
       // The effect will re-run when activeProjectAgents populates.
       if (activeProjectAgents.length === 0) return;
+
+      // Sync pagination state from response envelope
+      setHasMoreMessages(apiMessagesResponse.hasMore);
+      setNextMessageCursor(apiMessagesResponse.nextCursor);
+      // Reset earlier messages on conversation change
+      setEarlierMessages([]);
 
       devLog(`📥 Loaded ${apiMessages.length} messages from API for ${currentChatContext.conversationId}`);
       // Transform API messages to match our format
@@ -1197,7 +1246,7 @@ export function CenterPanel({
         };
       });
     }
-  }, [apiMessages, currentChatContext, activeProjectAgents]);
+  }, [apiMessagesResponse, currentChatContext, activeProjectAgents]);
 
   // Cleanup processed message IDs when conversation changes
   useEffect(() => {
@@ -1207,9 +1256,33 @@ export function CenterPanel({
 
   // TEST: Log message structure for debugging
   devLog('📊 Current messages in linear timeline:', currentMessages.length);
-  devLog('💾 API Messages loaded:', Array.isArray(apiMessages) ? apiMessages.length : 0);
+  devLog('💾 API Messages loaded:', apiMessages ? apiMessages.length : 0);
 
 
+
+  // D1.2: Load earlier messages via cursor pagination
+  const loadEarlierMessages = async () => {
+    if (!nextMessageCursor || !currentChatContext?.conversationId || loadingEarlier) return;
+    setLoadingEarlier(true);
+    try {
+      const response = await fetch(
+        `/api/conversations/${currentChatContext.conversationId}/messages?before=${encodeURIComponent(nextMessageCursor)}&limit=50`,
+        { credentials: 'include' }
+      );
+      if (!response.ok) throw new Error('Failed to load earlier messages');
+      const data = await response.json();
+      const olderMsgs: any[] = Array.isArray(data) ? data : (data.messages || []);
+      const olderHasMore: boolean = Array.isArray(data) ? false : (data.hasMore ?? false);
+      const olderCursor: string | null = Array.isArray(data) ? null : (data.nextCursor ?? null);
+      setEarlierMessages(prev => [...olderMsgs, ...prev]);
+      setHasMoreMessages(olderHasMore);
+      setNextMessageCursor(olderCursor);
+    } catch (err) {
+      console.error('Failed to load earlier messages:', err);
+    } finally {
+      setLoadingEarlier(false);
+    }
+  };
 
   // Add message to specific conversation
   const addMessageToConversation = (conversationId: string, message: any) => {
@@ -2214,6 +2287,19 @@ export function CenterPanel({
                 {messagesLoading && (
                   <div className="flex items-center justify-center py-4">
                     <div className="hatchin-text-muted text-sm">Loading conversation...</div>
+                  </div>
+                )}
+
+                {/* D1.2: Load earlier messages button — shown when there are older messages */}
+                {hasMoreMessages && (
+                  <div className="flex justify-center py-3">
+                    <button
+                      onClick={loadEarlierMessages}
+                      disabled={loadingEarlier}
+                      className="text-sm text-slate-400 hover:text-slate-200 transition-colors px-4 py-2 rounded-lg hover:bg-slate-800/50 disabled:opacity-50"
+                    >
+                      {loadingEarlier ? 'Loading...' : 'Load earlier messages'}
+                    </button>
                   </div>
                 )}
 
