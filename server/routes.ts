@@ -835,14 +835,12 @@ export async function registerRoutes(app: Express, sessionParser?: SessionParser
       if (!isOwned) {
         return res.status(404).json({ error: "Conversation not found" });
       }
-      const { page = "1", limit = "50", before, after, messageType } = req.query;
-      const pageNum = parseInt(page as string);
+      const { limit = "50", before, after, messageType } = req.query;
       const limitNum = parseInt(limit as string);
 
       const messages = await storage.getMessagesByConversation(
         req.params.conversationId,
         {
-          page: pageNum,
           limit: limitNum,
           before: before as string,
           after: after as string,
@@ -856,6 +854,7 @@ export async function registerRoutes(app: Express, sessionParser?: SessionParser
         (msg) => msg.messageType === 'agent' && msg.agentId && !msg.metadata?.agentRole
       );
 
+      let finalMessages = messages;
       if (messagesNeedingBackfill.length > 0) {
         // Deduplicate agentIds to avoid redundant DB fetches
         const agentIds = [...new Set(messagesNeedingBackfill.map((m) => m.agentId as string))];
@@ -868,7 +867,7 @@ export async function registerRoutes(app: Express, sessionParser?: SessionParser
           })
         );
 
-        const enriched = messages.map((msg) => {
+        finalMessages = messages.map((msg) => {
           if (msg.messageType === 'agent' && msg.agentId && !msg.metadata?.agentRole) {
             return {
               ...msg,
@@ -877,11 +876,17 @@ export async function registerRoutes(app: Express, sessionParser?: SessionParser
           }
           return msg;
         });
-
-        return res.json(enriched);
       }
 
-      res.json(messages);
+      // Return pagination envelope: hasMore signals there are older messages to load
+      const hasMore = finalMessages.length === limitNum;
+      const nextCursor = hasMore && finalMessages.length > 0
+        ? (finalMessages[0].createdAt instanceof Date
+            ? finalMessages[0].createdAt.toISOString()
+            : String(finalMessages[0].createdAt))
+        : null;
+
+      res.json({ messages: finalMessages, hasMore, nextCursor });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch messages" });
     }

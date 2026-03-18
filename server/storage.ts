@@ -823,25 +823,30 @@ export class MemStorage implements IStorage {
       messages = messages.filter(msg => msg.messageType === options.messageType);
     }
 
-    // Filter by date range if specified
+    // Sort ascending by createdAt (oldest first)
+    messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    // Cursor-based filtering: keep messages before/after the cursor timestamp
     if (options?.before) {
-      messages = messages.filter(msg => new Date(msg.createdAt) < new Date(options.before!));
+      const cutoff = new Date(options.before).getTime();
+      messages = messages.filter(m => new Date(m.createdAt).getTime() < cutoff);
     }
     if (options?.after) {
-      messages = messages.filter(msg => new Date(msg.createdAt) > new Date(options.after!));
+      const cutoff = new Date(options.after).getTime();
+      messages = messages.filter(m => new Date(m.createdAt).getTime() > cutoff);
     }
 
-    // Sort by creation date (newest first for pagination)
-    messages.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-    // Apply pagination
-    if (options?.page && options?.limit) {
-      const startIndex = (options.page - 1) * options.limit;
-      messages = messages.slice(startIndex, startIndex + options.limit);
+    // Apply pagination: page-based takes priority, otherwise return last N (most recent window)
+    const limit = options?.limit;
+    if (options?.page && limit) {
+      const start = (options.page - 1) * limit;
+      messages = messages.slice(start, start + limit);
+    } else if (limit) {
+      // Return last `limit` items (most recent window), preserving ascending sort
+      messages = messages.slice(Math.max(0, messages.length - limit));
     }
 
-    // Return in chronological order (oldest first)
-    return messages.reverse();
+    return messages;
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
@@ -1536,16 +1541,27 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
   async getMessagesByConversation(conversationId: string, options?: { page?: number; limit?: number; before?: string; after?: string; messageType?: string }): Promise<Message[]> {
-    let q = db.select().from(schema.messages).where(eq(schema.messages.conversationId, conversationId));
-    const rows = await q;
+    const rows = await db.select().from(schema.messages).where(eq(schema.messages.conversationId, conversationId));
     let msgs = rows as Message[];
     if (options?.messageType) msgs = msgs.filter(m => m.messageType === options.messageType);
-    if (options?.before) msgs = msgs.filter(m => new Date(m.createdAt) < new Date(options.before!));
-    if (options?.after) msgs = msgs.filter(m => new Date(m.createdAt) > new Date(options.after!));
+    // Sort ascending by createdAt (oldest first)
     msgs.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-    if (options?.page && options?.limit) {
-      const start = (options.page - 1) * options.limit;
-      msgs = msgs.slice(start, start + options.limit);
+    // Cursor-based filtering
+    if (options?.before) {
+      const cutoff = new Date(options.before).getTime();
+      msgs = msgs.filter(m => new Date(m.createdAt).getTime() < cutoff);
+    }
+    if (options?.after) {
+      const cutoff = new Date(options.after).getTime();
+      msgs = msgs.filter(m => new Date(m.createdAt).getTime() > cutoff);
+    }
+    // Apply pagination: page-based takes priority, otherwise return last N (most recent window)
+    const limit = options?.limit;
+    if (options?.page && limit) {
+      const start = (options.page - 1) * limit;
+      msgs = msgs.slice(start, start + limit);
+    } else if (limit) {
+      msgs = msgs.slice(Math.max(0, msgs.length - limit));
     }
     return msgs;
   }
