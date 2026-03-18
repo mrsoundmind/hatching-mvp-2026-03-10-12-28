@@ -1697,6 +1697,27 @@ export async function registerRoutes(app: Express, sessionParser?: SessionParser
                 }
               } catch { /* non-critical — join still works if welcome fails */ }
             }
+
+            // Seed personality profile from DB so learning survives server restart.
+            // Must run before any message is processed — no-op if already in memory or no traits persisted.
+            if (conversationId.trim().startsWith('agent:') && ws.__userId) {
+              try {
+                const parsed = parseConversationId(conversationId.trim());
+                const seedAgentId = (parsed as any).agentId;
+                if (seedAgentId) {
+                  const seedAgent = await storage.getAgent(seedAgentId);
+                  const persisted = (seedAgent?.personality as any);
+                  const uid = ws.__userId;
+                  if (persisted?.adaptedTraits?.[uid] && persisted?.adaptationMeta?.[uid]) {
+                    personalityEngine.seedProfileFromDB(
+                      seedAgentId, uid,
+                      persisted.adaptedTraits[uid],
+                      persisted.adaptationMeta[uid]
+                    );
+                  }
+                }
+              } catch { /* non-critical */ }
+            }
             break;
           }
 

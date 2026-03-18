@@ -79,6 +79,25 @@ console.log('\nTest 6: No adaptation on interactions 6–9 (throttle window)');
   assert(engine.getPersonalityProfile('agent-t6', 'user-t6').adaptedTraits.verbosity === at5, 'no adaptation between throttle windows (6–9)');
 }
 
+console.log('\nTest 7: Without join-time seed, restarted server loses learned traits on first message');
+{
+  // Build up learned traits across 5 interactions
+  const engineBefore = new PersonalityEvolutionEngine();
+  for (let i = 0; i < 5; i++) engineBefore.adaptPersonalityFromBehavior('agent-jr', 'user-jr', makeBehavior('decisive'), makeAnalysis());
+  const learnedVerbosity = engineBefore.getPersonalityProfile('agent-jr', 'user-jr').adaptedTraits.verbosity;
+  const defaultVerbosity = new PersonalityEvolutionEngine().getPersonalityProfile('default-check', 'user-jr').adaptedTraits.verbosity;
+  assert(learnedVerbosity !== defaultVerbosity, 'learned verbosity differs from default (pre-condition)');
+
+  // Fixed: join_conversation calls seedProfileFromDB BEFORE first message.
+  const engineFixed = new PersonalityEvolutionEngine();
+  engineFixed.seedProfileFromDB('agent-jr', 'user-jr',
+    { formality: 0.5, verbosity: learnedVerbosity, empathy: 0.5, directness: 0.8, enthusiasm: 0.5, technicalDepth: 0.5 },
+    { interactionCount: 10, adaptationConfidence: 0.7, lastUpdated: new Date().toISOString() }
+  );
+  const firstMessageTraits = engineFixed.getPersonalityProfile('agent-jr', 'user-jr').adaptedTraits.verbosity;
+  assert(firstMessageTraits === learnedVerbosity, 'first message after restart uses learned verbosity when join seeds from DB');
+}
+
 console.log(`\n${'─'.repeat(50)}`);
 console.log(`Results: ${passed} passed, ${failed} failed`);
 if (failed > 0) { console.error('TESTS FAILED'); process.exit(1); }
