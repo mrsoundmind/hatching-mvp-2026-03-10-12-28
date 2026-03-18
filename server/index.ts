@@ -7,7 +7,8 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { registerRoutes, getGlobalBroadcast } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { getStorageModeInfo } from "./storage";
+import { getStorageModeInfo, STORAGE_MODE } from "./storage";
+import { assertProductionStorageMode } from "./productionGuard";
 import { pool } from "./db";
 import {
   assertRuntimeGuardrails,
@@ -27,6 +28,8 @@ if (process.env.NODE_ENV === 'production') {
     throw new Error('FATAL: DATABASE_URL must be set in production to prevent data loss.');
   }
 }
+// DATA-03: Prevent silent data loss when STORAGE_MODE is not db in production
+assertProductionStorageMode(process.env.NODE_ENV, STORAGE_MODE);
 
 if (!process.env.OPENAI_API_KEY) {
   console.warn('[Hatchin] OPENAI_API_KEY is not set. AI replies will fail with OPENAI_NOT_CONFIGURED.');

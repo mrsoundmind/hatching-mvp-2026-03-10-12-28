@@ -1485,8 +1485,9 @@ export function CenterPanel({
         // Show character name (e.g. "Alex") from registry, not the DB name field
         const agentName = getRoleDefinition(selectedAgent?.role)?.characterName
           ?? toDisplayText(selectedAgent?.name, agentRole);
+        const isMaya = selectedAgent?.isSpecialAgent || selectedAgent?.name === 'Maya';
         return {
-          title: agentName,
+          title: isMaya ? (activeProject?.name || agentName) : agentName,
           subtitle: `1-on-1 Chat • ${agentRole}`,
           participants,
           placeholder: `Message ${agentName}...`,
@@ -1828,6 +1829,7 @@ export function CenterPanel({
               userId: user?.id || 'user',
               metadata: {
                 clientTempId: tempMessageId,
+                idempotencyKey: `${tempMessageId}-${Date.now()}`,
                 routing: {
                   mode: currentChatContext.mode,
                   projectId: activeProject?.id,
@@ -1963,6 +1965,7 @@ export function CenterPanel({
             senderName: 'You',
             metadata: {
               clientTempId: tempMessageId,
+              idempotencyKey: `${tempMessageId}-${Date.now()}`,
               routing: {
                 type: recipients.type,
                 scope: recipients.scope,
