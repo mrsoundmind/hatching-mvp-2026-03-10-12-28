@@ -153,12 +153,12 @@ Plans:
 
 **Requirements:** ARCH-01, ARCH-02
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans executed
 
 Plans:
-- [ ] 05-01-PLAN.md — Extract teams.ts, agents.ts, messages.ts (self-contained, no broadcast deps)
-- [ ] 05-02-PLAN.md — Extract projects.ts + tasks.ts (broadcast deps via typed interfaces)
-- [ ] 05-03-PLAN.md — Extract chat.ts (WS server + streaming handler) + reduce routes.ts to orchestrator
+- [x] 05-01-PLAN.md — Extract teams.ts, agents.ts, messages.ts (self-contained, no broadcast deps)
+- [x] 05-02-PLAN.md — Extract projects.ts + tasks.ts (broadcast deps via typed interfaces)
+- [x] 05-03-PLAN.md — Extract chat.ts (WS server + streaming handler) + reduce routes.ts to orchestrator
 
 **Success Criteria:**
 1. `server/routes/projects.ts` exists and handles all `/api/projects*` routes

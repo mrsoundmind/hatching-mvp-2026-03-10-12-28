@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: — captured for context)
 status: completed
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-03-18T14:39:36.329Z"
-last_activity: "2026-03-18 — Phase 5 Plan 01 complete: extracted teams, agents, messages route modules (commits 4cc0cfd, 0f0b3e3)"
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-03-18T22:00:00.000Z"
+last_activity: "2026-03-18 — Phase 5 Plan 03 complete: extracted chat.ts (WS server + streaming handler + /api/hatch/chat), routes.ts reduced to 430 lines (commits 9c63807, 4b5590b)"
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 5
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
 ---
 
 # State: Hatchin MVP
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-03-17)
 
 ## Current Position
 
-Phase: 5 — Route Architecture Cleanup — plan 01 complete
-Plan: 01 complete (1 of 1 plans)
-Status: ARCH-01 plan 01 complete — teams, agents, messages extracted
-Last activity: 2026-03-18 — Phase 5 Plan 01 complete: extracted teams, agents, messages route modules (commits 4cc0cfd, 0f0b3e3)
-Last session: 2026-03-18T14:39:36.326Z
-Stopped at: Completed 05-02-PLAN.md
+Phase: 5 — Route Architecture Cleanup — ALL PLANS COMPLETE
+Plan: 03 complete (3 of 3 plans)
+Status: ARCH-01 + ARCH-02 fully satisfied — all 5 route modules extracted; routes.ts is 430-line orchestrator
+Last activity: 2026-03-18 — Phase 5 Plan 03 complete: extracted chat.ts (WS server + streaming handler + /api/hatch/chat), routes.ts reduced to 430 lines (commits 9c63807, 4b5590b)
+Last session: 2026-03-18T22:00:00.000Z
+Stopped at: Completed 05-03-PLAN.md
 
 ---
 
@@ -103,6 +103,8 @@ None.
 | 2026-03-18 | 04-02 | earlierMessages in separate state array merged via useMemo; select transform in useQuery normalizes both bare array and envelope for backward compat |
 | 2026-03-18 | 05-01 | Helpers re-declared locally in each route module (not imported from routes.ts) — avoids circular dependency, keeps modules fully self-contained |
 | 2026-03-18 | 05-01 | tdd-guard disabled via guardEnabled:false for deletion phase of move-refactoring — guard correctly enforces TDD but creates a paradox for pure code-move operations |
+| 2026-03-18 | 05-03 | chat.ts receives httpServer via parameter; does not call createServer() itself — preserves single httpServer instance owned by routes.ts |
+| 2026-03-18 | 05-03 | registerHealthRoute called after registerChatRoutes so getWsHealth function is available and accurate |
 
 ---
 - [Phase 05-02]: Typed deps interface (RegisterProjectDeps, RegisterTaskDeps) for broadcast injection — avoids circular deps while enabling WS broadcast from route modules
@@ -117,4 +119,4 @@ None.
 | 2 | User Journey Fixes | Complete | 4 plans done; 3/9 criteria fully passing; 5 gap items (UX-01, UX-05, UX-07, UX-08, DATA-04) documented for follow-up |
 | 3 | Hatch Presence and Avatar System | Complete | 26 SVG avatars, unique idle animations, thinking bubble, character names, personality persistence to DB (PRES-01 to PRES-05) |
 | 4 | Data Reliability and Resilience | Complete | Plan 01: production guard (DATA-03) + client idempotencyKey (DATA-01). Plan 02: cursor pagination + Load earlier messages UI (DATA-02) |
-| 5 | Route Architecture Cleanup | In Progress | Plan 01: extracted teams, agents, messages route modules from 4347-line routes.ts god file (ARCH-01 partial) |
+| 5 | Route Architecture Cleanup | Complete | Plans 01-03: extracted all 5 modules (teams, agents, messages, projects, tasks, chat); routes.ts reduced to 430-line orchestrator (ARCH-01 + ARCH-02 satisfied) |
