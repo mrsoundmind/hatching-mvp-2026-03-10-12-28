@@ -15,7 +15,7 @@ Hatchin is an **AI-powered collaborative project execution platform**. Think of 
 - Learn user working styles over time
 - Coordinate autonomously via multi-agent deliberation
 
-**Current Phase**: MVP — Focus is on proving agent-human collaboration is natural and useful. Not yet monetized. Core flows must work reliably.
+**Current Phase**: v1.0 shipped (2026-03-19). All 31 requirements satisfied. Next milestone TBD.
 
 **Current Branch**: `reconcile-codex` (feature branch) — main is the canonical production branch.
 
@@ -68,7 +68,7 @@ hatching-mvp-5th-march/
 │   │   ├── home.tsx              # Main layout: LeftSidebar + CenterPanel + RightSidebar
 │   │   ├── MayaChat.tsx          # Project-level Maya AI chat
 │   │   ├── login.tsx             # Google OAuth login (animated gradient background)
-│   │   ├── LandingPage.tsx       # Public landing page (NEW — not yet in main routes)
+│   │   ├── LandingPage.tsx       # Public landing page (wired at / for logged-out users)
 │   │   ├── onboarding.tsx        # Post-signup onboarding flow
 │   │   └── not-found.tsx         # 404
 │   ├── components/
@@ -103,7 +103,7 @@ hatching-mvp-5th-march/
 │
 ├── server/
 │   ├── index.ts                  # App entrypoint: middleware, session, CORS, WS attach
-│   ├── routes.ts                 # ~3,500 lines: ALL API + WS route handlers
+│   ├── routes.ts                 # ~430 lines: thin orchestrator (imports + registers route modules)
 │   ├── storage.ts                # ~1,500+ lines: IStorage interface + MemStorage + DatabaseStorage
 │   ├── db.ts                     # Neon PostgreSQL connection (pool)
 │   ├── vite.ts                   # Vite dev server middleware integration
@@ -150,7 +150,13 @@ hatching-mvp-5th-march/
 │   │   └── cache/                # Tool result caching
 │   ├── routes/
 │   │   ├── health.ts             # GET /api/health
-│   │   └── autonomy.ts           # Autonomy event routes
+│   │   ├── autonomy.ts           # Autonomy event routes
+│   │   ├── teams.ts              # /api/teams* CRUD (registerTeamRoutes)
+│   │   ├── agents.ts             # /api/agents* CRUD (registerAgentRoutes)
+│   │   ├── messages.ts           # /api/conversations*, /api/messages*, /api/training/feedback
+│   │   ├── projects.ts           # /api/projects* + brain endpoints (RegisterProjectDeps)
+│   │   ├── tasks.ts              # /api/tasks* + task-suggestions (RegisterTaskDeps)
+│   │   └── chat.ts               # WS server, streaming handler, /api/hatch/chat (~2,878 lines)
 │   ├── invariants/
 │   │   └── assertPhase1.ts       # Phase 1 correctness assertions
 │   ├── utils/configSnapshot.ts   # Config logging on startup
@@ -598,47 +604,23 @@ npm run eval:alive       # System liveness
 
 ## 12. KNOWN ARCHITECTURAL ISSUES & RECOMMENDATIONS
 
-### Issue 1: `routes.ts` is 3,500+ lines — God File
-**Risk**: HIGH — Merge conflicts, poor readability, hard to reason about
-**Recommendation**: Gradually extract into `server/routes/` modules:
-```
-server/routes/
-  projects.ts    → /api/projects*
-  teams.ts       → /api/teams*
-  agents.ts      → /api/agents*
-  messages.ts    → /api/conversations*
-  chat.ts        → /api/hatch/chat, WS handlers
-  auth.ts        → already in server/auth/
-```
-**Do it when**: Adding any new major feature or refactoring existing route group.
+### ~~Issue 1: `routes.ts` is 3,500+ lines — God File~~ ✅ RESOLVED (v1.0, Phase 5)
+Split into 6 focused modules in `server/routes/`. `routes.ts` is now 430 lines (thin orchestrator).
 
-### Issue 2: In-memory storage (MemStorage) loses data on restart
-**Risk**: MEDIUM in dev, HIGH if accidentally used in production
-**Check**: `STORAGE_MODE` env var must be `db` in production
-**Recommendation**: Add startup assertion:
-```typescript
-if (process.env.NODE_ENV === 'production' && process.env.STORAGE_MODE !== 'db') {
-  throw new Error('FATAL: Production requires STORAGE_MODE=db');
-}
-```
+### ~~Issue 2: In-memory storage loses data in production~~ ✅ RESOLVED (v1.0, Phase 4)
+`server/productionGuard.ts` asserts `STORAGE_MODE=db` at startup in production. Called from `server/index.ts`.
 
-### Issue 3: LandingPage.tsx exists but not wired to router
-**Risk**: LOW — New page created but not accessible
-**Fix**: Wire into `App.tsx` router at `/` (unauthenticated) with redirect to `/app` when logged in.
+### ~~Issue 3: LandingPage.tsx not wired to router~~ ✅ RESOLVED (v1.0, Phase 2)
+Wired at `/` in `App.tsx` for logged-out users. Redirects to app when logged in.
 
-### Issue 4: No pagination on message loading
-**Risk**: MEDIUM — Long conversations will load ALL messages, causing performance issues
-**Note**: `getMessagesByConversation` in `storage.ts` accepts `page` and `limit` options but frontend may not use them
-**Recommendation**: Implement cursor-based pagination in `CenterPanel.tsx` before conversations grow large.
+### ~~Issue 4: No pagination on message loading~~ ✅ RESOLVED (v1.0, Phase 4)
+Cursor-based pagination implemented: storage returns last 50, API returns `{messages, hasMore, nextCursor}`, CenterPanel has "Load earlier messages" button.
 
-### Issue 5: Agent personality evolution stored in-memory
-**Risk**: MEDIUM — Learning resets on server restart
-**Location**: `personalityEvolution.ts`
-**Recommendation**: Persist to `agents.personality` JSONB column or a new `agent_learning` table.
+### ~~Issue 5: Agent personality evolution stored in-memory~~ ✅ RESOLVED (v1.0, Phase 3)
+Persisted to `agents.personality` JSONB (`adaptedTraits` + `adaptationMeta` per user). Seeded from DB on cache miss.
 
-### Issue 6: No message deduplication
-**Risk**: MEDIUM — WebSocket retry on network blip can cause duplicate messages
-**Recommendation**: Add `idempotency_key` to message creation. Check `server/autonomy/integrity/` for patterns.
+### ~~Issue 6: No message deduplication~~ ✅ RESOLVED (v1.0, Phase 4)
+`idempotencyKey` sent in WS metadata from CenterPanel. `checkIdempotencyKey()` in chat.ts blocks duplicates.
 
 ### Issue 7: CORS is single-origin
 **Risk**: LOW now, MEDIUM when deploying to different domains
@@ -757,23 +739,26 @@ const result = await db.execute(sql`SELECT * FROM projects WHERE id = ${projectI
 - Safety + peer review gates — differentiating feature
 - Task detection from chat — clever and valuable
 
-### Short-Term (1-2 weeks) — Highly Achievable
-- [ ] Wire `LandingPage.tsx` into router
-- [ ] Persist personality evolution to database
-- [ ] Add `STORAGE_MODE=db` assertion in production
-- [ ] Extract at least `projects.ts` route module from `routes.ts`
-- [ ] Implement cursor pagination in `CenterPanel.tsx`
-- [ ] Add message deduplication key
-- [ ] Write CHANGELOG and README for onboarding new developers
+### Completed in v1.0
+- [x] Wire `LandingPage.tsx` into router
+- [x] Persist personality evolution to database
+- [x] Add `STORAGE_MODE=db` assertion in production
+- [x] Full `routes.ts` modularization (6 modules)
+- [x] Implement cursor pagination in `CenterPanel.tsx`
+- [x] Add message deduplication key
 
-### Medium-Term (1-2 months) — Achievable with focus
-- [ ] Full `routes.ts` modularization (5 modules)
+### Short-Term (1-2 weeks) — Highly Achievable
+- [ ] Write CHANGELOG and README for onboarding new developers
 - [ ] User analytics / usage metrics (Posthog or custom)
-- [ ] Agent marketplace / public templates
-- [ ] Cross-project agent sharing
 - [ ] Conversation archival and search
 - [ ] Mobile responsive improvements
+
+### Medium-Term (1-2 months) — Achievable with focus
+- [ ] Agent marketplace / public templates
+- [ ] Cross-project agent sharing
 - [ ] Agent voice/persona customization UI
+- [ ] Image generation from Designer Hatch conversations
+- [ ] Claude coding agent from Engineer Hatch
 
 ### Long-Term (3-6 months) — Ambitious but realistic
 - [ ] Multi-user collaboration (real-time multi-cursor)
@@ -973,5 +958,5 @@ class HatchinGraphError extends Error {
 
 ---
 
-*Last updated: 2026-03-17 | Branch: reconcile-codex | Author: Claude Code*
+*Last updated: 2026-03-19 | Branch: reconcile-codex | v1.0 shipped | Author: Claude Code*
 *This file should be updated whenever a significant architectural change is made.*
