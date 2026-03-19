@@ -9,6 +9,9 @@ import { selectFrictionAction } from "./frictionMap.js";
 import { sendProactiveMessage } from "./proactiveOutreach.js";
 import { runWorldSensorForProject } from "./worldSensor.js";
 import { logAutonomyEvent } from "../events/eventLogger.js";
+import { resolveAutonomyTrigger } from "../triggers/autonomyTriggerResolver.js";
+import { queueTaskExecution } from "../execution/jobQueue.js";
+import { FEATURE_FLAGS, BUDGETS } from "../config/policies.js";
 const devLog = (...args: unknown[]) => { if (process.env.NODE_ENV !== "production") console.log(...args); };
 
 // These are set when start() is called — injected to avoid circular deps
@@ -18,6 +21,9 @@ let _generateText: ((prompt: string, system: string, maxTokens?: number) => Prom
 
 // Track cron job instances for clean shutdown
 const cronJobs: ScheduledTask[] = [];
+
+// Idempotency guard — prevents duplicate cron jobs on HMR re-registration
+let _started = false;
 
 // Max projects to process per cycle (prevents overload on large deployments)
 const MAX_PROJECTS_PER_CYCLE = 50;
@@ -208,6 +214,12 @@ export const backgroundRunner = {
     broadcastToConversation: (convId: string, payload: unknown) => void;
     generateText: (prompt: string, system: string, maxTokens?: number) => Promise<string>;
   }): void {
+    const wasRunning = _started;
+    if (_started) {
+      backgroundRunner.stop();
+    }
+    _started = true;
+
     _storage = deps.storage;
     _broadcastToConversation = deps.broadcastToConversation;
     _generateText = deps.generateText;
@@ -224,9 +236,11 @@ export const backgroundRunner = {
     });
     cronJobs.push(worldJob);
 
-    console.log(
-      "[BackgroundRunner] Started — health checks every 2h, world sensing every 6h"
-    );
+    if (!wasRunning) {
+      console.log(
+        "[BackgroundRunner] Started — health checks every 2h, world sensing every 6h"
+      );
+    }
   },
 
   stop(): void {
@@ -234,6 +248,7 @@ export const backgroundRunner = {
       job.stop();
     }
     cronJobs.length = 0;
+    _started = false;
     console.log("[BackgroundRunner] Stopped");
   },
 
