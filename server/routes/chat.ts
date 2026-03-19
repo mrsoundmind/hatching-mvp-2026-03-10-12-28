@@ -1,6 +1,2878 @@
-import type { Express } from 'express';
+import type { Express, Request } from "express";
+import { type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
+import { storage } from "../storage.js";
+import { insertMessageSchema, type Project } from "@shared/schema.js";
+import { parseConversationId } from "@shared/conversationId.js";
+import { wsClientMessageSchema } from "@shared/dto/wsSchemas.js";
+import { randomUUID } from "crypto";
+import { z } from "zod";
+import { OpenAIConfigurationError, generateIntelligentResponse, generateStreamingResponse } from "../ai/openaiService.js";
+import { getCharacterProfile } from "../ai/characterProfiles.js";
+import { parseAction, stripActionBlocks, detectUserPermission } from "../ai/actionParser.js";
+import { resolveMentionedAgent } from "../ai/mentionParser.js";
+import { applyTeammateToneGuard } from "../ai/responsePostProcessing.js";
+import { personalityEngine } from "../ai/personalityEvolution.js";
+import { evaluateConductorDecision, buildRoleIdentity } from "../ai/conductor.js";
+import { evaluateSafetyScore, buildClarificationIntervention } from "../ai/safety.js";
+import { buildDecisionForecast, isStrategicTurn } from "../ai/forecast.js";
+import {
+  createActionProposal,
+  recordLearningEvent,
+} from "../ai/autonomyStore.js";
+import {
+  analyzeQuestion,
+  findBestAgentMatch,
+  coordinateMultiAgentResponse,
+  calculateExpertiseConfidence,
+  initiateHandoff,
+  transferContext,
+  processHandoffRequest,
+  handoffTracker,
+  type Agent
+} from "../ai/expertiseMatching.js";
+import { resolveSpeakingAuthority } from "../orchestration/resolveSpeakingAuthority.js";
+import { validateMessageIngress } from "../schemas/messageIngress.js";
+import { filterAvailableAgents, type ScopeContext } from "../orchestration/agentAvailability.js";
+import { assertPhase1Invariants } from "../invariants/assertPhase1.js";
+import {
+  getCurrentRuntimeConfig,
+} from "../llm/providerResolver.js";
+import { writeConfigSnapshot } from "../utils/configSnapshot.js";
+import { logAutonomyEvent } from "../autonomy/events/eventLogger.js";
+import {
+  appendDeliberationRound,
+  createDeliberationTrace,
+  finalizeDeliberationTrace,
+} from "../autonomy/traces/traceStore.js";
+import {
+  assertConversationOrdering,
+  assertUniqueMessageId,
+  checkIdempotencyKey,
+  ensureMessageId,
+} from "../autonomy/integrity/conversationIntegrity.js";
+import { runPeerReview } from "../autonomy/peerReview/peerReviewRunner.js";
+import { runAutonomousKnowledgeLoop } from "../knowledge/akl/runner.js";
+import { resolveDecisionConflict } from "../autonomy/conductor/decisionAuthority.js";
+import { routeTools } from "../tools/toolRouter.js";
+import { createTaskGraph } from "../autonomy/taskGraph/taskGraphEngine.js";
+import { BUDGETS } from "../autonomy/config/policies.js";
 
-export function registerChatRoutes(_app: Express): void {
-  // Chat routes currently live in server/routes.ts.
-  // This module is intentionally reserved for incremental route extraction.
+type AuthedWebSocket = WebSocket & { __userId?: string };
+
+export interface RegisterChatDeps {
+  sessionParser?: (req: any, res: any, next: (err?: unknown) => void) => void;
+  onBroadcastReady: (fns: {
+    broadcastToConversation: (conversationId: string, data: unknown) => void;
+    broadcastToProject: (projectId: string, data: unknown) => void;
+  }) => void;
+}
+
+export function registerChatRoutes(
+  app: Express,
+  httpServer: Server,
+  deps: RegisterChatDeps
+): { getWsHealth: () => { status: "ok" | "degraded" | "down"; connections: number } } {
+  const { sessionParser, onBroadcastReady } = deps;
+
+  const devLog = (...args: any[]) => {
+    if (process.env.NODE_ENV !== "production") {
+      console.log(...args);
+    }
+  };
+
+  const isProd = process.env.NODE_ENV === "production";
+
+  const getOwnedProjectIds = async (userId: string): Promise<Set<string>> => {
+    const projects = await storage.getProjects();
+    return new Set(projects.filter((project: any) => project.userId === userId).map((project) => project.id));
+  };
+
+  const conversationOwnedByUser = async (conversationId: string, userId: string): Promise<boolean> => {
+    const ownedProjectIds = await getOwnedProjectIds(userId);
+    for (const projectId of ownedProjectIds) {
+      const conversations = await storage.getConversationsByProject(projectId);
+      if (conversations.some((conversation) => conversation.id === conversationId)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // Phase 1.2: WebSocket error responder helper (never throws)
+  function sendWsError(
+    ws: WebSocket,
+    params: {
+      code: string;
+      message: string;
+      details?: Record<string, unknown>;
+      correlationId?: string;
+    }
+  ): void {
+    try {
+      const errorResponse = {
+        type: "error",
+        code: params.code,
+        message: params.message,
+        ...(params.details && { details: params.details }),
+        ...(params.correlationId && { correlationId: params.correlationId }),
+      };
+      ws.send(JSON.stringify(errorResponse));
+    } catch (sendError) {
+      console.error("[sendWsError] Failed to send error response:", sendError);
+    }
+  }
+
+  function getStreamingErrorPayload(error: any): { code: string; error: string } {
+    if (error instanceof OpenAIConfigurationError || error?.code === "OPENAI_API_KEY_MISSING") {
+      return {
+        code: "OPENAI_NOT_CONFIGURED",
+        error: "I'm temporarily unavailable right now. Please retry in a moment."
+      };
+    }
+
+    const status = Number(error?.status || error?.statusCode || error?.response?.status || 0);
+    const apiCode = typeof error?.code === "string" ? error.code.toLowerCase() : "";
+    const message = typeof error?.message === "string" ? error.message.toLowerCase() : "";
+
+    if (status === 401 || apiCode.includes("invalid_api_key") || message.includes("invalid api key")) {
+      return {
+        code: "OPENAI_AUTH_FAILED",
+        error: "I'm temporarily unavailable right now. Please retry in a moment."
+      };
+    }
+
+    if (
+      status === 429 ||
+      apiCode.includes("rate_limit") ||
+      apiCode.includes("insufficient_quota") ||
+      message.includes("rate limit") ||
+      message.includes("quota")
+    ) {
+      return {
+        code: "OPENAI_RATE_LIMITED",
+        error: "I'm handling high traffic right now. Please retry in a minute."
+      };
+    }
+
+    if (
+      status === 404 ||
+      apiCode.includes("model_not_found") ||
+      (message.includes("model") && message.includes("not found"))
+    ) {
+      return {
+        code: "OPENAI_MODEL_UNAVAILABLE",
+        error: "I'm temporarily unavailable right now. Please retry in a moment."
+      };
+    }
+
+    return {
+      code: "STREAMING_GENERATION_FAILED",
+      error: "I'm still here, but this reply could not be completed. Please try again."
+    };
+  }
+
+  function buildServiceFallbackMessage(params: {
+    mode: "project" | "team" | "agent";
+    agentName?: string;
+    agentRole?: string;
+    userMessage: string;
+    errorCode: string;
+  }): string {
+    const defaultRole = "Product Manager";
+    const roleFallback = params.agentRole && params.agentRole.trim() !== "" ? params.agentRole : defaultRole;
+    const displayRole = roleFallback;
+
+    const fallbacks = [
+      `Hey there! Your ${displayRole} is currently out for lunch. 🥪 I'll be back in just a few to respond to your message!`,
+      `Looks like your ${displayRole} took a quick break to stretch their digital legs and go for a walk. 🚶‍♂️ Give me a minute and I'll be right back with you!`,
+      `Quick heads up — your ${displayRole} is resting their circuits for a minute. 🔋 I'll review "${params.userMessage.slice(0, 20)}..." as soon as I'm back online!`,
+      `Your ${displayRole} is currently having a little 'think session' over coffee. ☕ I'll be back awake and ready to dive in in just a few seconds.`
+    ];
+
+    const randomFallback = fallbacks[Math.floor(Math.random() * fallbacks.length)];
+
+    if (params.mode === "team") {
+      return `Team update: Your lead is taking a quick breather. 🌿 We're almost ready to keep going, just give us a minute to sync back up!`;
+    }
+
+    return randomFallback;
+  }
+
+  function deriveProjectBrainPatch(params: {
+    userMessage: string;
+    assistantResponse: string;
+    existingProject: Project;
+  }): {
+    coreDirection?: { whatBuilding?: string; whyMatters?: string; whoFor?: string };
+    executionRules?: string;
+    teamCulture?: string;
+  } | null {
+    const normalize = (input: string, max = 240) => {
+      const compact = input.replace(/\s+/g, " ").trim();
+      if (!compact) return "";
+      return compact.length > max ? `${compact.slice(0, max - 1).trimEnd()}...` : compact;
+    };
+
+    const explicitAfter = (regex: RegExp, text: string) => {
+      const match = text.match(regex);
+      return match?.[1] ? normalize(match[1]) : "";
+    };
+
+    const user = normalize(params.userMessage || "", 420);
+    if (!user) return null;
+
+    const patch: {
+      coreDirection?: { whatBuilding?: string; whyMatters?: string; whoFor?: string };
+      executionRules?: string;
+      teamCulture?: string;
+    } = {};
+
+    const explicitWhat = explicitAfter(
+      /(?:what are you building|building)\s*[:\-]\s*(.+?)(?=\s*(?:why does this matter|why|who is this for|target audience|for whom|execution rules|rules|constraints|culture|brand voice|tone)\s*[:\-]|$)/i,
+      user
+    );
+    const explicitWhy = explicitAfter(
+      /(?:why does this matter|why)\s*[:\-]\s*(.+?)(?=\s*(?:who is this for|target audience|for whom|execution rules|rules|constraints|culture|brand voice|tone)\s*[:\-]|$)/i,
+      user
+    );
+    const explicitWho = explicitAfter(
+      /(?:who is this for|target audience|for whom)\s*[:\-]\s*(.+?)(?=\s*(?:execution rules|rules|constraints|culture|brand voice|tone)\s*[:\-]|$)/i,
+      user
+    );
+    const explicitRules = explicitAfter(
+      /(?:execution rules|rules|constraints)\s*[:\-]\s*(.+?)(?=\s*(?:culture|brand voice|tone)\s*[:\-]|$)/i,
+      user
+    );
+    const explicitCulture = explicitAfter(
+      /(?:culture|brand voice|tone)\s*[:\-]\s*(.+)$/i,
+      user
+    );
+
+    const explicitCount = [explicitWhat, explicitWhy, explicitWho, explicitRules, explicitCulture]
+      .filter((value) => value.length > 0).length;
+    if (explicitCount === 0) {
+      return null;
+    }
+
+    const coreDirectionPatch: { whatBuilding?: string; whyMatters?: string; whoFor?: string } = {};
+
+    if (explicitWhat) {
+      coreDirectionPatch.whatBuilding = explicitWhat;
+    }
+
+    if (explicitWhy) {
+      coreDirectionPatch.whyMatters = explicitWhy;
+    }
+
+    if (explicitWho) {
+      coreDirectionPatch.whoFor = explicitWho;
+    }
+
+    if (Object.keys(coreDirectionPatch).length > 0) {
+      patch.coreDirection = coreDirectionPatch;
+    }
+
+    if (explicitRules) {
+      patch.executionRules = explicitRules;
+    }
+
+    if (explicitCulture) {
+      patch.teamCulture = explicitCulture;
+    }
+
+    return Object.keys(patch).length > 0 ? patch : null;
+  }
+
+  // Hatch chat endpoint (non-streaming fallback)
+  app.post("/api/hatch/chat", async (req, res) => {
+    try {
+      const { user = "", history = [] } = req.body || {};
+      const context = {
+        mode: 'project' as const,
+        projectName: 'Chat',
+        agentRole: 'Product Manager',
+        conversationHistory: (history || []).map((m: any) => ({
+          role: m.role === 'assistant' ? 'assistant' : 'user',
+          content: m.content || '',
+          timestamp: new Date().toISOString(),
+        })),
+        userId: (req.session as any).userId || 'anonymous',
+      };
+
+      const ai = await generateIntelligentResponse(user || 'Hello', 'Product Manager', context);
+
+      return res.json({
+        messages: [...(history || []), { role: 'assistant', content: ai.content }],
+        reply: ai.content,
+        metadata: ai.metadata,
+      });
+    } catch (error) {
+      console.error("Hatch chat error:", error);
+      res.status(500).json({ error: "Failed to process chat" });
+    }
+  });
+
+  // WebSocket Server Setup
+  const wss = new WebSocketServer({
+    server: httpServer,
+    path: '/ws'
+  });
+
+  const applySessionToWsRequest = async (req: any): Promise<void> => {
+    if (!sessionParser) return;
+    await new Promise<void>((resolve, reject) => {
+      const responseMock = {
+        getHeader: () => undefined,
+        setHeader: () => undefined,
+        writeHead: () => undefined,
+        end: () => undefined,
+      };
+      sessionParser(req, responseMock as any, (err?: unknown) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve();
+      });
+    });
+  };
+
+  // Store active connections by conversation ID
+  const activeConnections = new Map<string, Set<WebSocket>>();
+
+  // Track conversations using streaming to prevent double handlers
+  const streamingConversations = new Set<string>();
+
+  // Track active streaming responses to prevent duplicates
+  const activeStreamingResponses = new Set<string>();
+
+  const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  async function waitForStreamingSlot(conversationId: string, timeoutMs = 45000): Promise<boolean> {
+    const startedAt = Date.now();
+    while (activeStreamingResponses.has(conversationId)) {
+      if (Date.now() - startedAt >= timeoutMs) {
+        return false;
+      }
+      await wait(50);
+    }
+    return true;
+  }
+
+  const getWsHealth = () => {
+    let activeCount = 0;
+    activeConnections.forEach((connections) => {
+      activeCount += connections.size;
+    });
+    return {
+      status: "ok" as const,
+      connections: activeCount,
+    };
+  };
+
+  // Helper to ensure canonical conversation exists for all scopes
+  const ensureConversationExists = async (params: {
+    conversationId: string;
+    projectId: string;
+    teamId?: string | null;
+    agentId?: string | null;
+    type: 'project' | 'team' | 'agent';
+  }) => {
+    const existingConversations = await storage.getConversationsByProject(params.projectId);
+    const existing = existingConversations.find(conv => conv.id === params.conversationId);
+
+    if (existing) {
+      if (process.env.NODE_ENV === 'development' || process.env.DEV) {
+        devLog(`[ConversationBootstrap] Conversation already exists: ${params.conversationId}`);
+      }
+      return existing;
+    }
+
+    const newConversation = await storage.createConversation({
+      id: params.conversationId,
+      projectId: params.projectId,
+      teamId: params.teamId ?? null,
+      agentId: params.agentId ?? null,
+      type: params.type === 'agent' ? 'hatch' : params.type,
+      title: null
+    } as any);
+
+    devLog(`[ConversationBootstrap] Created new canonical conversation: ${params.conversationId}`);
+    return newConversation;
+  };
+
+  wss.on('connection', async (rawWs: WebSocket, req) => {
+    const ws = rawWs as AuthedWebSocket;
+    const pendingMessages: Buffer[] = [];
+    const queueMessage = (rawMessage: Buffer) => {
+      pendingMessages.push(rawMessage);
+    };
+    ws.on('message', queueMessage);
+
+    try {
+      await applySessionToWsRequest(req as any);
+    } catch (error) {
+      console.error('❌ WebSocket session parse failed:', error);
+      sendWsError(ws, {
+        code: "UNAUTHORIZED",
+        message: "Authentication required.",
+      });
+      ws.close(4401, 'Unauthorized');
+      return;
+    }
+
+    const socketUserId = (req as any)?.session?.userId as string | undefined;
+    if (!socketUserId) {
+      sendWsError(ws, {
+        code: "UNAUTHORIZED",
+        message: "Authentication required.",
+      });
+      ws.close(4401, 'Unauthorized');
+      return;
+    }
+    ws.__userId = socketUserId;
+    devLog('New WebSocket connection established');
+
+    const handleWsMessage = async (rawMessage: Buffer) => {
+      try {
+        const parsedData = JSON.parse(rawMessage.toString());
+        const dtoCheck = wsClientMessageSchema.safeParse(parsedData);
+        if (!dtoCheck.success) {
+          sendWsError(ws, {
+            code: "INVALID_ENVELOPE",
+            message: "Invalid websocket payload shape.",
+            details: { issues: dtoCheck.error.issues },
+          });
+          return;
+        }
+        const data = dtoCheck.data as any;
+
+        switch (data.type) {
+          case 'join_conversation': {
+            const conversationId = data.conversationId;
+            if (!conversationId || typeof conversationId !== 'string' || !conversationId.trim()) {
+              sendWsError(ws, {
+                code: "INVALID_JOIN",
+                message: "conversationId is required and must be a non-empty string.",
+                details: {},
+              });
+              break;
+            }
+            try {
+              parseConversationId(conversationId.trim());
+            } catch {
+              sendWsError(ws, {
+                code: "INVALID_JOIN",
+                message: "conversationId must be project:, team:, or agent: format.",
+                details: {},
+              });
+              break;
+            }
+
+            const canAccessConversation = await conversationOwnedByUser(conversationId.trim(), ws.__userId!);
+            if (!canAccessConversation) {
+              sendWsError(ws, {
+                code: "FORBIDDEN",
+                message: "Conversation not accessible.",
+              });
+              break;
+            }
+            if (!activeConnections.has(conversationId)) {
+              activeConnections.set(conversationId, new Set());
+            }
+            activeConnections.get(conversationId)!.add(ws);
+            ws.send(JSON.stringify({
+              type: 'connection_confirmed',
+              conversationId
+            }));
+
+            // P2: Auto-send welcome message for agent conversations with no messages yet
+            if (conversationId.trim().startsWith('agent:')) {
+              try {
+                const parsed = parseConversationId(conversationId.trim());
+                const agentId = (parsed as any).agentId;
+                if (agentId) {
+                  const existingMsgs = await storage.getMessagesByConversation(conversationId.trim(), { limit: 1 });
+                  if (existingMsgs.length === 0) {
+                    const agent = await storage.getAgent(agentId);
+                    if (agent) {
+                      const personality = agent.personality as Record<string, unknown> | null;
+                      const welcomeText = (personality?.welcomeMessage as string | undefined) ||
+                        `Hey — I'm ${agent.name}, your ${agent.role}. What are we working on?`;
+                      const welcomeMsg = await storage.createMessage({
+                        id: randomUUID(),
+                        conversationId: conversationId.trim(),
+                        content: welcomeText,
+                        messageType: 'agent',
+                        agentId: agent.id,
+                        userId: null,
+                        metadata: { isWelcome: true },
+                      } as any);
+                      broadcastToConversation(conversationId.trim(), {
+                        type: 'new_message',
+                        conversationId: conversationId.trim(),
+                        message: welcomeMsg,
+                      });
+                    }
+                  }
+                }
+              } catch { /* non-critical — join still works if welcome fails */ }
+            }
+
+            // Seed personality profile from DB so learning survives server restart.
+            if (conversationId.trim().startsWith('agent:') && ws.__userId) {
+              try {
+                const parsed = parseConversationId(conversationId.trim());
+                const seedAgentId = (parsed as any).agentId;
+                if (seedAgentId) {
+                  const seedAgent = await storage.getAgent(seedAgentId);
+                  const persisted = (seedAgent?.personality as any);
+                  const uid = ws.__userId;
+                  if (persisted?.adaptedTraits?.[uid] && persisted?.adaptationMeta?.[uid]) {
+                    personalityEngine.seedProfileFromDB(
+                      seedAgentId, uid,
+                      persisted.adaptedTraits[uid],
+                      persisted.adaptationMeta[uid]
+                    );
+                  }
+                }
+              } catch { /* non-critical */ }
+            }
+            break;
+          }
+
+          case 'send_message_streaming':
+            devLog('🔄 Processing streaming message:', data);
+
+            // Phase 1.2: Production-safe envelope validation (never rethrow — log and send error)
+            let validationResult;
+            try {
+              validationResult = validateMessageIngress(data);
+            } catch (err: any) {
+              console.error('WebSocket validation error:', err?.message ?? err);
+              sendWsError(ws, {
+                code: "INVALID_ENVELOPE",
+                message: "Invalid message payload.",
+                details: { reason: err?.message ?? "Validation failed" },
+              });
+              break;
+            }
+
+            if (!validationResult.success) {
+              sendWsError(ws, {
+                code: "INVALID_ENVELOPE",
+                message: "Invalid message format.",
+                details: { reason: validationResult.error ?? "Validation failed" },
+              });
+              break;
+            }
+
+            // Extract validated envelope fields
+            const envelope = validationResult.envelope!;
+            const validatedMode = validationResult.mode!;
+            const validatedProjectId = validationResult.projectId!;
+            const validatedContextId = validationResult.contextId;
+            const addressedAgentId = validationResult.addressedAgentId;
+
+            // Phase 1.2: Production-safe invariant assertions (never rethrow)
+            try {
+              assertPhase1Invariants({
+                type: 'routing_consistency',
+                conversationId: envelope.conversationId,
+                mode: validatedMode,
+                projectId: validatedProjectId,
+                contextId: validatedContextId || null,
+              });
+            } catch (err: any) {
+              console.error('WebSocket invariant error:', err?.message ?? err);
+              sendWsError(ws, {
+                code: "INVARIANT_VIOLATION",
+                message: "Request violates server contracts.",
+                details: { reason: err?.message ?? "Invariant violation", type: "routing_consistency" },
+              });
+              break;
+            }
+
+            // Conversation state integrity checks: id uniqueness, idempotency, ordering
+            const messageId = ensureMessageId(
+              String(
+                envelope.message?.metadata?.clientMessageId ||
+                envelope.message?.metadata?.messageId ||
+                `msg-${Date.now()}`
+              )
+            );
+            const streamingData = envelope.message;
+            const idempotencyKey = typeof streamingData?.metadata?.idempotencyKey === "string"
+              ? streamingData.metadata.idempotencyKey
+              : undefined;
+            const idempotencyCheck = checkIdempotencyKey(envelope.conversationId, idempotencyKey);
+            if (!idempotencyCheck.shouldProcess) {
+              ws.send(JSON.stringify({
+                type: 'streaming_completed',
+                messageId,
+                message: null,
+                skipped: true,
+                reason: idempotencyCheck.reason,
+              }));
+              break;
+            }
+            const orderingCheck = assertConversationOrdering(
+              envelope.conversationId,
+              typeof streamingData.timestamp === "string" ? streamingData.timestamp : undefined
+            );
+            if (!orderingCheck.inOrder) {
+              sendWsError(ws, {
+                code: "ORDERING_VIOLATION",
+                message: "Out-of-order message sequence detected.",
+                details: { reason: orderingCheck.reason },
+              });
+              break;
+            }
+
+            // Mark this conversation as using streaming
+            streamingConversations.add(envelope.conversationId);
+            devLog('🎯 Marked conversation as streaming:', envelope.conversationId);
+            devLog('🔍 Current streaming conversations:', Array.from(streamingConversations));
+
+            // CRITICAL: Ensure conversation exists before saving any messages
+            await ensureConversationExists({
+              conversationId: envelope.conversationId,
+              projectId: validatedProjectId,
+              teamId: validatedMode === 'team' ? validatedContextId : null,
+              agentId: validatedMode === 'agent' ? validatedContextId : null,
+              type: validatedMode
+            });
+
+            // Save initial user message
+            // Phase 1.2: Resolve actual userId from session if client sends generic placeholder
+            const sessionUserId = ws.__userId;
+            const canAccessStreamingConversation = await conversationOwnedByUser(envelope.conversationId, sessionUserId!);
+            if (!canAccessStreamingConversation) {
+              sendWsError(ws, {
+                code: "FORBIDDEN",
+                message: "Conversation not accessible.",
+              });
+              break;
+            }
+            const finalUserId = (streamingData.userId === 'user' || streamingData.userId === 'current-user' || !streamingData.userId)
+              ? sessionUserId
+              : streamingData.userId;
+
+            const userMessageData = insertMessageSchema.parse({
+              ...streamingData,
+              userId: finalUserId,
+              conversationId: envelope.conversationId,
+            });
+            const uniqueness = assertUniqueMessageId(envelope.conversationId, messageId);
+            if (!uniqueness.unique) {
+              ws.send(JSON.stringify({
+                type: 'streaming_completed',
+                messageId,
+                message: null,
+                skipped: true,
+                reason: uniqueness.reason,
+              }));
+              break;
+            }
+            const savedUserMessage = await storage.createMessage(userMessageData);
+            devLog('💾 User message saved:', savedUserMessage.id);
+
+            // Broadcast user message immediately
+            broadcastToConversation(envelope.conversationId, {
+              type: 'new_message',
+              message: savedUserMessage,
+              conversationId: envelope.conversationId
+            });
+
+            // Send real-time metrics update - use validated fields
+            broadcastToConversation(envelope.conversationId, {
+              type: 'chat_message',
+              projectId: validatedProjectId,
+              teamId: validatedMode === 'team' ? validatedContextId || undefined : undefined,
+              agentId: savedUserMessage.agentId,
+              conversationId: envelope.conversationId,
+              data: {
+                content: savedUserMessage.content,
+                senderId: savedUserMessage.agentId || savedUserMessage.userId || 'user',
+                messageId: savedUserMessage.id
+              },
+              timestamp: new Date().toISOString()
+            });
+
+            // Start streaming AI response
+            devLog('🚀 Starting streaming response...');
+
+            // Serialize responses per conversation to avoid duplicate replies and busy races.
+            const slotAcquired = await waitForStreamingSlot(
+              envelope.conversationId,
+              Number(process.env.HARD_RESPONSE_TIMEOUT_MS || 45000)
+            );
+            if (!slotAcquired) {
+              ws.send(JSON.stringify({
+                type: 'streaming_error',
+                messageId,
+                conversationId: envelope.conversationId,
+                code: 'CONVERSATION_BUSY',
+                error: "I'm still finishing an earlier reply. Please retry in a few seconds."
+              }));
+              break;
+            }
+
+            // Mark as actively streaming
+            activeStreamingResponses.add(envelope.conversationId);
+
+            // P2: Emit server-calculated typing indicator (scaled to message complexity)
+            {
+              const wordCount = (envelope.message?.content || '').split(/\s+/).filter(Boolean).length;
+              const typingMs = Math.min(Math.max(wordCount * 80, 1200), 4000);
+              broadcastToConversation(envelope.conversationId, {
+                type: 'typing_started',
+                agentId: addressedAgentId || null,
+                estimatedDuration: typingMs,
+              });
+            }
+
+            try {
+              await handleStreamingColleagueResponse(
+                savedUserMessage,
+                envelope.conversationId,
+                ws,
+                {
+                  mode: validatedMode,
+                  projectId: validatedProjectId,
+                  contextId: validatedContextId || null,
+                  addressedAgentId,
+                }
+              );
+            } catch (error) {
+              console.error('❌ Streaming response error:', error);
+              const payload = getStreamingErrorPayload(error);
+              ws.send(JSON.stringify({
+                type: 'streaming_error',
+                messageId,
+                code: payload.code,
+                error: payload.error
+              }));
+            } finally {
+              // Remove from active streaming
+              activeStreamingResponses.delete(envelope.conversationId);
+            }
+            break;
+
+          case 'cancel_streaming':
+            // B1.3: Handle streaming cancellation
+            ws.send(JSON.stringify({
+              type: 'streaming_cancelled',
+              messageId: data.messageId
+            }));
+            break;
+
+          case 'send_message':
+            // Phase 1.2: Resolve actual userId from session if client sends generic placeholder
+            const msgSessionId = ws.__userId;
+            const canAccessSendConversation = await conversationOwnedByUser(data.conversationId, msgSessionId!);
+            if (!canAccessSendConversation) {
+              sendWsError(ws, {
+                code: "FORBIDDEN",
+                message: "Conversation not accessible.",
+              });
+              break;
+            }
+            const msgUserId = (data.message.userId === 'user' || data.message.userId === 'current-user' || !data.message.userId)
+              ? msgSessionId
+              : data.message.userId;
+
+            const messageData = insertMessageSchema.parse({
+              ...data.message,
+              userId: msgUserId
+            });
+            const savedMessage = await storage.createMessage(messageData);
+
+            // Broadcast message to all connected clients in this conversation
+            const connections = activeConnections.get(data.conversationId);
+            if (connections) {
+              const broadcastData = JSON.stringify({
+                type: 'new_message',
+                message: savedMessage,
+                conversationId: data.conversationId
+              });
+
+              connections.forEach(connection => {
+                if (connection.readyState === WebSocket.OPEN) {
+                  connection.send(broadcastData);
+                }
+              });
+            }
+
+            // AI responses are handled only by send_message_streaming to avoid double replies
+            break;
+
+          case 'start_typing':
+            await storage.setTypingIndicator(data.conversationId, data.agentId, true, data.estimatedDuration);
+            broadcastToConversation(data.conversationId, {
+              type: 'typing_started',
+              agentId: data.agentId,
+              estimatedDuration: data.estimatedDuration
+            });
+            break;
+
+          case 'stop_typing':
+            await storage.setTypingIndicator(data.conversationId, data.agentId, false);
+            broadcastToConversation(data.conversationId, {
+              type: 'typing_stopped',
+              agentId: data.agentId
+            });
+            break;
+        }
+      } catch (error: any) {
+        // Phase 1.2: Never crash the process — log and send error to client (dev and prod)
+        console.error('WebSocket handled error:', error?.message ?? error);
+        sendWsError(ws, {
+          code: "INTERNAL_ERROR",
+          message: "Something went wrong processing your message.",
+          details: {
+            errorType: error?.name || "UnknownError",
+            ...(process.env.NODE_ENV !== "production" && { message: error?.message }),
+          },
+        });
+      }
+    };
+
+    ws.off('message', queueMessage);
+    ws.on('message', (rawMessage: Buffer) => {
+      void handleWsMessage(rawMessage);
+    });
+
+    if (pendingMessages.length > 0) {
+      for (const queuedMessage of pendingMessages.splice(0)) {
+        await handleWsMessage(queuedMessage);
+      }
+    }
+
+    ws.on('close', () => {
+      // Remove this connection from all conversation rooms
+      activeConnections.forEach((connections, conversationId) => {
+        connections.delete(ws);
+        if (connections.size === 0) {
+          activeConnections.delete(conversationId);
+          // Clean up streaming tracking for conversations with no active connections
+          streamingConversations.delete(conversationId);
+          activeStreamingResponses.delete(conversationId);
+          devLog('🧹 Cleaned up streaming conversation:', conversationId);
+        }
+      });
+      devLog('WebSocket connection closed');
+    });
+
+    ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
+    });
+  });
+
+  // Helper function to broadcast to all connections in a conversation
+  function broadcastToConversation(
+    conversationId: string,
+    data: any,
+    options?: { exclude?: WebSocket }
+  ) {
+    const connections = activeConnections.get(conversationId);
+    if (connections) {
+      const message = JSON.stringify(data);
+      connections.forEach(connection => {
+        if (options?.exclude && connection === options.exclude) {
+          return;
+        }
+        if (connection.readyState === WebSocket.OPEN) {
+          connection.send(message);
+        }
+      });
+    }
+  }
+
+  // Expose broadcast to other server modules (e.g. background autonomy runner)
+  // Broadcast to all conversations belonging to a given project
+  function broadcastToProject(projectId: string, data: unknown) {
+    const payload = JSON.stringify(data);
+    for (const [conversationId, connections] of activeConnections.entries()) {
+      let parsed: { projectId: string } | null = null;
+      try { parsed = parseConversationId(conversationId); } catch { parsed = null; }
+      if (!parsed || parsed.projectId !== projectId) continue;
+      connections.forEach((connection) => {
+        if (connection.readyState === WebSocket.OPEN) {
+          connection.send(payload);
+        }
+      });
+    }
+  }
+
+  // Expose broadcast functions to routes.ts via callback so it can set _globalBroadcast
+  // and pass them to project/task route modules
+  onBroadcastReady({ broadcastToConversation, broadcastToProject });
+
+  // E2.1: Multi-agent response handler for team dynamics
+  async function handleMultiAgentResponse(
+    selectedAgents: Agent[],
+    userMessage: any,
+    chatContext: any,
+    sharedMemory: string,
+    responseMessageId: string,
+    conversationId: string,
+    ws: WebSocket,
+    abortController: AbortController
+  ) {
+    devLog('🤝 Handling multi-agent team response with', selectedAgents.length, 'agents');
+
+    // Parse conversationId to get canonical projectId for memory retrieval
+    let projectId: string | null = null;
+    try {
+      const parsed = parseConversationId(conversationId);
+      projectId = parsed.projectId;
+    } catch (error: any) {
+      // Safe degradation: if conversationId cannot be parsed, log and continue without memory
+      if (process.env.NODE_ENV === 'development' || process.env.DEV) {
+        console.warn(`⚠️ Cannot parse conversationId for memory retrieval: ${conversationId}`, error.message);
+      }
+      // projectId remains null, will use empty memory string
+    }
+
+    try {
+      // E2.2: Agent response priority and ordering
+      const prioritizedAgents = selectedAgents.sort((a, b) => {
+        // Prioritize Product Managers for complex questions
+        if (a.role === 'Product Manager' && b.role !== 'Product Manager') return -1;
+        if (b.role === 'Product Manager' && a.role !== 'Product Manager') return 1;
+        return 0;
+      });
+
+      let teamResponse = '';
+      const agentResponses: Array<{ agent: Agent, content: string, confidence: number }> = [];
+
+      // E2.3: Team consensus building - get responses from each agent
+      for (const agent of prioritizedAgents) {
+        if (abortController.signal.aborted) break;
+
+        devLog(`🤖 Getting response from ${agent.name} (${agent.role})`);
+
+        // Notify client which agent is currently thinking
+        ws.send(JSON.stringify({
+          type: 'streaming_chunk',
+          messageId: responseMessageId,
+          chunk: `[${agent.name} is thinking...]\n`,
+          accumulatedContent: teamResponse + `[${agent.name} is thinking...]\n`
+        }));
+
+        try {
+          // Get agent-specific shared memory using canonical projectId
+          const agentMemory = projectId
+            ? await storage.getSharedMemoryForAgent(agent.id, projectId)
+            : '';
+
+          if (!projectId && (process.env.NODE_ENV === 'development' || process.env.DEV)) {
+            console.warn(`⚠️ Skipping memory retrieval for agent ${agent.id}: invalid/missing projectId from conversationId ${conversationId}`);
+          }
+
+          // Generate response from this agent
+          const agentContext = {
+            ...chatContext,
+            agentRole: agent.role,
+            teamMode: true,
+            otherAgents: prioritizedAgents.filter(a => a.id !== agent.id).map(a => a.role)
+          };
+
+          const streamGenerator = generateStreamingResponse(
+            userMessage.content,
+            agent.role,
+            agentContext,
+            agentMemory,
+            abortController.signal
+          );
+
+          let agentContent = '';
+          for await (const chunk of streamGenerator) {
+            if (abortController.signal.aborted) break;
+            agentContent += chunk;
+          }
+
+          if (agentContent.trim()) {
+            agentResponses.push({
+              agent,
+              content: agentContent,
+              confidence: calculateExpertiseConfidence(agent, userMessage.content, {})
+            });
+          }
+
+        } catch (error) {
+          console.error(`❌ Error getting response from ${agent.name}:`, error);
+
+          // E3.1: Attempt handoff to another agent if current agent fails
+          const availableAgents = prioritizedAgents.filter(a => a.id !== agent.id);
+          if (availableAgents.length > 0) {
+            const handoffTarget = availableAgents[0];
+            const handoffRequest = initiateHandoff(
+              agent,
+              handoffTarget,
+              'Agent failure - automatic handoff',
+              userMessage.content
+            );
+
+            const handoffResult = processHandoffRequest(handoffRequest, availableAgents);
+            if (handoffResult.accepted) {
+              devLog(`🔄 Handing off from ${agent.name} to ${handoffTarget.name}: ${handoffResult.reason}`);
+
+              // Record handoff attempt
+              const handoffStartTime = Date.now();
+              try {
+                // Get fresh memory and context for handoff using canonical projectId
+                const handoffAgentMemory = projectId
+                  ? await storage.getSharedMemoryForAgent(handoffTarget.id, projectId)
+                  : '';
+
+                if (!projectId && (process.env.NODE_ENV === 'development' || process.env.DEV)) {
+                  console.warn(`⚠️ Skipping memory retrieval for handoff agent ${handoffTarget.id}: invalid/missing projectId from conversationId ${conversationId}`);
+                }
+                const handoffAgentContext = {
+                  ...chatContext,
+                  agentRole: handoffTarget.role,
+                  teamMode: true,
+                  otherAgents: prioritizedAgents.filter(a => a.id !== handoffTarget.id).map(a => a.role)
+                };
+
+                const handoffContext = transferContext(handoffRequest, chatContext.conversationHistory, handoffAgentMemory);
+                const handoffStreamGenerator = generateStreamingResponse(
+                  handoffContext,
+                  handoffTarget.role,
+                  handoffAgentContext,
+                  handoffAgentMemory,
+                  abortController.signal
+                );
+
+                let handoffContent = '';
+                for await (const chunk of handoffStreamGenerator) {
+                  if (abortController.signal.aborted) break;
+                  handoffContent += chunk;
+                }
+
+                if (handoffContent.trim()) {
+                  agentResponses.push({
+                    agent: handoffTarget,
+                    content: handoffContent,
+                    confidence: calculateExpertiseConfidence(handoffTarget, userMessage.content, {})
+                  });
+
+                  // Record successful handoff
+                  const handoffDuration = Date.now() - handoffStartTime;
+                  handoffTracker.recordHandoff(handoffRequest, handoffDuration, true);
+                  devLog(`✅ Handoff to ${handoffTarget.name} completed successfully`);
+                }
+              } catch (handoffError) {
+                console.error(`❌ Handoff to ${handoffTarget.name} failed:`, handoffError);
+                const handoffDuration = Date.now() - handoffStartTime;
+                handoffTracker.recordHandoff(handoffRequest, handoffDuration, false);
+              }
+            }
+          }
+        }
+      }
+
+      // E2.4: Agent disagreement handling and consensus building
+      if (agentResponses.length > 1) {
+        // Build consensus response
+        teamResponse = buildTeamConsensus(agentResponses, userMessage.content);
+      } else if (agentResponses.length === 1) {
+        teamResponse = agentResponses[0].content;
+      } else {
+        teamResponse = "I'm sorry, I couldn't generate a response from the team at this time.";
+      }
+
+      // Stream the team response
+      const words = teamResponse.split(' ');
+      let accumulatedContent = '';
+      for (let i = 0; i < words.length; i++) {
+        if (abortController.signal.aborted) break;
+
+        const chunk = words[i] + (i < words.length - 1 ? ' ' : '');
+        accumulatedContent += chunk;
+
+        // Send chunk to client
+        ws.send(JSON.stringify({
+          type: 'streaming_chunk',
+          messageId: responseMessageId,
+          chunk,
+          accumulatedContent
+        }));
+
+        // Simulate typing delay for natural feel
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+
+      devLog('✅ Multi-agent team response completed');
+
+    } catch (error) {
+      console.error('❌ Error in multi-agent response:', error);
+      // Fallback to single agent response
+      const fallbackAgent = selectedAgents[0];
+      const streamGenerator = generateStreamingResponse(
+        userMessage.content,
+        fallbackAgent.role,
+        chatContext,
+        sharedMemory,
+        abortController.signal
+      );
+
+      let fallbackContent = '';
+      for await (const chunk of streamGenerator) {
+        if (abortController.signal.aborted) break;
+        fallbackContent += chunk;
+
+        ws.send(JSON.stringify({
+          type: 'streaming_chunk',
+          messageId: responseMessageId,
+          chunk,
+          accumulatedContent: fallbackContent
+        }));
+      }
+    }
+  }
+
+  // E2.3: Team consensus building function
+  function buildTeamConsensus(agentResponses: Array<{ agent: Agent, content: string, confidence: number }>, userMessage: string): string {
+    devLog('🤝 Building team consensus from', agentResponses.length, 'responses');
+
+    // Sort by confidence
+    const sortedResponses = agentResponses.sort((a, b) => b.confidence - a.confidence);
+
+    // For now, use the highest confidence response as the base
+    // In a more sophisticated implementation, this would analyze and merge responses
+    const primaryResponse = sortedResponses[0];
+    const supportingAgents = sortedResponses.slice(1);
+
+    let consensusResponse = primaryResponse.content;
+
+    // Add team context if multiple agents contributed
+    if (supportingAgents.length > 0) {
+      const teamMembers = sortedResponses.map(r => r.agent.role).join(', ');
+      consensusResponse = `As a team (${teamMembers}), here's our collective response:\n\n${consensusResponse}`;
+    }
+
+    return consensusResponse;
+  }
+
+  // B1.1 & B1.2: Streaming AI colleague response handler
+  async function handleStreamingColleagueResponse(
+    userMessage: any,
+    conversationId: string,
+    ws: WebSocket,
+    validatedContext?: {
+      mode: "project" | "team" | "agent";
+      projectId: string;
+      contextId: string | null;
+      addressedAgentId?: string;
+    }
+  ) {
+    devLog('🎯 Starting streaming handler for:', conversationId);
+    let resolvedMode: "project" | "team" | "agent" = "project";
+    let resolvedProjectId: string | null = validatedContext?.projectId || null;
+    let fallbackResponder: Agent | null = null;
+    let responseMessageId = `response-${Date.now()}`;
+    let hasStreamingStarted = false;
+    const turnStartedAt = Date.now();
+    let llmMetadata: any = null;
+    let traceId: string | null = null;
+    try {
+      // Parse conversation ID using shared utility (replaces brittle split logic)
+      // Validate conversationId is present and is a string
+      if (!conversationId || typeof conversationId !== 'string') {
+        devLog('❌ Invalid conversation ID: must be a non-empty string');
+        ws.send(JSON.stringify({
+          type: 'streaming_error',
+          error: 'Invalid conversation ID format'
+        }));
+        return;
+      }
+
+      let parsed;
+      try {
+        parsed = parseConversationId(conversationId);
+      } catch (error: any) {
+        // Handle parsing errors safely
+        if (error.message.includes('Ambiguous conversation ID')) {
+          console.error('❌ Ambiguous conversation ID cannot be safely parsed:', conversationId);
+          console.error('   Error:', error.message);
+          ws.send(JSON.stringify({
+            type: 'streaming_error',
+            error: 'Ambiguous conversation context; projectId cannot be safely derived from conversationId. Rename project/team IDs to avoid ambiguous hyphen splits or adopt a safe encoding.',
+            conversationId
+          }));
+          return;
+        } else {
+          // Other parsing errors (invalid format, etc.)
+          console.error('❌ Invalid conversation ID format:', conversationId, error.message);
+          ws.send(JSON.stringify({
+            type: 'streaming_error',
+            error: `Invalid conversation ID format: ${error.message}`,
+            conversationId
+          }));
+          return;
+        }
+      }
+
+      // Extract parsed values (use validated context if available, otherwise parse)
+      const mode = validatedContext?.mode || (parsed.scope as 'project' | 'team' | 'agent');
+      const projectId = validatedContext?.projectId || parsed.projectId;
+      const contextId = validatedContext?.contextId ?? parsed.contextId;
+      const addressedAgentId = validatedContext?.addressedAgentId;
+      resolvedMode = mode;
+      resolvedProjectId = projectId;
+
+      devLog('🔍 Parsed conversation:', { mode, projectId, contextId, addressedAgentId });
+
+      devLog('🔍 Parsed conversation:', { mode, projectId, contextId, addressedAgentId });
+
+      // Conversation is ensured at the WebSocket handler level
+
+      // Phase 1.2: Production-safe conversation existence assertion
+      try {
+        assertPhase1Invariants({
+          type: 'conversation_exists',
+          conversationId,
+        });
+      } catch (err: any) {
+        // In production, the assertion already logs warnings instead of throwing
+        if (isProd) {
+          console.warn("[INVARIANT] Conversation existence check failed (production-safe):", err.message);
+          // Continue processing - the outer catch will handle if needed
+        } else {
+          throw err; // Dev/test: rethrow
+        }
+      }
+
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        devLog('❌ Project not found:', projectId);
+        return;
+      }
+
+      const trace = await createDeliberationTrace({
+        userId: ((userMessage as any).userId || (validatedContext as any)?.userId || "unknown-user"),
+        projectId,
+        conversationId,
+        objective: userMessage.content || "",
+      });
+      traceId = trace.traceId;
+      await writeConfigSnapshot("live_scenario_run");
+
+      // Phase 1.2: Get available agents using centralized helper
+      // Get all project agents first, then filter by scope
+      const allProjectAgents = await storage.getAgentsByProject(projectId);
+      const projectAgentsAsAgentType: Agent[] = allProjectAgents.map(agent => ({
+        id: agent.id,
+        name: agent.name,
+        role: agent.role,
+        teamId: agent.teamId
+      }));
+
+      // Build scope context for agent availability filtering
+      const scopeContext: ScopeContext = {
+        projectId,
+        mode,
+        ...(mode === 'team' && contextId ? { teamId: contextId } : {}),
+        ...(mode === 'agent' && contextId ? { agentId: contextId } : {}),
+      };
+
+      // Phase 1.2: Use centralized agent availability helper
+      const availableAgents = filterAvailableAgents(projectAgentsAsAgentType, scopeContext);
+
+      let teamName: string | undefined;
+      if (mode === 'team' && contextId) {
+        const team = await storage.getTeam(contextId);
+        teamName = team?.name;
+      }
+
+      const conductorResult = evaluateConductorDecision({
+        userMessage: userMessage.content,
+        conversationMode: mode,
+        availableAgents,
+        addressedAgentId,
+        projectName: project.name,
+      });
+
+      const isStrategic = isStrategicTurn(userMessage.content);
+      const decisionForecasts = isStrategic
+        ? buildDecisionForecast({
+          userMessage: userMessage.content,
+          safetyScore: conductorResult.safetyScore,
+          projectName: project.name,
+        })
+        : [];
+
+      // Phase 1.2.a: Persistence invariant enforcement
+      // Message persistence must not depend on agent availability or orchestration success
+      // If no agents are available, we use PM Maya fallback (not fake "System" agent)
+
+      // Helper: Get PM fallback agent for the project
+      const getProjectPmFallback = async (projectId: string): Promise<Agent | null> => {
+        const projectAgents = await storage.getAgentsByProject(projectId);
+
+        // Find PM agent by role match (case-insensitive)
+        const pmAgent = projectAgents.find(agent => {
+          const roleLower = agent.role.toLowerCase();
+          return roleLower.includes('product manager') || roleLower === 'pm';
+        });
+
+        if (pmAgent) {
+          return {
+            id: pmAgent.id,
+            name: pmAgent.name,
+            role: pmAgent.role,
+            teamId: pmAgent.teamId
+          };
+        }
+
+        // Fallback to first agent in project (if any)
+        if (projectAgents.length > 0) {
+          const firstAgent = projectAgents[0];
+          return {
+            id: firstAgent.id,
+            name: firstAgent.name,
+            role: firstAgent.role,
+            teamId: firstAgent.teamId
+          };
+        }
+
+        // Last resort: no agents at all
+        return null;
+      };
+
+      let respondingAgent: Agent | null = null;
+      let selectedAgents: Agent[] = [];
+      let authority: { allowedSpeaker: Agent; reason: string } | null = null;
+      let isPmFallback = false;
+      let isSystemFallback = false;
+
+      if (availableAgents.length === 0) {
+        // Persistence invariant: Even with no agents, we must persist a response
+        // Try to use PM Maya fallback instead of fake "System" agent
+        const pmFallback = await getProjectPmFallback(projectId);
+
+        if (pmFallback) {
+          devLog('⚠️ No agents available in scope - using PM Maya fallback');
+          respondingAgent = pmFallback;
+          selectedAgents = [pmFallback];
+          isPmFallback = true;
+          // Phase 1.4: Explicit fallback classification
+          // Fallback type will be attached to message metadata
+        } else {
+          // Last resort: project has zero agents total
+          devLog('⚠️ No agents available at all - using system fallback (last resort)');
+          isSystemFallback = true;
+          // Phase 1.4: Explicit fallback classification
+          // Fallback type will be attached to message metadata
+        }
+      } else {
+        // Phase 1.1.b: Resolve speaking authority BEFORE any agent selection
+        // Extract addressedAgentId from userMessage metadata if present
+        const addressedAgentId = (userMessage as any).addressedAgentId || (userMessage as any).metadata?.addressedAgentId;
+
+        // 🆕 Feature 4: @Mention & Role Reference Resolution
+        // Check if the user's message contains an @mention or role reference to a specific Hatch.
+        // This overrides all other routing if a valid match is found.
+        let mentionResolvedAgentId: string | null = null;
+        try {
+          const mentionResult = resolveMentionedAgent(
+            userMessage.content || '',
+            availableAgents.map((a: any) => ({ id: a.id, name: a.name, role: a.role }))
+          );
+          if (mentionResult.matchType !== 'none' && mentionResult.mentionedAgentId) {
+            mentionResolvedAgentId = mentionResult.mentionedAgentId;
+            devLog(`🎯 [MentionParser] Resolved @mention to agent: ${mentionResult.mentionedName} (${mentionResult.matchType})`);
+          }
+        } catch (mentionError: any) {
+          console.warn('[MentionParser] Error resolving mention:', mentionError.message);
+        }
+
+        try {
+          // Phase 1.2: Use addressedAgentId from validated envelope (not from raw casting)
+          // Mention-resolved ID takes precedence over envelope addressedAgentId
+          const envelopeAddressedAgentId = mentionResolvedAgentId || addressedAgentId ||
+            (userMessage as any).addressedAgentId ||
+            (userMessage as any).metadata?.addressedAgentId;
+
+          authority = resolveSpeakingAuthority({
+            conversationScope: mode,
+            conversationId,
+            availableAgents,
+            addressedAgentId: envelopeAddressedAgentId
+          });
+
+          // Phase 1.1.b: Enforce authority result - override all existing selection logic
+          respondingAgent = authority!.allowedSpeaker;
+          selectedAgents = [authority!.allowedSpeaker];
+        } catch (error: any) {
+          // Persistence invariant: If authority resolution fails, use PM fallback
+          console.warn('⚠️ Authority resolution failed, using PM fallback:', error.message);
+          const pmFallback = await getProjectPmFallback(projectId);
+
+          if (pmFallback) {
+            respondingAgent = pmFallback;
+            selectedAgents = [pmFallback];
+            isPmFallback = true;
+            // Phase 1.4: Explicit fallback classification
+            // Fallback type will be attached to message metadata
+          } else {
+            // Last resort: use first available agent or system
+            respondingAgent = availableAgents[0] || null;
+            selectedAgents = respondingAgent ? [respondingAgent] : [];
+            isSystemFallback = !respondingAgent;
+            // Phase 1.4: Explicit fallback classification
+            // Fallback type will be attached to message metadata
+          }
+        }
+      }
+
+      // Phase 1.4: No fake "System agent" invariant
+      // If system fallback is needed, agentId must be null, not 'system'
+      // Only create a minimal agent object for internal use (not persisted with agentId='system')
+      if (isSystemFallback && !respondingAgent) {
+        // Internal use only - will be persisted with agentId=null
+        respondingAgent = {
+          id: 'system', // Internal ID only, not persisted
+          name: 'System',
+          role: 'System',
+          teamId: undefined
+        };
+        selectedAgents = [respondingAgent];
+      }
+
+      // Type guard: respondingAgent must be set at this point
+      if (!respondingAgent) {
+        console.error('❌ Critical: respondingAgent is null after fallback logic');
+        // This should never happen, but ensure we have a fallback
+        // Internal use only - will be persisted with agentId=null
+        respondingAgent = {
+          id: 'system', // Internal ID only, not persisted
+          name: 'System',
+          role: 'System',
+          teamId: undefined
+        };
+        selectedAgents = [respondingAgent];
+        isSystemFallback = true;
+      }
+      fallbackResponder = respondingAgent;
+
+      // Dev-only logging
+      if (process.env.NODE_ENV === 'development' || process.env.DEV) {
+        const reason = authority ? authority.reason : (isPmFallback ? 'pm_fallback' : isSystemFallback ? 'system_fallback' : 'fallback_no_agents');
+        devLog(
+          `[Authority] scope=${mode} speaker=${respondingAgent.id} reason=${reason}`
+        );
+      }
+
+      // Conductor-directed routing override: choose intent specialist when appropriate
+      const matches = findBestAgentMatch(userMessage.content, availableAgents);
+      if (
+        !isPmFallback &&
+        !isSystemFallback &&
+        conductorResult.decision.route === "intent_specialist" &&
+        conductorResult.primaryMatch
+      ) {
+        respondingAgent = conductorResult.primaryMatch;
+      }
+
+      devLog('🎯 Expertise matches:', matches.map(m => ({
+        name: m.agent.name,
+        role: m.agent.role,
+        confidence: m.confidence,
+        reasoning: m.reasoning
+      })));
+
+      // Risk-triggered peer-policing: expand to multi-agent review when needed
+      const analysis = analyzeQuestion(userMessage.content);
+      const maxAgents = Math.max(
+        1,
+        conductorResult.decision.reviewerCount + 1,
+        analysis.requiresMultipleAgents || analysis.complexity === 'high' ? 2 : 1,
+      );
+      const potentialMultiAgents = coordinateMultiAgentResponse(userMessage.content, availableAgents, maxAgents);
+
+      if (
+        !isPmFallback &&
+        !isSystemFallback &&
+        respondingAgent &&
+        conductorResult.decision.reviewRequired &&
+        mode !== "agent"
+      ) {
+        const mergedAgents = [respondingAgent, ...potentialMultiAgents, ...conductorResult.fallbackMatches];
+        const uniqueAgents = mergedAgents.filter(
+          (agent, index, arr) => arr.findIndex((candidate) => candidate.id === agent.id) === index
+        );
+        selectedAgents = uniqueAgents.slice(0, Math.max(2, maxAgents));
+      } else if (!isPmFallback && !isSystemFallback && respondingAgent) {
+        selectedAgents = [respondingAgent];
+      }
+
+      if (potentialMultiAgents.length > 1) {
+        devLog('🤝 Multi-agent team potential:', potentialMultiAgents.map(a => `${a.name} (${a.role})`).join(', '));
+      }
+
+      await logAutonomyEvent({
+        eventType: "hatch_selected",
+        projectId,
+        teamId: mode === "team" ? (contextId ?? null) : null,
+        conversationId,
+        hatchId: respondingAgent?.id || null,
+        provider: llmMetadata?.provider || getCurrentRuntimeConfig().provider,
+        mode: llmMetadata?.mode || getCurrentRuntimeConfig().mode,
+        latencyMs: null,
+        confidence: conductorResult.decision.confidence,
+        riskScore: Math.max(
+          conductorResult.safetyScore.hallucinationRisk,
+          conductorResult.safetyScore.scopeRisk,
+          conductorResult.safetyScore.executionRisk
+        ),
+        payload: {
+          decisionReason: conductorResult.decision.reasons.join(", "),
+          candidateHatches: matches.map((m) => m.agent.id),
+          selectionScores: Object.fromEntries(matches.map((m) => [m.agent.id, m.confidence])),
+          selectionConfidence: conductorResult.decision.confidence,
+        },
+      });
+
+      ws.send(JSON.stringify({
+        type: "conductor_decision",
+        conversationId,
+        decision: conductorResult.decision,
+        safetyScore: conductorResult.safetyScore,
+      }));
+
+      devLog('🎯 Authority-enforced speaker:', respondingAgent.name, respondingAgent.role);
+      devLog('🔍 Available agents:', availableAgents.map((a: any) => ({ id: a.id, name: a.name, role: a.role })));
+
+      devLog('🤖 Responding agent:', respondingAgent.name, respondingAgent.role);
+
+      // B3: Get shared memory for the agent (skip if system fallback)
+      const sharedMemory = (respondingAgent && !isSystemFallback && respondingAgent.id !== 'system')
+        ? await storage.getSharedMemoryForAgent(respondingAgent.id, projectId)
+        : '';
+      devLog('🧠 Loading shared memory for agent:', sharedMemory ? 'Found context' : 'No prior context');
+
+      // Create streaming response message shell
+      responseMessageId = `response-${Date.now()}`;
+      let accumulatedContent = '';
+
+      // B3: Extract and store conversation memory BEFORE generating response
+      await extractAndStoreMemory(userMessage, { content: 'Processing...' }, conversationId, projectId);
+      await extractUserName(userMessage.content, conversationId);
+
+      // Load conversation history for context
+      const recentMessages = await storage.getMessagesByConversation(conversationId);
+      const conversationHistory = recentMessages.slice(-10).map(msg => ({
+        role: msg.messageType === 'user' ? 'user' as const : 'assistant' as const,
+        content: msg.content,
+        timestamp: msg.createdAt?.toISOString() || new Date().toISOString(),
+        senderId: msg.userId || msg.agentId || 'unknown',
+        messageType: msg.messageType === 'system' ? 'agent' as const : msg.messageType as 'user' | 'agent'
+      }));
+
+      // Create chat context for AI
+      const chatContext = {
+        mode: mode as 'project' | 'team' | 'agent',
+        projectName: project.name,
+        projectId,
+        conversationId,
+        teamName,
+        agentRole: respondingAgent.role,
+        agentId: respondingAgent.id,
+        conversationHistory,
+        userId: userMessage.userId || 'user',
+        // P3: Project direction + team + memories injected for richer context
+        projectDirection: (project.coreDirection as any) ?? null,
+        teamMembers: respondingAgent ? await storage.getAgentsByProject(projectId!).then(
+          (agents: any[]) => agents.filter((a: any) => !a.isSpecialAgent).map((a: any) => ({ name: a.name, role: a.role }))
+        ).catch(() => []) : [],
+        projectMemories: projectId ? await storage.getRelevantProjectMemories(projectId, {
+          query: userMessage.content,
+          limit: 12,
+          minImportance: 0.4,
+          excludeConversationId: conversationId,
+        }).then((mems: any[]) => mems.map((m: any) => `- ${m.content}`).join('\n')).catch(() => null) : null,
+        // GAP-7: Derive userDesignation from self-identification patterns in early messages
+        userDesignation: (() => {
+          const stored = (project.coreDirection as any)?.userRole ?? null;
+          if (stored) return stored;
+          const earlyMessages = recentMessages.slice(0, 8).filter((m: any) => m.messageType === 'user');
+          const rolePatterns = [
+            { pattern: /\bi(?:'m| am) (?:a |an )?([a-z][\w\s]{2,25}(?:designer|developer|engineer|founder|marketer|pm|product manager|analyst|writer|consultant|cto|ceo|manager))\b/i, group: 1 },
+            { pattern: /\bwork(?:ing)? as (?:a |an )?([a-z][\w\s]{2,25})\b/i, group: 1 },
+            { pattern: /\bmy (?:job|role|title) is ([a-z][\w\s]{2,25})\b/i, group: 1 },
+          ];
+          for (const msg of earlyMessages) {
+            for (const { pattern, group } of rolePatterns) {
+              const match = msg.content?.match(pattern);
+              if (match?.[group]) return match[group].trim();
+            }
+          }
+          return null;
+        })(),
+        // GAP-8: Detect handoff — when conductor routed to a different agent than last speaker
+        handoffFrom: (() => {
+          const lastAgentMsg = recentMessages.slice().reverse().find((m: any) => m.messageType === 'agent' && m.agentId);
+          if (!lastAgentMsg || !lastAgentMsg.agentId || lastAgentMsg.agentId === respondingAgent?.id) return null;
+          const previousAgent = availableAgents.find((a: any) => a.id === lastAgentMsg.agentId);
+          return previousAgent?.role ?? null;
+        })(),
+        // P3: Inject real storage for memory extraction (fire-and-forget)
+        createConversationMemory: storage.createConversationMemory.bind(storage),
+      };
+
+      // Create AbortController for cancellation
+      const abortController = new AbortController();
+
+      // Handle cancellation messages
+      const cancelHandler = (message: Buffer) => {
+        const data = JSON.parse(message.toString());
+        if (data.type === 'cancel_streaming' && data.messageId === responseMessageId) {
+          devLog('🛑 Streaming cancelled by user');
+          abortController.abort();
+        }
+      };
+      ws.on('message', cancelHandler);
+
+      try {
+        // Notify streaming started right before actual streaming begins
+        devLog('📡 Sending streaming_started event');
+        ws.send(JSON.stringify({
+          type: 'streaming_started',
+          messageId: responseMessageId,
+          agentId: respondingAgent ? respondingAgent.id : 'system',
+          agentName: respondingAgent ? respondingAgent.name : 'System'
+        }));
+        hasStreamingStarted = true;
+
+        // Persistence invariant: Handle no agents case with graceful fallback
+        // Message persistence must not depend on agent availability or orchestration success
+        if (isSystemFallback) {
+          // Last resort: project has zero agents total
+          devLog('📝 Generating system fallback response (no agents in project)');
+          accumulatedContent = "Your AI team hasn't been assembled yet! 🥚\n\nAdd a Hatch to this project so we can start building together.";
+
+          // Send the fallback response as a single chunk
+          ws.send(JSON.stringify({
+            type: 'streaming_chunk',
+            messageId: responseMessageId,
+            chunk: accumulatedContent,
+            accumulatedContent
+          }));
+
+          // Must persist and signal completion so the client input is unblocked
+          const fallbackSaved = await storage.createMessage({
+            id: responseMessageId,
+            conversationId,
+            agentId: null,
+            senderName: 'System',
+            content: accumulatedContent,
+            messageType: 'system' as const,
+            metadata: { fallback: { type: 'system', reason: 'no_agents_in_project' } },
+          } as any);
+
+          ws.send(JSON.stringify({
+            type: 'streaming_completed',
+            messageId: responseMessageId,
+            message: fallbackSaved
+          }));
+
+          return; // No further processing needed for pure system fallback
+
+        } else if (isPmFallback) {
+          // PM Maya fallback - scope-specific messages
+          devLog('📝 Generating PM Maya fallback response');
+
+          if (mode === 'team') {
+            accumulatedContent = "This team has no Hatches yet. Add one and I'll continue as the team lead once assigned.";
+          } else if (mode === 'agent') {
+            accumulatedContent = "That Hatch doesn't exist or isn't available in this project. Add it or switch back to Project chat.";
+          } else {
+            // Project scope (shouldn't happen, but handle gracefully)
+            accumulatedContent = "I'm here to help! Let me know what you'd like to work on.";
+          }
+
+          // Send the fallback response as a single chunk
+          ws.send(JSON.stringify({
+            type: 'streaming_chunk',
+            messageId: responseMessageId,
+            chunk: accumulatedContent,
+            accumulatedContent
+          }));
+
+          // Must persist and signal completion so the client input is unblocked
+          const pmFallbackSaved = await storage.createMessage({
+            id: responseMessageId,
+            conversationId,
+            agentId: respondingAgent && respondingAgent.id !== 'system' ? respondingAgent.id : null,
+            senderName: respondingAgent ? respondingAgent.name : 'System',
+            content: accumulatedContent,
+            messageType: 'agent' as const,
+            metadata: { fallback: { type: 'pm', reason: 'no_agents_in_scope' } },
+          } as any);
+
+          ws.send(JSON.stringify({
+            type: 'streaming_completed',
+            messageId: responseMessageId,
+            message: pmFallbackSaved
+          }));
+
+          return; // No further processing needed for pure PM fallback
+
+        } else if (conductorResult.decision.interventionRequired) {
+          // Safety intervention flow: stop speculative output and ask focused clarifications
+          devLog('🛑 Safety intervention triggered for turn');
+          accumulatedContent = buildClarificationIntervention({
+            projectName: project.name,
+            reasons: conductorResult.decision.reasons,
+          });
+
+          await logAutonomyEvent({
+            eventType: "safety_triggered",
+            projectId,
+            teamId: mode === "team" ? (contextId ?? null) : null,
+            conversationId,
+            hatchId: respondingAgent?.id || null,
+            provider: llmMetadata?.provider || getCurrentRuntimeConfig().provider,
+            mode: llmMetadata?.mode || getCurrentRuntimeConfig().mode,
+            latencyMs: Date.now() - turnStartedAt,
+            confidence: conductorResult.decision.confidence,
+            riskScore: Math.max(
+              conductorResult.safetyScore.hallucinationRisk,
+              conductorResult.safetyScore.scopeRisk,
+              conductorResult.safetyScore.executionRisk
+            ),
+            payload: {
+              reasons: conductorResult.decision.reasons,
+            },
+          });
+
+          ws.send(JSON.stringify({
+            type: 'safety_intervention',
+            messageId: responseMessageId,
+            conversationId,
+            safetyScore: conductorResult.safetyScore,
+            decision: conductorResult.decision,
+            content: accumulatedContent,
+          }));
+
+          ws.send(JSON.stringify({
+            type: 'streaming_chunk',
+            messageId: responseMessageId,
+            chunk: accumulatedContent,
+            accumulatedContent
+          }));
+        } else if (selectedAgents.length > 1) {
+          // E2.1: Handle multi-agent responses for team dynamics
+          devLog('🤝 Generating multi-agent team response...');
+          await handleMultiAgentResponse(selectedAgents, userMessage, chatContext, sharedMemory, responseMessageId, conversationId, ws, abortController);
+        } else if (respondingAgent && !isPmFallback && !isSystemFallback) {
+          // Single agent response (existing logic)
+          devLog('🔄 Generating single agent streaming response...');
+          const streamGenerator = generateStreamingResponse(
+            userMessage.content,
+            respondingAgent.role,
+            chatContext,
+            sharedMemory,
+            abortController.signal,
+            (metadata) => {
+              llmMetadata = metadata;
+            }
+          );
+
+          for await (const chunk of streamGenerator) {
+            if (abortController.signal.aborted) {
+              devLog('🛑 Stream aborted');
+              break;
+            }
+
+            accumulatedContent += chunk;
+            devLog('📤 Sending chunk:', chunk.substring(0, 20) + '...');
+
+            // Send chunk to client
+            ws.send(JSON.stringify({
+              type: 'streaming_chunk',
+              messageId: responseMessageId,
+              chunk,
+              accumulatedContent
+            }));
+          }
+        }
+
+        // ─── 🆕 CHAT ACTION PROCESSING ──────────────────────────────────────────
+        // After the full response is accumulated, check if the agent embedded
+        // an action block (HATCH_SUGGESTION, TASK_SUGGESTION, BRAIN_UPDATE).
+        // Strip the block from the displayed text and handle the action if user
+        // has granted permission in this turn.
+        if (!abortController.signal.aborted && accumulatedContent) {
+          const parsedAction = parseAction(accumulatedContent);
+          if (parsedAction) {
+            // Always strip action blocks from what the user sees
+            accumulatedContent = stripActionBlocks(accumulatedContent);
+            devLog(`[ActionParser] Detected action: ${parsedAction.type}`);
+
+            // Check if this turn is the user granting permission for a pending action
+            const userPermission = detectUserPermission(userMessage.content || '');
+            devLog(`[ActionParser] User permission: ${userPermission}`);
+
+            if (userPermission === 'granted') {
+              try {
+                // ── HATCH_SUGGESTION: Auto-create teams + agents ──────────────
+                if (parsedAction.type === 'HATCH_SUGGESTION') {
+                  const suggestionPayload = parsedAction.payload as any;
+                  const createdTeams: any[] = [];
+                  const createdAgents: any[] = [];
+
+                  for (const teamDef of (suggestionPayload.teams || [])) {
+                    try {
+                      const newTeam = await storage.createTeam({
+                        name: teamDef.name,
+                        emoji: teamDef.emoji || '⭐',
+                        projectId,
+                        userId: (ws as any).__userId!,
+                      } as any);
+                      createdTeams.push(newTeam);
+
+                      for (const agentDef of (teamDef.agents || [])) {
+                        const newAgent = await storage.createAgent({
+                          name: agentDef.name,
+                          role: agentDef.role,
+                          color: agentDef.color || 'blue',
+                          teamId: newTeam.id,
+                          projectId,
+                          userId: (ws as any).__userId!,
+                          personality: {
+                            traits: [],
+                            communicationStyle: `${agentDef.role} with deep expertise in their domain`,
+                            expertise: [agentDef.role],
+                            welcomeMessage: `Hi! I'm ${agentDef.name}, your ${agentDef.role}. Ready to help make this project a success!`,
+                          },
+                          isSpecialAgent: false,
+                        } as any);
+                        createdAgents.push(newAgent);
+                      }
+                    } catch (teamErr: any) {
+                      console.error('[ActionParser] Error creating team:', teamErr.message);
+                    }
+                  }
+
+                  // Notify frontend to refresh sidebar
+                  if (createdTeams.length > 0) {
+                    ws.send(JSON.stringify({
+                      type: 'teams_auto_hatched',
+                      projectId,
+                      teams: createdTeams,
+                      agents: createdAgents,
+                    }));
+                    devLog(`✨ [AutoHatch] Created ${createdTeams.length} team(s) and ${createdAgents.length} agent(s)`);
+
+                    // P2: Maya announces the new team in the project conversation
+                    try {
+                      const allAgents = await storage.getAgentsByProject(projectId);
+                      const mayaAgent = allAgents.find((a: any) => a.isSpecialAgent || a.role === 'AI Idea Partner');
+                      if (mayaAgent) {
+                        const agentList = createdAgents.slice(0, 3).map((a: any) => `${a.name} (${a.role})`).join(', ');
+                        const extra = createdAgents.length > 3 ? `, and ${createdAgents.length - 3} more` : '';
+                        const announcement = `I've pulled together a team for you — ${agentList}${extra}. They're ready to jump in. What would you like to kick off with?`;
+                        const projectConvId = `project:${projectId}`;
+                        const announcementMsg = await storage.createMessage({
+                          id: randomUUID(),
+                          conversationId: projectConvId,
+                          content: announcement,
+                          messageType: 'agent',
+                          agentId: mayaAgent.id,
+                          userId: null,
+                          metadata: { isTeamAnnouncement: true },
+                        } as any);
+                        broadcastToConversation(projectConvId, {
+                          type: 'new_message',
+                          conversationId: projectConvId,
+                          message: announcementMsg,
+                        });
+                      }
+                    } catch { /* non-critical */ }
+                  }
+                }
+
+                // ── TASK_SUGGESTION: Create task in project task list ─────────
+                if (parsedAction.type === 'TASK_SUGGESTION') {
+                  const taskPayload = parsedAction.payload as any;
+                  try {
+                    const newTask = await storage.createTask({
+                      title: taskPayload.title,
+                      description: `Created from chat by ${respondingAgent?.name || 'Hatch'}`,
+                      status: 'todo',
+                      priority: taskPayload.priority || 'medium',
+                      projectId,
+                      userId: (ws as any).__userId!,
+                      agentId: respondingAgent?.id || null,
+                      dueDate: null,
+                      completedAt: null,
+                    } as any);
+
+                    ws.send(JSON.stringify({
+                      type: 'task_created_from_chat',
+                      projectId,
+                      task: newTask,
+                    }));
+                    devLog(`✅ [ActionParser] Task created from chat: ${taskPayload.title}`);
+                  } catch (taskErr: any) {
+                    console.error('[ActionParser] Error creating task:', taskErr.message);
+                  }
+                }
+
+                // ── BRAIN_UPDATE: Update project brain field ──────────────────
+                if (parsedAction.type === 'BRAIN_UPDATE') {
+                  const brainPayload = parsedAction.payload as any;
+                  try {
+                    const currentProject = await storage.getProject(projectId);
+                    if (currentProject) {
+                      const currentBrain = (currentProject.brain as any) || {};
+                      const updatedBrain = {
+                        ...currentBrain,
+                        [brainPayload.field]: brainPayload.value,
+                        lastUpdatedAt: new Date().toISOString(),
+                        lastUpdatedBy: respondingAgent?.name || 'Hatch',
+                      };
+                      await storage.updateProject(projectId, { brain: updatedBrain });
+
+                      ws.send(JSON.stringify({
+                        type: 'brain_updated_from_chat',
+                        projectId,
+                        field: brainPayload.field,
+                        value: brainPayload.value,
+                        updatedBy: respondingAgent?.name || 'Hatch',
+                      }));
+                      devLog(`🧠 [ActionParser] Project Brain updated: ${brainPayload.field}`);
+                    }
+                  } catch (brainErr: any) {
+                    console.error('[ActionParser] Error updating brain:', brainErr.message);
+                  }
+                }
+              } catch (actionErr: any) {
+                console.error('[ActionParser] Error executing action:', actionErr.message);
+              }
+            }
+          }
+        }
+        // ─── END CHAT ACTION PROCESSING ─────────────────────────────────────────
+
+
+        // This ensures symmetric persistence: user messages are always saved, agent messages must be too
+        if (!abortController.signal.aborted) {
+          const runtimeNow = getCurrentRuntimeConfig();
+          const activeProvider = llmMetadata?.provider || runtimeNow.provider;
+          const activeMode = llmMetadata?.mode || runtimeNow.mode;
+          const aggregateRisk = Math.max(
+            conductorResult.safetyScore.hallucinationRisk,
+            conductorResult.safetyScore.scopeRisk,
+            conductorResult.safetyScore.executionRisk
+          );
+
+          const toolDecision = routeTools({
+            role: respondingAgent?.role || "system",
+            message: userMessage.content || "",
+            complexity: analysis.complexity,
+            riskScore: aggregateRisk,
+            roundsUsed: 1,
+            webCallsUsed: 0,
+          });
+          if (!toolDecision.allowed && toolDecision.reason.includes('budget')) {
+            await logAutonomyEvent({
+              eventType: "budget_exceeded",
+              projectId,
+              teamId: mode === "team" ? (contextId ?? null) : null,
+              conversationId,
+              hatchId: respondingAgent?.id || null,
+              provider: activeProvider,
+              mode: activeMode,
+              latencyMs: Date.now() - turnStartedAt,
+              confidence: conductorResult.decision.confidence,
+              riskScore: aggregateRisk,
+              payload: toolDecision as unknown as Record<string, unknown>,
+            });
+          }
+
+          if (llmMetadata?.fallbackChain && llmMetadata.fallbackChain.length > 0) {
+            await logAutonomyEvent({
+              eventType: "provider_fallback",
+              projectId,
+              teamId: mode === "team" ? (contextId ?? null) : null,
+              conversationId,
+              hatchId: respondingAgent?.id || null,
+              provider: llmMetadata.provider,
+              mode: llmMetadata.mode,
+              latencyMs: llmMetadata.latencyMs ?? null,
+              confidence: conductorResult.decision.confidence,
+              riskScore: Math.max(
+                conductorResult.safetyScore.hallucinationRisk,
+                conductorResult.safetyScore.scopeRisk,
+                conductorResult.safetyScore.executionRisk
+              ),
+              payload: {
+                fallbackChain: llmMetadata.fallbackChain,
+              },
+            });
+          }
+
+          // Phase 19: Peer-policing protocol with stop-the-line behavior.
+          const reviewers = availableAgents
+            .filter((agent: any) => agent.id !== respondingAgent?.id)
+            .map((agent: any) => ({ id: agent.id, name: agent.name, role: agent.role }));
+
+          const peerReviewDecision = await runPeerReview({
+            traceId,
+            roundNoBase: 1,
+            projectId,
+            teamId: mode === "team" ? (contextId ?? null) : null,
+            conversationId,
+            primaryHatchId: respondingAgent?.id || "system",
+            primaryHatchRole: respondingAgent?.role || "System",
+            reviewers,
+            provider: activeProvider,
+            mode: activeMode,
+            confidence: conductorResult.decision.confidence,
+            riskScore: aggregateRisk,
+            userMessage: userMessage.content || "",
+            draftResponse: accumulatedContent || "",
+            projectName: project.name,
+            isProposalTurn: decisionForecasts.length > 0,
+            safetySensitive: aggregateRisk >= 0.35,
+            contradictsCanon: false,
+            allowOverrideHighRisk: (process.env.ALLOW_PEER_REVIEW_OVERRIDE ?? "false").toLowerCase() === "true",
+          });
+
+          if (peerReviewDecision.triggered) {
+            const resolution = resolveDecisionConflict({
+              candidates: [
+                {
+                  hatchId: respondingAgent?.id || "system",
+                  authority: "worker",
+                  confidence: conductorResult.decision.confidence,
+                  content: peerReviewDecision.revisedContent,
+                  riskScore: aggregateRisk,
+                },
+              ],
+              guardrailOverride: peerReviewDecision.blockedByHallucination
+                ? peerReviewDecision.revisedContent
+                : undefined,
+              roundCount: Math.min(BUDGETS.maxDeliberationRounds, 2),
+            });
+
+            await logAutonomyEvent({
+              eventType: peerReviewDecision.blockedByHallucination ? "decision_conflict_detected" : "conductor_resolution",
+              projectId,
+              teamId: mode === "team" ? (contextId ?? null) : null,
+              conversationId,
+              hatchId: respondingAgent?.id || null,
+              provider: activeProvider,
+              mode: activeMode,
+              latencyMs: Date.now() - turnStartedAt,
+              confidence: conductorResult.decision.confidence,
+              riskScore: aggregateRisk,
+              payload: resolution as unknown as Record<string, unknown>,
+            });
+
+            if (resolution.timeoutTriggered) {
+              await logAutonomyEvent({
+                eventType: "deliberation_timeout",
+                projectId,
+                teamId: mode === "team" ? (contextId ?? null) : null,
+                conversationId,
+                hatchId: respondingAgent?.id || null,
+                provider: activeProvider,
+                mode: activeMode,
+                latencyMs: Date.now() - turnStartedAt,
+                confidence: conductorResult.decision.confidence,
+                riskScore: aggregateRisk,
+                payload: {
+                  roundsUsed: resolution.roundsUsed,
+                },
+              });
+            }
+
+            if (resolution.overriddenByGuardrail) {
+              await logAutonomyEvent({
+                eventType: "policy_override",
+                projectId,
+                teamId: mode === "team" ? (contextId ?? null) : null,
+                conversationId,
+                hatchId: respondingAgent?.id || null,
+                provider: activeProvider,
+                mode: activeMode,
+                latencyMs: Date.now() - turnStartedAt,
+                confidence: conductorResult.decision.confidence,
+                riskScore: aggregateRisk,
+                payload: { reason: resolution.reason },
+              });
+            }
+
+            const previousAccumulated = accumulatedContent || "";
+            accumulatedContent = resolution.finalContent;
+            if (accumulatedContent !== previousAccumulated) {
+              ws.send(JSON.stringify({
+                type: "peer_review_revision",
+                messageId: responseMessageId,
+                conversationId,
+                content: accumulatedContent,
+                blockedByHallucination: peerReviewDecision.blockedByHallucination,
+              }));
+            }
+          }
+
+          const toneGuard = (!isSystemFallback && !isPmFallback)
+            ? applyTeammateToneGuard(accumulatedContent || "", userMessage?.content || "")
+            : { changed: false, content: accumulatedContent || "", reasons: [] as string[] };
+          if (toneGuard.changed) {
+            accumulatedContent = toneGuard.content;
+            ws.send(JSON.stringify({
+              type: "streaming_chunk",
+              messageId: responseMessageId,
+              chunk: "",
+              accumulatedContent,
+            }));
+
+            await logAutonomyEvent({
+              eventType: "revision_completed",
+              projectId,
+              teamId: mode === "team" ? (contextId ?? null) : null,
+              conversationId,
+              hatchId: respondingAgent?.id || null,
+              provider: activeProvider,
+              mode: activeMode,
+              latencyMs: Date.now() - turnStartedAt,
+              confidence: conductorResult.decision.confidence,
+              riskScore: aggregateRisk,
+              payload: {
+                source: "tone_guard",
+                reasons: toneGuard.reasons,
+              },
+            });
+          }
+
+          // ─── START PROJECT NAME AUTO-UPDATE DETECTION ──────────────────────────
+          // Look for [[PROJECT_NAME: Your Confirmed Name]] in Maya's response
+          const projectNameRegex = /\[\[PROJECT_NAME:\s*(.+?)\]\]/i;
+          const match = accumulatedContent.match(projectNameRegex);
+          if (match && match[1]) {
+            const newProjectName = match[1].trim();
+            try {
+              await storage.updateProject(projectId, { name: newProjectName });
+              // Strip the tag from the content shown to the user for a cleaner feel
+              accumulatedContent = accumulatedContent.replace(projectNameRegex, '').trim();
+
+              // Notify all clients of the project update
+              ws.send(JSON.stringify({
+                type: 'project_updated',
+                projectId,
+                name: newProjectName,
+                updatedBy: respondingAgent?.name || 'Maya'
+              }));
+              devLog(`🏷️ [PM] Project auto-renamed to: ${newProjectName}`);
+            } catch (err: any) {
+              console.error('Error auto-renaming project:', err.message);
+            }
+          }
+          // ─── END PROJECT NAME AUTO-UPDATE DETECTION ────────────────────────────
+
+          // Save complete response to storage
+          // Note: accumulatedContent may be empty or a fallback message, but it must be persisted
+          // Phase 1.4: No fake "System agent" invariant
+          // If system fallback: agentId=null, messageType='system'
+          // If PM fallback: agentId=pmAgent.id, messageType='agent'
+          const responseMessage: any = {
+            id: responseMessageId,
+            conversationId,
+            // Invariant: Never persist agentId='system'. Use null for system fallback.
+            agentId: isSystemFallback ? null : (respondingAgent && respondingAgent.id !== 'system' ? respondingAgent.id : null),
+            senderName: respondingAgent ? respondingAgent.name : 'System',
+            content: accumulatedContent || '', // Ensure content exists (empty string if needed)
+            messageType: isSystemFallback ? 'system' as const : 'agent' as const,
+            metadata: {
+              conductor: conductorResult.decision,
+              safetyScore: conductorResult.safetyScore,
+              // P6: agentRole stored in metadata so MessageBubble can apply role-specific colors
+              agentRole: respondingAgent?.role ?? null,
+              llm: llmMetadata || {
+                provider: runtimeNow.provider,
+                mode: runtimeNow.mode,
+                model: runtimeNow.model,
+              },
+              testModeDisclaimer: activeMode === "test" ? "Test Mode (Local Model)" : undefined,
+              testModelParams: activeMode === "test"
+                ? {
+                  model: llmMetadata?.model || runtimeNow.model,
+                  temperature: llmMetadata?.temperature,
+                  maxTokens: llmMetadata?.maxTokens,
+                }
+                : undefined,
+              ...(decisionForecasts.length > 0 ? { decisionForecasts } : {}),
+              ...(selectedAgents.length > 1
+                ? {
+                  peerReview: {
+                    enabled: true,
+                    participantIds: selectedAgents.map((agent) => agent.id),
+                  },
+                }
+                : {}),
+            },
+          };
+
+          if (traceId && respondingAgent) {
+            await appendDeliberationRound(traceId, {
+              roundNo: 1,
+              hatchId: respondingAgent.id,
+              prompt: userMessage.content || "",
+              output: accumulatedContent || "",
+              confidence: conductorResult.decision.confidence,
+              riskScore: Math.max(
+                conductorResult.safetyScore.hallucinationRisk,
+                conductorResult.safetyScore.scopeRisk,
+                conductorResult.safetyScore.executionRisk
+              ),
+              latencyMs: Date.now() - turnStartedAt,
+              timestamp: new Date().toISOString(),
+            });
+          }
+
+          // Phase 1.2: Production-safe no fake system agent assertion
+          // Note: This is inside handleStreamingColleagueResponse, so we can't use sendWsError directly
+          // But the assertion already handles production gracefully (logs warnings)
+          try {
+            assertPhase1Invariants({
+              type: 'no_fake_system_agent',
+              agentId: responseMessage.agentId,
+              messageType: responseMessage.messageType,
+            });
+          } catch (err: any) {
+            // In production, the assertion already logs warnings instead of throwing
+            if (isProd) {
+              console.warn("[INVARIANT] No fake system agent check failed (production-safe):", err.message);
+              // Continue processing - message will still be persisted
+            } else {
+              throw err; // Dev/test: rethrow
+            }
+          }
+
+          // Phase 1.4: Explicit fallback classification (invariant hardening)
+          // Attach machine-readable fallback metadata to all messages
+          if (isSystemFallback) {
+            // True system fallback: project has zero agents
+            responseMessage.metadata = {
+              ...responseMessage.metadata,
+              fallback: {
+                type: 'system',
+                reason: 'no_agents_in_project'
+              },
+              system_fallback_no_agents: true // Legacy flag (preserved for compatibility)
+            };
+          } else if (isPmFallback) {
+            // PM Maya fallback: project has agents but none in scope, or authority failed
+            const fallbackReason = availableAgents.length === 0
+              ? 'no_agents_in_scope'
+              : authority === null
+                ? 'authority_failed'
+                : 'no_agents_in_scope';
+
+            responseMessage.metadata = {
+              ...responseMessage.metadata,
+              fallback: {
+                type: 'pm',
+                reason: fallbackReason
+              }
+            };
+          }
+
+          const savedResponse = await storage.createMessage(responseMessage);
+          devLog('💾 Saved streaming response:', savedResponse.id, '(persistence invariant enforced)');
+
+          await logAutonomyEvent({
+            eventType: "synthesis_completed",
+            projectId,
+            teamId: mode === "team" ? (contextId ?? null) : null,
+            conversationId,
+            hatchId: respondingAgent?.id || null,
+            provider: llmMetadata?.provider || getCurrentRuntimeConfig().provider,
+            mode: llmMetadata?.mode || getCurrentRuntimeConfig().mode,
+            latencyMs: Date.now() - turnStartedAt,
+            confidence: conductorResult.decision.confidence,
+            riskScore: Math.max(
+              conductorResult.safetyScore.hallucinationRisk,
+              conductorResult.safetyScore.scopeRisk,
+              conductorResult.safetyScore.executionRisk
+            ),
+            payload: {
+              traceId,
+              messageId: savedResponse.id,
+            },
+          });
+
+          if (traceId) {
+            await finalizeDeliberationTrace(traceId, accumulatedContent || "");
+          }
+
+          // B3: Update stored memory with actual AI response
+          await extractAndStoreMemory(userMessage, savedResponse, conversationId, projectId);
+          await logAutonomyEvent({
+            eventType: "memory_written",
+            projectId,
+            teamId: mode === "team" ? (contextId ?? null) : null,
+            conversationId,
+            hatchId: respondingAgent?.id || null,
+            provider: llmMetadata?.provider || getCurrentRuntimeConfig().provider,
+            mode: llmMetadata?.mode || getCurrentRuntimeConfig().mode,
+            latencyMs: Date.now() - turnStartedAt,
+            confidence: conductorResult.decision.confidence,
+            riskScore: Math.max(
+              conductorResult.safetyScore.hallucinationRisk,
+              conductorResult.safetyScore.scopeRisk,
+              conductorResult.safetyScore.executionRisk
+            ),
+            payload: {
+              messageId: savedResponse.id,
+            },
+          });
+
+          // Phase 20: Autonomous Knowledge Loop (project-private and governance-gated).
+          try {
+            const aklResult = await runAutonomousKnowledgeLoop({
+              projectId,
+              conversationId,
+              role: respondingAgent.role,
+              userMessage: userMessage.content || "",
+              draftResponse: accumulatedContent || "",
+              confidence: conductorResult.decision.confidence,
+              provider: llmMetadata?.provider || getCurrentRuntimeConfig().provider,
+              mode: llmMetadata?.mode || getCurrentRuntimeConfig().mode,
+              highStakes: aggregateRisk >= 0.65,
+            });
+
+            if (aklResult.gapDetected) {
+              ws.send(JSON.stringify({
+                type: "knowledge_update_status",
+                conversationId,
+                status: aklResult.promoted ? "promoted" : "reviewed",
+                reason: aklResult.reason,
+                updateCard: aklResult.updateCard || null,
+              }));
+            }
+          } catch (aklError) {
+            console.error("AKL runtime error:", aklError);
+          }
+
+          // B4: Persist behavior-based personality adaptation after each response
+          try {
+            const behaviorUserId = userMessage.userId || userMessage.senderId;
+            if (behaviorUserId && respondingAgent?.id) {
+              // Seed from DB first so restart doesn't wipe learning
+              const agentForPersist = await storage.getAgent(respondingAgent.id);
+              const persistedPersonality = (agentForPersist?.personality as any);
+              if (persistedPersonality?.adaptedTraits?.[behaviorUserId] && persistedPersonality?.adaptationMeta?.[behaviorUserId]) {
+                personalityEngine.seedProfileFromDB(
+                  respondingAgent.id, behaviorUserId,
+                  persistedPersonality.adaptedTraits[behaviorUserId],
+                  persistedPersonality.adaptationMeta[behaviorUserId]
+                );
+              }
+              // Persist any behavior-based adaptation that happened during streaming
+              const behaviorProfile = personalityEngine.getPersonalityProfile(respondingAgent.id, behaviorUserId);
+              if (behaviorProfile.interactionCount > 0) {
+                const existingPersonality = persistedPersonality || {};
+                await storage.updateAgent(respondingAgent.id, {
+                  personality: {
+                    ...existingPersonality,
+                    adaptedTraits: { ...(existingPersonality.adaptedTraits || {}), [behaviorUserId]: behaviorProfile.adaptedTraits },
+                    adaptationMeta: {
+                      ...(existingPersonality.adaptationMeta || {}),
+                      [behaviorUserId]: {
+                        interactionCount: behaviorProfile.interactionCount,
+                        adaptationConfidence: behaviorProfile.adaptationConfidence,
+                        lastUpdated: new Date().toISOString()
+                      }
+                    }
+                  } as any
+                });
+              }
+            }
+          } catch (behaviorPersistErr) {
+            devLog('Behavior personality persist failed (non-critical):', behaviorPersistErr);
+          }
+
+          // Auto task extraction from conversation
+          try {
+            const { extractTasksFromMessage, extractTasksFallback } = await import('../ai/taskExtractor.js');
+
+            // Get available agents for the project
+            const projectAgents = await storage.getAgentsByProject(projectId);
+            const availableAgentRoles = projectAgents.map(agent => agent.role);
+
+            const projectContext = {
+              projectName: chatContext.projectName,
+              teamName: chatContext.teamName,
+              agentRole: respondingAgent.role,
+              availableAgents: availableAgentRoles,
+              conversationId
+            };
+
+            // Extract tasks from the conversation
+            let taskResult = await extractTasksFromMessage(
+              userMessage.content,
+              accumulatedContent,
+              projectContext
+            );
+
+            // Fallback to keyword matching if AI extraction fails
+            if (!taskResult.hasTasks && taskResult.confidence < 0.5) {
+              taskResult = extractTasksFallback(
+                userMessage.content,
+                accumulatedContent,
+                availableAgentRoles
+              );
+            }
+
+            // If tasks were found, send them to the client for approval
+            if (taskResult.hasTasks && taskResult.tasks.length > 0) {
+              devLog('🎯 Found', taskResult.tasks.length, 'potential tasks from conversation');
+              // Normalize suggestedAssignee to include agent id/name/role
+              const agentsForProject = await storage.getAgentsByProject(projectId);
+              const normalizedTasks = taskResult.tasks.map((t: any) => {
+                let suggested = t.suggestedAssignee;
+                if (typeof suggested === 'string') {
+                  const matchAgent = agentsForProject.find(a => a.role === suggested);
+                  if (matchAgent) {
+                    return {
+                      ...t,
+                      suggestedAssignee: { id: matchAgent.id, name: matchAgent.name, role: matchAgent.role }
+                    };
+                  }
+                }
+                return t;
+              });
+
+              ws.send(JSON.stringify({
+                type: 'task_suggestions',
+                tasks: normalizedTasks,
+                confidence: taskResult.confidence,
+                conversationId,
+                projectId
+              }));
+            }
+          } catch (error) {
+            console.error('Error extracting tasks from conversation:', error);
+            // Don't fail the entire response if task extraction fails
+          }
+
+          if ((analysis.complexity === 'high' || selectedAgents.length > 1) && userMessage.content) {
+            const graph = createTaskGraph({
+              objective: userMessage.content,
+            });
+
+            await logAutonomyEvent({
+              eventType: "task_graph_created",
+              projectId,
+              teamId: mode === "team" ? (contextId ?? null) : null,
+              conversationId,
+              hatchId: respondingAgent?.id || null,
+              provider: llmMetadata?.provider || getCurrentRuntimeConfig().provider,
+              mode: llmMetadata?.mode || getCurrentRuntimeConfig().mode,
+              latencyMs: Date.now() - turnStartedAt,
+              confidence: conductorResult.decision.confidence,
+              riskScore: aggregateRisk,
+              payload: {
+                graphId: graph.graphId,
+                taskCount: graph.tasks.length,
+              },
+            });
+
+            ws.send(JSON.stringify({
+              type: "task_graph_created",
+              conversationId,
+              graph,
+            }));
+          }
+
+          if (decisionForecasts.length > 0) {
+            ws.send(JSON.stringify({
+              type: "decision_forecast",
+              conversationId,
+              forecasts: decisionForecasts,
+            }));
+
+            // Autopilot proposal remains approval-gated.
+            const topForecast = [...decisionForecasts].sort((a, b) => b.probability - a.probability)[0];
+            const riskLevel =
+              conductorResult.safetyScore.executionRisk >= 0.65
+                ? "high"
+                : conductorResult.safetyScore.executionRisk >= 0.35
+                  ? "medium"
+                  : "low";
+
+            const proposal = createActionProposal({
+              projectId,
+              source: "autopilot",
+              actionType: "phase_step_recommendation",
+              payload: {
+                objective: userMessage.content,
+                recommendedScenario: topForecast?.scenario || "Balanced execution path",
+                mitigation: topForecast?.mitigation || [],
+              },
+              riskLevel,
+            });
+
+            await logAutonomyEvent({
+              eventType: "proposal_created",
+              projectId,
+              teamId: mode === "team" ? (contextId ?? null) : null,
+              conversationId,
+              hatchId: respondingAgent?.id || null,
+              provider: llmMetadata?.provider || getCurrentRuntimeConfig().provider,
+              mode: llmMetadata?.mode || getCurrentRuntimeConfig().mode,
+              latencyMs: Date.now() - turnStartedAt,
+              confidence: conductorResult.decision.confidence,
+              riskScore: conductorResult.safetyScore.executionRisk,
+              payload: {
+                proposalId: proposal.id,
+                actionType: proposal.actionType,
+                riskLevel: proposal.riskLevel,
+              },
+            });
+
+            ws.send(JSON.stringify({
+              type: "action_proposal_created",
+              conversationId,
+              proposal,
+            }));
+          }
+
+          const roleIdentity = buildRoleIdentity({
+            projectId,
+            roleTemplateId: respondingAgent.role,
+            agentId: respondingAgent.id === "system" ? undefined : respondingAgent.id,
+          });
+          recordLearningEvent({
+            projectId,
+            conversationId,
+            roleIdentity,
+            eventType: "turn",
+            input: userMessage.content,
+            output: accumulatedContent,
+            reward: conductorResult.safetyScore.confidence,
+          });
+
+          // Chat-driven Project Brain auto-sync (manual edits still fully allowed)
+          try {
+            const chatPatch = deriveProjectBrainPatch({
+              userMessage: userMessage.content || "",
+              assistantResponse: accumulatedContent || "",
+              existingProject: project as Project
+            });
+
+            if (chatPatch) {
+              const mergedPatch: any = {};
+              if (chatPatch.coreDirection) {
+                mergedPatch.coreDirection = {
+                  ...((project as any).coreDirection || {}),
+                  ...chatPatch.coreDirection
+                };
+              }
+              if (typeof chatPatch.executionRules === "string" && chatPatch.executionRules.trim().length > 0) {
+                mergedPatch.executionRules = chatPatch.executionRules.trim();
+              }
+              if (typeof chatPatch.teamCulture === "string" && chatPatch.teamCulture.trim().length > 0) {
+                mergedPatch.teamCulture = chatPatch.teamCulture.trim();
+              }
+
+              if (Object.keys(mergedPatch).length > 0) {
+                const updatedProject = await storage.updateProject(projectId, mergedPatch);
+                if (updatedProject) {
+                  const updateEvent = {
+                    type: "project_brain_updated",
+                    conversationId,
+                    projectId,
+                    source: "chat_auto_sync",
+                    patch: mergedPatch
+                  };
+                  ws.send(JSON.stringify(updateEvent));
+                  broadcastToConversation(conversationId, updateEvent, { exclude: ws });
+                }
+              }
+            }
+          } catch (autoSyncError) {
+            console.error("Failed to auto-sync project brain from chat:", autoSyncError);
+          }
+
+          // Notify streaming completed
+          ws.send(JSON.stringify({
+            type: 'streaming_completed',
+            messageId: responseMessageId,
+            message: savedResponse
+          }));
+
+          // Broadcast final message to other clients
+          broadcastToConversation(conversationId, {
+            type: 'new_message',
+            message: savedResponse,
+            conversationId
+          }, { exclude: ws });
+
+          // Send real-time metrics update for AI agent response
+          broadcastToConversation(conversationId, {
+            type: 'chat_message',
+            projectId: parsed.projectId,
+            teamId: parsed.scope === 'team' ? parsed.contextId : undefined,
+            agentId: savedResponse.agentId,
+            conversationId,
+            data: {
+              content: accumulatedContent,
+              senderId: savedResponse.agentId || 'agent',
+              messageId: savedResponse.id
+            },
+            timestamp: new Date().toISOString()
+          }, { exclude: ws });
+        }
+      } finally {
+        ws.off('message', cancelHandler);
+      }
+
+    } catch (error) {
+      console.error('❌ Streaming response error:', error);
+      const payload = getStreamingErrorPayload(error);
+      try {
+        let effectiveAgent = fallbackResponder;
+        if ((!effectiveAgent || effectiveAgent.id === "system") && resolvedProjectId) {
+          const projectAgents = await storage.getAgentsByProject(resolvedProjectId);
+          const pmAgent = projectAgents.find((agent) => /product manager|^pm$/i.test(agent.role));
+          const selected = pmAgent || projectAgents[0];
+          if (selected) {
+            effectiveAgent = {
+              id: selected.id,
+              name: selected.name,
+              role: selected.role,
+              teamId: selected.teamId
+            };
+          }
+        }
+
+        const runtimeNow = getCurrentRuntimeConfig();
+        const fallbackContent = buildServiceFallbackMessage({
+          mode: resolvedMode,
+          agentName: effectiveAgent?.name,
+          agentRole: effectiveAgent?.role,
+          userMessage: userMessage?.content || "",
+          errorCode: payload.code,
+        });
+
+        if (!hasStreamingStarted) {
+          ws.send(JSON.stringify({
+            type: 'streaming_started',
+            messageId: responseMessageId,
+            agentId: effectiveAgent?.id || 'system',
+            agentName: effectiveAgent?.name || 'Project Manager'
+          }));
+        }
+
+        ws.send(JSON.stringify({
+          type: 'streaming_chunk',
+          messageId: responseMessageId,
+          chunk: fallbackContent,
+          accumulatedContent: fallbackContent
+        }));
+
+        const persistedFallback = await storage.createMessage({
+          id: responseMessageId,
+          conversationId,
+          agentId: effectiveAgent?.id || null,
+          content: fallbackContent,
+          messageType: (effectiveAgent ? 'agent' : 'system') as "agent" | "system",
+          metadata: {
+            fallback: {
+              type: 'service',
+              reason: payload.code
+            },
+            llm: llmMetadata || {
+              provider: runtimeNow.provider,
+              mode: runtimeNow.mode,
+              model: runtimeNow.model,
+            },
+          }
+        } as any);
+
+        await logAutonomyEvent({
+          eventType: "provider_fallback",
+          projectId: resolvedProjectId,
+          teamId: null,
+          conversationId,
+          hatchId: effectiveAgent?.id || null,
+          provider: (llmMetadata?.provider || runtimeNow.provider) as string,
+          mode: (llmMetadata?.mode || runtimeNow.mode) as string,
+          latencyMs: Date.now() - turnStartedAt,
+          confidence: null,
+          riskScore: null,
+          payload: {
+            reason: payload.code,
+            error: (error as any)?.message || "unknown",
+          },
+        });
+
+        if (traceId) {
+          await finalizeDeliberationTrace(traceId, fallbackContent);
+        }
+
+        // Keep project brain auto-sync active even when LLM falls back (quota/rate-limit/etc).
+        if (resolvedProjectId) {
+          try {
+            const existingProject = await storage.getProject(resolvedProjectId);
+            if (existingProject) {
+              const chatPatch = deriveProjectBrainPatch({
+                userMessage: userMessage?.content || "",
+                assistantResponse: fallbackContent,
+                existingProject: existingProject as Project
+              });
+
+              if (chatPatch) {
+                const mergedPatch: any = {};
+                if (chatPatch.coreDirection) {
+                  mergedPatch.coreDirection = {
+                    ...((existingProject as any).coreDirection || {}),
+                    ...chatPatch.coreDirection
+                  };
+                }
+                if (typeof chatPatch.executionRules === "string" && chatPatch.executionRules.trim().length > 0) {
+                  mergedPatch.executionRules = chatPatch.executionRules.trim();
+                }
+                if (typeof chatPatch.teamCulture === "string" && chatPatch.teamCulture.trim().length > 0) {
+                  mergedPatch.teamCulture = chatPatch.teamCulture.trim();
+                }
+
+                if (Object.keys(mergedPatch).length > 0) {
+                  const updatedProject = await storage.updateProject(resolvedProjectId, mergedPatch);
+                  if (updatedProject) {
+                    const updateEvent = {
+                      type: "project_brain_updated",
+                      conversationId,
+                      projectId: resolvedProjectId,
+                      source: "chat_auto_sync",
+                      patch: mergedPatch
+                    };
+                    ws.send(JSON.stringify(updateEvent));
+                    broadcastToConversation(conversationId, updateEvent, { exclude: ws });
+                  }
+                }
+              }
+            }
+          } catch (autoSyncError) {
+            console.error("Failed to auto-sync project brain from fallback:", autoSyncError);
+          }
+        }
+
+        ws.send(JSON.stringify({
+          type: 'streaming_completed',
+          messageId: responseMessageId,
+          message: persistedFallback
+        }));
+
+        broadcastToConversation(conversationId, {
+          type: 'new_message',
+          message: persistedFallback,
+          conversationId
+        }, { exclude: ws });
+
+      } catch (fallbackError) {
+        console.error('❌ Fallback response persistence failed:', fallbackError);
+        ws.send(JSON.stringify({
+          type: 'streaming_error',
+          code: payload.code,
+          error: payload.error
+        }));
+      }
+    }
+  }
+
+  // B3: Extract and store conversation memory from user messages
+  async function extractAndStoreMemory(userMessage: any, agentResponse: any, conversationId: string, projectId: string) {
+    try {
+      const userContent = userMessage.content.toLowerCase();
+
+      // Extract key decisions and important context
+      if (userContent.includes('decide') || userContent.includes('decision') || userContent.includes('choose')) {
+        await storage.addConversationMemory(
+          conversationId,
+          'decisions',
+          `User decision: ${userMessage.content}`,
+          8
+        );
+      }
+
+      // Extract project requirements or specifications
+      if (userContent.includes('requirement') || userContent.includes('spec') || userContent.includes('need')) {
+        await storage.addConversationMemory(
+          conversationId,
+          'key_points',
+          `Project requirement: ${userMessage.content}`,
+          7
+        );
+      }
+
+      // Extract goals and objectives
+      if (userContent.includes('goal') || userContent.includes('objective') || userContent.includes('target')) {
+        await storage.addConversationMemory(
+          conversationId,
+          'key_points',
+          `Project goal: ${userMessage.content}`,
+          9
+        );
+      }
+
+      // Extract important agent insights from responses
+      const agentContent = agentResponse.content.toLowerCase();
+      if (agentContent.includes('recommend') || agentContent.includes('suggest') || agentContent.includes('propose')) {
+        await storage.addConversationMemory(
+          conversationId,
+          'context',
+          `Agent recommendation: ${agentResponse.content.substring(0, 200)}...`,
+          6
+        );
+      }
+
+      devLog('🧠 Memory extraction completed for conversation:', conversationId);
+    } catch (error) {
+      console.error('❌ Error extracting memory:', error);
+    }
+  }
+
+  // Extract user name from messages
+  async function extractUserName(content: string, conversationId: string) {
+    try {
+      // Look for "my name is [name]" patterns
+      const namePatterns = [
+        /my name is ([a-zA-Z]+)/i,
+        /i am ([a-zA-Z]+)/i,
+        /call me ([a-zA-Z]+)/i,
+        /i'm ([a-zA-Z]+)/i
+      ];
+
+      for (const pattern of namePatterns) {
+        const match = content.match(pattern);
+        if (match && match[1]) {
+          const userName = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
+          await storage.addConversationMemory(
+            conversationId,
+            'context',
+            `User's name is ${userName}`,
+            10 // Very high importance
+          );
+          devLog(`👤 User name extracted and stored: ${userName}`);
+          break;
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error extracting user name:', error);
+    }
+  }
+
+  return { getWsHealth };
 }

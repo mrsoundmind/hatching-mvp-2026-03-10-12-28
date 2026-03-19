@@ -1,11 +1,13 @@
 import { Send } from "lucide-react";
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useToast } from "@/hooks/use-toast";
 import type { Project, Team, Agent } from "@shared/schema";
+import { getRoleDefinition } from "@shared/roleRegistry";
 import { useWebSocket, getWebSocketUrl, getConnectionStatusConfig } from '@/lib/websocket';
 import { MessageBubble } from './MessageBubble';
 import { MessageSkeleton } from './MessageSkeleton';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 import { AddHatchModal } from './AddHatchModal';
 import { TaskApprovalModal } from './TaskApprovalModal';
 import { buildConversationId } from '@/lib/conversationId';
@@ -50,6 +52,7 @@ export function CenterPanel({
   onAddProjectClick,
 }: CenterPanelProps) {
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const toDisplayText = (value: unknown, fallback = ''): string => {
     if (typeof value === 'string') return value;
@@ -105,6 +108,11 @@ export function CenterPanel({
   }>>>({});
   const [messageQueue, setMessageQueue] = useState<Array<any>>([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  // D1.2 Pagination state: earlier messages loaded via "Load earlier messages" button
+  const [earlierMessages, setEarlierMessages] = useState<any[]>([]);
+  const [loadingEarlier, setLoadingEarlier] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [nextMessageCursor, setNextMessageCursor] = useState<string | null>(null);
   const [typingColleagues, setTypingColleagues] = useState<string[]>([]);
   const lastSendRef = useRef<{ conversationId: string; content: string; at: number } | null>(null);
 
@@ -122,6 +130,21 @@ export function CenterPanel({
   const [streamingAgent, setStreamingAgent] = useState<string | null>(null);
   const [streamingConversationId, setStreamingConversationId] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
+  // Task 10: Cycling thinking state text
+  const thinkingPhrases = ['Thinking...', 'Reviewing context...', 'Forming a response...'];
+  const [thinkingPhraseIdx, setThinkingPhraseIdx] = useState(0);
+  const thinkingPhraseTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (isThinking) {
+      setThinkingPhraseIdx(0);
+      thinkingPhraseTimerRef.current = setInterval(() => {
+        setThinkingPhraseIdx((prev) => (prev + 1) % thinkingPhrases.length);
+      }, 1800);
+    } else {
+      if (thinkingPhraseTimerRef.current) clearInterval(thinkingPhraseTimerRef.current);
+    }
+    return () => { if (thinkingPhraseTimerRef.current) clearInterval(thinkingPhraseTimerRef.current); };
+  }, [isThinking]);
   const streamingTimeoutRef = useRef<number | null>(null);
   const pendingResponseTimeoutRef = useRef<number | null>(null);
 
@@ -543,9 +566,12 @@ export function CenterPanel({
 
       setIsThinking(false);
       setIsStreaming(true);
+      setTypingColleagues([]);  // clear WS-driven indicator — streaming has begun
       streamingMessageId.current = message.messageId;
       setStreamingContent('');
       setStreamingConversationId(currentChatContext?.conversationId || null);
+      // Broadcast streaming state to sibling components (RightSidebar brain glow, etc.)
+      window.dispatchEvent(new CustomEvent('ai_streaming_active', { detail: { active: true } }));
 
       // Get actual agent name for streaming and set it for the typing indicator
       const getActualAgentName = (agentId: string) => {
@@ -571,7 +597,13 @@ export function CenterPanel({
         parentMessageId: message.parentMessageId || undefined,
         threadRootId: message.threadRootId || undefined,
         threadDepth: message.threadDepth || 0,
-        metadata: { isStreaming: true }
+        metadata: {
+          isStreaming: true,
+          agentRole: (() => {
+            const agent = activeProjectAgents.find(a => a.id === (message.agentId || ''));
+            return agent?.role ?? null;
+          })()
+        }
       };
 
       devLog('Creating streaming placeholder message:', message.messageId, 'for agent:', message.agentName);
@@ -717,6 +749,8 @@ export function CenterPanel({
       devLog('✅ Streaming completed');
       clearStreamingTimeout();
       setStreamingConversationId(null);
+      // Signal sibling components that streaming has ended
+      window.dispatchEvent(new CustomEvent('ai_streaming_active', { detail: { active: false } }));
 
       // Add the completed message to conversation
       if (message.message) {
@@ -892,6 +926,19 @@ export function CenterPanel({
 
       console.error('WebSocket server error:', message.code, message.message);
     }
+    else if (message.type === 'typing_started') {
+      const agentName = message.agentName || message.agentId || 'Agent';
+      setTypingColleagues(prev => prev.includes(agentName) ? prev : [...prev, agentName]);
+      // Auto-clear after estimated duration + buffer
+      const clearAfter = (message.estimatedDuration || 3000) + 500;
+      setTimeout(() => {
+        setTypingColleagues(prev => prev.filter(n => n !== agentName));
+      }, clearAfter);
+    }
+    else if (message.type === 'typing_stopped') {
+      const agentName = message.agentName || message.agentId || 'Agent';
+      setTypingColleagues(prev => prev.filter(n => n !== agentName));
+    }
     else if (message.type === 'assistant_message') {
       // Final completed assistant message (alternative to streaming_completed)
       clearPendingResponseTimeout();
@@ -975,7 +1022,69 @@ export function CenterPanel({
       } catch (e) {
         console.warn('Failed to dispatch tasks_updated');
       }
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      const taskTitle = message.data?.tasks?.[0]?.title || message.data?.title;
+      if (taskTitle) {
+        toast({ title: 'Task created', description: taskTitle });
+      }
     }
+    // ─── 🆕 Chat Intelligence Events ─────────────────────────────────────────
+    else if (message.type === 'teams_auto_hatched') {
+      devLog('✨ [AutoHatch] Teams created from chat:', message.teams, message.agents);
+      // Refresh teams and agents in the sidebar
+      queryClient.invalidateQueries({ queryKey: ['/api/teams'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/agents'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${message.projectId}/agents`] });
+      const agentCount = message.agents?.length || 0;
+      if (agentCount > 0) {
+        toast({ title: 'Team assembled', description: `${agentCount} AI teammate${agentCount !== 1 ? 's' : ''} added to your project` });
+      }
+      // Dispatch event to show animated notification
+      try {
+        window.dispatchEvent(new CustomEvent('teams_auto_hatched', {
+          detail: {
+            teams: message.teams,
+            agents: message.agents,
+            projectId: message.projectId,
+          }
+        }));
+      } catch (e) {
+        console.warn('Failed to dispatch teams_auto_hatched event');
+      }
+    }
+    else if (message.type === 'task_created_from_chat') {
+      devLog('✅ [ChatIntelligence] Task created from chat:', message.task);
+      // Refresh tasks in the right sidebar
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${message.projectId}/tasks`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      try {
+        window.dispatchEvent(new CustomEvent('task_created_from_chat', {
+          detail: { task: message.task, projectId: message.projectId }
+        }));
+      } catch (e) {
+        console.warn('Failed to dispatch task_created_from_chat event');
+      }
+    }
+    else if (message.type === 'brain_updated_from_chat') {
+      devLog('🧠 [ChatIntelligence] Project Brain updated from chat:', message.field, message.value);
+      // Refresh project data in the right sidebar overview
+      queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${message.projectId}`] });
+      toast({ title: 'Project memory updated', description: `Captured: ${message.field || 'new insight'}` });
+      try {
+        window.dispatchEvent(new CustomEvent('brain_updated_from_chat', {
+          detail: {
+            field: message.field,
+            value: message.value,
+            updatedBy: message.updatedBy,
+            projectId: message.projectId,
+          }
+        }));
+      } catch (e) {
+        console.warn('Failed to dispatch brain_updated_from_chat event');
+      }
+    }
+    // ─── END Chat Intelligence Events ────────────────────────────────────────
   };
 
   // === SUBTASK 3.1.4: Message Persistence Integration ===
@@ -998,23 +1107,59 @@ export function CenterPanel({
   };
 
   // Memoized current messages for reactivity - ensure it updates when messages change
+  // D1.2: Prepend earlierMessages (from cursor pagination) before the API window
   const currentMessages = useMemo(() => {
-    const messages = getCurrentMessages();
+    const apiWindow = getCurrentMessages();
+    // Transform earlierMessages to the same shape as allMessages entries
+    const transformed = earlierMessages.map((msg: any) => {
+      const agentRoleFromId = msg.agentId
+        ? activeProjectAgents.find((a: any) => a.id === msg.agentId)?.role
+        : undefined;
+      return {
+        id: msg.id,
+        content: msg.content,
+        senderId: msg.messageType === 'system' ? 'system' : (msg.agentId || msg.userId || 'unknown'),
+        senderName: msg.messageType === 'system' ? 'System' : (msg.agentId ? (() => {
+          const agent = activeProjectAgents.find((a: any) => a.id === msg.agentId);
+          return agent ? agent.name : msg.agentId.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+        })() : 'You'),
+        messageType: msg.messageType,
+        timestamp: msg.createdAt,
+        conversationId: msg.conversationId,
+        status: 'delivered' as const,
+        isStreaming: false,
+        metadata: { ...(msg.metadata || {}), agentRole: msg.metadata?.agentRole ?? agentRoleFromId ?? null },
+      };
+    });
+    const messages = [...transformed, ...apiWindow];
     // Log for debugging
     if (messages.length > 0) {
       const lastMsg = messages[messages.length - 1];
       devLog('🔄 Current messages updated:', messages.length, 'last:', lastMsg.id, lastMsg.content?.slice(0, 30));
     }
     return messages;
-  }, [currentChatContext?.conversationId, allMessages]);
+  }, [currentChatContext?.conversationId, allMessages, earlierMessages, activeProjectAgents]);
 
   // D1.1 & D1.2: Enhanced message loading with pagination
-  const { data: apiMessages, isLoading: messagesLoading } = useQuery({
+  const { data: apiMessagesResponse, isLoading: messagesLoading } = useQuery<{
+    messages: any[];
+    hasMore: boolean;
+    nextCursor: string | null;
+  }>({
     queryKey: [`/api/conversations/${currentChatContext?.conversationId}/messages`],
     enabled: !!currentChatContext?.conversationId,
     staleTime: 0, // D1.x Fix: Show messages instantly instead of caching for 30s
     refetchOnWindowFocus: false, // Don't refetch when window gains focus
+    select: (data: any) => {
+      // Handle both old format (bare array) and new format (envelope)
+      if (Array.isArray(data)) {
+        return { messages: data, hasMore: false, nextCursor: null };
+      }
+      return data;
+    },
   });
+  // Flatten for backward-compatible use in the rest of the component
+  const apiMessages = apiMessagesResponse?.messages;
 
   const { data: runtimeHealth } = useQuery({
     queryKey: ['/health'],
@@ -1039,26 +1184,44 @@ export function CenterPanel({
 
   // Process API messages when they load
   useEffect(() => {
-    if (apiMessages && currentChatContext && Array.isArray(apiMessages)) {
+    if (apiMessagesResponse && currentChatContext) {
+      const apiMessages = apiMessagesResponse.messages;
+      if (!apiMessages || !Array.isArray(apiMessages)) return;
+      // Guard: if activeProject has no agents loaded yet, defer transform to avoid
+      // rendering all messages with null agentRole (green flash).
+      // The effect will re-run when activeProjectAgents populates.
+      if (activeProjectAgents.length === 0) return;
+
+      // Sync pagination state from response envelope
+      setHasMoreMessages(apiMessagesResponse.hasMore);
+      setNextMessageCursor(apiMessagesResponse.nextCursor);
+      // Reset earlier messages on conversation change
+      setEarlierMessages([]);
+
       devLog(`📥 Loaded ${apiMessages.length} messages from API for ${currentChatContext.conversationId}`);
       // Transform API messages to match our format
-      const transformedMessages = apiMessages.map((msg: any) => ({
-        id: msg.id,
-        content: msg.content,
-        senderId: msg.messageType === 'system' ? 'system' : (msg.agentId || msg.userId || 'unknown'),
-        senderName: msg.messageType === 'system' ? 'System' : (msg.agentId ? (() => {
-          const agent = activeProjectAgents.find(a => a.id === msg.agentId);
-          return agent ? agent.name : msg.agentId.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
-        })() : 'You'),
-        messageType: msg.messageType,
-        timestamp: msg.createdAt,
-        conversationId: msg.conversationId,
-        status: 'delivered' as const,
-        parentMessageId: msg.parentMessageId,
-        threadRootId: msg.threadRootId,
-        threadDepth: msg.threadDepth || 0,
-        metadata: msg.metadata || {}
-      }));
+      const transformedMessages = apiMessages.map((msg: any) => {
+        const agentRoleFromId = msg.agentId
+          ? activeProjectAgents.find((a: any) => a.id === msg.agentId)?.role
+          : undefined;
+        return {
+          id: msg.id,
+          content: msg.content,
+          senderId: msg.messageType === 'system' ? 'system' : (msg.agentId || msg.userId || 'unknown'),
+          senderName: msg.messageType === 'system' ? 'System' : (msg.agentId ? (() => {
+            const agent = activeProjectAgents.find(a => a.id === msg.agentId);
+            return agent ? agent.name : msg.agentId.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+          })() : 'You'),
+          messageType: msg.messageType,
+          timestamp: msg.createdAt,
+          conversationId: msg.conversationId,
+          status: 'delivered' as const,
+          parentMessageId: msg.parentMessageId,
+          threadRootId: msg.threadRootId,
+          threadDepth: msg.threadDepth || 0,
+          metadata: { ...(msg.metadata || {}), agentRole: msg.metadata?.agentRole ?? agentRoleFromId ?? null }
+        };
+      });
 
       // Merge messages instead of replacing to preserve in-flight streaming
       setAllMessages(prev => {
@@ -1083,7 +1246,7 @@ export function CenterPanel({
         };
       });
     }
-  }, [apiMessages, currentChatContext]);
+  }, [apiMessagesResponse, currentChatContext, activeProjectAgents]);
 
   // Cleanup processed message IDs when conversation changes
   useEffect(() => {
@@ -1093,9 +1256,33 @@ export function CenterPanel({
 
   // TEST: Log message structure for debugging
   devLog('📊 Current messages in linear timeline:', currentMessages.length);
-  devLog('💾 API Messages loaded:', Array.isArray(apiMessages) ? apiMessages.length : 0);
+  devLog('💾 API Messages loaded:', apiMessages ? apiMessages.length : 0);
 
 
+
+  // D1.2: Load earlier messages via cursor pagination
+  const loadEarlierMessages = async () => {
+    if (!nextMessageCursor || !currentChatContext?.conversationId || loadingEarlier) return;
+    setLoadingEarlier(true);
+    try {
+      const response = await fetch(
+        `/api/conversations/${currentChatContext.conversationId}/messages?before=${encodeURIComponent(nextMessageCursor)}&limit=50`,
+        { credentials: 'include' }
+      );
+      if (!response.ok) throw new Error('Failed to load earlier messages');
+      const data = await response.json();
+      const olderMsgs: any[] = Array.isArray(data) ? data : (data.messages || []);
+      const olderHasMore: boolean = Array.isArray(data) ? false : (data.hasMore ?? false);
+      const olderCursor: string | null = Array.isArray(data) ? null : (data.nextCursor ?? null);
+      setEarlierMessages(prev => [...olderMsgs, ...prev]);
+      setHasMoreMessages(olderHasMore);
+      setNextMessageCursor(olderCursor);
+    } catch (err) {
+      console.error('Failed to load earlier messages:', err);
+    } finally {
+      setLoadingEarlier(false);
+    }
+  };
 
   // Add message to specific conversation
   const addMessageToConversation = (conversationId: string, message: any) => {
@@ -1348,7 +1535,7 @@ export function CenterPanel({
           title: 'Maya',
           subtitle: 'Project Manager',
           participants,
-          placeholder: `Message all teams in ${activeProject?.name || 'your project'}...`,
+          placeholder: "Message your team...",
           welcomeTitle: 'Talk to your entire project team',
           welcomeSubtitle: 'Get insights and coordination across all teams and roles.',
           welcomeIcon: '🚀'
@@ -1366,18 +1553,22 @@ export function CenterPanel({
           welcomeIcon: selectedTeam?.emoji || '👥'
         };
 
-      case 'agent':
-        const agentName = toDisplayText(selectedAgent?.name, 'Maya');
+      case 'agent': {
         const agentRole = toDisplayText(selectedAgent?.role, 'Product Manager');
+        // Show character name (e.g. "Alex") from registry, not the DB name field
+        const agentName = getRoleDefinition(selectedAgent?.role)?.characterName
+          ?? toDisplayText(selectedAgent?.name, agentRole);
+        const isMaya = selectedAgent?.isSpecialAgent || selectedAgent?.name === 'Maya';
         return {
-          title: agentName,
+          title: isMaya ? (activeProject?.name || agentName) : agentName,
           subtitle: `1-on-1 Chat • ${agentRole}`,
           participants,
           placeholder: `Message ${agentName}...`,
           welcomeTitle: `Chat with ${agentName}`,
           welcomeSubtitle: `Get specialized help with ${agentRole.toLowerCase()} tasks.`,
-          welcomeIcon: '🤖'
+          welcomeIcon: getRoleDefinition(selectedAgent?.role)?.emoji ?? '🤖'
         };
+      }
 
       default:
         return {
@@ -1683,6 +1874,7 @@ export function CenterPanel({
           }
 
           setIsThinking(true);
+          setTypingColleagues([]);  // prevent stale indicator from showing during AI response
           const tempMessageId = `temp-${Date.now()}`;
           const timestamp = new Date().toISOString();
 
@@ -1710,6 +1902,7 @@ export function CenterPanel({
               userId: user?.id || 'user',
               metadata: {
                 clientTempId: tempMessageId,
+                idempotencyKey: `${tempMessageId}-${Date.now()}`,
                 routing: {
                   mode: currentChatContext.mode,
                   projectId: activeProject?.id,
@@ -1780,6 +1973,7 @@ export function CenterPanel({
 
       if (canSend) {
         setIsThinking(true);
+        setTypingColleagues([]);  // prevent stale indicator from showing during AI response
         const tempMessageId = `temp-${Date.now()}`;
         const timestamp = new Date().toISOString();
 
@@ -1844,6 +2038,7 @@ export function CenterPanel({
             senderName: 'You',
             metadata: {
               clientTempId: tempMessageId,
+              idempotencyKey: `${tempMessageId}-${Date.now()}`,
               routing: {
                 type: recipients.type,
                 scope: recipients.scope,
@@ -1927,7 +2122,7 @@ export function CenterPanel({
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
           <div className="max-w-lg">
             {/* Chicken hatching emoji */}
-            <div className="text-[48px] mb-4">🐣</div>
+            <div className="text-5xl mb-4">🐣</div>
 
             {/* Subtitle */}
             <h2 className="font-semibold hatchin-text text-lg mb-2">
@@ -1957,7 +2152,7 @@ export function CenterPanel({
       <main className="flex-1 min-h-0 premium-column-bg rounded-2xl flex flex-col my-2.5 relative overflow-hidden">
         <div className="ambient-glow-top" />
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-          <div className="animate-spin w-8 h-8 border-2 border-[#6C82FF] border-t-transparent rounded-full mb-4"></div>
+          <div className="animate-spin w-8 h-8 border-2 border-hatchin-blue border-t-transparent rounded-full mb-4"></div>
           <p className="hatchin-text-muted text-sm anim-pulse">Select a project to get started</p>
         </div>
       </main>
@@ -1975,6 +2170,13 @@ export function CenterPanel({
             <h1 className="font-semibold hatchin-text text-lg">
               {contextDisplay.title}
             </h1>
+            {currentChatContext?.mode && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-white/8 text-gray-400 border border-white/10">
+                {currentChatContext.mode === 'project' ? '🌐 All agents' :
+                 currentChatContext.mode === 'agent' ? `💬 1-on-1` :
+                 '👥 Team chat'}
+              </span>
+            )}
           </div>
 
           <button
@@ -1993,13 +2195,13 @@ export function CenterPanel({
 
         {/* Subtitle and Participants Row */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
-          <span className="hatchin-text-muted font-medium text-[12px]">
+          <span className="hatchin-text-muted font-medium text-xs">
             {contextDisplay.subtitle}
           </span>
 
           {/* Project Mode: Show Teams */}
           {currentChatContext?.mode === 'project' && activeProjectTeams.length > 0 && (
-            <div className="flex flex-wrap items-center gap-3 text-[12px]">
+            <div className="flex flex-wrap items-center gap-3 text-xs">
               {activeProjectTeams.map(team => {
                 const teamAgentCount = activeProjectAgents.filter(a => a.teamId === team.id).length;
                 return (
@@ -2045,13 +2247,13 @@ export function CenterPanel({
           /* Welcome Screen - Show when no messages */
           (<div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
             <div className="max-w-lg">
-              <div className="text-[36px] mt-[0px] mb-[0px]">{contextDisplay.welcomeIcon}</div>
-              <h2 className="font-semibold hatchin-text mt-[2px] mb-[2px] text-[16px]">{contextDisplay.welcomeTitle}</h2>
-              <p className="hatchin-text-muted text-[14px] mt-[0px] mb-[0px]">
+              <div className="text-4xl">{contextDisplay.welcomeIcon}</div>
+              <h2 className="font-semibold hatchin-text mt-0.5 mb-0.5 text-base">{contextDisplay.welcomeTitle}</h2>
+              <p className="hatchin-text-muted text-sm">
                 {contextDisplay.welcomeSubtitle}
               </p>
 
-              <div className="flex flex-wrap gap-3 justify-center pt-[11px] pb-[11px]">
+              <div className="flex flex-wrap gap-3 justify-center py-3">
                 <button
                   onClick={() => handleActionClick('generateRoadmap')}
                   className="hatchin-bg-card hover:bg-hatchin-border hatchin-text px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -2081,10 +2283,23 @@ export function CenterPanel({
           (<>
             <div className="relative flex-1 min-h-0">
               {/* Messages Container */}
-              <div className="h-full overflow-y-auto p-6 space-y-4">
+              <div className="h-full overflow-y-auto hide-scrollbar p-6 space-y-4">
                 {messagesLoading && (
                   <div className="flex items-center justify-center py-4">
                     <div className="hatchin-text-muted text-sm">Loading conversation...</div>
+                  </div>
+                )}
+
+                {/* D1.2: Load earlier messages button — shown when there are older messages */}
+                {hasMoreMessages && (
+                  <div className="flex justify-center py-3">
+                    <button
+                      onClick={loadEarlierMessages}
+                      disabled={loadingEarlier}
+                      className="text-sm text-slate-400 hover:text-slate-200 transition-colors px-4 py-2 rounded-lg hover:bg-slate-800/50 disabled:opacity-50"
+                    >
+                      {loadingEarlier ? 'Fetching earlier messages...' : 'Load earlier messages'}
+                    </button>
                   </div>
                 )}
 
@@ -2138,30 +2353,31 @@ export function CenterPanel({
                   const currentMsgs = getCurrentMessages();
                   const hasStreamingPlaceholder = currentMsgs.some(m => m.status === 'streaming' || m.metadata?.isStreaming);
                   // Hide banner if a placeholder exists OR a placeholder is about to be created (streamingMessageId already set)
-                  return isStreaming && streamingAgent && !hasStreamingPlaceholder && !streamingMessageId.current && !isThinking;
+                  // Also hide if bottom bar typing indicator is active to prevent dual indicators
+                  return isStreaming && streamingAgent && !hasStreamingPlaceholder && !streamingMessageId.current && !isThinking && typingColleagues.length === 0;
                 })() && (
-                  <div className="flex justify-start">
-                    <div className="flex items-start gap-3 max-w-[85%]">
-                      <div className="w-8 h-8 rounded-full bg-hatchin-text-muted flex items-center justify-center flex-shrink-0 mt-1">
-                        <span className="text-xs font-medium text-white">{streamingAgent?.charAt(0) || '?'}</span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium hatchin-text mb-1">
-                          {streamingAgent}
-                        </span>
-                        <div className="bg-hatchin-colleague hatchin-text border hatchin-border rounded-2xl px-4 py-3 shadow-sm">
-                          <div className="flex items-center gap-1">
-                            <div className="flex gap-1">
-                              <div className="w-2 h-2 bg-hatchin-text-muted rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                              <div className="w-2 h-2 bg-hatchin-text-muted rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                              <div className="w-2 h-2 bg-hatchin-text-muted rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <div className="flex justify-start">
+                      <div className="flex items-start gap-3 max-w-[85%]">
+                        <div className="w-8 h-8 rounded-full bg-hatchin-text-muted flex items-center justify-center flex-shrink-0 mt-1">
+                          <span className="text-xs font-medium text-white">{streamingAgent?.charAt(0) || '?'}</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium hatchin-text mb-1">
+                            {streamingAgent}
+                          </span>
+                          <div className="bg-hatchin-colleague hatchin-text border hatchin-border rounded-2xl px-4 py-3 shadow-sm">
+                            <div className="flex items-center gap-1">
+                              <div className="flex gap-1">
+                                <div className="w-2 h-2 bg-hatchin-text-muted rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                <div className="w-2 h-2 bg-hatchin-text-muted rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                <div className="w-2 h-2 bg-hatchin-text-muted rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {/* Inline Task Approval UI */}
                 {suggestedTasks.length > 0 && taskSuggestionContext && (
@@ -2230,17 +2446,6 @@ export function CenterPanel({
                   </div>
                 )}
 
-                {/* Thinking Indicator */}
-                {isThinking && (
-                  <div className="flex items-center space-x-2 p-4 text-gray-400 italic">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                    </div>
-                    <span className="text-sm">Thinking...</span>
-                  </div>
-                )}
 
                 {/* Auto-scroll helper */}
                 <div ref={(el) => {
@@ -2256,6 +2461,19 @@ export function CenterPanel({
           </>)
         )}
       </div>
+      {/* Typing Indicator Bar */}
+      {typingColleagues.length > 0 && !isStreaming && (
+        <div className="flex items-center gap-2 px-6 py-1.5 text-xs text-gray-400 border-t hatchin-border">
+          <div className="flex gap-0.5">
+            <span className="animate-bounce" style={{ animationDelay: '0ms' }}>·</span>
+            <span className="animate-bounce" style={{ animationDelay: '75ms' }}>·</span>
+            <span className="animate-bounce" style={{ animationDelay: '150ms' }}>·</span>
+          </div>
+          <span>
+            {typingColleagues.join(', ')} {typingColleagues.length === 1 ? 'is' : 'are'} typing...
+          </span>
+        </div>
+      )}
       {/* Chat Input */}
       <div className="p-6 hatchin-border border-t">
         {/* C1.2: Reply preview */}
@@ -2280,13 +2498,12 @@ export function CenterPanel({
           </div>
         )}
 
-        <form onSubmit={handleChatSubmit} className="relative">
+        <form onSubmit={handleChatSubmit} className={`relative rounded-lg ${isStreaming || isThinking ? 'ai-thinking-ring' : ''}`}>
           <textarea
             ref={messageInputRef}
             data-testid="input-message"
             name="message"
-            placeholder={isStreaming || isThinking ? "AI is responding..." : contextDisplay.placeholder}
-            disabled={isStreaming || isThinking}
+            placeholder={contextDisplay.placeholder}
             autoComplete="off"
             value={inputValue}
             rows={1}
@@ -2301,8 +2518,7 @@ export function CenterPanel({
               }
             }}
             aria-label="Message input"
-            className={`w-full hatchin-bg-card hatchin-border border rounded-lg px-4 pr-14 py-3 text-sm hatchin-text placeholder-hatchin-text-muted focus:outline-none focus:ring-2 focus:ring-hatchin-blue focus:border-transparent resize-none min-h-[48px] max-h-[180px] overflow-y-auto ${isStreaming || isThinking ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+            className="w-full hatchin-bg-card hatchin-border border rounded-lg px-4 pr-14 py-3 text-sm hatchin-text placeholder-hatchin-text-muted focus:outline-none focus:ring-2 focus:ring-hatchin-blue focus:border-transparent resize-none min-h-[48px] max-h-[180px] overflow-y-auto"
           />
           {/* B1.3: Show stop button during streaming, send button otherwise */}
           {isStreaming ? (

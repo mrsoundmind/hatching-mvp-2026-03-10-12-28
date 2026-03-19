@@ -84,14 +84,16 @@ export class PersonalityEvolutionEngine {
    * Get or create personality profile for an agent-user pair
    */
   getPersonalityProfile(agentId: string, userId: string): PersonalityProfile {
-    const key = `${agentId}-${userId}`;
-    
+    // Bug 5: normalise to bare agentId — strip composite "projectId:agentId" format
+    const bareAgentId = agentId.includes(':') ? agentId.split(':').pop()! : agentId;
+    const key = `${bareAgentId}-${userId}`;
+
     if (!this.personalityProfiles.has(key)) {
-      const baseTraits = PersonalityEvolutionEngine.DEFAULT_TRAITS[agentId] || 
+      const baseTraits = PersonalityEvolutionEngine.DEFAULT_TRAITS[bareAgentId] ||
                         PersonalityEvolutionEngine.DEFAULT_TRAITS['Product Manager'];
-      
+
       const profile: PersonalityProfile = {
-        agentId,
+        agentId: bareAgentId,
         userId,
         baseTraits: { ...baseTraits },
         adaptedTraits: { ...baseTraits },
@@ -100,11 +102,38 @@ export class PersonalityEvolutionEngine {
         adaptationConfidence: 0.1,
         learningHistory: []
       };
-      
+
       this.personalityProfiles.set(key, profile);
     }
-    
+
     return this.personalityProfiles.get(key)!;
+  }
+
+  /**
+   * Bug 1: seed profile from persisted DB data so learning survives server restart.
+   * No-op if profile is already live in memory.
+   */
+  seedProfileFromDB(
+    agentId: string,
+    userId: string,
+    adaptedTraits: PersonalityTraits,
+    meta: { interactionCount: number; adaptationConfidence: number; lastUpdated: string }
+  ): void {
+    const bareAgentId = agentId.includes(':') ? agentId.split(':').pop()! : agentId;
+    const key = `${bareAgentId}-${userId}`;
+    if (this.personalityProfiles.has(key)) return;
+    const baseTraits = PersonalityEvolutionEngine.DEFAULT_TRAITS[bareAgentId] ||
+                       PersonalityEvolutionEngine.DEFAULT_TRAITS['Product Manager'];
+    this.personalityProfiles.set(key, {
+      agentId: bareAgentId,
+      userId,
+      baseTraits: { ...baseTraits },
+      adaptedTraits: { ...adaptedTraits },
+      interactionCount: meta.interactionCount,
+      lastUpdated: new Date(meta.lastUpdated),
+      adaptationConfidence: meta.adaptationConfidence,
+      learningHistory: []
+    });
   }
 
   /**
@@ -118,7 +147,12 @@ export class PersonalityEvolutionEngine {
   ): PersonalityProfile {
     const profile = this.getPersonalityProfile(agentId, userId);
     profile.interactionCount++;
-    
+
+    // Rec 3: skip first 3 interactions (cold start noise) + throttle to every 5th
+    if (profile.interactionCount <= 3 || profile.interactionCount % 5 !== 0) {
+      return profile;
+    }
+
     const adjustments: PersonalityAdjustment[] = [];
     
     // Adapt based on user communication style

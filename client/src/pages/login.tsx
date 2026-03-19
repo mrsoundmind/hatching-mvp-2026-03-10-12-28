@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
 import { FcGoogle } from "react-icons/fc";
 import { Sparkles, Code2, Users2 } from "lucide-react";
 
@@ -17,7 +17,44 @@ export default function LoginPage() {
   const { isSignedIn, isLoading } = useAuth();
   const [location, setLocation] = useLocation();
   const [activeSlide, setActiveSlide] = useState(0);
-  const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
+  const ideaTexts = [
+    "Building a fitness app for runners...",
+    "Creating an e-commerce store...",
+    "Launching a SaaS productivity tool...",
+    "Designing a travel planning platform...",
+  ];
+  const [ideaIndex, setIdeaIndex] = useState(0);
+  const ideaTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    ideaTimerRef.current = setInterval(() => {
+      setIdeaIndex((prev) => (prev + 1) % ideaTexts.length);
+    }, 4000);
+    return () => {
+      if (ideaTimerRef.current) clearInterval(ideaTimerRef.current);
+    };
+  }, []);
+
+  // Cursor tracking for parallax on Slide 1 agent cards
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const springX = useSpring(mouseX, { stiffness: 60, damping: 20 });
+  const springY = useSpring(mouseY, { stiffness: 60, damping: 20 });
+  const rightPanelRef = useRef<HTMLElement>(null);
+
+  const handleRightMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+    const rect = rightPanelRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    mouseX.set((e.clientX - cx) / 30);
+    mouseY.set((e.clientY - cy) / 30);
+  };
+
+  const handleRightMouseLeave = () => {
+    mouseX.set(0);
+    mouseY.set(0);
+  };
 
   const nextPath = useMemo(() => {
     if (typeof window === "undefined") return "/";
@@ -37,11 +74,11 @@ export default function LoginPage() {
     }
   }, [isLoading, isSignedIn, location, nextPath, setLocation]);
 
-  // Auto-rotate slides
+  // Auto-rotate slides every 4s
   useEffect(() => {
     const timer = setInterval(() => {
       setActiveSlide((prev) => (prev + 1) % 3);
-    }, 6000);
+    }, 4000);
     return () => clearInterval(timer);
   }, []);
 
@@ -82,40 +119,17 @@ export default function LoginPage() {
           className="w-full max-w-[420px] relative z-10"
         >
           {/* Hatchin Logo */}
-          <div className="mb-12 flex items-center select-none">
+          <div className="mb-10 flex items-center select-none">
             <span className="text-3xl font-bold tracking-tighter text-white">Hatchin<span className="text-indigo-500">.</span></span>
           </div>
 
-          <div className="mb-8">
-            {/* Custom Animated Tabs */}
-            <div className="flex pb-4 mb-8 border-b border-white/10 gap-8">
-              <button
-                onClick={() => setActiveTab("login")}
-                className={`relative pb-4 -mb-4 text-sm font-medium transition-colors ${activeTab === "login" ? "text-white" : "text-slate-400 hover:text-slate-300"}`}
-              >
-                Log In
-                {activeTab === "login" && (
-                  <motion.div layoutId="active-tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
-                )}
-              </button>
-              <button
-                onClick={() => setActiveTab("signup")}
-                className={`relative pb-4 -mb-4 text-sm font-medium transition-colors ${activeTab === "signup" ? "text-white" : "text-slate-400 hover:text-slate-300"}`}
-              >
-                Sign Up
-                {activeTab === "signup" && (
-                  <motion.div layoutId="active-tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
-                )}
-              </button>
-            </div>
-
-            <h1 className="text-3xl font-semibold tracking-tight text-white mb-3">
-              {activeTab === "login" ? "Welcome back" : "Create an account"}
+          {/* ✨ Re-polishing the headline section */}
+          <div className="mb-12">
+            <h1 className="text-4xl font-semibold tracking-tight text-white mb-4">
+              Your AI team is ready. Let's build.
             </h1>
-            <p className="text-base text-slate-400 leading-relaxed font-light">
-              {activeTab === "login"
-                ? "Sign in to access your projects and collaborate with your AI team seamlessly."
-                : "Join Hatchin to start turning your visions into reality with an autonomous AI team."}
+            <p className="text-lg text-slate-400 leading-relaxed font-light">
+              Build your dreams from the ground up with Maya and your autonomous team.
             </p>
           </div>
 
@@ -123,22 +137,21 @@ export default function LoginPage() {
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
-              className="w-full mb-6 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+              className="w-full mb-8 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200"
             >
-              Authentication failed. Please try again or check your credentials.
+              Authentication failed. Please try again.
             </motion.div>
           )}
 
+          {/* Single seamless CTA */}
           <a
-            className="group relative w-full inline-flex items-center justify-center gap-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 text-white text-[15px] font-medium px-4 py-3.5 transition-all duration-300 overflow-hidden shadow-2xl shadow-black/50"
+            className="group relative w-full inline-flex items-center justify-center gap-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 text-white text-[17px] font-medium px-6 py-4 transition-all duration-300 overflow-hidden shadow-2xl shadow-black/50"
             href={`/api/auth/google/start?returnTo=${encodeURIComponent(nextPath)}`}
           >
             <FcGoogle className="w-5 h-5 z-10 drop-shadow-sm" />
             <span className="z-10 tracking-wide font-medium text-white/90 group-hover:text-white transition-colors">
-              {activeTab === "login" ? "Continue with Google" : "Sign up with Google"}
+              Get Started with Google
             </span>
-
-            {/* Hover state gradient border inner glow */}
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-500" />
           </a>
@@ -150,70 +163,68 @@ export default function LoginPage() {
       </section>
 
       {/* RIGHT COLUMN: Showcase Carousel / Animations */}
-      <section className="relative w-full lg:w-1/2 flex flex-col items-center justify-center bg-slate-900 overflow-hidden border-t lg:border-t-0 lg:border-l border-white/5 py-20 lg:py-0 min-h-[700px] lg:min-h-screen shrink-0">
+      <section
+        ref={rightPanelRef}
+        onMouseMove={handleRightMouseMove}
+        onMouseLeave={handleRightMouseLeave}
+        className="relative w-full lg:w-1/2 flex flex-col items-center justify-center bg-slate-900 overflow-hidden border-t lg:border-t-0 lg:border-l border-white/5 py-20 lg:py-0 min-h-[700px] lg:min-h-screen shrink-0">
 
         {/* Dynamic Vibrant glowing background matching Framer AI aesthetic */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-[#050505]">
           {/* Layer 1: Primary Top-Left Orb */}
           <motion.div
-            className="absolute top-0 left-0 w-[150%] h-[150%] rounded-[100%] blur-[120px] opacity-60 mix-blend-screen will-change-transform"
+            className="absolute top-0 left-0 w-[150%] h-[150%] rounded-[100%] blur-[120px] mix-blend-screen will-change-transform"
             animate={{
-              background: activeSlide === 0
-                ? "radial-gradient(circle at center, rgba(59,130,246,0.8) 0%, rgba(168,85,247,0.4) 30%, transparent 60%)"
-                : activeSlide === 1
-                  ? "radial-gradient(circle at center, rgba(236,72,153,0.8) 0%, rgba(249,115,22,0.4) 30%, transparent 60%)"
-                  : "radial-gradient(circle at center, rgba(16,185,129,0.8) 0%, rgba(6,182,212,0.4) 30%, transparent 60%)",
               x: ["-10%", "10%", "-10%"],
               y: ["-10%", "5%", "-10%"],
               scale: [1, 1.1, 1],
             }}
             transition={{
-              background: { duration: 1.5, ease: "easeInOut" },
               x: { duration: 20, repeat: Infinity, ease: "linear" },
               y: { duration: 25, repeat: Infinity, ease: "linear" },
               scale: { duration: 15, repeat: Infinity, ease: "easeInOut" }
             }}
-          />
+          >
+            <div className={`absolute inset-0 transition-opacity duration-1500 ease-in-out ${activeSlide === 0 ? "opacity-60" : "opacity-0"}`} style={{ background: "radial-gradient(circle at center, rgba(59,130,246,0.8) 0%, rgba(168,85,247,0.4) 30%, transparent 60%)" }} />
+            <div className={`absolute inset-0 transition-opacity duration-1500 ease-in-out ${activeSlide === 1 ? "opacity-60" : "opacity-0"}`} style={{ background: "radial-gradient(circle at center, rgba(236,72,153,0.8) 0%, rgba(249,115,22,0.4) 30%, transparent 60%)" }} />
+            <div className={`absolute inset-0 transition-opacity duration-1500 ease-in-out ${activeSlide === 2 ? "opacity-60" : "opacity-0"}`} style={{ background: "radial-gradient(circle at center, rgba(16,185,129,0.8) 0%, rgba(6,182,212,0.4) 30%, transparent 60%)" }} />
+          </motion.div>
 
           {/* Layer 2: Bottom-Right Shifting Orb */}
           <motion.div
-            className="absolute bottom-[-20%] right-[-20%] w-[130%] h-[130%] rounded-[100%] blur-[140px] opacity-70 mix-blend-screen will-change-transform"
+            className="absolute bottom-[-20%] right-[-20%] w-[130%] h-[130%] rounded-[100%] blur-[140px] mix-blend-screen will-change-transform"
             animate={{
-              background: activeSlide === 0
-                ? "radial-gradient(circle at center, rgba(99,102,241,0.7) 0%, rgba(236,72,153,0.3) 40%, transparent 70%)"
-                : activeSlide === 1
-                  ? "radial-gradient(circle at center, rgba(239,68,68,0.7) 0%, rgba(234,179,8,0.3) 40%, transparent 70%)"
-                  : "radial-gradient(circle at center, rgba(20,184,166,0.7) 0%, rgba(59,130,246,0.3) 40%, transparent 70%)",
               x: ["5%", "-15%", "5%"],
               y: ["10%", "-5%", "10%"],
               rotate: [0, 15, 0],
             }}
             transition={{
-              background: { duration: 1.5, ease: "easeInOut" },
               x: { duration: 22, repeat: Infinity, ease: "linear" },
               y: { duration: 28, repeat: Infinity, ease: "linear" },
               rotate: { duration: 20, repeat: Infinity, ease: "easeInOut" }
             }}
-          />
+          >
+            <div className={`absolute inset-0 transition-opacity duration-1500 ease-in-out ${activeSlide === 0 ? "opacity-70" : "opacity-0"}`} style={{ background: "radial-gradient(circle at center, rgba(99,102,241,0.7) 0%, rgba(236,72,153,0.3) 40%, transparent 70%)" }} />
+            <div className={`absolute inset-0 transition-opacity duration-1500 ease-in-out ${activeSlide === 1 ? "opacity-70" : "opacity-0"}`} style={{ background: "radial-gradient(circle at center, rgba(239,68,68,0.7) 0%, rgba(234,179,8,0.3) 40%, transparent 70%)" }} />
+            <div className={`absolute inset-0 transition-opacity duration-1500 ease-in-out ${activeSlide === 2 ? "opacity-70" : "opacity-0"}`} style={{ background: "radial-gradient(circle at center, rgba(20,184,166,0.7) 0%, rgba(59,130,246,0.3) 40%, transparent 70%)" }} />
+          </motion.div>
 
           {/* Layer 3: Central Drifting Highlight */}
           <motion.div
-            className="absolute top-1/2 left-1/2 w-[100%] h-[100%] -translate-x-1/2 -translate-y-1/2 rounded-[100%] blur-[160px] opacity-40 mix-blend-screen will-change-transform"
+            className="absolute top-1/2 left-1/2 w-[100%] h-[100%] -translate-x-1/2 -translate-y-1/2 rounded-[100%] blur-[160px] mix-blend-screen will-change-transform"
             animate={{
-              background: activeSlide === 0
-                ? "radial-gradient(circle at center, rgba(168,85,247,0.5) 0%, transparent 50%)"
-                : activeSlide === 1
-                  ? "radial-gradient(circle at center, rgba(249,115,22,0.5) 0%, transparent 50%)"
-                  : "radial-gradient(circle at center, rgba(6,182,212,0.5) 0%, transparent 50%)",
               scale: [0.8, 1.2, 0.8],
               x: ["-20%", "20%", "-20%"],
             }}
             transition={{
-              background: { duration: 1.5, ease: "easeInOut" },
               scale: { duration: 18, repeat: Infinity, ease: "easeInOut" },
               x: { duration: 30, repeat: Infinity, ease: "linear" }
             }}
-          />
+          >
+            <div className={`absolute inset-0 transition-opacity duration-1500 ease-in-out ${activeSlide === 0 ? "opacity-40" : "opacity-0"}`} style={{ background: "radial-gradient(circle at center, rgba(168,85,247,0.5) 0%, transparent 50%)" }} />
+            <div className={`absolute inset-0 transition-opacity duration-1500 ease-in-out ${activeSlide === 1 ? "opacity-40" : "opacity-0"}`} style={{ background: "radial-gradient(circle at center, rgba(249,115,22,0.5) 0%, transparent 50%)" }} />
+            <div className={`absolute inset-0 transition-opacity duration-1500 ease-in-out ${activeSlide === 2 ? "opacity-40" : "opacity-0"}`} style={{ background: "radial-gradient(circle at center, rgba(6,182,212,0.5) 0%, transparent 50%)" }} />
+          </motion.div>
         </div>
 
         {/* Subtle dark texture overlay to make it look premium */}
@@ -236,24 +247,48 @@ export default function LoginPage() {
                   <Users2 className="w-4 h-4" /> Your Autonomous Team
                 </div>
                 <h2 className="text-4xl lg:text-5xl font-semibold text-white mb-6 tracking-tight text-center leading-tight">
-                  Your Ideas, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 drop-shadow-sm">Hatched.</span>
+                  Your Ideas, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 drop-shadow-sm">Built. Automatically.</span>
                 </h2>
-                <p className="text-lg lg:text-xl text-slate-400 leading-relaxed text-center mb-16 px-4 font-light max-w-sm">
+                <p className="text-lg lg:text-xl text-slate-400 leading-relaxed text-center mb-6 px-4 font-light max-w-sm">
                   Turn your boldest ideas into reality with a dedicated AI team that builds your dreams from the ground up.
                 </p>
 
-                {/* Floating Hatches Animation */}
-                <div className="relative w-full h-[240px] flex items-center justify-center pointer-events-none perspective-[1000px]">
+                {/* Animated cycling idea pill — Task 2 */}
+                <div className="mb-10 w-full max-w-sm">
+                  <div className="relative flex items-center gap-2 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 overflow-hidden">
+                    <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold shrink-0">Idea</span>
+                    <div className="w-px h-3 bg-white/10 shrink-0" />
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={ideaIndex}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.35 }}
+                        className="text-sm text-slate-300 font-light truncate"
+                      >
+                        {ideaTexts[ideaIndex]}
+                      </motion.span>
+                    </AnimatePresence>
+                    <span className="ml-auto w-1.5 h-4 rounded-sm bg-indigo-400 animate-pulse shrink-0" />
+                  </div>
+                </div>
+
+                {/* Floating Hatches — cursor-tracking parallax */}
+                <div className="relative w-full h-[240px] flex items-center justify-center perspective-[1000px]">
                   {hatches.map((hatch, i) => (
                     <motion.div
                       key={i}
                       className={`absolute w-64 rounded-2xl border border-white/5 bg-black/40 backdrop-blur-2xl p-5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] ${i === 0 ? "left-0 top-0" : i === 1 ? "right-0 top-1/2 -translate-y-1/2" : "left-12 bottom-0"
                         } z-${20 - i * 10} transition-colors duration-500 hover:border-white/10`}
+                      style={{
+                        x: springX,
+                        y: springY,
+                        rotateX: springY,
+                        rotateY: springX,
+                      }}
                       animate={{
                         y: [0, -12, 0],
-                        rotateX: [0, i % 2 === 0 ? 2 : -2, 0],
-                        rotateY: [0, i % 2 === 0 ? -2 : 2, 0],
-                        rotateZ: [0, i % 2 === 0 ? 1.5 : -1.5, 0],
                       }}
                       transition={{
                         duration: 6,
@@ -304,9 +339,30 @@ export default function LoginPage() {
                 <h2 className="text-4xl lg:text-5xl font-semibold text-white mb-6 tracking-tight text-center leading-tight">
                   Dreams made <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-rose-400 drop-shadow-sm">Real.</span>
                 </h2>
-                <p className="text-lg lg:text-xl text-slate-400 leading-relaxed text-center mb-16 px-4 font-light max-w-sm">
+                <p className="text-lg lg:text-xl text-slate-400 leading-relaxed text-center mb-6 px-4 font-light max-w-sm">
                   Your autonomous team takes your vision and transforms it into a living, breathing application.
                 </p>
+
+                {/* Cycling idea pill — Slide 2 */}
+                <div className="mb-10 w-full max-w-sm">
+                  <div className="relative flex items-center gap-2 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 overflow-hidden">
+                    <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold shrink-0">Idea</span>
+                    <div className="w-px h-3 bg-white/10 shrink-0" />
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={ideaIndex}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.35 }}
+                        className="text-sm text-slate-300 font-light truncate"
+                      >
+                        {ideaTexts[ideaIndex]}
+                      </motion.span>
+                    </AnimatePresence>
+                    <span className="ml-auto w-1.5 h-4 rounded-sm bg-purple-400 animate-pulse shrink-0" />
+                  </div>
+                </div>
 
                 {/* Code Animation Mock */}
                 <div className="relative w-full max-w-[360px] h-[240px] rounded-2xl border border-white/10 bg-[#0A0A0A]/80 backdrop-blur-xl p-5 shadow-2xl overflow-hidden font-mono text-sm shadow-purple-500/10 text-left">
@@ -378,14 +434,35 @@ export default function LoginPage() {
                 className="w-full flex flex-col items-center"
               >
                 <div className="mb-8 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium text-sm tracking-wide uppercase shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-                  <Sparkles className="w-4 h-4" /> Nurturing Your Dream
+                  <Sparkles className="w-4 h-4" /> Always Learning Your Style
                 </div>
                 <h2 className="text-4xl lg:text-5xl font-semibold text-white mb-6 tracking-tight text-center leading-tight">
                   Growing <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 drop-shadow-sm">Together.</span>
                 </h2>
-                <p className="text-lg lg:text-xl text-slate-400 leading-relaxed text-center mb-16 px-4 font-light max-w-sm">
+                <p className="text-lg lg:text-xl text-slate-400 leading-relaxed text-center mb-6 px-4 font-light max-w-sm">
                   Your AI colleagues relentlessly learn your style, culture, and goals to make your dream project absolutely perfect.
                 </p>
+
+                {/* Cycling idea pill — Slide 3 */}
+                <div className="mb-10 w-full max-w-sm">
+                  <div className="relative flex items-center gap-2 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 overflow-hidden">
+                    <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold shrink-0">Idea</span>
+                    <div className="w-px h-3 bg-white/10 shrink-0" />
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={ideaIndex}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.35 }}
+                        className="text-sm text-slate-300 font-light truncate"
+                      >
+                        {ideaTexts[ideaIndex]}
+                      </motion.span>
+                    </AnimatePresence>
+                    <span className="ml-auto w-1.5 h-4 rounded-sm bg-emerald-400 animate-pulse shrink-0" />
+                  </div>
+                </div>
 
                 {/* Dashboard / Graph Mock */}
                 <div className="relative w-full max-w-[360px] h-[240px] rounded-2xl border border-white/10 bg-[#0A0A0A]/80 backdrop-blur-xl p-5 shadow-2xl flex flex-col justify-end overflow-hidden shadow-emerald-500/10">

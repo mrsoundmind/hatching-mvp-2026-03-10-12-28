@@ -34,7 +34,7 @@
   --hatchin-border: hsl(216, 8%, 27%);
   --hatchin-text: hsl(210, 9%, 95%);
   --hatchin-text-muted: hsl(216, 6%, 67%);
-  --hatchin-blue: hsl(226, 100%, 70%);
+  --hatchin-blue: #6C82FF;
   --hatchin-green: hsl(158, 66%, 57%);
   --hatchin-orange: hsl(25, 100%, 64%);
 }
@@ -157,10 +157,6 @@
     border: 1px solid hsla(264, 68%, 60%, 0.3) !important;
   }
 
-  .hatchin-bg-orange {
-    background-color: var(--hatchin-orange);
-  }
-
   /* Color dots for agents */
   .agent-dot-orange {
     background-color: var(--hatchin-orange);
@@ -179,9 +175,23 @@
   }
 }
 
-/* Custom scrollbar */
+/* Hide scrollbar but keep functionality */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari and Opera */
+}
+
+/* Premium Thin Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -189,99 +199,13 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--hatchin-border);
-  border-radius: 3px;
+  background: rgba(108, 130, 255, 0.2);
+  border-radius: 10px;
+  transition: background 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--hatchin-card);
-}
-
-/* Scrollbar Stability for Modal Templates */
-.scrollbar-stable {
-  scrollbar-gutter: stable;
-}
-
-.scrollbar-stable::-webkit-scrollbar {
-  width: 8px;
-}
-
-.scrollbar-stable::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.scrollbar-stable::-webkit-scrollbar-thumb {
-  background: rgba(166, 167, 171, 0.3);
-  border-radius: 4px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-
-.scrollbar-stable::-webkit-scrollbar-thumb:hover {
-  background: rgba(166, 167, 171, 0.5);
-  background-clip: padding-box;
-}
-
-/* Left sidebar: hide scrollbar by default, show only while actively scrolling */
-.left-sidebar-scroll {
-  scrollbar-width: none;
-}
-
-.left-sidebar-scroll::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-
-.left-sidebar-scroll.is-scrolling {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(166, 167, 171, 0.45) transparent;
-}
-
-.left-sidebar-scroll.is-scrolling::-webkit-scrollbar {
-  width: 6px;
-}
-
-.left-sidebar-scroll.is-scrolling::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.left-sidebar-scroll.is-scrolling::-webkit-scrollbar-thumb {
-  background: rgba(166, 167, 171, 0.45);
-  border-radius: 3px;
-}
-
-.left-sidebar-scroll.is-scrolling::-webkit-scrollbar-thumb:hover {
-  background: rgba(166, 167, 171, 0.6);
-}
-
-/* Right sidebar: hide scrollbar by default, show while interacting */
-.right-sidebar-scroll {
-  scrollbar-width: none;
-}
-
-.right-sidebar-scroll::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-
-.right-sidebar-scroll.is-scrolling,
-.right-sidebar-scroll:hover,
-.right-sidebar-scroll:focus-within {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(166, 167, 171, 0.45) transparent;
-}
-
-.right-sidebar-scroll.is-scrolling::-webkit-scrollbar,
-.right-sidebar-scroll:hover::-webkit-scrollbar,
-.right-sidebar-scroll:focus-within::-webkit-scrollbar {
-  width: 6px;
-}
-
-.right-sidebar-scroll.is-scrolling::-webkit-scrollbar-thumb,
-.right-sidebar-scroll:hover::-webkit-scrollbar-thumb,
-.right-sidebar-scroll:focus-within::-webkit-scrollbar-thumb {
-  background: rgba(166, 167, 171, 0.45);
-  border-radius: 3px;
+  background: rgba(108, 130, 255, 0.4);
 }
 
 /* ============================================================
@@ -397,7 +321,7 @@
 
 /* Brain Sync progress bar animation */
 .brain-sync-bar {
-  background: linear-gradient(90deg, #6C82FF, #47DB9A, #6C82FF);
+  background: linear-gradient(90deg, var(--hatchin-blue), #47DB9A, var(--hatchin-blue));
   background-size: 200% 100%;
   animation: gradient-shift 1.5s ease infinite;
 }
@@ -461,4 +385,86 @@
   background: rgba(255, 255, 255, 0.05);
   border-color: rgba(255, 255, 255, 0.12);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* =====================================================
+   Task 11: Premium focus ring, active sidebar accent
+   ===================================================== */
+*:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(108, 130, 255, 0.45);
+  border-radius: 6px;
+}
+
+/* Active item left accent in sidebar — applied via JS class */
+.sidebar-active-item {
+  position: relative;
+}
+
+.sidebar-active-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 20%;
+  height: 60%;
+  width: 2px;
+  background: var(--hatchin-blue, #6C82FF);
+  border-radius: 0 2px 2px 0;
+}
+
+/* =====================================================
+   Task 14: AI Sync micro-animations (Show, Don't Tell)
+   ===================================================== */
+
+/* 14a — Brain icon pulse when syncing */
+@keyframes brain-glow-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0px rgba(108, 130, 255, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 12px 6px rgba(108, 130, 255, 0.5);
+  }
+}
+
+.brain-glow {
+  animation: brain-glow-pulse 2s ease-in-out infinite;
+  border-radius: 50%;
+}
+
+/* 14b — Chat input edge glow while AI is thinking / streaming */
+@keyframes ai-thinking-ring {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0px rgba(108, 130, 255, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 15px 4px rgba(108, 130, 255, 0.6);
+  }
+}
+
+.ai-thinking-ring {
+  animation: ai-thinking-ring 2s ease-in-out infinite;
+  border-radius: 10px;
+}
+
+/* 14c — One-shot green flash on save */
+@keyframes flash-save-border {
+  0% {
+    border-color: rgba(71, 219, 154, 1);
+    box-shadow: 0 0 10px rgba(71, 219, 154, 0.4);
+  }
+
+  100% {
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: none;
+  }
+}
+
+.flash-save {
+  animation: flash-save-border 0.6s ease-out forwards;
 }

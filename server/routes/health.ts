@@ -15,7 +15,7 @@ interface RegisterHealthDeps {
 }
 
 export function registerHealthRoute(app: Express, deps: RegisterHealthDeps): void {
-  app.get('/health', async (_req, res) => {
+  app.get('/health', async (req, res) => {
     try {
       const runtime = getCurrentRuntimeConfig();
       const diagnostics = getCachedRuntimeDiagnostics();
@@ -32,6 +32,12 @@ export function registerHealthRoute(app: Express, deps: RegisterHealthDeps): voi
           : providerHealth[runtime.provider]?.status === 'degraded' || wsHealth.status === 'degraded'
             ? 'degraded'
             : 'ok';
+
+      // Unauthenticated requests get minimal info only
+      const isAuthenticated = !!(req.session as any)?.userId;
+      if (!isAuthenticated) {
+        return res.json({ status, time: new Date().toISOString() });
+      }
 
       res.json({
         status,

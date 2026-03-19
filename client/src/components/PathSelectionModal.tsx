@@ -26,7 +26,7 @@ export function PathSelectionModal({
         </DialogDescription>
         <div className="p-10 relative">
           {/* Ambient Glow */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-gradient-to-b from-[#6C82FF]/05 to-transparent pointer-events-none" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-gradient-to-b from-hatchin-blue/5 to-transparent pointer-events-none" />
 
           {/* Header */}
           <div className="text-center space-y-4 mb-10 relative z-10">
@@ -55,7 +55,7 @@ export function PathSelectionModal({
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
               onClick={onStartWithIdea}
-              className="relative group p-6 bg-gradient-to-br from-[#23262B] to-[#1A1D23] border border-[#31343A] rounded-2xl text-left transition-all duration-300 hover:border-[#6C82FF]/50 hover:shadow-[0_8px_30px_rgba(108,130,255,0.15)] flex flex-col h-full overflow-hidden"
+              className="relative group p-6 bg-gradient-to-br from-[#23262B] to-[#1A1D23] border border-[#31343A] rounded-2xl text-left transition-all duration-300 hover:border-hatchin-blue/50 hover:shadow-[0_8px_30px_rgba(108,130,255,0.15)] flex flex-col h-full overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
@@ -64,14 +64,14 @@ export function PathSelectionModal({
                   <Lightbulb className="w-8 h-8 text-yellow-400" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-[#F1F1F3] mb-2 group-hover:text-[#6C82FF] transition-colors">
+                  <h3 className="text-xl font-bold text-[#F1F1F3] mb-2 group-hover:text-hatchin-blue transition-colors">
                     Start with an idea
                   </h3>
                   <p className="text-[#A6A7AB] text-sm leading-relaxed mb-6">
                     Not sure what to build? Maya will join your chat and help you discover the perfect team structure.
                   </p>
                 </div>
-                <div className="flex items-center text-[#6C82FF] text-sm font-bold group-hover:translate-x-1 transition-transform mt-auto">
+                <div className="flex items-center text-hatchin-blue text-sm font-bold group-hover:translate-x-1 transition-transform mt-auto">
                   Get started with Maya
                   <ChevronRight className="w-4 h-4 ml-1" />
                 </div>
@@ -118,7 +118,7 @@ export function PathSelectionModal({
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#111318] border border-[#31343A] text-[#A6A7AB] text-sm group cursor-pointer hover:border-[#43444B] transition-all"
               onClick={onFigureItOut}>
               <MousePointer2 className="w-3.5 h-3.5" />
-              <span>Not sure? <span className="text-[#6C82FF] font-bold hover:underline ml-1">I'll figure it out as I go</span></span>
+              <span>Not sure? <span className="text-hatchin-blue font-bold hover:underline ml-1">I'll figure it out as I go</span></span>
             </div>
           </motion.div>
         </div>

@@ -11,6 +11,10 @@ import {
 } from '../llm/providerResolver.js';
 import type { LLMResponseMetadata } from '../llm/providerTypes.js';
 import { loadRoleBrain, renderRoleBrainContext } from '../knowledge/roleBrains/loader.js';
+import { getCharacterProfile } from './characterProfiles.js';
+import { loadRoleSkillsWithUpdates } from '../knowledge/skillUpdates/skillUpdateStore.js';
+import { extractAndStoreMemory } from './memoryExtractor.js';
+import { detectEmotionalState } from './responsePostProcessing.js';
 
 export class OpenAIConfigurationError extends Error {
   code: string;
@@ -31,6 +35,7 @@ interface ChatContext {
   mode: 'project' | 'team' | 'agent';
   projectName: string;
   projectId?: string;
+  conversationId?: string;
   teamName?: string;
   agentRole: string;
   agentId?: string;
@@ -42,6 +47,15 @@ interface ChatContext {
     messageType?: 'user' | 'agent';
   }>;
   userId?: string;
+  // P3 — Project context injected from routes.ts
+  projectDirection?: { whatBuilding?: string | null; whyMatters?: string | null; whoFor?: string | null } | null;
+  teamMembers?: Array<{ name: string; role: string }> | null;
+  projectMemories?: string | null;
+  userDesignation?: string | null;
+  // GAP-8: Role of the last agent who spoke (enables handoff acknowledgment)
+  handoffFrom?: string | null;
+  // P3: Injected by routes.ts to enable real memory storage (fire-and-forget)
+  createConversationMemory?: (data: { conversationId: string; memoryType: string; content: string; importance: number; agentId?: string | null }) => Promise<unknown>;
 }
 
 interface ColleagueResponse {
@@ -103,9 +117,8 @@ export async function* generateStreamingResponse(
     let personalityPrompt = '';
 
     if (context.userId && context.conversationHistory.length > 0) {
-      const personalityIdentity = context.projectId
-        ? `${context.projectId}:${context.agentId || agentRole}`
-        : (context.agentId || agentRole);
+      // Bug 5 fix: always use bare agentId as key (never composite projectId:agentId)
+      const personalityIdentity = context.agentId || agentRole;
 
       const messagesForAnalysis = context.conversationHistory.map(msg => ({
         content: msg.content,
@@ -144,7 +157,7 @@ export async function* generateStreamingResponse(
         chatMode: context.mode,
         projectName: context.projectName,
         teamName: context.teamName,
-        recentMessages: context.conversationHistory.slice(-5)
+        recentMessages: context.conversationHistory.slice(-15) // P3: extended from 5 → 15
       },
       roleProfile,
       userBehaviorProfile,
@@ -153,9 +166,123 @@ export async function* generateStreamingResponse(
 
     const enhancedPrompt = trainingSystem.generateEnhancedPrompt(agentRole, userMessage, basePrompt.systemPrompt);
 
+    // P1: Character voice injection
+    const characterProfile = getCharacterProfile(agentRole);
+    const characterSection = characterProfile ? `\n--- CHARACTER VOICE ---\n${characterProfile.voicePrompt}\nVerbal tendencies: ${characterProfile.tendencies.join('. ')}\nNever say: ${characterProfile.neverSays.slice(0, 3).join(', ')}\n--- END CHARACTER VOICE ---` : '';
+
+    // GAP 2: Emotional signature injection
+    const currentEmotionalState = detectEmotionalState(userMessage);
+    const emotionalSignatureMap: Record<string, keyof NonNullable<typeof characterProfile>['emotionalSignature']> = {
+      'excited': 'excited',
+      'frustrated': 'challenged',
+      'uncertain': 'uncertain',
+      'casual': 'celebrating', // no direct match, skip
+      'focused': 'excited',    // no direct match, skip
+    };
+    const sigKey = emotionalSignatureMap[currentEmotionalState];
+    const emotionalSignaturePhrase = characterProfile?.emotionalSignature?.[sigKey];
+    const emotionalSignatureSection = (emotionalSignaturePhrase && (currentEmotionalState === 'excited' || currentEmotionalState === 'frustrated' || currentEmotionalState === 'uncertain'))
+      ? `\n--- EMOTIONAL RESONANCE ---\nUser's current state: ${currentEmotionalState}.\nYour authentic character response for this state: "${emotionalSignaturePhrase}"\nLet this inform your energy and word choice naturally — don't quote it directly.\n--- END EMOTIONAL RESONANCE ---`
+      : '';
+
+    // P1: Practitioner skills injection (base Canon + living updates merged)
+    const skillsSection = `\n--- PRACTITIONER SKILLS ---\n${loadRoleSkillsWithUpdates(agentRole)}\n--- END PRACTITIONER SKILLS ---`;
+
+    // P3: Project context injection
+    const projectContextSection = context.projectDirection ? `\n--- PROJECT CONTEXT ---\nBuilding: ${context.projectDirection.whatBuilding || 'Not specified'}\nFor: ${context.projectDirection.whoFor || 'Not specified'}\nWhy it matters: ${context.projectDirection.whyMatters || 'Not specified'}${context.teamMembers?.length ? `\nTeam: ${context.teamMembers.map(a => `${a.name} (${a.role})`).join(', ')}` : ''}\n--- END PROJECT CONTEXT ---` : '';
+
+    // P3: Project memory injection (cross-agent, cross-session facts)
+    const projectMemorySection = context.projectMemories ? `\n--- PROJECT MEMORY ---\nThings established in this project:\n${context.projectMemories}\n--- END PROJECT MEMORY ---` : '';
+
+    // GAP 6: Open question surfacing — surface unresolved questions separately
+    const openQuestionsSection = context.projectMemories && context.projectMemories.includes('Open question:')
+      ? (() => {
+          const openQs = context.projectMemories!
+            .split('\n')
+            .filter((l: string) => l.includes('Open question:'))
+            .slice(0, 2)
+            .join('\n');
+          return openQs
+            ? `\n--- OPEN THREADS ---\nPreviously unresolved questions from this project:\n${openQs}\nIf the user's current message relates to one of these, you can reference it naturally.\n--- END OPEN THREADS ---`
+            : '';
+        })()
+      : '';
+
+    // P6: User designation injection
+    const userDesignationSection = context.userDesignation ? `\n--- USER CONTEXT ---\nThe user's role on this project: ${context.userDesignation}\nCalibrate your explanations, assumptions, and collaboration style for someone in this role.\n--- END USER CONTEXT ---` : '';
+
+    // GAP 8: Handoff acknowledgment — when routed from another agent
+    const handoffSection = context.handoffFrom
+      ? `\n--- HANDOFF ---\nYou were just looped in from ${context.handoffFrom}. Acknowledge this naturally in your opening — "Alex was right to bring me in here..." or "Good call from the PM side — let me look at this from the ${agentRole} angle..." Keep it brief (half a sentence). Don't make it formal or announce it; just weave it in naturally.\n--- END HANDOFF ---`
+      : '';
+
+    // GAP 4: First-message opener intelligence
+    const isFirstMessage = context.conversationHistory.length === 0;
+    const hasProjectContext = !!(context.projectDirection?.whatBuilding || context.projectMemories);
+    const firstMessageSection = (isFirstMessage && hasProjectContext)
+      ? `\n--- FIRST MESSAGE ---\nThis is the FIRST exchange with this user. You already know their project from context above. Open by demonstrating you've absorbed it — reference something specific before responding to their question. Make them feel you've been waiting to work on this together.\n--- END FIRST MESSAGE ---`
+      : '';
+
+    // GAP 5: Opinion and disagreement instruction
+    const opinionSection = `\n--- CONVICTION ---\nWhen you see a decision with clear risks or a better alternative, say so once, briefly, without lecturing. "That could work, but here's what I'd watch for..." is more valuable than agreement. Real teammates push back. Don't manufacture disagreement — but don't suppress genuine ones either.\n--- END CONVICTION ---`;
+
+    // Build Maya-specific or generic Hatch intelligence instructions
+    const isMaya = agentRole === 'AI Idea Partner' || agentRole === 'Maya';
+    const conversationTurnCount = context.conversationHistory.length;
+
+    const mayaTeamSuggestionInstructions = isMaya && conversationTurnCount >= 2 ? `
+--- MAYA: TEAM AUTO-HATCH INTELLIGENCE ---
+You are Maya, an AI Idea Partner. You have been analyzing the user's idea across the conversation.
+If you now have enough context to suggest what kind of team the user needs (e.g., a designer, a developer, a marketer), append the following block AT THE VERY END of your response, AFTER all your conversational text. This block will be hidden from the user automatically.
+
+Format (replace example values with real recommendations based on the user's idea):
+<!--HATCH_SUGGESTION:{"teams":[{"name":"Core Team","emoji":"⭐","agents":[{"name":"Alex","role":"Product Designer","color":"orange"},{"name":"Sam","role":"Backend Developer","color":"blue"}]}],"trigger":"user_agreement"}-->
+
+Important rules:
+- ONLY include this block if you genuinely have enough context to make a real recommendation.
+- ALWAYS mention to the user in plain text first: "Based on what you've described, I'd suggest building a team with [X, Y, Z]. Should I add them to your project?"
+- Use realistic role names that match the idea (e.g., for a food app: Product Designer, Backend Developer, Marketing Strategist).
+- Maximum 3-4 agents total across all teams.
+--- END MAYA TEAM INTELLIGENCE ---
+` : '';
+
+    const hatchTaskInstructions = !isMaya ? `
+--- HATCH TASK INTELLIGENCE ---
+You can suggest creating tasks in the project's task list. When your response includes a clear, actionable next step that should be tracked, append this block AT THE VERY END of your response. It will be hidden from the user automatically.
+
+Format:
+<!--TASK_SUGGESTION:{"title":"<concise task name>","priority":"<low|medium|high>","assignee":"<your name>"}-->
+
+Important rules:
+- ONLY suggest a task if it is genuinely a trackable action item (not vague advice).
+- ALWAYS mention it in plain text first: "Should I add this to your task list?" or "I can track this as a task — want me to?"
+--- END HATCH TASK INTELLIGENCE ---
+
+--- HATCH BRAIN UPDATE INTELLIGENCE ---
+You can suggest updating the Project Brain with key insights you've learned. Only offer this after a substantive discussion (5+ meaningful exchanges).
+
+Format:
+<!--BRAIN_UPDATE:{"field":"coreDirection","value":"<concise description>"}-->
+
+Valid fields: coreDirection, executionRules, teamCulture, goals, summary.
+
+Important rules:
+- ONLY suggest an update when you have genuinely learned something significant about the project.
+- ALWAYS ask first: "I think I have a good picture of [X]. Should I update the Project Brain with this?"
+--- END HATCH BRAIN UPDATE INTELLIGENCE ---
+` : '';
+
     // Create system prompt based on role and context
     const systemPrompt = `${enhancedPrompt}
-
+${characterSection}
+${emotionalSignatureSection}
+${skillsSection}
+${projectContextSection}
+${projectMemorySection}
+${openQuestionsSection}
+${userDesignationSection}
+${handoffSection}
+${firstMessageSection}
 ${sharedMemory ? `\n--- SHARED PROJECT MEMORY ---\n${sharedMemory}\n--- END MEMORY ---\n` : ''}
 
 ${personalityPrompt}
@@ -163,6 +290,10 @@ ${personalityPrompt}
 --- ROLE BRAIN ---
 ${roleBrainContext}
 --- END ROLE BRAIN ---
+
+${opinionSection}
+${mayaTeamSuggestionInstructions}
+${hatchTaskInstructions}
 
 Respond as this specific role with appropriate expertise and personality. Keep responses concise and actionable.`;
 
@@ -188,6 +319,23 @@ Respond as this specific role with appropriate expertise and personality. Keep r
       }
       fullResponse += chunk;
       yield chunk;
+    }
+
+    // P3: Fire-and-forget memory extraction — never awaited, never blocks streaming
+    if (context.projectId && context.conversationId && context.userId && fullResponse.length > 20) {
+      extractAndStoreMemory(
+        {
+          projectId: context.projectId,
+          conversationId: context.conversationId,
+          userMessage,
+          agentResponse: fullResponse,
+          agentRole,
+          userId: context.userId,
+        },
+        {
+          createConversationMemory: context.createConversationMemory ?? (async () => {}),
+        }
+      ).catch(() => { /* fire-and-forget — never throw */ });
     }
 
     // Update LangSmith trace with successful streaming response
@@ -304,7 +452,7 @@ export async function generateIntelligentResponse(
         chatMode: context.mode,
         projectName: context.projectName,
         teamName: context.teamName,
-        recentMessages: context.conversationHistory.slice(-5) // Last 5 messages for context
+        recentMessages: context.conversationHistory.slice(-15) // P3: extended from 5 → 15
       },
       roleProfile,
       userBehaviorProfile,
@@ -398,7 +546,8 @@ function createPromptTemplate(params: {
 }): { systemPrompt: string; userPrompt: string } {
   const { role, userMessage, context, roleProfile, userBehaviorProfile, messageAnalysis } = params;
 
-  const systemPrompt = `You are ${roleProfile.name}, a ${role} working on the "${context.projectName}" project.
+  const agentDisplayName = roleProfile.characterName || role;
+  const systemPrompt = `You are ${agentDisplayName}, a ${role} working on the "${context.projectName}" project.
 
 PERSONALITY: ${roleProfile.personality}
 EXPERTISE: ${roleProfile.expertMindset}
@@ -413,7 +562,7 @@ CONVERSATION HISTORY:
 ${context.recentMessages.map((msg: any) => `${msg.role}: ${msg.content}`).join('\n')}
 
 INSTRUCTIONS:
-- Respond as ${roleProfile.name} with your specific expertise and personality
+- Respond as ${agentDisplayName} with your specific expertise and personality
 - Keep responses concise (2-3 sentences max)
 - Be helpful and actionable based on your role
 - Match the conversational tone
@@ -433,7 +582,7 @@ USER COMMUNICATION PROFILE (Confidence: ${(userBehaviorProfile.confidence * 100)
 
   const userPrompt = `User message: "${userMessage}"
 
-Respond as ${roleProfile.name} with your expertise in ${role}:`;
+Respond as ${agentDisplayName} with your expertise in ${role}:`;
 
   return { systemPrompt, userPrompt };
 }

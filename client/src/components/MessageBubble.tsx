@@ -1,4 +1,7 @@
 import { devLog } from '@/lib/devLog';
+import { getAgentColors } from '@/lib/agentColors';
+import { getRoleDefinition } from '@shared/roleRegistry';
+import AgentAvatar from '@/components/avatars/AgentAvatar';
 import { ThumbsUp, ThumbsDown, Copy, Reply, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -79,8 +82,16 @@ export function MessageBubble({
   };
 
   const safeContent = toDisplayText(message.content, '');
-  const safeSenderName = toDisplayText(message.senderName, isUser ? 'You' : 'Agent');
-  // Get bubble colors - using single consistent color like sidebar
+  // P8: Role-aware bubble colors + character name from registry
+  const agentRole = message.metadata?.agentRole;
+  const agentColors = getAgentColors(agentRole);
+  const roleDef = agentRole ? getRoleDefinition(agentRole) : undefined;
+  // Show character name (e.g. "Alex") instead of DB name (e.g. "Product Manager")
+  const displayName = isAgent
+    ? (roleDef?.characterName ?? toDisplayText(message.senderName, 'Agent'))
+    : toDisplayText(message.senderName, 'You');
+  const safeSenderName = displayName;
+
   const getBubbleStyles = () => {
     if (isUser) {
       return {
@@ -89,18 +100,16 @@ export function MessageBubble({
       };
     }
 
-    // AI messages - use single consistent color with lower opacity (matching sidebar)
     if (isAgent) {
       return {
         className: 'text-gray-100 rounded-bl-sm',
         style: {
-          backgroundColor: 'hsla(158, 66%, 57%, 0.15)', // Green with 15% opacity
-          border: '1px solid hsla(158, 66%, 57%, 0.3)' // Green with 30% opacity border
+          backgroundColor: agentColors.bg,
+          border: `1px solid ${agentColors.border}`,
         }
       };
     }
 
-    // Fallback
     return {
       className: 'bg-gray-700 text-gray-100 rounded-bl-sm border border-gray-600',
       style: {}
@@ -166,6 +175,97 @@ export function MessageBubble({
   const showSenderInfo = !isGrouped && isAgent;
   const shouldShowActionRow = Boolean(onReply) || (showReactions && isAgent);
 
+  // 15b: Extract widget JSON if present
+  const extractWidget = (content: string): { widget: any | null; text: string } => {
+    const jsonFenceRegex = /```json\s*({[\s\S]*?widgetType[\s\S]*?})\s*```/;
+    const match = content.match(jsonFenceRegex);
+    if (!match) return { widget: null, text: content };
+    try {
+      const widget = JSON.parse(match[1]);
+      const text = content.replace(match[0], '').trim();
+      return { widget, text };
+    } catch {
+      return { widget: null, text: content };
+    }
+  };
+
+  const { widget, text: cleanText } = extractWidget(safeContent);
+
+  // 15c: Map widget data to rich UI components
+  const renderWidget = (widget: any) => {
+    if (!widget) return null;
+
+    // Timeline Widget
+    if (widget.widgetType === 'timeline' && Array.isArray(widget.data)) {
+      return (
+        <div className="mt-4 flex gap-3 overflow-x-auto pb-2 custom-scrollbar hide-scrollbar">
+          {widget.data.map((item: any, i: number) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              className="flex-shrink-0 w-44 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10 transition-colors cursor-default"
+            >
+              <div className="w-3 h-3 rounded-full mb-2" style={{ backgroundColor: item.color || '#6C82FF' }} />
+              <p className="text-xs font-semibold text-gray-200 mb-1">{item.phase}</p>
+              <p className="text-xs text-gray-400 leading-snug">{item.desc}</p>
+            </motion.div>
+          ))}
+        </div>
+      );
+    }
+
+    // Feature List Widget
+    if (widget.widgetType === 'feature_list' && Array.isArray(widget.data)) {
+      return (
+        <div className="mt-4 grid gap-2">
+          {widget.data.map((feature: any, i: number) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.1 }}
+              className="flex items-start gap-3 p-2.5 rounded-lg bg-white/5 border border-white/10"
+            >
+              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-[10px] font-bold mt-0.5">
+                {i + 1}
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-200 mb-0.5">{feature.title || feature.name}</p>
+                <p className="text-xs text-gray-400 leading-snug">{feature.desc || feature.description}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      );
+    }
+
+    // Team Breakdown Widget
+    if (widget.widgetType === 'team_breakdown' && Array.isArray(widget.data)) {
+      return (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {widget.data.map((member: any, i: number) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.1 }}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10"
+            >
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: member.color || '#A855F7' }} />
+              <span className="text-xs font-medium text-gray-200">{member.role}</span>
+              {member.name && <span className="text-[10px] text-gray-500">· {member.name}</span>}
+            </motion.div>
+          ))}
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+
   return (
     <TooltipProvider>
       <ContextMenu>
@@ -180,13 +280,22 @@ export function MessageBubble({
               {/* Agent sender info (only if not grouped) */}
               {showSenderInfo && (
                 <div className="flex items-center gap-2 mb-2 px-1">
-                  <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium text-white"
-                    style={{ backgroundColor: 'hsl(158, 66%, 57%)' }} // Single consistent green color
-                  >
-                    {safeSenderName.charAt(0)}
-                  </div>
+                  {isAgent ? (
+                    <AgentAvatar
+                      role={agentRole}
+                      agentName={safeSenderName}
+                      state={message.isStreaming ? 'thinking' : 'idle'}
+                      size={26}
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-xs font-medium text-white flex-shrink-0">
+                      {safeSenderName.charAt(0)}
+                    </div>
+                  )}
                   <span className="text-sm font-medium text-gray-300">{safeSenderName}</span>
+                  {isAgent && agentRole && (
+                    <span className="text-xs text-gray-500 ml-1">· {roleDef?.role ?? agentRole}</span>
+                  )}
                 </div>
               )}
 
@@ -195,17 +304,29 @@ export function MessageBubble({
                 className={`p-3 rounded-lg ${getBubbleStyles().className} ${isAgent ? 'ai-bubble-border' : ''}`}
                 style={getBubbleStyles().style}
               >
+                {/* C1.1: Render reply context if exists */}
+                {(message.replyTo || message.metadata?.replyTo) && (
+                  <div className="mb-2 p-2 rounded bg-white/5 border-l-2 border-green-400/50 text-xs opacity-80 line-clamp-2">
+                    <div className="font-semibold text-green-400/90 mb-0.5">
+                      Replying to {(message.replyTo || message.metadata?.replyTo)?.senderName}
+                    </div>
+                    <div className="truncate italic">
+                      {(message.replyTo || message.metadata?.replyTo)?.content}
+                    </div>
+                  </div>
+                )}
+
                 {/* C4.3: Markdown support for message content */}
                 <div className="text-sm leading-relaxed">
-                  {/* Show "Thinking..." when streaming with empty content */}
+                  {/* Show role-specific thinking phrase when streaming with empty content */}
                   {isAgent && message.isStreaming && safeContent.trim() === '' ? (
                     <div className="flex items-center space-x-2">
-                      <span className="text-[#A6A7AB] text-xs">Thinking</span>
+                      <span className={`text-xs ${agentColors.text}`}>{agentColors.thinkingPhrase || 'Thinking'}</span>
                       <div className="flex items-end space-x-1" style={{ height: '14px' }}>
                         {[0, 1, 2].map((i) => (
                           <span
                             key={i}
-                            className="w-1.5 h-1.5 bg-[#6C82FF] rounded-full block"
+                            className="w-1.5 h-1.5 bg-hatchin-blue rounded-full block"
                             style={{
                               animation: `wave-bounce 1.2s ease-in-out infinite`,
                               animationDelay: `${i * 0.18}s`,
@@ -254,56 +375,18 @@ export function MessageBubble({
                           ),
                         }}
                       >
-                        {safeContent}
+                        {cleanText}
                       </ReactMarkdown>
-                      {/* B1.2: Enhanced streaming indicator for AI messages */}
-                      {message.isStreaming && (
-                        <div className="inline-flex items-center ml-2 space-x-2">
-                          {/* Agent name typing indicator */}
-                          <span className="text-xs text-gray-400">
-                            {safeSenderName} is typing...
-                          </span>
-                          {/* Enhanced typing cursor with multiple dots */}
-                          <div className="flex items-center space-x-0.5">
-                            <motion.span
-                              className="w-1 h-4 bg-green-400 rounded-full"
-                              animate={{ opacity: [1, 0.3, 1] }}
-                              transition={{
-                                duration: 0.8,
-                                repeat: Infinity,
-                                ease: "easeInOut"
-                              }}
-                            />
-                            <motion.span
-                              className="w-1 h-4 bg-green-400 rounded-full"
-                              animate={{ opacity: [0.3, 1, 0.3] }}
-                              transition={{
-                                duration: 0.8,
-                                repeat: Infinity,
-                                ease: "easeInOut",
-                                delay: 0.2
-                              }}
-                            />
-                            <motion.span
-                              className="w-1 h-4 bg-green-400 rounded-full"
-                              animate={{ opacity: [0.3, 1, 0.3] }}
-                              transition={{
-                                duration: 0.8,
-                                repeat: Infinity,
-                                ease: "easeInOut",
-                                delay: 0.4
-                              }}
-                            />
-                          </div>
-                        </div>
-                      )}
+
+                      {/* Render parsed Generative UI Widget if present */}
+                      {renderWidget(widget)}
                     </>
                   )}
                 </div>
               </div>
 
               {isAgent && message.metadata?.llm?.mode === 'test' && (
-                <div className="mt-2 text-[11px] text-amber-300/90">
+                <div className="mt-2 text-xs text-amber-300/90">
                   Test Mode (Local Model)
                 </div>
               )}

@@ -397,18 +397,18 @@ export function MayaChat({ projectId }: MayaChatProps) {
                   <div ref={messagesEndRef} />
                 </div>
 
-                <div className={`flex space-x-2 rounded-xl transition-all duration-300 ${showCoachmark ? 'coachmark-ring ring-2 ring-[#6C82FF]/60' : ''}`}>
+                <div className={`flex space-x-2 rounded-xl transition-all duration-300 ${showCoachmark ? 'coachmark-ring ring-2 ring-hatchin-blue/60' : ''}`}>
                   <Input
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Share your idea with Maya..."
-                    className="flex-1 bg-[#2A2D33] border-[#43444B] text-[#F1F1F3] placeholder-[#A6A7AB] focus:ring-[#6C82FF] focus:border-[#6C82FF]"
+                    className="flex-1 bg-[#2A2D33] border-[#43444B] text-[#F1F1F3] placeholder-[#A6A7AB] focus:ring-hatchin-blue focus:border-hatchin-blue"
                     onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                   />
                   <Button
                     onClick={sendMessage}
                     disabled={!message.trim() || socket?.readyState !== WebSocket.OPEN}
-                    className="bg-[#6C82FF] hover:bg-[#6C82FF]/90"
+                    className="bg-hatchin-blue hover:bg-hatchin-blue/90"
                   >
                     <Send className="w-4 h-4" />
                   </Button>
@@ -480,9 +480,9 @@ export function MayaChat({ projectId }: MayaChatProps) {
                       <FileText className="w-6 h-6 text-gray-500" />
                     </div>
                     <div>
-                      <h3 className="text-gray-300 font-medium mb-1">Brain is Empty</h3>
+                      <h3 className="text-gray-300 font-medium mb-1">Maya's Memory</h3>
                       <p className="text-xs text-gray-500 max-w-[200px] mb-4">
-                        Add documents, rules, and context here to train your AI colleagues.
+                        As you chat with Maya, she'll automatically build a memory of your project here.
                       </p>
                       <Button
                         variant="outline"
@@ -491,7 +491,7 @@ export function MayaChat({ projectId }: MayaChatProps) {
                         onClick={() => setIsAddDocOpen(true)}
                       >
                         <Plus className="w-4 h-4 mr-2" />
-                        Add First Document
+                        Add Context Manually
                       </Button>
                     </div>
                   </div>

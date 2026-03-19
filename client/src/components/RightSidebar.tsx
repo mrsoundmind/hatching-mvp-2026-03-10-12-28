@@ -1,11 +1,14 @@
 import * as React from "react";
-import { ChevronDown, ChevronRight, Check } from "lucide-react";
+import { ChevronDown, ChevronRight, Check, Sparkles } from "lucide-react";
 import { ProgressTimeline } from "@/components/ProgressTimeline";
 import { useToast } from "@/hooks/use-toast";
 import { useRightSidebarState } from "@/hooks/useRightSidebarState";
 import { useRealTimeUpdates } from "@/hooks/useRealTimeUpdates";
 import TaskManager from "./TaskManager";
 import type { Project, Team, Agent } from "@shared/schema";
+import { getAgentColors } from "@/lib/agentColors";
+import { getRoleDefinition } from "@shared/roleRegistry";
+import AgentAvatar from "@/components/avatars/AgentAvatar";
 
 interface RightSidebarProps {
   activeProject: Project | undefined;
@@ -21,6 +24,41 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
   const [currentView, setCurrentView] = React.useState<'overview' | 'tasks'>('overview');
   const [isPanelScrolling, setIsPanelScrolling] = React.useState(false);
   const panelScrollHideTimeoutRef = React.useRef<number | null>(null);
+
+  // Progressive disclosure coachmark
+  const [showCoachmark, setShowCoachmark] = React.useState(false);
+
+  // Cross-component state: Track if AI is actively streaming a response
+  const [isAIStreaming, setIsAIStreaming] = React.useState(false);
+
+  React.useEffect(() => {
+    // Listen for AI streaming state changes broadcasted from CenterPanel
+    const handleStreamingActive = (e: Event) => {
+      const customEvent = e as CustomEvent<{ active: boolean }>;
+      setIsAIStreaming(customEvent.detail.active);
+    };
+
+    window.addEventListener('ai_streaming_active', handleStreamingActive);
+    return () => {
+      window.removeEventListener('ai_streaming_active', handleStreamingActive);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    // Only show on project view, if not dismissed yet
+    if (state.activeView === 'project' && !localStorage.getItem('hatchin_sidebar_coach_done')) {
+      setShowCoachmark(true);
+    }
+  }, [state.activeView]);
+
+  const handleCoachmarkDismiss = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setShowCoachmark(false);
+    localStorage.setItem('hatchin_sidebar_coach_done', 'true');
+    if (!state.expandedSections.executionRules) {
+      actions.toggleSection('executionRules');
+    }
+  };
 
   // Real-time updates for sidebar data
   const [realTimeProgress, setRealTimeProgress] = React.useState(0);
@@ -99,7 +137,7 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
     setRecentlySaved,
   } = actions;
   const panelCardClass = "hatchin-bg-card rounded-xl border border-white/10 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]";
-  const asideClassName = `w-80 min-h-0 premium-column-bg rounded-2xl p-6 overflow-y-auto my-2.5 relative border border-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.25)] right-sidebar-scroll ${isPanelScrolling ? 'is-scrolling' : ''}`;
+  const asideClassName = `w-80 min-h-0 premium-column-bg rounded-2xl p-6 overflow-y-auto hide-scrollbar my-2.5 relative border border-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.25)] right-sidebar-scroll ${isPanelScrolling ? 'is-scrolling' : ''}`;
   const computedProgress = Math.min(100, Math.max(0, (activeProject?.progress || 0) + realTimeProgress));
   const agentHealthScore = Math.min(99, Math.max(45, 62 + realTimeMetrics.taskCompletions * 3 + Math.min(25, realTimeMetrics.messagesCount) * 0.3));
   const roleSummary = activeAgent?.role || activeTeam?.name || activeProject?.name || 'Project';
@@ -116,9 +154,9 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
   const brainsyncBanner = (
     <>
       {isLoading && (
-        <div className="mb-3 rounded-xl overflow-hidden border border-[#6C82FF]/20">
+        <div className="mb-3 rounded-xl overflow-hidden border border-hatchin-blue/20">
           <div className="px-3 py-2 flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#6C82FF] animate-pulse flex-shrink-0" />
+            <div className="w-2.5 h-2.5 rounded-full bg-hatchin-blue animate-pulse flex-shrink-0" />
             <span className="text-xs text-[#A6A7AB]">Syncing to Project Brain...</span>
           </div>
           <div className="h-1 w-full brain-sync-bar" />
@@ -246,27 +284,49 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
         onTouchMove={showPanelScrollbarTemporarily}
       >
         <div className="ambient-glow-top" />
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-full bg-gray-500/20 flex items-center justify-center">
-            <span className="text-lg">👤</span>
-          </div>
+        <div className="flex items-center gap-3 mb-4">
+          <React.Suspense fallback={<div className={`w-10 h-10 rounded-full flex-shrink-0 ${getAgentColors(activeAgent?.role).avatarBg}`} />}>
+            <AgentAvatar
+              role={activeAgent?.role}
+              state={isAIStreaming ? 'thinking' : 'idle'}
+              size={40}
+            />
+          </React.Suspense>
           <div>
-            <h2 className="font-semibold hatchin-text text-[16px]">Hatch Profile</h2>
-            <p className="text-xs hatchin-text-muted">{activeAgent?.name}</p>
+            <h2 className="font-semibold hatchin-text text-[16px]">
+              {getRoleDefinition(activeAgent?.role)?.characterName ?? activeAgent?.name ?? 'AI Teammate'}
+            </h2>
+            <p className="text-xs hatchin-text-muted">{activeAgent?.role}</p>
           </div>
         </div>
 
         {brainsyncBanner}
 
-        <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-lg p-3 mb-4 border border-emerald-500/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-              <span className="text-sm hatchin-text font-medium">{isConnected ? 'Live' : 'Offline'}</span>
+        {(() => {
+          const agentColors = getAgentColors(activeAgent?.role);
+          const presenceStatus = isAIStreaming ? 'Thinking' : isConnected ? 'Live' : 'Offline';
+          const statusDotClass = isAIStreaming
+            ? 'bg-yellow-400 animate-pulse'
+            : isConnected
+            ? `${agentColors.dot} animate-pulse`
+            : 'bg-gray-500';
+          const statusTextClass = isAIStreaming
+            ? 'text-yellow-300'
+            : isConnected
+            ? agentColors.text
+            : 'text-gray-500';
+          return (
+            <div className="rounded-lg p-3 mb-4 border" style={{ backgroundColor: agentColors.bg, borderColor: agentColors.border }}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${statusDotClass}`} />
+                  <span className={`text-sm font-medium ${statusTextClass}`}>{presenceStatus}</span>
+                </div>
+                <span className="text-xs hatchin-text-muted">{activeAgent?.role}</span>
+              </div>
             </div>
-            <span className="text-xs hatchin-text-muted">{activeAgent?.role}</span>
-          </div>
-        </div>
+          );
+        })()}
 
         <div className={`${panelCardClass} mb-4`}>
           <div className="flex items-center justify-between mb-3">
@@ -294,9 +354,9 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
         </div>
 
         <div className={`${panelCardClass} mb-4`}>
-          <h3 className="text-[12px] font-semibold hatchin-text mb-3">Role Focus</h3>
+          <h3 className="text-[12px] font-semibold hatchin-text mb-3">Current Mission</h3>
           <p className="text-xs hatchin-text-muted leading-relaxed">
-            {activeAgent?.name || 'This Hatch'} is currently operating as <span className="hatchin-text">{roleSummary}</span>.
+            {getRoleDefinition(activeAgent?.role)?.characterName ?? activeAgent?.name ?? 'This Hatch'} is currently operating as <span className="hatchin-text">{roleSummary}</span>.
             Use chat to assign concrete deliverables, constraints, and deadlines for this role.
           </p>
         </div>
@@ -415,7 +475,7 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
     >
       <div className="ambient-glow-top" />
       <div className="flex items-center gap-2 mb-4">
-        <div className="w-8 h-8 rounded-full bg-gray-500/20 flex items-center justify-center">
+        <div className={`w-8 h-8 rounded-full bg-gray-500/20 flex items-center justify-center ${isLoading || recentlySaved.size > 0 || isAIStreaming ? 'brain-glow' : ''}`}>
           <span className="text-lg">🧠</span>
         </div>
         <h2 className="font-semibold hatchin-text text-[16px]">Project Brain</h2>
@@ -427,7 +487,7 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
         <button
           onClick={() => setCurrentView('overview')}
           className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all ${currentView === 'overview'
-            ? 'bg-[#6C82FF]/20 text-[#AAB5FF] shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]'
+            ? 'bg-hatchin-blue/20 text-[#AAB5FF] shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]'
             : 'hatchin-text-muted hover:hatchin-text hover:bg-white/5'
             }`}
           data-testid="tab-overview"
@@ -438,7 +498,7 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
         <button
           onClick={() => setCurrentView('tasks')}
           className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all ${currentView === 'tasks'
-            ? 'bg-[#6C82FF]/20 text-[#AAB5FF] shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]'
+            ? 'bg-hatchin-blue/20 text-[#AAB5FF] shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]'
             : 'hatchin-text-muted hover:hatchin-text hover:bg-white/5'
             }`}
           data-testid="tab-tasks"
@@ -472,7 +532,7 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
               <span className="text-xs text-blue-400 font-medium">Auto-update active</span>
             </div>
             <p className="text-xs hatchin-text-muted mt-1">
-              Chat can auto-update project details and suggest tasks. You can still edit every field manually.
+              Everything you discuss with your AI team is automatically captured and saved here.
             </p>
           </div>
           {/* Project Progress */}
@@ -535,8 +595,7 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
               </div>
             </div>
           </div>
-          {/* Core Direction - Always Visible */}
-          <div className={`${panelCardClass} mb-4`}>
+          <div className={`${panelCardClass} mb-4 ${recentlySaved.has('core-direction') ? 'flash-save' : ''}`}>
             <div className="flex items-center justify-between">
               <h3 className="font-medium hatchin-text text-[12px]">Core Direction</h3>
               <button
@@ -607,8 +666,7 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
               </div>
             </div>
           </div>
-          {/* Execution Ground Rules - Collapsible Card */}
-          <div className={`${panelCardClass} mb-4`}>
+          <div className={`${panelCardClass} mb-4 ${recentlySaved.has('execution-rules') ? 'flash-save' : ''}`}>
             <div
               className="flex items-center justify-between cursor-pointer"
               onClick={() => toggleSection('executionRules')}
@@ -641,6 +699,19 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
               </button>
             </div>
 
+            {/* Coachmark Pill (Task 13) */}
+            {showCoachmark && !expandedSections.executionRules && (
+              <div
+                className="mt-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-2.5 flex items-start gap-2.5 cursor-pointer hover:bg-indigo-500/15 transition-colors shadow-sm"
+                onClick={handleCoachmarkDismiss}
+              >
+                <div className="text-indigo-400 mt-0.5"><Sparkles className="w-3.5 h-3.5" /></div>
+                <p className="text-[11px] text-indigo-200/90 leading-tight">
+                  Your AI team fills this in automatically as you chat <span className="text-indigo-400 font-medium ml-1">→ Expand</span>
+                </p>
+              </div>
+            )}
+
             {expandedSections.executionRules && (
               <div className="mt-4">
                 <textarea
@@ -658,8 +729,7 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
               </div>
             )}
           </div>
-          {/* Brand Guidelines & Team Culture - Collapsible Card */}
-          <div className={panelCardClass}>
+          <div className={`${panelCardClass} ${recentlySaved.has('team-culture') ? 'flash-save' : ''}`}>
             <div
               className="flex items-center justify-between cursor-pointer"
               onClick={() => toggleSection('brandCulture')}

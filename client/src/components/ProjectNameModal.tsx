@@ -87,7 +87,7 @@ export default function ProjectNameModal({
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
               placeholder="Enter your project name"
-              className="w-full px-4 py-3 bg-[#37383B] border border-[#43444B] rounded-xl text-[#F1F1F3] placeholder-[#A6A7AB] focus:border-[#6C82FF] focus:outline-none focus:ring-1 focus:ring-[#6C82FF] transition-colors"
+              className="w-full px-4 py-3 bg-[#37383B] border border-[#43444B] rounded-xl text-[#F1F1F3] placeholder-[#A6A7AB] focus:border-hatchin-blue focus:outline-none focus:ring-1 focus:ring-hatchin-blue transition-colors"
               autoFocus
               disabled={isLoading}
             />
@@ -103,7 +103,7 @@ export default function ProjectNameModal({
               onChange={(e) => setProjectDescription(e.target.value)}
               placeholder="Briefly describe what you're building"
               rows={3}
-              className="w-full px-4 py-3 bg-[#37383B] border border-[#43444B] rounded-xl text-[#F1F1F3] placeholder-[#A6A7AB] focus:border-[#6C82FF] focus:outline-none focus:ring-1 focus:ring-[#6C82FF] transition-colors resize-none"
+              className="w-full px-4 py-3 bg-[#37383B] border border-[#43444B] rounded-xl text-[#F1F1F3] placeholder-[#A6A7AB] focus:border-hatchin-blue focus:outline-none focus:ring-1 focus:ring-hatchin-blue transition-colors resize-none"
               disabled={isLoading}
             />
           </div>
@@ -116,14 +116,14 @@ export default function ProjectNameModal({
               className="flex-1 px-4 py-3 bg-[#37383B] text-[#F1F1F3] rounded-xl hover:bg-[#43444B] transition-colors"
               disabled={isLoading}
             >
-              Cancel
+              Go back
             </button>
             <button
               type="submit"
               disabled={!isValid || isLoading}
               className={`flex-1 px-4 py-3 rounded-xl transition-colors font-medium ${
                 isValid && !isLoading
-                  ? 'bg-[#6C82FF] text-white hover:bg-[#5A6FE5]'
+                  ? 'bg-hatchin-blue text-white hover:bg-hatchin-blue/90'
                   : 'bg-[#43444B] text-[#A6A7AB] cursor-not-allowed'
               }`}
             >

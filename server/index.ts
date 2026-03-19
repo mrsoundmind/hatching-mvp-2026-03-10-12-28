@@ -5,9 +5,10 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
-import { registerRoutes } from "./routes";
+import { registerRoutes, getGlobalBroadcast } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { getStorageModeInfo } from "./storage";
+import { getStorageModeInfo, STORAGE_MODE } from "./storage";
+import { assertProductionStorageMode } from "./productionGuard";
 import { pool } from "./db";
 import {
   assertRuntimeGuardrails,
@@ -27,6 +28,8 @@ if (process.env.NODE_ENV === 'production') {
     throw new Error('FATAL: DATABASE_URL must be set in production to prevent data loss.');
   }
 }
+// DATA-03: Prevent silent data loss when STORAGE_MODE is not db in production
+assertProductionStorageMode(process.env.NODE_ENV, STORAGE_MODE);
 
 if (!process.env.OPENAI_API_KEY) {
   console.warn('[Hatchin] OPENAI_API_KEY is not set. AI replies will fail with OPENAI_NOT_CONFIGURED.');
@@ -45,7 +48,16 @@ app.set("trust proxy", 1);
 
 // Fix 3a: Security headers
 app.use(helmet({
-  contentSecurityPolicy: false, // disabled to allow inline scripts in dev/Vite
+  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "wss:", "ws:"],
+      fontSrc: ["'self'"],
+    }
+  } : false, // disabled in dev to allow Vite inline scripts
 }));
 
 // Fix 3b: CORS — only allow the configured origin
@@ -246,6 +258,36 @@ app.use((req, res, next) => {
     log(`serving on port ${port}`);
   });
 
+  // P7: Background autonomy runner (opt-in via env flag, default off)
+  if (process.env.BACKGROUND_AUTONOMY_ENABLED === 'true') {
+    try {
+      const { backgroundRunner } = await import('./autonomy/background/backgroundRunner.js');
+      const { generateChatWithRuntimeFallback } = await import('./llm/providerResolver.js');
+      const { storage: storageInstance } = await import('./storage.js');
+      backgroundRunner.start({
+        storage: storageInstance,
+        broadcastToConversation: (convId: string, payload: unknown) => {
+          const broadcast = getGlobalBroadcast();
+          if (broadcast) broadcast(convId, payload);
+        },
+        generateText: async (prompt: string, systemPrompt: string, maxTokens?: number) => {
+          const result = await generateChatWithRuntimeFallback({
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: prompt },
+            ],
+            maxTokens: maxTokens ?? 120,
+            temperature: 0.7,
+          });
+          return result.content ?? '';
+        },
+      });
+      console.log('[Hatchin][BackgroundRunner] Autonomy background jobs started');
+    } catch (err: any) {
+      console.error('[Hatchin][BackgroundRunner] Failed to start:', err.message);
+    }
+  }
+
   // Fix P0-6: Graceful Shutdown
   const shutdown = async (signal: string) => {
     console.log(`\n[Hatchin] Received ${signal}. Starting graceful shutdown...`);
@@ -256,6 +298,14 @@ app.use((req, res, next) => {
     });
 
     try {
+      // Stop background jobs if running
+      if (process.env.BACKGROUND_AUTONOMY_ENABLED === 'true') {
+        try {
+          const { backgroundRunner } = await import('./autonomy/background/backgroundRunner.js');
+          backgroundRunner.stop();
+        } catch { /* non-critical */ }
+      }
+
       // Close the database connection pool to prevent leaks
       if (pool) {
         await pool.end();

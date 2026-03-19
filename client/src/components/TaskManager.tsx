@@ -880,15 +880,15 @@ const TaskManager: React.FC<TaskManagerProps> = ({
       {/* Global Empty State — shown when NO tasks exist anywhere */}
       {sections.every(s => s.tasks.length === 0) && !showNewTaskForm && (
         <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-[#6C82FF]/15 flex items-center justify-center mb-4">
-            <Target className="w-6 h-6 text-[#6C82FF]" />
+          <div className="w-12 h-12 rounded-2xl bg-hatchin-blue/15 flex items-center justify-center mb-4">
+            <Target className="w-6 h-6 text-hatchin-blue" />
           </div>
           <h3 className="font-semibold hatchin-text text-sm mb-1">No tasks yet</h3>
           <p className="text-xs hatchin-text-muted max-w-[200px] mb-4 leading-relaxed">
             Ask Maya to outline a project and watch this board fill up automatically.
           </p>
           <button
-            className="text-xs px-3 py-1.5 bg-[#6C82FF]/20 text-[#6C82FF] rounded-full hover:bg-[#6C82FF]/30 transition-colors border border-[#6C82FF]/30"
+            className="text-xs px-3 py-1.5 bg-hatchin-blue/20 text-hatchin-blue rounded-full hover:bg-hatchin-blue/30 transition-colors border border-hatchin-blue/30"
             onClick={() => {
               const event = new CustomEvent('hatchin:suggest-task-chat');
               window.dispatchEvent(event);

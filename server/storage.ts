@@ -95,6 +95,7 @@ export interface IStorage {
   deleteConversation(conversationId: string): Promise<boolean>;
 
   // Task methods
+  getTask(id: string): Promise<Task | undefined>;
   getTasksByProject(projectId: string): Promise<Task[]>;
   getTasksByAssignee(assigneeId: string): Promise<Task[]>;
   createTask(task: InsertTask): Promise<Task>;
@@ -111,6 +112,7 @@ export interface IStorage {
     after?: string;
     messageType?: string;
   }): Promise<Message[]>;
+  getMessage(id: string): Promise<Message | undefined>;
   createMessage(message: InsertMessage): Promise<Message>;
   setTypingIndicator(conversationId: string, agentId: string, isTyping: boolean, estimatedDuration?: number): Promise<void>;
 
@@ -127,6 +129,25 @@ export interface IStorage {
 
   // Phase 1 invariant helper
   hasConversation(id: string): Promise<boolean>;
+
+  // P3: Extracted project memories (cross-agent, cross-session)
+  createConversationMemory(data: {
+    conversationId: string;
+    memoryType: string;
+    content: string;
+    importance: number;
+    agentId?: string | null;
+  }): Promise<unknown>;
+  getRelevantProjectMemories(projectId: string, options: {
+    query: string;
+    limit: number;
+    minImportance: number;
+    excludeConversationId?: string;
+  }): Promise<Array<{ content: string; memoryType: string; importance: number }>>;
+
+  // P5: Proactive outreach rate limiting
+  getLastProactiveOutreachAt(agentId: string): Promise<Date | null>;
+  setLastProactiveOutreachAt(agentId: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -539,7 +560,7 @@ export class MemStorage implements IStorage {
   async createAgent(insertAgent: InsertAgent): Promise<Agent> {
     const resolvedUserId =
       (insertAgent as any).userId ||
-      this.teams.get(insertAgent.teamId)?.userId ||
+      (insertAgent.teamId ? this.teams.get(insertAgent.teamId)?.userId : undefined) ||
       this.projects.get(insertAgent.projectId)?.userId;
     if (!resolvedUserId) {
       throw new Error("createAgent requires userId or an owned team/project");
@@ -549,6 +570,7 @@ export class MemStorage implements IStorage {
       ...insertAgent,
       id,
       userId: resolvedUserId,
+      teamId: insertAgent.teamId ?? null,
       color: insertAgent.color || "blue",
       personality: insertAgent.personality || {} as any,
       isSpecialAgent: insertAgent.isSpecialAgent || false,
@@ -574,37 +596,7 @@ export class MemStorage implements IStorage {
     const project = this.projects.get(projectId);
     if (!project) return;
 
-    // Create "Core Team" for the project
-    const coreTeam: Team = {
-      id: randomUUID(),
-      userId: project.userId,
-      name: "Core Team",
-      emoji: "⭐",
-      projectId: projectId,
-      isExpanded: true,
-    };
-    this.teams.set(coreTeam.id, coreTeam);
-
-    // Create Maya agent
-    const mayaAgent: Agent = {
-      id: randomUUID(),
-      userId: project.userId,
-      name: "Maya",
-      role: "AI Idea Partner",
-      color: "purple",
-      teamId: coreTeam.id,
-      projectId: projectId,
-      personality: {
-        traits: ["Creative", "Analytical", "Encouraging"],
-        communicationStyle: "Friendly and insightful, helps turn ideas into actionable plans",
-        expertise: ["Idea Development", "Strategic Thinking", "Project Planning"],
-        welcomeMessage: "Hi! I'm Maya, your AI idea partner. I'm here to help you explore, develop, and turn your idea into something amazing. What's on your mind?"
-      },
-      isSpecialAgent: true,
-    };
-    this.agents.set(mayaAgent.id, mayaAgent);
-
-    // Initialize project brain with Idea Development document
+    // Initialize project brain
     if (project) {
       const updatedProject = {
         ...project,
@@ -612,14 +604,47 @@ export class MemStorage implements IStorage {
           documents: [{
             id: randomUUID(),
             title: "Idea Development",
-            content: "This is where we'll capture and develop your core idea. Maya will help you refine your concept, identify key features, and create a roadmap for success.",
+            content: "This is where we'll capture and develop your core idea. You can add a Product Manager to help you refine your concept, identify key features, and create a roadmap for success.",
             type: "idea-development" as const,
             createdAt: new Date().toISOString()
           }],
-          sharedMemory: "Project initialized for idea development with Maya as the AI partner."
+          sharedMemory: "Project initialized for idea development."
         }
       };
       this.projects.set(projectId, updatedProject);
+
+      // Create Maya as a project-level agent with no team (teamId: null)
+      const mayaAgent: Agent = {
+        id: randomUUID(),
+        userId: project.userId,
+        name: "Maya",
+        role: "Product Manager",
+        color: "teal",
+        teamId: null,
+        projectId: projectId,
+        personality: {
+          traits: ["strategic", "supportive", "analytical"],
+          communicationStyle: "Warm, direct, and structured",
+          expertise: ["Product Strategy", "Requirements Gathering", "Idea Development"],
+          welcomeMessage: "Hi! I'm Maya. Tell me about your idea and I'll help you shape it into something real."
+        },
+        isSpecialAgent: true,
+      };
+      this.agents.set(mayaAgent.id, mayaAgent);
+
+      try {
+        await this.createConversation({
+          id: `agent:${projectId}:${mayaAgent.id}`,
+          userId: project.userId,
+          projectId: projectId,
+          teamId: null,
+          agentId: mayaAgent.id,
+          type: 'agent',
+          title: null
+        } as any);
+      } catch (e) {
+        console.error("Failed to auto-create Maya agent conversation:", e);
+      }
     }
   }
 
@@ -800,25 +825,34 @@ export class MemStorage implements IStorage {
       messages = messages.filter(msg => msg.messageType === options.messageType);
     }
 
-    // Filter by date range if specified
+    // Sort ascending by createdAt (oldest first)
+    messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    // Cursor-based filtering: keep messages before/after the cursor timestamp
     if (options?.before) {
-      messages = messages.filter(msg => new Date(msg.createdAt) < new Date(options.before!));
+      const cutoff = new Date(options.before).getTime();
+      messages = messages.filter(m => new Date(m.createdAt).getTime() < cutoff);
     }
     if (options?.after) {
-      messages = messages.filter(msg => new Date(msg.createdAt) > new Date(options.after!));
+      const cutoff = new Date(options.after).getTime();
+      messages = messages.filter(m => new Date(m.createdAt).getTime() > cutoff);
     }
 
-    // Sort by creation date (newest first for pagination)
-    messages.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-    // Apply pagination
-    if (options?.page && options?.limit) {
-      const startIndex = (options.page - 1) * options.limit;
-      messages = messages.slice(startIndex, startIndex + options.limit);
+    // Apply pagination: page-based takes priority, otherwise return last N (most recent window)
+    const limit = options?.limit;
+    if (options?.page && limit) {
+      const start = (options.page - 1) * limit;
+      messages = messages.slice(start, start + limit);
+    } else if (limit) {
+      // Return last `limit` items (most recent window), preserving ascending sort
+      messages = messages.slice(Math.max(0, messages.length - limit));
     }
 
-    // Return in chronological order (oldest first)
-    return messages.reverse();
+    return messages;
+  }
+
+  async getMessage(id: string): Promise<Message | undefined> {
+    return this.messages.get(id);
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
@@ -1121,6 +1155,10 @@ export class MemStorage implements IStorage {
   }
 
   // Task methods
+  async getTask(id: string): Promise<Task | undefined> {
+    return this.tasks.get(id);
+  }
+
   async getTasksByProject(projectId: string): Promise<Task[]> {
     return Array.from(this.tasks.values())
       .filter(task => task.projectId === projectId);
@@ -1180,6 +1218,46 @@ export class MemStorage implements IStorage {
   // Fix 16: hasConversation for Phase 1 invariant checks (no more reaching into private Maps)
   async hasConversation(id: string): Promise<boolean> {
     return Promise.resolve(this.conversations.has(id));
+  }
+
+  // P3: createConversationMemory — store extracted project memory
+  async createConversationMemory(data: { conversationId: string; memoryType: string; content: string; importance: number; agentId?: string | null; }): Promise<unknown> {
+    const memory = { id: randomUUID(), ...data, createdAt: new Date() };
+    if (!this.conversationMemories.has(data.conversationId)) {
+      this.conversationMemories.set(data.conversationId, []);
+    }
+    this.conversationMemories.get(data.conversationId)!.push(memory);
+    return memory;
+  }
+
+  // P3: getRelevantProjectMemories — retrieve cross-agent project memories by relevance
+  async getRelevantProjectMemories(projectId: string, options: { query: string; limit: number; minImportance: number; excludeConversationId?: string; }): Promise<Array<{ content: string; memoryType: string; importance: number }>> {
+    const projectKey = `project:${projectId}`;
+    const memories = this.conversationMemories.get(projectKey) ?? [];
+    const queryWords = options.query.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+    return memories
+      .filter((m: any) => m.importance >= options.minImportance)
+      .map((m: any) => ({
+        ...m,
+        _score: queryWords.filter(w => m.content.toLowerCase().includes(w)).length,
+      }))
+      .sort((a: any, b: any) => b._score - a._score || b.importance - a.importance)
+      .slice(0, options.limit)
+      .map(({ content, memoryType, importance }: any) => ({ content, memoryType, importance }));
+  }
+
+  // P5: Proactive outreach rate limiting (stored in agent personality)
+  async getLastProactiveOutreachAt(agentId: string): Promise<Date | null> {
+    const agent = this.agents.get(agentId);
+    const lastAt = (agent?.personality as any)?.lastProactiveAt;
+    return lastAt ? new Date(lastAt) : null;
+  }
+  async setLastProactiveOutreachAt(agentId: string): Promise<void> {
+    const agent = this.agents.get(agentId);
+    if (agent) {
+      const personality = ((agent.personality ?? {}) as Record<string, unknown>);
+      this.agents.set(agentId, { ...agent, personality: { ...personality, lastProactiveAt: new Date().toISOString() } as any });
+    }
   }
 }
 
@@ -1349,12 +1427,37 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  // Special project initializers (delegate to MemStorage pattern; data goes to DB via createTeam/createAgent)
+  // Special project initializers
   async initializeIdeaProject(projectId: string): Promise<void> {
     const project = await this.getProject(projectId);
     if (!project) return;
-    const [team] = await db.insert(schema.teams).values({ userId: project.userId, name: 'Core Team', emoji: '⭐', projectId, isExpanded: true }).returning();
-    await db.insert(schema.agents).values({ userId: project.userId, name: 'Maya', role: 'AI Idea Partner', color: 'purple', teamId: team.id, projectId, isSpecialAgent: true, personality: { traits: ['Creative', 'Analytical', 'Encouraging'], communicationStyle: 'Friendly and insightful, helps turn ideas into actionable plans', expertise: ['Idea Development', 'Strategic Thinking', 'Project Planning'], welcomeMessage: "Hi! I'm Maya, your AI idea partner. What's on your mind?" } });
+
+    // Idempotency: check if Maya already exists for this project
+    const existingAgents = await db
+      .select()
+      .from(schema.agents)
+      .where(eq(schema.agents.projectId, projectId));
+
+    const mayaExists = existingAgents.some(a => a.name === 'Maya' && a.isSpecialAgent);
+    if (mayaExists) return;
+
+    // Create Maya as a project-level agent with no team (teamId: null)
+    await db.insert(schema.agents).values({
+      id: randomUUID(),
+      userId: project.userId,
+      name: 'Maya',
+      role: 'Product Manager',
+      color: 'teal',
+      teamId: null,
+      projectId,
+      isSpecialAgent: true,
+      personality: {
+        traits: ['strategic', 'supportive', 'analytical'],
+        communicationStyle: 'Warm, direct, and structured',
+        expertise: ['Product Strategy', 'Requirements Gathering', 'Idea Development'],
+        welcomeMessage: "Hi! I'm Maya. Tell me about your idea and I'll help you shape it into something real."
+      }
+    });
   }
   async initializeStarterPackProject(projectId: string, starterPackId: string): Promise<void> {
     // Delegate to in-memory logic then persist — use MemStorage helper pattern
@@ -1408,6 +1511,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Tasks
+  async getTask(id: string): Promise<Task | undefined> {
+    const rows = await db.select().from(schema.tasks).where(eq(schema.tasks.id, id));
+    return rows[0];
+  }
   async getTasksByProject(projectId: string): Promise<Task[]> {
     return db.select().from(schema.tasks).where(eq(schema.tasks.projectId, projectId));
   }
@@ -1448,18 +1555,33 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
   async getMessagesByConversation(conversationId: string, options?: { page?: number; limit?: number; before?: string; after?: string; messageType?: string }): Promise<Message[]> {
-    let q = db.select().from(schema.messages).where(eq(schema.messages.conversationId, conversationId));
-    const rows = await q;
+    const rows = await db.select().from(schema.messages).where(eq(schema.messages.conversationId, conversationId));
     let msgs = rows as Message[];
     if (options?.messageType) msgs = msgs.filter(m => m.messageType === options.messageType);
-    if (options?.before) msgs = msgs.filter(m => new Date(m.createdAt) < new Date(options.before!));
-    if (options?.after) msgs = msgs.filter(m => new Date(m.createdAt) > new Date(options.after!));
+    // Sort ascending by createdAt (oldest first)
     msgs.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-    if (options?.page && options?.limit) {
-      const start = (options.page - 1) * options.limit;
-      msgs = msgs.slice(start, start + options.limit);
+    // Cursor-based filtering
+    if (options?.before) {
+      const cutoff = new Date(options.before).getTime();
+      msgs = msgs.filter(m => new Date(m.createdAt).getTime() < cutoff);
+    }
+    if (options?.after) {
+      const cutoff = new Date(options.after).getTime();
+      msgs = msgs.filter(m => new Date(m.createdAt).getTime() > cutoff);
+    }
+    // Apply pagination: page-based takes priority, otherwise return last N (most recent window)
+    const limit = options?.limit;
+    if (options?.page && limit) {
+      const start = (options.page - 1) * limit;
+      msgs = msgs.slice(start, start + limit);
+    } else if (limit) {
+      msgs = msgs.slice(Math.max(0, msgs.length - limit));
     }
     return msgs;
+  }
+  async getMessage(id: string): Promise<Message | undefined> {
+    const rows = await db.select().from(schema.messages).where(eq(schema.messages.id, id));
+    return rows[0];
   }
   async createMessage(message: InsertMessage): Promise<Message> {
     const [msg] = await db.insert(schema.messages).values(message as any).returning();
@@ -1482,8 +1604,18 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(schema.messageReactions).where(eq(schema.messageReactions.messageId, messageId));
   }
   async storeFeedback(agentId: string, userId: string, feedback: any): Promise<void> {
-    // In db mode, this might just log it or store it if we have a table for feedback arrays
-    // For now we will just use the messageReactions table, or ignore if independent
+    try {
+      await db.insert(schema.autonomyEvents).values({
+        traceId: `feedback-${agentId}-${userId}-${Date.now()}`,
+        turnId: 'feedback',
+        requestId: `feedback-${Date.now()}`,
+        conversationId: `agent-feedback:${agentId}`,
+        eventType: 'personality_feedback',
+        payload: { agentId, userId, ...feedback },
+        riskScore: 0,
+        confidence: 1,
+      });
+    } catch { /* non-critical */ }
   }
 
   // Memory (stored in conversationMemory table)
@@ -1505,6 +1637,52 @@ export class DatabaseStorage implements IStorage {
   async getSharedMemoryForAgent(agentId: string, projectId: string): Promise<string> {
     const mems = await this.getProjectMemory(projectId);
     return mems.map((m: any) => `[${m.memoryType}] ${m.content}`).join('\n');
+  }
+
+  // P3: createConversationMemory — insert extracted project memory
+  async createConversationMemory(data: { conversationId: string; memoryType: string; content: string; importance: number; agentId?: string | null; }): Promise<unknown> {
+    const [row] = await db.insert(schema.conversationMemory).values({
+      conversationId: data.conversationId,
+      memoryType: data.memoryType as any,
+      content: data.content,
+      importance: data.importance,
+    }).returning();
+    return row;
+  }
+
+  // P3: getRelevantProjectMemories — retrieve scored project-scoped memories
+  async getRelevantProjectMemories(projectId: string, options: { query: string; limit: number; minImportance: number; excludeConversationId?: string; }): Promise<Array<{ content: string; memoryType: string; importance: number }>> {
+    const projectKey = `project:${projectId}`;
+    const rows = await db.select().from(schema.conversationMemory)
+      .where(eq(schema.conversationMemory.conversationId, projectKey));
+    const queryWords = options.query.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+    return rows
+      .filter((m: any) => (m.importance ?? 0) >= options.minImportance)
+      .map((m: any) => ({
+        content: m.content as string,
+        memoryType: m.memoryType as string,
+        importance: m.importance as number,
+        _score: queryWords.filter(w => (m.content as string).toLowerCase().includes(w)).length,
+      }))
+      .sort((a, b) => b._score - a._score || b.importance - a.importance)
+      .slice(0, options.limit)
+      .map(({ content, memoryType, importance }) => ({ content, memoryType, importance }));
+  }
+
+  // P5: Proactive outreach rate limiting (uses agents.personality JSONB)
+  async getLastProactiveOutreachAt(agentId: string): Promise<Date | null> {
+    const [agent] = await db.select().from(schema.agents).where(eq(schema.agents.id, agentId));
+    const lastAt = (agent?.personality as any)?.lastProactiveAt;
+    return lastAt ? new Date(lastAt) : null;
+  }
+  async setLastProactiveOutreachAt(agentId: string): Promise<void> {
+    const [agent] = await db.select().from(schema.agents).where(eq(schema.agents.id, agentId));
+    if (agent) {
+      const personality = ((agent.personality ?? {}) as Record<string, unknown>);
+      await db.update(schema.agents)
+        .set({ personality: { ...personality, lastProactiveAt: new Date().toISOString() } as any })
+        .where(eq(schema.agents.id, agentId));
+    }
   }
 }
 

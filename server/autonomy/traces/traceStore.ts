@@ -5,6 +5,195 @@ import type { DeliberationTrace, DeliberationRoundTrace, PeerReviewTrace } from 
 
 const TRACE_FILE = path.join(process.cwd(), 'baseline', 'deliberation-traces.json');
 
+type DbPool = {
+  query: (text: string, values?: unknown[]) => Promise<{ rows: any[] }>;
+};
+
+let dbPoolPromise: Promise<DbPool | null> | null = null;
+
+async function getDbPool(): Promise<DbPool | null> {
+  if (!process.env.DATABASE_URL) {
+    return null;
+  }
+
+  if (!dbPoolPromise) {
+    dbPoolPromise = (async () => {
+      try {
+        const mod = await import('../../db.js');
+        const pool = mod.pool as DbPool;
+        await pool.query('select 1');
+        return pool;
+      } catch {
+        return null;
+      }
+    })();
+  }
+
+  return dbPoolPromise;
+}
+
+function normalizeFinalSynthesis(value: unknown): Record<string, unknown> {
+  if (!value) {
+    return {};
+  }
+  if (typeof value === 'string') {
+    return { content: value };
+  }
+  if (typeof value === 'object') {
+    return value as Record<string, unknown>;
+  }
+  return { content: String(value) };
+}
+
+function mapDbRowToTrace(row: any): DeliberationTrace {
+  const finalSynthesis = row.final_synthesis;
+  const normalizedFinal =
+    finalSynthesis && typeof finalSynthesis === 'object' && typeof finalSynthesis.content === 'string'
+      ? finalSynthesis.content
+      : finalSynthesis ?? null;
+
+  return {
+    traceId: row.trace_id,
+    userId: row.user_id,
+    projectId: row.project_id,
+    teamId: row.team_id ?? null,
+    conversationId: row.conversation_id,
+    objective: row.objective,
+    rounds: Array.isArray(row.rounds) ? row.rounds : [],
+    review: Array.isArray(row.review) ? row.review : [],
+    finalSynthesis: normalizedFinal,
+    createdAt: new Date(row.created_at).toISOString(),
+    updatedAt: new Date(row.updated_at).toISOString(),
+  };
+}
+
+async function createTraceInDb(trace: DeliberationTrace): Promise<boolean> {
+  const pool = await getDbPool();
+  if (!pool) return false;
+
+  try {
+    await pool.query(
+      `
+      insert into deliberation_traces (
+        trace_id,
+        user_id,
+        project_id,
+        team_id,
+        conversation_id,
+        objective,
+        rounds,
+        review,
+        final_synthesis,
+        created_at,
+        updated_at
+      ) values ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9::jsonb,$10,$11)
+      on conflict (trace_id) do update set
+        user_id = excluded.user_id,
+        project_id = excluded.project_id,
+        team_id = excluded.team_id,
+        conversation_id = excluded.conversation_id,
+        objective = excluded.objective,
+        rounds = excluded.rounds,
+        review = excluded.review,
+        final_synthesis = excluded.final_synthesis,
+        updated_at = excluded.updated_at
+      `,
+      [
+        trace.traceId,
+        trace.userId,
+        trace.projectId,
+        trace.teamId ?? null,
+        trace.conversationId,
+        trace.objective,
+        JSON.stringify(trace.rounds),
+        JSON.stringify(trace.review),
+        JSON.stringify(normalizeFinalSynthesis(trace.finalSynthesis)),
+        trace.createdAt,
+        trace.updatedAt,
+      ],
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function readTraceFromDb(traceId: string): Promise<DeliberationTrace | null> {
+  const pool = await getDbPool();
+  if (!pool) return null;
+
+  try {
+    const result = await pool.query(
+      `
+      select
+        trace_id,
+        user_id,
+        project_id,
+        team_id,
+        conversation_id,
+        objective,
+        rounds,
+        review,
+        final_synthesis,
+        created_at,
+        updated_at
+      from deliberation_traces
+      where trace_id = $1
+      limit 1
+      `,
+      [traceId],
+    );
+    if (!result.rows[0]) {
+      return null;
+    }
+    return mapDbRowToTrace(result.rows[0]);
+  } catch {
+    return null;
+  }
+}
+
+async function listTracesFromDb(limit: number): Promise<DeliberationTrace[] | null> {
+  const pool = await getDbPool();
+  if (!pool) return null;
+
+  try {
+    const result = await pool.query(
+      `
+      select
+        trace_id,
+        user_id,
+        project_id,
+        team_id,
+        conversation_id,
+        objective,
+        rounds,
+        review,
+        final_synthesis,
+        created_at,
+        updated_at
+      from deliberation_traces
+      order by created_at desc
+      limit $1
+      `,
+      [Math.max(1, limit)],
+    );
+    return result.rows.map(mapDbRowToTrace).reverse();
+  } catch {
+    return null;
+  }
+}
+
+async function upsertTraceDbMutation(
+  traceId: string,
+  mutator: (trace: DeliberationTrace) => DeliberationTrace
+): Promise<DeliberationTrace | null> {
+  const current = await readTraceFromDb(traceId);
+  if (!current) return null;
+  const next = mutator(current);
+  const wrote = await createTraceInDb(next);
+  return wrote ? next : null;
+}
+
 async function ensureStorage(): Promise<void> {
   await fs.mkdir(path.dirname(TRACE_FILE), { recursive: true });
   try {
@@ -23,7 +212,7 @@ async function readAll(): Promise<DeliberationTrace[]> {
       return parsed as DeliberationTrace[];
     }
   } catch {
-    // fall through
+    // ignored
   }
   return [];
 }
@@ -37,33 +226,48 @@ export async function createDeliberationTrace(input: {
   userId: string;
   projectId: string;
   conversationId: string;
+  teamId?: string | null;
   objective: string;
   traceId?: string;
   rounds?: DeliberationRoundTrace[];
   review?: PeerReviewTrace[];
-  finalSynthesis?: string;
+  finalSynthesis?: string | Record<string, unknown>;
 }): Promise<DeliberationTrace> {
-  const traces = await readAll();
   const now = new Date().toISOString();
   const trace: DeliberationTrace = {
     traceId: input.traceId || `trace-${randomUUID()}`,
     userId: input.userId,
     projectId: input.projectId,
+    teamId: input.teamId ?? null,
     conversationId: input.conversationId,
     objective: input.objective,
     rounds: input.rounds || [],
     review: input.review || [],
-    finalSynthesis: input.finalSynthesis,
+    finalSynthesis: input.finalSynthesis ?? null,
     createdAt: now,
     updatedAt: now,
   };
 
-  traces.push(trace);
-  await writeAll(traces);
+  const wroteToDb = await createTraceInDb(trace);
+  if (!wroteToDb) {
+    const traces = await readAll();
+    traces.push(trace);
+    await writeAll(traces);
+  }
+
   return trace;
 }
 
 export async function appendDeliberationRound(traceId: string, round: DeliberationRoundTrace): Promise<DeliberationTrace | null> {
+  const updatedInDb = await upsertTraceDbMutation(traceId, (trace) => ({
+    ...trace,
+    rounds: [...trace.rounds, round],
+    updatedAt: new Date().toISOString(),
+  }));
+  if (updatedInDb) {
+    return updatedInDb;
+  }
+
   const traces = await readAll();
   const idx = traces.findIndex((trace) => trace.traceId === traceId);
   if (idx === -1) return null;
@@ -75,6 +279,15 @@ export async function appendDeliberationRound(traceId: string, round: Deliberati
 }
 
 export async function appendPeerReview(traceId: string, review: PeerReviewTrace): Promise<DeliberationTrace | null> {
+  const updatedInDb = await upsertTraceDbMutation(traceId, (trace) => ({
+    ...trace,
+    review: [...trace.review, review],
+    updatedAt: new Date().toISOString(),
+  }));
+  if (updatedInDb) {
+    return updatedInDb;
+  }
+
   const traces = await readAll();
   const idx = traces.findIndex((trace) => trace.traceId === traceId);
   if (idx === -1) return null;
@@ -86,6 +299,15 @@ export async function appendPeerReview(traceId: string, review: PeerReviewTrace)
 }
 
 export async function finalizeDeliberationTrace(traceId: string, finalSynthesis: string): Promise<DeliberationTrace | null> {
+  const updatedInDb = await upsertTraceDbMutation(traceId, (trace) => ({
+    ...trace,
+    finalSynthesis,
+    updatedAt: new Date().toISOString(),
+  }));
+  if (updatedInDb) {
+    return updatedInDb;
+  }
+
   const traces = await readAll();
   const idx = traces.findIndex((trace) => trace.traceId === traceId);
   if (idx === -1) return null;
@@ -97,11 +319,19 @@ export async function finalizeDeliberationTrace(traceId: string, finalSynthesis:
 }
 
 export async function getDeliberationTrace(traceId: string): Promise<DeliberationTrace | null> {
+  const dbTrace = await readTraceFromDb(traceId);
+  if (dbTrace) {
+    return dbTrace;
+  }
   const traces = await readAll();
   return traces.find((trace) => trace.traceId === traceId) || null;
 }
 
 export async function listDeliberationTraces(limit = 100): Promise<DeliberationTrace[]> {
+  const dbTraces = await listTracesFromDb(limit);
+  if (dbTraces) {
+    return dbTraces;
+  }
   const traces = await readAll();
   return traces.slice(-Math.max(1, limit));
 }

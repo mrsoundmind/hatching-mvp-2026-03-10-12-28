@@ -7,11 +7,12 @@ import StarterPacksModal from "./StarterPacksModal";
 
 interface OnboardingManagerProps {
   onComplete: (path: 'idea' | 'template' | 'scratch', templateData?: any) => void;
+  onStartWithIdeaPromptName?: () => void; // Called instead of onComplete('idea') to open ProjectNameModal
 }
 
 type OnboardingStep = 'welcome' | 'steps' | 'path-selection' | 'starter-packs' | 'completed';
 
-export function OnboardingManager({ onComplete }: OnboardingManagerProps) {
+export function OnboardingManager({ onComplete, onStartWithIdeaPromptName }: OnboardingManagerProps) {
   const { hasCompletedOnboarding, completeOnboarding } = useAuth();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('welcome');
 
@@ -32,8 +33,13 @@ export function OnboardingManager({ onComplete }: OnboardingManagerProps) {
 
   const handleStartWithIdea = () => {
     completeOnboarding();
-    onComplete('idea');
     setCurrentStep('completed');
+    if (onStartWithIdeaPromptName) {
+      // Open ProjectNameModal in home.tsx so user can name their project
+      onStartWithIdeaPromptName();
+    } else {
+      onComplete('idea');
+    }
   };
 
   const handleUseStarterPack = () => {

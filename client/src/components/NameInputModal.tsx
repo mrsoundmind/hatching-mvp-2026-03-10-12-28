@@ -41,7 +41,7 @@ export function NameInputModal({ isOpen, onClose, onSubmit, isLoading }: NameInp
                 </DialogDescription>
                 <div className="text-center space-y-8 p-10 relative">
                     {/* Ambient Glow */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-gradient-to-b from-[#6C82FF]/05 to-transparent pointer-events-none" />
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-gradient-to-b from-hatchin-blue/5 to-transparent pointer-events-none" />
 
                     {/* Premium Wave Orb */}
                     <motion.div
@@ -54,8 +54,8 @@ export function NameInputModal({ isOpen, onClose, onSubmit, isLoading }: NameInp
                         }}
                         className="relative w-20 h-20 mx-auto"
                     >
-                        <div className="absolute inset-0 bg-[#6C82FF] rounded-full blur-xl opacity-20" />
-                        <div className="relative w-full h-full bg-gradient-to-br from-[#6C82FF] to-[#9F7BFF] rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(108,130,255,0.2)]">
+                        <div className="absolute inset-0 bg-hatchin-blue rounded-full blur-xl opacity-20" />
+                        <div className="relative w-full h-full bg-gradient-to-br from-hatchin-blue to-[#9F7BFF] rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(108,130,255,0.2)]">
                             <span className="text-4xl select-none">👋</span>
                         </div>
                     </motion.div>
@@ -94,14 +94,14 @@ export function NameInputModal({ isOpen, onClose, onSubmit, isLoading }: NameInp
                                 onKeyDown={handleKeyDown}
                                 placeholder="Your name"
                                 autoFocus
-                                className="w-full px-5 py-4 bg-[#111318] border border-[#31343A] rounded-xl text-white placeholder-[#585961] focus:outline-none focus:border-[#6C82FF] focus:ring-1 focus:ring-[#6C82FF] transition-all duration-300 text-lg group-hover:border-[#43444B]"
+                                className="w-full px-5 py-4 bg-[#111318] border border-[#31343A] rounded-xl text-white placeholder-[#585961] focus:outline-none focus:border-hatchin-blue focus:ring-1 focus:ring-hatchin-blue transition-all duration-300 text-lg group-hover:border-[#43444B]"
                             />
                         </div>
 
                         <button
                             type="submit"
                             disabled={!name.trim() || isLoading}
-                            className="group relative w-full px-6 py-4 bg-gradient-to-r from-[#6C82FF] to-[#8B5CF6] hover:from-[#5A6FE8] hover:to-[#7C3AED] text-white rounded-xl font-bold text-lg transition-all duration-300 shadow-[0_8px_25px_rgba(108,130,255,0.2)] hover:shadow-[0_12px_35px_rgba(108,130,255,0.3)] active:scale-[0.98] outline-none border-0 disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center overflow-hidden"
+                            className="group relative w-full px-6 py-4 bg-gradient-to-r from-hatchin-blue to-[#8B5CF6] hover:from-hatchin-blue/90 hover:to-[#7C3AED] text-white rounded-xl font-bold text-lg transition-all duration-300 shadow-[0_8px_25px_rgba(108,130,255,0.2)] hover:shadow-[0_12px_35px_rgba(108,130,255,0.3)] active:scale-[0.98] outline-none border-0 disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center overflow-hidden"
                         >
                             <span className="relative z-10">
                                 {isLoading ? (

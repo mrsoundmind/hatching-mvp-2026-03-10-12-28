@@ -7,7 +7,7 @@ export interface Agent {
   id: string;
   name: string;
   role: string;
-  teamId?: string;
+  teamId?: string | null;
 }
 
 export interface ExpertiseMatch {

@@ -1,0 +1,44 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/react-app/quality-check.js",
+            "description": "TypeScript + ESLint + Prettier quality check for React/client files"
+          },
+          {
+            "type": "command",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/node-typescript/quality-check.js",
+            "description": "TypeScript + ESLint quality check for server/backend files"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|TodoWrite",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tdd-guard",
+            "description": "TDD Guard: enforces Red-Green-Refactor, blocks implementation without failing tests"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tdd-guard",
+            "description": "TDD Guard: validates TDD compliance on prompt submit"
+          }
+        ]
+      }
+    ]
+  }
+}
