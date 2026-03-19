@@ -31,15 +31,50 @@
         {
           "name": "Low-risk auto-execute: status is completed with isAutonomous message",
           "fullName": "Low-risk auto-execute: status is completed with isAutonomous message",
-          "state": "failed",
-          "errors": [
-            {
-              "message": "Cannot find module 'server/autonomy/execution/taskExecutionPipeline.js'"
-            }
-          ]
+          "state": "passed"
+        },
+        {
+          "name": "High-risk block: task blocked with task_requires_approval event",
+          "fullName": "High-risk block: task blocked with task_requires_approval event",
+          "state": "passed"
+        },
+        {
+          "name": "Backward check: taskExecutionPipeline has no runTurn or graph.invoke",
+          "fullName": "Backward check: taskExecutionPipeline has no runTurn or graph.invoke",
+          "state": "passed"
+        },
+        {
+          "name": "Cost cap: handleTaskJob skips executeTask when daily cap reached",
+          "fullName": "Cost cap: handleTaskJob skips executeTask when daily cap reached",
+          "state": "passed"
+        },
+        {
+          "name": "WS event: background_execution_started broadcast before executeTask",
+          "fullName": "WS event: background_execution_started broadcast before executeTask",
+          "state": "passed"
+        },
+        {
+          "name": "WS event: task_execution_completed broadcast after low-risk completion",
+          "fullName": "WS event: task_execution_completed broadcast after low-risk completion",
+          "state": "passed"
+        },
+        {
+          "name": "handleTaskJob calls executeTask when cap not reached — task completes",
+          "fullName": "handleTaskJob calls executeTask when cap not reached — task completes",
+          "state": "passed"
+        },
+        {
+          "name": "startTaskWorker is exported from taskExecutionPipeline",
+          "fullName": "startTaskWorker is exported from taskExecutionPipeline",
+          "state": "passed"
+        },
+        {
+          "name": "startTaskWorker registers boss.work for autonomous_task_execution queue",
+          "fullName": "startTaskWorker registers boss.work for autonomous_task_execution queue",
+          "state": "passed"
         }
       ]
     }
   ],
-  "reason": "failed"
+  "reason": "passed"
 }
