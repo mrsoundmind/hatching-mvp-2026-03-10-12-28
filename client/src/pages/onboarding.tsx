@@ -103,7 +103,7 @@ function BrainFill() {
     ];
     return (
         <div className="w-full rounded-xl bg-black/30 border border-white/5 p-3 mb-1 space-y-1.5">
-            <div className="text-[10px] text-[#6C82FF] uppercase tracking-widest font-semibold mb-2">
+            <div className="text-[10px] text-hatchin-blue uppercase tracking-widest font-semibold mb-2">
                 Project Brain
             </div>
             {items.map((item, i) => (

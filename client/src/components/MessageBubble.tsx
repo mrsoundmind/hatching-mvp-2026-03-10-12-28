@@ -209,7 +209,7 @@ export function MessageBubble({
             >
               <div className="w-3 h-3 rounded-full mb-2" style={{ backgroundColor: item.color || '#6C82FF' }} />
               <p className="text-xs font-semibold text-gray-200 mb-1">{item.phase}</p>
-              <p className="text-[11px] text-gray-400 leading-snug">{item.desc}</p>
+              <p className="text-xs text-gray-400 leading-snug">{item.desc}</p>
             </motion.div>
           ))}
         </div>
@@ -232,8 +232,8 @@ export function MessageBubble({
                 {i + 1}
               </div>
               <div>
-                <p className="text-[12px] font-semibold text-gray-200 mb-0.5">{feature.title || feature.name}</p>
-                <p className="text-[11px] text-gray-400 leading-snug">{feature.desc || feature.description}</p>
+                <p className="text-xs font-semibold text-gray-200 mb-0.5">{feature.title || feature.name}</p>
+                <p className="text-xs text-gray-400 leading-snug">{feature.desc || feature.description}</p>
               </div>
             </motion.div>
           ))}
@@ -254,7 +254,7 @@ export function MessageBubble({
               className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10"
             >
               <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: member.color || '#A855F7' }} />
-              <span className="text-[11px] font-medium text-gray-200">{member.role}</span>
+              <span className="text-xs font-medium text-gray-200">{member.role}</span>
               {member.name && <span className="text-[10px] text-gray-500">· {member.name}</span>}
             </motion.div>
           ))}
@@ -294,7 +294,7 @@ export function MessageBubble({
                   )}
                   <span className="text-sm font-medium text-gray-300">{safeSenderName}</span>
                   {isAgent && agentRole && (
-                    <span className="text-xs text-gray-500 ml-1">· {agentRole}</span>
+                    <span className="text-xs text-gray-500 ml-1">· {roleDef?.role ?? agentRole}</span>
                   )}
                 </div>
               )}
@@ -306,7 +306,7 @@ export function MessageBubble({
               >
                 {/* C1.1: Render reply context if exists */}
                 {(message.replyTo || message.metadata?.replyTo) && (
-                  <div className="mb-2 p-2 rounded bg-white/5 border-l-2 border-green-400/50 text-[11px] opacity-80 line-clamp-2">
+                  <div className="mb-2 p-2 rounded bg-white/5 border-l-2 border-green-400/50 text-xs opacity-80 line-clamp-2">
                     <div className="font-semibold text-green-400/90 mb-0.5">
                       Replying to {(message.replyTo || message.metadata?.replyTo)?.senderName}
                     </div>
@@ -326,7 +326,7 @@ export function MessageBubble({
                         {[0, 1, 2].map((i) => (
                           <span
                             key={i}
-                            className="w-1.5 h-1.5 bg-[#6C82FF] rounded-full block"
+                            className="w-1.5 h-1.5 bg-hatchin-blue rounded-full block"
                             style={{
                               animation: `wave-bounce 1.2s ease-in-out infinite`,
                               animationDelay: `${i * 0.18}s`,
@@ -386,7 +386,7 @@ export function MessageBubble({
               </div>
 
               {isAgent && message.metadata?.llm?.mode === 'test' && (
-                <div className="mt-2 text-[11px] text-amber-300/90">
+                <div className="mt-2 text-xs text-amber-300/90">
                   Test Mode (Local Model)
                 </div>
               )}

@@ -99,10 +99,10 @@ export function TaskApprovalModal({
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-[#23262B] border border-[#43444B] text-[#F1F1F3] shadow-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-[#F1F1F3]">
-            <div className="w-8 h-8 bg-[#6C82FF]/20 rounded-full flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-[#6C82FF]" />
+            <div className="w-8 h-8 bg-hatchin-blue/20 rounded-full flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-hatchin-blue" />
             </div>
-            AI Suggested Tasks for <span className="text-[#6C82FF]">{projectName}</span>
+            AI Suggested Tasks for <span className="text-hatchin-blue">{projectName}</span>
           </DialogTitle>
           <DialogDescription className="text-[#A6A7AB]">
             Approve the tasks you want to create in this project.
@@ -116,8 +116,8 @@ export function TaskApprovalModal({
               <button
                 onClick={handleSelectAll}
                 className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${selectedTasks.size === tasks.length
-                    ? 'bg-[#6C82FF] border-[#6C82FF]'
-                    : 'border-[#43444B] hover:border-[#6C82FF]'
+                    ? 'bg-hatchin-blue border-hatchin-blue'
+                    : 'border-[#43444B] hover:border-hatchin-blue'
                   }`}
               >
                 {selectedTasks.size === tasks.length && (
@@ -144,8 +144,8 @@ export function TaskApprovalModal({
                   transition={{ delay: index * 0.04 }}
                   onClick={() => handleTaskToggle(index)}
                   className={`rounded-xl border p-4 cursor-pointer transition-all duration-200 ${selectedTasks.has(index)
-                      ? 'border-[#6C82FF]/60 bg-[#6C82FF]/10'
-                      : 'border-[#43444B] bg-[#2A2D33] hover:border-[#6C82FF]/30 hover:bg-[#6C82FF]/5'
+                      ? 'border-hatchin-blue/60 bg-hatchin-blue/10'
+                      : 'border-[#43444B] bg-[#2A2D33] hover:border-hatchin-blue/30 hover:bg-hatchin-blue/5'
                     }`}
                   whileTap={{ scale: 0.995 }}
                 >
@@ -153,7 +153,7 @@ export function TaskApprovalModal({
                     {/* Custom Checkbox */}
                     <div
                       className={`mt-1 w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-all ${selectedTasks.has(index)
-                          ? 'bg-[#6C82FF] border-[#6C82FF]'
+                          ? 'bg-hatchin-blue border-hatchin-blue'
                           : 'border-[#43444B]'
                         }`}
                     >
@@ -196,7 +196,7 @@ export function TaskApprovalModal({
 
                       {/* AI Reasoning */}
                       <div className="text-xs text-[#A6A7AB] bg-[#1A1C1F] border border-[#43444B] p-2.5 rounded-lg">
-                        <span className="text-[#6C82FF] font-medium">AI Reasoning: </span>
+                        <span className="text-hatchin-blue font-medium">AI Reasoning: </span>
                         {task.reasoning}
                       </div>
                     </div>
@@ -227,7 +227,7 @@ export function TaskApprovalModal({
               <button
                 onClick={handleApprove}
                 disabled={selectedTasks.size === 0 || isApproving}
-                className="px-4 py-2 text-sm bg-[#6C82FF] text-white rounded-lg hover:bg-[#6C82FF]/90 transition-all font-medium disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 py-2 text-sm bg-hatchin-blue text-white rounded-lg hover:bg-hatchin-blue/90 transition-all font-medium disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isApproving ? (
                   <>

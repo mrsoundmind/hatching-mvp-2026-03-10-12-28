@@ -17,7 +17,7 @@ export function WelcomeModal({ isOpen, onClose, onGetStarted }: WelcomeModalProp
         </DialogDescription>
         <div className="text-center space-y-8 p-10 relative">
           {/* Ambient Glow Backdrop */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-gradient-to-b from-[#6C82FF]/10 to-transparent pointer-events-none" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-gradient-to-b from-hatchin-blue/10 to-transparent pointer-events-none" />
 
           {/* Premium Startup Orb */}
           <motion.div
@@ -31,7 +31,7 @@ export function WelcomeModal({ isOpen, onClose, onGetStarted }: WelcomeModalProp
             className="relative w-24 h-28 mx-auto flex items-center justify-center pt-4"
           >
             {/* Outer glow ring */}
-            <div className="absolute inset-x-0 inset-y-4 rounded-full blur-2xl opacity-40 bg-gradient-to-br from-[#6C82FF] to-[#9F7BFF]" />
+            <div className="absolute inset-x-0 inset-y-4 rounded-full blur-2xl opacity-40 bg-gradient-to-br from-hatchin-blue to-[#9F7BFF]" />
 
             {/* Main orb — pearl highlight shape */}
             <div className="relative w-20 h-24 rounded-full overflow-hidden"
@@ -80,7 +80,7 @@ export function WelcomeModal({ isOpen, onClose, onGetStarted }: WelcomeModalProp
           >
             <button
               onClick={onGetStarted}
-              className="group relative w-full px-6 py-4 bg-gradient-to-r from-[#6C82FF] to-[#8B5CF6] hover:from-[#5A6FE8] hover:to-[#7C3AED] text-white rounded-xl font-bold text-lg transition-all duration-300 shadow-[0_8px_25px_rgba(108,130,255,0.3)] hover:shadow-[0_12px_35px_rgba(108,130,255,0.4)] active:scale-[0.98] outline-none border-0"
+              className="group relative w-full px-6 py-4 bg-gradient-to-r from-hatchin-blue to-[#8B5CF6] hover:from-hatchin-blue/90 hover:to-[#7C3AED] text-white rounded-xl font-bold text-lg transition-all duration-300 shadow-[0_8px_25px_rgba(108,130,255,0.3)] hover:shadow-[0_12px_35px_rgba(108,130,255,0.4)] active:scale-[0.98] outline-none border-0"
             >
               <span className="relative z-10">Talk to Maya →</span>
               <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl" />

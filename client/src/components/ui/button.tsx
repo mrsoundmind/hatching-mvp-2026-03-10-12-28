@@ -17,8 +17,8 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        lux: "hatchin-glass border border-white/10 text-[#F1F1F3] hover:bg-[#6C82FF]/20 hover:border-[#6C82FF]/40 transition-all duration-200",
-        hatchin: "bg-[#6C82FF] text-white hover:bg-[#6C82FF]/90 transition-all duration-200",
+        lux: "hatchin-glass border border-white/10 text-[#F1F1F3] hover:bg-hatchin-blue/20 hover:border-hatchin-blue/40 transition-all duration-200",
+        hatchin: "bg-hatchin-blue text-white hover:bg-hatchin-blue/90 transition-all duration-200",
       },
       size: {
         default: "h-10 px-4 py-2",

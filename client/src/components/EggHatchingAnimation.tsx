@@ -66,7 +66,7 @@ export function EggHatchingAnimation({
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-[-20%] border border-dashed border-[#6C82FF]/30 rounded-full"
+                  className="absolute inset-[-20%] border border-dashed border-hatchin-blue/30 rounded-full"
                 />
                 <motion.div
                   animate={{ rotate: -360 }}
@@ -75,8 +75,8 @@ export function EggHatchingAnimation({
                 />
 
                 {/* Multiple Glow Layers */}
-                <div className="absolute inset-0 rounded-full blur-2xl opacity-60 bg-gradient-to-br from-[#6C82FF] to-[#9F7BFF]" />
-                <div className="absolute inset-0 rounded-full blur-3xl opacity-30 bg-[#6C82FF] animate-pulse" />
+                <div className="absolute inset-0 rounded-full blur-2xl opacity-60 bg-gradient-to-br from-hatchin-blue to-[#9F7BFF]" />
+                <div className="absolute inset-0 rounded-full blur-3xl opacity-30 bg-hatchin-blue animate-pulse" />
 
                 {/* The Core Orb */}
                 <div className="relative w-20 h-24 rounded-full overflow-hidden"
@@ -90,7 +90,7 @@ export function EggHatchingAnimation({
                   <motion.div
                     animate={{ opacity: [0.4, 0.8, 0.4] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                    className="absolute inset-0 bg-gradient-to-tr from-[#6C82FF]/40 to-transparent"
+                    className="absolute inset-0 bg-gradient-to-tr from-hatchin-blue/40 to-transparent"
                   />
 
                   {/* Refraction/Highlights */}
@@ -255,7 +255,7 @@ export function EggHatchingAnimation({
                 </div>
                 {/* Outer decorative ring */}
                 <motion.div
-                  className="absolute -inset-3 rounded-full border border-[#6C82FF]/30"
+                  className="absolute -inset-3 rounded-full border border-hatchin-blue/30"
                   animate={{ rotate: 360 }}
                   transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
                   style={{

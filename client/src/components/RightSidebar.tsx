@@ -154,9 +154,9 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
   const brainsyncBanner = (
     <>
       {isLoading && (
-        <div className="mb-3 rounded-xl overflow-hidden border border-[#6C82FF]/20">
+        <div className="mb-3 rounded-xl overflow-hidden border border-hatchin-blue/20">
           <div className="px-3 py-2 flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#6C82FF] animate-pulse flex-shrink-0" />
+            <div className="w-2.5 h-2.5 rounded-full bg-hatchin-blue animate-pulse flex-shrink-0" />
             <span className="text-xs text-[#A6A7AB]">Syncing to Project Brain...</span>
           </div>
           <div className="h-1 w-full brain-sync-bar" />
@@ -487,7 +487,7 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
         <button
           onClick={() => setCurrentView('overview')}
           className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all ${currentView === 'overview'
-            ? 'bg-[#6C82FF]/20 text-[#AAB5FF] shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]'
+            ? 'bg-hatchin-blue/20 text-[#AAB5FF] shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]'
             : 'hatchin-text-muted hover:hatchin-text hover:bg-white/5'
             }`}
           data-testid="tab-overview"
@@ -498,7 +498,7 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
         <button
           onClick={() => setCurrentView('tasks')}
           className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all ${currentView === 'tasks'
-            ? 'bg-[#6C82FF]/20 text-[#AAB5FF] shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]'
+            ? 'bg-hatchin-blue/20 text-[#AAB5FF] shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]'
             : 'hatchin-text-muted hover:hatchin-text hover:bg-white/5'
             }`}
           data-testid="tab-tasks"

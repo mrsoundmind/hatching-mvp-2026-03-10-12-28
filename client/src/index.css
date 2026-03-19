@@ -34,7 +34,7 @@
   --hatchin-border: hsl(216, 8%, 27%);
   --hatchin-text: hsl(210, 9%, 95%);
   --hatchin-text-muted: hsl(216, 6%, 67%);
-  --hatchin-blue: hsl(226, 100%, 70%);
+  --hatchin-blue: #6C82FF;
   --hatchin-green: hsl(158, 66%, 57%);
   --hatchin-orange: hsl(25, 100%, 64%);
 }
@@ -321,7 +321,7 @@
 
 /* Brain Sync progress bar animation */
 .brain-sync-bar {
-  background: linear-gradient(90deg, #6C82FF, #47DB9A, #6C82FF);
+  background: linear-gradient(90deg, var(--hatchin-blue), #47DB9A, var(--hatchin-blue));
   background-size: 200% 100%;
   animation: gradient-shift 1.5s ease infinite;
 }

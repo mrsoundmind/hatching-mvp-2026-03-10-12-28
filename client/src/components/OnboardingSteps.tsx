@@ -35,7 +35,7 @@ function ChatPreview() {
     <div className="w-full rounded-xl bg-black/40 border border-white/8 p-3">
       {/* mock input */}
       <div className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2 mb-2">
-        <span className="text-[12px] text-gray-300 min-h-[16px]">{displayed}</span>
+        <span className="text-xs text-gray-300 min-h-[16px]">{displayed}</span>
         <span className="w-px h-4 bg-indigo-400 animate-pulse rounded-sm flex-shrink-0" />
       </div>
       <AnimatePresence>
@@ -46,7 +46,7 @@ function ChatPreview() {
             className="flex items-start gap-2"
           >
             <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex-shrink-0 mt-0.5" />
-            <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg px-2 py-1.5 text-[11px] text-indigo-200 leading-snug">
+            <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg px-2 py-1.5 text-xs text-indigo-200 leading-snug">
               Got it! Let me hatch your team…
             </div>
           </motion.div>
@@ -84,8 +84,8 @@ function AgentHatch() {
           <div className={`w-11 h-11 rounded-full ${a.avatarBg} flex items-center justify-center text-white text-lg shadow-lg`}>
             {a.emoji}
           </div>
-          <span className="text-[10px] text-gray-400 text-center leading-tight whitespace-nowrap">{a.role}</span>
-          <span className="text-[9px] text-indigo-400/80 font-medium uppercase tracking-tighter">{a.characterName}</span>
+          <span className="text-xs text-indigo-400/80 font-medium">{a.characterName}</span>
+          <span className="text-xs text-gray-400 text-center leading-tight whitespace-nowrap">{a.role}</span>
         </motion.div>
       ))}
     </div>
@@ -97,7 +97,7 @@ function BrainFill() {
   const items = ["Target: Runners aged 18–35", "Stack: React Native + Node", "Launch: 6 weeks"];
   return (
     <div className="w-full rounded-xl bg-black/40 border border-white/8 p-3">
-      <div className="text-[10px] text-[#6C82FF] uppercase tracking-widest font-semibold mb-2">
+      <div className="text-xs text-hatchin-blue uppercase tracking-widest font-semibold mb-2">
         Project Brain
       </div>
       <div className="space-y-1.5">
@@ -107,7 +107,7 @@ function BrainFill() {
             initial={{ opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.65 + 0.2 }}
-            className="flex items-center gap-2 text-[11px] text-gray-300"
+            className="flex items-center gap-2 text-xs text-gray-300"
           >
             <div className="w-1.5 h-1.5 rounded-full bg-[#47DB9A] flex-shrink-0" />
             {item}
@@ -139,7 +139,7 @@ function ChatProgress() {
             <div className="w-4 h-4 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex-shrink-0 mt-0.5 mr-1.5" />
           )}
           <div
-            className={`max-w-[80%] rounded-lg px-2 py-1.5 text-[10px] leading-snug ${ex.from === "user"
+            className={`max-w-[80%] rounded-lg px-2 py-1.5 text-xs leading-snug ${ex.from === "user"
               ? "bg-white/8 text-gray-200"
               : "bg-indigo-500/10 border border-indigo-500/20 text-indigo-200"
               }`}
@@ -208,7 +208,7 @@ export function OnboardingSteps({ isOpen, onClose, onComplete }: OnboardingSteps
         <div className="relative">
           {/* Skip */}
           <div className="flex justify-between items-center p-5 pb-3">
-            <div className="text-[10px] text-[#505153] font-medium uppercase tracking-widest">
+            <div className="text-xs text-[#505153] font-medium uppercase tracking-widest">
               {currentStep + 1} / {steps.length}
             </div>
             <button
@@ -254,8 +254,8 @@ export function OnboardingSteps({ isOpen, onClose, onComplete }: OnboardingSteps
                 key={i}
                 onClick={() => setCurrentStep(i)}
                 className={`rounded-full transition-all duration-300 ${i === currentStep
-                  ? "w-5 h-1.5 bg-[#6C82FF]"
-                  : "w-1.5 h-1.5 bg-[#43444B] hover:bg-[#6C82FF]/40"
+                  ? "w-5 h-1.5 bg-hatchin-blue"
+                  : "w-1.5 h-1.5 bg-[#43444B] hover:bg-hatchin-blue/40"
                   }`}
               />
             ))}
@@ -274,7 +274,7 @@ export function OnboardingSteps({ isOpen, onClose, onComplete }: OnboardingSteps
 
             <button
               onClick={nextStep}
-              className="flex items-center gap-1.5 px-5 py-2 bg-[#6C82FF] hover:bg-[#5A6FE8] text-white rounded-lg transition-colors text-sm font-medium"
+              className="flex items-center gap-1.5 px-5 py-2 bg-hatchin-blue hover:bg-hatchin-blue/90 text-white rounded-lg transition-colors text-sm font-medium"
             >
               {currentStep === steps.length - 1 ? "Let's go →" : "Next"}
               {currentStep < steps.length - 1 && <ChevronRight className="w-4 h-4" />}

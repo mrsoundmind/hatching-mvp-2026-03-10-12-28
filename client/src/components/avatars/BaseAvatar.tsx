@@ -3,6 +3,9 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 
+/** Brand accent — mirrors CSS var(--hatchin-blue) for SVG fill contexts */
+const HATCHIN_BLUE = "#6C82FF";
+
 export type AvatarState = "idle" | "thinking" | "speaking" | "celebrating";
 
 export interface AvatarProps {
@@ -77,16 +80,16 @@ const ThinkingBubble = ({ size }: { size: number }) => {
     >
       <svg width={bw} height={bh} viewBox="0 0 14 12" fill="none">
         {/* Trail dots from head to cloud */}
-        <circle cx="2" cy="10.5" r="1.2" fill="#6C82FF" opacity="0.7" />
-        <circle cx="4.5" cy="8" r="1.6" fill="#6C82FF" opacity="0.8" />
+        <circle cx="2" cy="10.5" r="1.2" fill={HATCHIN_BLUE} opacity="0.7" />
+        <circle cx="4.5" cy="8" r="1.6" fill={HATCHIN_BLUE} opacity="0.8" />
         {/* Thought cloud — 3 overlapping circles */}
         <motion.g
           animate={{ opacity: [0.85, 1, 0.85] }}
           transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
         >
-          <circle cx="7.5" cy="5.5" r="2.8" fill="#6C82FF" />
-          <circle cx="11" cy="4.5" r="2.3" fill="#6C82FF" />
-          <circle cx="9" cy="2.5" r="2" fill="#6C82FF" />
+          <circle cx="7.5" cy="5.5" r="2.8" fill={HATCHIN_BLUE} />
+          <circle cx="11" cy="4.5" r="2.3" fill={HATCHIN_BLUE} />
+          <circle cx="9" cy="2.5" r="2" fill={HATCHIN_BLUE} />
         </motion.g>
         {/* Three animated dots inside the cloud */}
         <motion.circle cx="7.5" cy="5" r="0.55" fill="white"
@@ -112,7 +115,7 @@ export function AvatarWrapper({ state, size, className = "", children }: AvatarW
       </AnimatePresence>
 
       <motion.div
-        className={`relative rounded-full overflow-hidden ring-1 ring-[#6C82FF]/40 ${className}`}
+        className={`relative rounded-full overflow-hidden ring-1 ring-hatchin-blue/40 ${className}`}
         style={{ width: size, height: size, minWidth: size, minHeight: size }}
         animate={state}
         variants={avatarVariants}

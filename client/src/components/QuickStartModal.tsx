@@ -49,14 +49,14 @@ export default function QuickStartModal({
               onMouseEnter={() => setHoveredOption('idea')}
               onMouseLeave={() => setHoveredOption(null)}
               className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left ${hoveredOption === 'idea'
-                  ? 'border-[#6C82FF] bg-[#6C82FF]/5 transform scale-[0.98]'
-                  : 'border-[#43444B] hover:border-[#6C82FF]/50'
+                  ? 'border-hatchin-blue bg-hatchin-blue/5 transform scale-[0.98]'
+                  : 'border-[#43444B] hover:border-hatchin-blue/50'
                 }`}
             >
               <div className="flex items-center gap-4">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${hoveredOption === 'idea'
-                    ? 'bg-[#6C82FF] text-white'
-                    : 'bg-[#37383B] text-[#6C82FF]'
+                    ? 'bg-hatchin-blue text-white'
+                    : 'bg-[#37383B] text-hatchin-blue'
                   }`}>
                   <Sparkles size={24} />
                 </div>
@@ -77,14 +77,14 @@ export default function QuickStartModal({
               onMouseEnter={() => setHoveredOption('starter')}
               onMouseLeave={() => setHoveredOption(null)}
               className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left ${hoveredOption === 'starter'
-                  ? 'border-[#6C82FF] bg-[#6C82FF]/5 transform scale-[0.98]'
-                  : 'border-[#43444B] hover:border-[#6C82FF]/50'
+                  ? 'border-hatchin-blue bg-hatchin-blue/5 transform scale-[0.98]'
+                  : 'border-[#43444B] hover:border-hatchin-blue/50'
                 }`}
             >
               <div className="flex items-center gap-4">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${hoveredOption === 'starter'
-                    ? 'bg-[#6C82FF] text-white'
-                    : 'bg-[#37383B] text-[#6C82FF]'
+                    ? 'bg-hatchin-blue text-white'
+                    : 'bg-[#37383B] text-hatchin-blue'
                   }`}>
                   <Zap size={24} />
                 </div>

@@ -568,7 +568,7 @@ interface TemplateCardProps {
 function TemplateCard({ pack, index, isSelected, isLoading, onSelect }: TemplateCardProps) {
   return (
     <motion.div
-      className={`relative bg-gradient-to-br from-[#2A2D33] to-[#1D1F23] rounded-xl p-4 border transition-all duration-300 cursor-pointer flex flex-col group overflow-hidden ${isSelected ? 'border-[#6C82FF] shadow-[0_0_20px_rgba(108,130,255,0.2)]' : 'border-[#43444B] hover:border-[#6C82FF]/50 hover:shadow-[0_8px_30px_rgba(108,130,255,0.15)]'}`}
+      className={`relative bg-gradient-to-br from-[#2A2D33] to-[#1D1F23] rounded-xl p-4 border transition-all duration-300 cursor-pointer flex flex-col group overflow-hidden ${isSelected ? 'border-hatchin-blue shadow-[0_0_20px_rgba(108,130,255,0.2)]' : 'border-[#43444B] hover:border-hatchin-blue/50 hover:shadow-[0_8px_30px_rgba(108,130,255,0.15)]'}`}
       style={{
         minHeight: '200px',
         transformStyle: 'preserve-3d'
@@ -586,12 +586,12 @@ function TemplateCard({ pack, index, isSelected, isLoading, onSelect }: Template
       {/* Pack Header */}
       <div className="relative z-10 flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-[0_0_15px_rgba(108,130,255,0.15)] group-hover:shadow-[0_0_25px_rgba(108,130,255,0.25)] transition-shadow ${pack.color === 'blue' ? 'bg-gradient-to-br from-[#6C82FF]/20 to-[#9F7BFF]/20 border border-[#6C82FF]/30' :
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-[0_0_15px_rgba(108,130,255,0.15)] group-hover:shadow-[0_0_25px_rgba(108,130,255,0.25)] transition-shadow ${pack.color === 'blue' ? 'bg-gradient-to-br from-hatchin-blue/20 to-[#9F7BFF]/20 border border-hatchin-blue/30' :
               pack.color === 'green' ? 'bg-gradient-to-br from-[#47DB9A]/20 to-emerald-500/20 border border-[#47DB9A]/30' :
                 pack.color === 'purple' ? 'bg-gradient-to-br from-[#9F7BFF]/20 to-fuchsia-500/20 border border-[#9F7BFF]/30' :
                   pack.color === 'amber' ? 'bg-gradient-to-br from-[#FFB547]/20 to-amber-500/20 border border-[#FFB547]/30' :
                     pack.color === 'red' ? 'bg-gradient-to-br from-[#FF4E6A]/20 to-rose-500/20 border border-[#FF4E6A]/30' :
-                      'bg-gradient-to-br from-[#6C82FF]/20 to-[#9F7BFF]/20 border border-[#6C82FF]/30'
+                      'bg-gradient-to-br from-hatchin-blue/20 to-[#9F7BFF]/20 border border-hatchin-blue/30'
             }`}>
             {pack.emoji}
           </div>
@@ -602,7 +602,7 @@ function TemplateCard({ pack, index, isSelected, isLoading, onSelect }: Template
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="text-[#6C82FF]"
+                  className="text-hatchin-blue"
                 >
                   <Sparkles size={10} />
                 </motion.div>
@@ -625,11 +625,11 @@ function TemplateCard({ pack, index, isSelected, isLoading, onSelect }: Template
             const hatch = getHatchTemplate(memberName);
             return (
               <div key={memberName} className="flex items-center gap-1 bg-[#23262B] rounded px-2 py-1">
-                <User className={`w-3 h-3 ${pack.color === 'blue' ? 'text-[#6C82FF]' :
+                <User className={`w-3 h-3 ${pack.color === 'blue' ? 'text-hatchin-blue' :
                   pack.color === 'green' ? 'text-[#47DB9A]' :
                     pack.color === 'purple' ? 'text-[#9F7BFF]' :
                       pack.color === 'amber' ? 'text-[#FFB547]' :
-                        'text-[#6C82FF]'
+                        'text-hatchin-blue'
                   }`} />
                 <span className="text-xs text-[#F1F1F3]">{memberName}</span>
               </div>
@@ -647,8 +647,8 @@ function TemplateCard({ pack, index, isSelected, isLoading, onSelect }: Template
       <div className="mt-auto pt-2">
         <button
           className={`w-full px-3 py-2 rounded-lg transition-all duration-200 text-xs font-medium ${isSelected
-            ? 'bg-[#6C82FF] text-white'
-            : 'bg-[#43444B] hover:bg-[#6C82FF] text-[#F1F1F3] hover:text-white'
+            ? 'bg-hatchin-blue text-white'
+            : 'bg-[#43444B] hover:bg-hatchin-blue text-[#F1F1F3] hover:text-white'
             }`}
           disabled={isLoading}
         >

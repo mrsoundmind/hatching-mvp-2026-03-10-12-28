@@ -471,7 +471,7 @@ export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, exis
                       <button
                         onClick={() => setActiveTab('teams')}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 ${activeTab === 'teams'
-                          ? 'bg-[#6C82FF] text-white'
+                          ? 'bg-hatchin-blue text-white'
                           : 'text-[#A6A7AB] hover:text-[#F1F1F3] hover:bg-[#2A2D33]'
                           }`}
                       >
@@ -488,7 +488,7 @@ export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, exis
                       <button
                         onClick={() => setActiveTab('individual')}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 mt-[13px] mb-[13px] ${activeTab === 'individual'
-                          ? 'bg-[#6C82FF] text-white'
+                          ? 'bg-hatchin-blue text-white'
                           : 'text-[#A6A7AB] hover:text-[#F1F1F3] hover:bg-[#2A2D33]'
                           }`}
                       >
@@ -516,7 +516,7 @@ export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, exis
                         placeholder={activeTab === 'teams' ? 'Search team templates...' : 'Search individual agents...'}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 bg-[#37383B] border border-[#43444B] rounded-xl text-[#F1F1F3] placeholder-[#A6A7AB] focus:border-[#6C82FF] focus:outline-none focus:ring-1 focus:ring-[#6C82FF] transition-colors"
+                        className="w-full pl-10 pr-4 py-3 bg-[#37383B] border border-[#43444B] rounded-xl text-[#F1F1F3] placeholder-[#A6A7AB] focus:border-hatchin-blue focus:outline-none focus:ring-1 focus:ring-hatchin-blue transition-colors"
                       />
                     </div>
                   </div>
@@ -533,7 +533,7 @@ export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, exis
                         {filteredTeamTemplates.map((template) => (
                           <motion.div
                             key={template.id}
-                            className="relative bg-gradient-to-br from-[#2A2D33] to-[#1D1F23] rounded-xl p-4 border border-[#43444B] transition-all duration-300 cursor-pointer flex flex-col hover:border-[#6C82FF]/50 hover:shadow-[0_8px_30px_rgba(108,130,255,0.15)] group overflow-hidden"
+                            className="relative bg-gradient-to-br from-[#2A2D33] to-[#1D1F23] rounded-xl p-4 border border-[#43444B] transition-all duration-300 cursor-pointer flex flex-col hover:border-hatchin-blue/50 hover:shadow-[0_8px_30px_rgba(108,130,255,0.15)] group overflow-hidden"
                             onClick={() => handleUseTemplate(template)}
                             whileHover={{
                               y: -4,
@@ -550,7 +550,7 @@ export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, exis
                             {/* Pack Header */}
                             <div className="relative z-10 flex items-start justify-between mb-3">
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#6C82FF]/20 to-[#9F7BFF]/20 border border-[#6C82FF]/30 flex items-center justify-center text-xl shadow-[0_0_15px_rgba(108,130,255,0.15)] group-hover:shadow-[0_0_25px_rgba(108,130,255,0.25)] transition-shadow">
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-hatchin-blue/20 to-[#9F7BFF]/20 border border-hatchin-blue/30 flex items-center justify-center text-xl shadow-[0_0_15px_rgba(108,130,255,0.15)] group-hover:shadow-[0_0_25px_rgba(108,130,255,0.25)] transition-shadow">
                                   {template.icon}
                                 </div>
                                 <div className="flex-1">
@@ -560,7 +560,7 @@ export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, exis
                                       <motion.div
                                         initial={{ scale: 0 }}
                                         animate={{ scale: 1 }}
-                                        className="text-[#6C82FF]"
+                                        className="text-hatchin-blue"
                                       >
                                         <Sparkles size={10} />
                                       </motion.div>
@@ -582,7 +582,7 @@ export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, exis
                               <div className="flex flex-wrap gap-1">
                                 {template.agents.map((agent, agentIndex) => (
                                   <div key={agentIndex} className="flex items-center gap-1 bg-[#23262B] rounded px-2 py-1">
-                                    <User className="w-3 h-3 text-[#6C82FF]" />
+                                    <User className="w-3 h-3 text-hatchin-blue" />
                                     <span className="text-xs text-[#F1F1F3]">{agent.role}</span>
                                   </div>
                                 ))}
@@ -591,7 +591,7 @@ export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, exis
 
                             {/* CTA Button - Fixed at bottom */}
                             <div className="mt-auto pt-2">
-                              <button className="w-full px-3 py-2 rounded-lg transition-all duration-200 text-xs font-medium bg-[#43444B] hover:bg-[#6C82FF] text-[#F1F1F3] hover:text-white">
+                              <button className="w-full px-3 py-2 rounded-lg transition-all duration-200 text-xs font-medium bg-[#43444B] hover:bg-hatchin-blue text-[#F1F1F3] hover:text-white">
                                 Use Pack
                               </button>
                             </div>
@@ -608,7 +608,7 @@ export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, exis
                         {filteredIndividualAgents.map((agent, index) => (
                           <motion.div
                             key={index}
-                            className="relative bg-gradient-to-br from-[#2A2D33] to-[#1D1F23] rounded-xl p-4 border border-[#43444B] transition-all duration-300 cursor-pointer flex flex-col hover:border-[#6C82FF]/50 hover:shadow-[0_8px_30px_rgba(108,130,255,0.15)] group overflow-hidden"
+                            className="relative bg-gradient-to-br from-[#2A2D33] to-[#1D1F23] rounded-xl p-4 border border-[#43444B] transition-all duration-300 cursor-pointer flex flex-col hover:border-hatchin-blue/50 hover:shadow-[0_8px_30px_rgba(108,130,255,0.15)] group overflow-hidden"
                             onClick={() => handleAddIndividualAgent(agent)}
                             whileHover={{
                               y: -4,
@@ -645,7 +645,7 @@ export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, exis
                             {/* CTA Button - Fixed at bottom */}
                             <div className="mt-auto pt-2">
                               <button
-                                className="w-full px-3 py-2 rounded-lg transition-all duration-200 text-xs font-medium bg-[#43444B] hover:bg-[#6C82FF] text-[#F1F1F3] hover:text-white"
+                                className="w-full px-3 py-2 rounded-lg transition-all duration-200 text-xs font-medium bg-[#43444B] hover:bg-hatchin-blue text-[#F1F1F3] hover:text-white"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleAddIndividualAgent(agent);

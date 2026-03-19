@@ -397,18 +397,18 @@ export function MayaChat({ projectId }: MayaChatProps) {
                   <div ref={messagesEndRef} />
                 </div>
 
-                <div className={`flex space-x-2 rounded-xl transition-all duration-300 ${showCoachmark ? 'coachmark-ring ring-2 ring-[#6C82FF]/60' : ''}`}>
+                <div className={`flex space-x-2 rounded-xl transition-all duration-300 ${showCoachmark ? 'coachmark-ring ring-2 ring-hatchin-blue/60' : ''}`}>
                   <Input
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Share your idea with Maya..."
-                    className="flex-1 bg-[#2A2D33] border-[#43444B] text-[#F1F1F3] placeholder-[#A6A7AB] focus:ring-[#6C82FF] focus:border-[#6C82FF]"
+                    className="flex-1 bg-[#2A2D33] border-[#43444B] text-[#F1F1F3] placeholder-[#A6A7AB] focus:ring-hatchin-blue focus:border-hatchin-blue"
                     onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                   />
                   <Button
                     onClick={sendMessage}
                     disabled={!message.trim() || socket?.readyState !== WebSocket.OPEN}
-                    className="bg-[#6C82FF] hover:bg-[#6C82FF]/90"
+                    className="bg-hatchin-blue hover:bg-hatchin-blue/90"
                   >
                     <Send className="w-4 h-4" />
                   </Button>

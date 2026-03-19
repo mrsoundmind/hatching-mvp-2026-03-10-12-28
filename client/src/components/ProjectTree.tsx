@@ -72,7 +72,7 @@ export function ProjectTree({
       case 'amber':
         return 'bg-[#FFB547]';
       case 'blue':
-        return 'bg-[#6C82FF]';
+        return 'bg-hatchin-blue';
       case 'green':
         return 'bg-[#47DB9A]';
       case 'purple':
@@ -80,7 +80,7 @@ export function ProjectTree({
       case 'red':
         return 'bg-[#FF4E6A]';
       default:
-        return 'bg-[#6C82FF]';
+        return 'bg-hatchin-blue';
     }
   };
 
@@ -96,7 +96,7 @@ export function ProjectTree({
   const getProjectIconColor = (color: string) => {
     switch (color) {
       case 'blue':
-        return 'text-[#6C82FF]';
+        return 'text-hatchin-blue';
       case 'green':
         return 'text-[#47DB9A]';
       case 'purple':
@@ -106,7 +106,7 @@ export function ProjectTree({
       case 'red':
         return 'text-[#FF4E6A]';
       default:
-        return 'text-[#6C82FF]';
+        return 'text-hatchin-blue';
     }
   };
 
@@ -275,11 +275,11 @@ export function ProjectTree({
       {/* Premium empty state when no projects exist */}
       {projects.length === 0 && (
         <div className="flex flex-col items-center justify-center py-8 px-3 text-center">
-          <div className="w-10 h-10 rounded-xl bg-[#6C82FF]/15 flex items-center justify-center mb-3">
-            <Folder className="w-5 h-5 text-[#6C82FF]" />
+          <div className="w-10 h-10 rounded-xl bg-hatchin-blue/15 flex items-center justify-center mb-3">
+            <Folder className="w-5 h-5 text-hatchin-blue" />
           </div>
           <h4 className="font-medium hatchin-text text-xs mb-1">No projects yet</h4>
-          <p className="text-[11px] hatchin-text-muted leading-relaxed mb-3 max-w-[160px]">
+          <p className="text-xs hatchin-text-muted leading-relaxed mb-3 max-w-[160px]">
             Create a project or ask Maya to help you get started.
           </p>
         </div>
@@ -293,13 +293,13 @@ export function ProjectTree({
         return (
           <div key={project.id} className="flex flex-col">
             {index > 0 && (
-              <div className="h-px w-full bg-gradient-to-r from-transparent via-[#6C82FF]/20 to-transparent my-1" />
+              <div className="h-px w-full bg-gradient-to-r from-transparent via-hatchin-blue/20 to-transparent my-1" />
             )}
-            <div className="space-y-1 mt-[-6px] mb-[-6px]">
+            <div className="space-y-0.5">
               {/* Project Level */}
               <div className="flex items-center justify-between px-3 py-2 rounded-lg transition-all duration-200 group">
                 <div
-                  className={`flex items-center gap-2 min-w-0 flex-1 cursor-pointer rounded-lg p-2 transition-all duration-200 hover:bg-hatchin-border hover:shadow-sm pt-[7px] pb-[7px] ml-[4px] mr-[4px] mt-[-3px] mb-[-3px] relative ${isProjectActive && !activeTeamId && !activeAgentId
+                  className={`flex items-center gap-2 min-w-0 flex-1 cursor-pointer rounded-lg py-1.5 px-2 transition-all duration-200 hover:bg-hatchin-border hover:shadow-sm relative ${isProjectActive && !activeTeamId && !activeAgentId
                     ? 'bg-hatchin-blue/10 border-l-2 border-hatchin-blue'
                     : ''
                     }`}
@@ -331,12 +331,12 @@ export function ProjectTree({
                       onChange={(e) => setEditValue(e.target.value)}
                       onKeyDown={handleKeyDown}
                       onBlur={handleEditSubmit}
-                      className="font-medium hatchin-text text-[13px] bg-transparent border-none outline-none flex-1 min-w-0"
+                      className="font-medium hatchin-text text-sm bg-transparent border-none outline-none flex-1 min-w-0"
                       style={{ width: `${Math.max(editValue.length * 8, 60)}px` }}
                     />
                   ) : (
                     <span
-                      className="font-medium hatchin-text truncate text-[13px] cursor-pointer hover:bg-hatchin-border/50 px-1 py-0.5 rounded"
+                      className="font-medium hatchin-text truncate text-sm cursor-pointer hover:bg-hatchin-border/50 px-1 py-0.5 rounded"
                       onDoubleClick={() => handleDoubleClick('project', project.id, project.name)}
                     >
                       {highlightMatch(project.name, searchQuery)}
@@ -470,12 +470,12 @@ export function ProjectTree({
                                 onChange={(e) => setEditValue(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 onBlur={handleEditSubmit}
-                                className="hatchin-text text-[12px] bg-transparent border-none outline-none flex-1 min-w-0"
+                                className="hatchin-text text-xs bg-transparent border-none outline-none flex-1 min-w-0"
                                 style={{ width: `${Math.max(editValue.length * 7, 50)}px` }}
                               />
                             ) : (
                               <span
-                                className="hatchin-text text-[12px] truncate cursor-pointer hover:bg-hatchin-border/50 px-1 py-0.5 rounded"
+                                className="hatchin-text text-xs truncate cursor-pointer hover:bg-hatchin-border/50 px-1 py-0.5 rounded"
                                 onDoubleClick={() => handleDoubleClick('team', team.id, team.name)}
                               >
                                 {highlightMatch(team.name, searchQuery)}
@@ -494,6 +494,7 @@ export function ProjectTree({
                               }}
                               data-testid={`button-delete-team-${team.id}`}
                               title="Delete team"
+                              aria-label="Delete team"
                             >
                               <Trash2 className="w-3 h-3" />
                             </button>
@@ -582,12 +583,12 @@ export function ProjectTree({
                                         onChange={(e) => setEditValue(e.target.value)}
                                         onKeyDown={handleKeyDown}
                                         onBlur={handleEditSubmit}
-                                        className="hatchin-text-muted text-[12px] bg-transparent border-none outline-none flex-1 min-w-0"
+                                        className="hatchin-text-muted text-xs bg-transparent border-none outline-none flex-1 min-w-0"
                                         style={{ width: `${Math.max(editValue.length * 7, 50)}px` }}
                                       />
                                     ) : (
                                       <span
-                                        className="hatchin-text-muted text-[12px] truncate cursor-pointer hover:bg-hatchin-border/50 px-1 py-0.5 rounded"
+                                        className="hatchin-text-muted text-xs truncate cursor-pointer hover:bg-hatchin-border/50 px-1 py-0.5 rounded"
                                         onDoubleClick={() => handleDoubleClick('agent', agent.id, agent.role || agent.name)}
                                       >
                                         {highlightMatch(getRoleDefinition(agent.role)?.characterName ?? agent.name, searchQuery)}
@@ -692,12 +693,12 @@ export function ProjectTree({
                                 onChange={(e) => setEditValue(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 onBlur={handleEditSubmit}
-                                className="hatchin-text-muted text-[12px] bg-transparent border-none outline-none flex-1 min-w-0"
+                                className="hatchin-text-muted text-xs bg-transparent border-none outline-none flex-1 min-w-0"
                                 style={{ width: `${Math.max(editValue.length * 7, 50)}px` }}
                               />
                             ) : (
                               <span
-                                className="hatchin-text-muted text-[12px] truncate cursor-pointer hover:bg-hatchin-border/50 px-1 py-0.5 rounded"
+                                className="hatchin-text-muted text-xs truncate cursor-pointer hover:bg-hatchin-border/50 px-1 py-0.5 rounded"
                                 onDoubleClick={() => handleDoubleClick('agent', agent.id, agent.name)}
                               >
                                 {highlightMatch(getRoleDefinition(agent.role)?.characterName ?? agent.name, searchQuery)}
@@ -713,6 +714,7 @@ export function ProjectTree({
                               }}
                               data-testid={`button-delete-agent-${agent.id}`}
                               title="Delete agent"
+                              aria-label="Delete agent"
                             >
                               <Trash2 className="w-3 h-3" />
                             </button>

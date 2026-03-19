@@ -2122,7 +2122,7 @@ export function CenterPanel({
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
           <div className="max-w-lg">
             {/* Chicken hatching emoji */}
-            <div className="text-[48px] mb-4">🐣</div>
+            <div className="text-5xl mb-4">🐣</div>
 
             {/* Subtitle */}
             <h2 className="font-semibold hatchin-text text-lg mb-2">
@@ -2152,7 +2152,7 @@ export function CenterPanel({
       <main className="flex-1 min-h-0 premium-column-bg rounded-2xl flex flex-col my-2.5 relative overflow-hidden">
         <div className="ambient-glow-top" />
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-          <div className="animate-spin w-8 h-8 border-2 border-[#6C82FF] border-t-transparent rounded-full mb-4"></div>
+          <div className="animate-spin w-8 h-8 border-2 border-hatchin-blue border-t-transparent rounded-full mb-4"></div>
           <p className="hatchin-text-muted text-sm anim-pulse">Select a project to get started</p>
         </div>
       </main>
@@ -2195,13 +2195,13 @@ export function CenterPanel({
 
         {/* Subtitle and Participants Row */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
-          <span className="hatchin-text-muted font-medium text-[12px]">
+          <span className="hatchin-text-muted font-medium text-xs">
             {contextDisplay.subtitle}
           </span>
 
           {/* Project Mode: Show Teams */}
           {currentChatContext?.mode === 'project' && activeProjectTeams.length > 0 && (
-            <div className="flex flex-wrap items-center gap-3 text-[12px]">
+            <div className="flex flex-wrap items-center gap-3 text-xs">
               {activeProjectTeams.map(team => {
                 const teamAgentCount = activeProjectAgents.filter(a => a.teamId === team.id).length;
                 return (
@@ -2247,13 +2247,13 @@ export function CenterPanel({
           /* Welcome Screen - Show when no messages */
           (<div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
             <div className="max-w-lg">
-              <div className="text-[36px] mt-[0px] mb-[0px]">{contextDisplay.welcomeIcon}</div>
-              <h2 className="font-semibold hatchin-text mt-[2px] mb-[2px] text-[16px]">{contextDisplay.welcomeTitle}</h2>
-              <p className="hatchin-text-muted text-[14px] mt-[0px] mb-[0px]">
+              <div className="text-4xl">{contextDisplay.welcomeIcon}</div>
+              <h2 className="font-semibold hatchin-text mt-0.5 mb-0.5 text-base">{contextDisplay.welcomeTitle}</h2>
+              <p className="hatchin-text-muted text-sm">
                 {contextDisplay.welcomeSubtitle}
               </p>
 
-              <div className="flex flex-wrap gap-3 justify-center pt-[11px] pb-[11px]">
+              <div className="flex flex-wrap gap-3 justify-center py-3">
                 <button
                   onClick={() => handleActionClick('generateRoadmap')}
                   className="hatchin-bg-card hover:bg-hatchin-border hatchin-text px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -2298,7 +2298,7 @@ export function CenterPanel({
                       disabled={loadingEarlier}
                       className="text-sm text-slate-400 hover:text-slate-200 transition-colors px-4 py-2 rounded-lg hover:bg-slate-800/50 disabled:opacity-50"
                     >
-                      {loadingEarlier ? 'Loading...' : 'Load earlier messages'}
+                      {loadingEarlier ? 'Fetching earlier messages...' : 'Load earlier messages'}
                     </button>
                   </div>
                 )}

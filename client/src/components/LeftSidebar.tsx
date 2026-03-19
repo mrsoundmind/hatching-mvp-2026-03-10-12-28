@@ -558,7 +558,7 @@ export function LeftSidebar({
           </h2>
           <button
             onClick={handleAddProjectClick}
-            className="px-2.5 py-1 bg-[#6C82FF]/20 text-[#6C82FF] rounded-full text-xs font-semibold hover:bg-[#6C82FF]/30 transition-all border border-[#6C82FF]/30"
+            className="px-2.5 py-1 bg-hatchin-blue/20 text-hatchin-blue rounded-full text-xs font-semibold hover:bg-hatchin-blue/30 transition-all border border-hatchin-blue/30"
           >
             + New
           </button>
@@ -602,18 +602,18 @@ export function LeftSidebar({
               </div>
               <button
                 onClick={() => setSearchQuery("")}
-                className="text-[#6C82FF] text-xs hover:underline mt-2"
+                className="text-hatchin-blue text-xs hover:underline mt-2"
               >
                 Clear search
               </button>
             </div>
           ) : (
             <div className="flex flex-col items-center py-6 px-3 text-center">
-              <div className="w-10 h-10 rounded-xl bg-[#6C82FF]/15 border border-[#6C82FF]/20 flex items-center justify-center mb-3">
+              <div className="w-10 h-10 rounded-xl bg-hatchin-blue/15 border border-hatchin-blue/20 flex items-center justify-center mb-3">
                 <span className="text-lg">🥚</span>
               </div>
               <p className="text-[11px] hatchin-text-muted leading-relaxed mb-3">
-                Nothing here yet. Press <span className="text-[#6C82FF] font-medium">+ New</span> and tell Maya what you want to build.
+                Nothing here yet. Press <span className="text-hatchin-blue font-medium">+ New</span> and tell Maya what you want to build.
               </p>
             </div>
           )}
@@ -681,7 +681,7 @@ export function LeftSidebar({
             <div className="flex gap-2">
               <button
                 onClick={handleUndoDelete}
-                className="px-3 py-1 bg-[#6C82FF] text-white text-xs rounded-lg hover:bg-[#6C82FF]/90 transition-colors font-medium"
+                className="px-3 py-1 bg-hatchin-blue text-white text-xs rounded-lg hover:bg-hatchin-blue/90 transition-colors font-medium"
               >
                 Undo
               </button>
