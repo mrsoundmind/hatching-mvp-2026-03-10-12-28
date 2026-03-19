@@ -827,8 +827,9 @@ export default function Home() {
       <OnboardingManager
         onComplete={(path, templateData) => {
           if (path === 'idea') {
-            // Fallback only — normally onStartWithIdeaPromptName handles the idea path
-            handleCreateIdeaProject('My Idea', 'Developing and structuring my raw idea with Maya\'s help');
+            // Fallback: show the project name modal instead of auto-creating with generic name
+            setSelectedTemplate(null);
+            setShowProjectName(true);
           } else if (path === 'template' && templateData) {
             // Handle template path - create project from template
             handleCreateProjectFromTemplate(templateData, templateData.title, templateData.description);
