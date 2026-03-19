@@ -12,15 +12,18 @@ import { OpenAIProvider } from './providers/openaiProvider.js';
 import { OllamaTestProvider } from './providers/ollamaProvider.js';
 import { MockProvider } from './providers/mockProvider.js';
 import { GeminiProvider } from './providers/geminiProvider.js';
+import { GroqProvider } from './providers/groqProvider.js';
 
 const openaiProvider = new OpenAIProvider();
 const geminiProvider = new GeminiProvider();
+const groqProvider = new GroqProvider();
 const ollamaProvider = new OllamaTestProvider();
 const mockProvider = new MockProvider();
 
 const providerRegistry: Record<ProviderId, LLMProvider> = {
   openai: openaiProvider,
   gemini: geminiProvider,
+  groq: groqProvider,
   'ollama-test': ollamaProvider,
   mock: mockProvider,
 };
@@ -41,9 +44,10 @@ function toMode(raw: string | undefined): RuntimeMode {
   return raw?.toLowerCase() === 'test' ? 'test' : 'prod';
 }
 
-function parseTestProvider(raw: string | undefined): 'openai' | 'ollama' | 'mock' {
+function parseTestProvider(raw: string | undefined): 'openai' | 'groq' | 'ollama' | 'mock' {
   const normalized = (raw || '').trim().toLowerCase();
   if (normalized === 'openai') return 'openai';
+  if (normalized === 'groq') return 'groq';
   if (normalized === 'ollama') return 'ollama';
   return 'mock';
 }
@@ -90,6 +94,15 @@ export function resolveRuntimeConfig(env = process.env): RuntimeConfig {
     };
   }
 
+  if (testProvider === 'groq') {
+    return {
+      mode,
+      provider: 'groq',
+      testProvider: 'groq',
+      model: env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+    };
+  }
+
   if (testProvider === 'ollama') {
     return {
       mode,
@@ -113,8 +126,8 @@ export function getCurrentRuntimeConfig(): RuntimeConfig {
 }
 
 export function assertRuntimeGuardrails(config = resolveRuntimeConfig()): void {
-  if (config.mode === 'prod' && config.provider !== 'openai' && config.provider !== 'gemini') {
-    throw new Error('Production mode must use OpenAI or Gemini provider only.');
+  if (config.mode === 'prod' && config.provider !== 'openai' && config.provider !== 'gemini' && config.provider !== 'groq') {
+    throw new Error('Production mode must use OpenAI, Gemini, or Groq provider only.');
   }
 
   if (config.mode === 'prod' && process.env.TEST_LLM_PROVIDER?.toLowerCase() === 'ollama') {
@@ -169,6 +182,10 @@ function buildProviderOrder(config: RuntimeConfig, priorError?: any): ProviderId
     return ['openai', 'ollama-test', 'mock'];
   }
 
+  if (config.provider === 'groq') {
+    return ['groq', 'mock'];
+  }
+
   if (config.provider === 'ollama-test') {
     return ['ollama-test', 'mock'];
   }
@@ -187,6 +204,10 @@ function applyModelDefaults(request: LLMRequest, config: RuntimeConfig, provider
 
   if (provider === 'openai') {
     return { ...request, model: process.env.OPENAI_MODEL || config.model || 'gpt-4o-mini' };
+  }
+
+  if (provider === 'groq') {
+    return { ...request, model: process.env.GROQ_MODEL || config.model || 'llama-3.3-70b-versatile' };
   }
 
   if (provider === 'ollama-test') {
@@ -349,6 +370,22 @@ export async function runRuntimeStartupChecks(): Promise<RuntimeDiagnostics> {
     return cachedDiagnostics;
   }
 
+  if (config.provider === 'groq') {
+    const status = process.env.GROQ_API_KEY ? 'ok' : 'down';
+    cachedDiagnostics = {
+      status,
+      mode: config.mode,
+      provider: config.provider,
+      model: config.model,
+      ollamaReachable: false,
+      modelAvailable: false,
+      details: process.env.GROQ_API_KEY
+        ? [`Using Groq (${config.model}) with fallback to Mock on errors`]
+        : ['GROQ_API_KEY missing — get one free at console.groq.com/keys'],
+    };
+    return cachedDiagnostics;
+  }
+
   const health = await ollamaProvider.healthCheck?.(config.model);
   const reachability = health?.status !== 'down';
   const modelAvailable = health?.status === 'ok';
@@ -385,9 +422,10 @@ export function getCachedRuntimeDiagnostics(): RuntimeDiagnostics | null {
 export async function getProviderHealthSummary(): Promise<Record<ProviderId, ProviderHealth>> {
   const config = resolveRuntimeConfig();
 
-  const [openai, gemini, ollama, mock] = await Promise.all([
+  const [openai, gemini, groq, ollama, mock] = await Promise.all([
     openaiProvider.healthCheck?.(process.env.OPENAI_MODEL || 'gpt-4o-mini') || Promise.resolve({ status: 'down', details: 'Unavailable' } as ProviderHealth),
     geminiProvider.healthCheck?.(process.env.GEMINI_MODEL || 'gemini-2.5-flash') || Promise.resolve({ status: 'down', details: 'Unavailable' } as ProviderHealth),
+    groqProvider.healthCheck?.(process.env.GROQ_MODEL || 'llama-3.3-70b-versatile') || Promise.resolve({ status: 'down', details: 'Unavailable' } as ProviderHealth),
     ollamaProvider.healthCheck?.(process.env.TEST_OLLAMA_MODEL || 'llama3.1:8b') || Promise.resolve({ status: 'down', details: 'Unavailable' } as ProviderHealth),
     mockProvider.healthCheck?.() || Promise.resolve({ status: 'ok', details: 'Deterministic mock available' } as ProviderHealth),
   ]);
@@ -395,6 +433,7 @@ export async function getProviderHealthSummary(): Promise<Record<ProviderId, Pro
   return {
     openai,
     gemini,
+    groq,
     'ollama-test': ollama,
     mock,
   };
