@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Autonomous Execution Loop
-status: planning
-last_updated: "2026-03-19T10:42:59.505Z"
-last_activity: 2026-03-19 — Roadmap created, all 17 v1.1 requirements mapped
+status: executing
+last_updated: "2026-03-19T10:45:59.621Z"
+last_activity: 2026-03-19 — Completed 06-01 (trigger resolver + pg-boss job queue)
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
-  percent: 0
+  completed_plans: 2
+  percent: 25
 ---
 
 # State: Hatchin
@@ -65,6 +65,7 @@ Progress: [███░░░░░░░] 25% (v1.1 milestone)
 - [Phase 06-background-execution-foundation]: resolveAutonomyTrigger is a pure function with no I/O — testable without mocking, reusable across chat and inactivity triggers
 - [Phase 06-background-execution-foundation]: pg-boss uses its own pg driver against DATABASE_URL while Drizzle keeps @neondatabase/serverless — two separate connection paths intentional
 - [Phase 06-background-execution-foundation]: backgroundExecution feature flag defaults to false — autonomous execution is opt-in via BACKGROUND_AUTONOMY_ENABLED=true
+- [Phase 06-background-execution-foundation]: AUTONOMOUS_SAFETY_THRESHOLDS exported separately from SAFETY_THRESHOLDS — autonomous pipeline uses it directly, needsClarification remains chat-only
 
 ## Blockers / Concerns
 

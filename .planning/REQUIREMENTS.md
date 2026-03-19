@@ -9,9 +9,9 @@ Requirements for Autonomous Execution Loop. Each maps to roadmap phases.
 
 ### Background Execution
 
-- [ ] **EXEC-01**: User can explicitly trigger autonomous execution by telling a Hatch to "go ahead and work on this"
+- [x] **EXEC-01**: User can explicitly trigger autonomous execution by telling a Hatch to "go ahead and work on this"
 - [ ] **EXEC-02**: Hatches execute tasks in background via durable job queue (pg-boss), producing real output (plans, breakdowns, research)
-- [ ] **EXEC-03**: Per-project daily LLM spend cap prevents runaway cost from background execution
+- [x] **EXEC-03**: Per-project daily LLM spend cap prevents runaway cost from background execution
 - [ ] **EXEC-04**: System detects user inactivity (4+ hours) and auto-triggers queued autonomous work
 
 ### Agent Handoffs
@@ -24,7 +24,7 @@ Requirements for Autonomous Execution Loop. Each maps to roadmap phases.
 ### Safety & Autonomy
 
 - [ ] **SAFE-01**: Low-risk autonomous actions execute without approval; high-risk actions surface for user sign-off
-- [ ] **SAFE-02**: Safety scoring adapted for autonomous context (no user message) with appropriate baseline risk
+- [x] **SAFE-02**: Safety scoring adapted for autonomous context (no user message) with appropriate baseline risk
 - [ ] **SAFE-03**: Autonomous outputs undergo peer review by another Hatch before delivery
 - [ ] **SAFE-04**: Agents build trust score over time — successful completions unlock higher autonomy thresholds
 
@@ -66,16 +66,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EXEC-01 | Phase 6 | Pending |
+| EXEC-01 | Phase 6 | Complete |
 | EXEC-02 | Phase 6 | Pending |
-| EXEC-03 | Phase 6 | Pending |
+| EXEC-03 | Phase 6 | Complete |
 | EXEC-04 | Phase 9 | Pending |
 | HAND-01 | Phase 7 | Pending |
 | HAND-02 | Phase 7 | Pending |
 | HAND-03 | Phase 7 | Pending |
 | HAND-04 | Phase 7 | Pending |
 | SAFE-01 | Phase 6 | Pending |
-| SAFE-02 | Phase 6 | Pending |
+| SAFE-02 | Phase 6 | Complete |
 | SAFE-03 | Phase 6 | Pending |
 | SAFE-04 | Phase 9 | Pending |
 | UX-01 | Phase 7 | Pending |
