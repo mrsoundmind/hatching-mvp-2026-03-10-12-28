@@ -2,6 +2,8 @@ import { evaluateSafetyScore, AUTONOMOUS_SAFETY_THRESHOLDS } from '../../ai/safe
 import { getJobQueue } from './jobQueue.js';
 import { BUDGETS } from '../config/policies.js';
 import { logAutonomyEvent } from '../events/eventLogger.js';
+import { orchestrateHandoff } from '../handoff/handoffOrchestrator.js';
+import { emitHandoffAnnouncement } from '../handoff/handoffAnnouncement.js';
 import type { IStorage } from '../../storage.js';
 
 export interface ExecuteTaskInput {
@@ -116,7 +118,7 @@ export async function handleTaskJob(
     agentName: agent.name,
   });
 
-  await executeTask({
+  const result = await executeTask({
     task: { id: task.id, title: task.title, description: task.description ?? null, assignee: task.assignee ?? null, projectId: task.projectId },
     agent: { id: agent.id, name: agent.name, role: agent.role, personality: agent.personality },
     project: { id: project.id, name: project.name, coreDirection: project.coreDirection, brain: project.brain },
@@ -125,6 +127,48 @@ export async function handleTaskJob(
     broadcastToConversation: deps.broadcastToConversation,
     generateText: deps.generateText,
   });
+
+  // Handoff chain: only when task completed successfully
+  if (result.status === 'completed') {
+    // Fetch the output stored by executeTask as context for the next agent
+    const recentMessages = await deps.storage.getMessagesByConversation(conversationId, { limit: 1 });
+    const completedOutput = recentMessages[0]?.content ?? '';
+
+    const handoffMeta = (task.metadata as any) ?? {};
+    const handoffChain: string[] = handoffMeta.handoffChain ?? [];
+
+    const handoffResult = await orchestrateHandoff({
+      completedTask: {
+        id: task.id,
+        title: task.title,
+        description: task.description ?? null,
+        projectId: task.projectId,
+      },
+      completedAgent: { id: agent.id, name: agent.name, role: agent.role },
+      completedOutput,
+      handoffChain,
+      storage: deps.storage,
+      broadcastToConversation: deps.broadcastToConversation,
+    });
+
+    // Emit in-character announcement after successful handoff queue (HAND-02)
+    // Ordering: output message was stored BEFORE this — users see output first
+    if (handoffResult.status === 'queued' && handoffResult.nextAgentId) {
+      const nextAgent = agents.find((a) => a.id === handoffResult.nextAgentId);
+      if (nextAgent) {
+        await emitHandoffAnnouncement({
+          completedAgent: { id: agent.id, name: agent.name, role: agent.role },
+          nextAgent: { id: nextAgent.id, name: nextAgent.name, role: nextAgent.role },
+          completedTaskTitle: task.title,
+          projectId: task.projectId,
+          conversationId,
+          storage: deps.storage,
+          broadcastToConversation: deps.broadcastToConversation,
+          generateText: deps.generateText,
+        });
+      }
+    }
+  }
 }
 
 export async function startTaskWorker(deps: {
