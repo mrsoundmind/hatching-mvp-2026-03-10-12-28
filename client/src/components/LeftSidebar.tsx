@@ -657,7 +657,7 @@ export function LeftSidebar({
 
       {/* Enhanced Undo Popup — Dark themed */}
       {showUndoPopup && deletedEntityData && (
-        <div className="fixed bottom-4 left-4 z-50 bg-[#2A2D33] border border-[#43444B] rounded-xl shadow-2xl p-4 max-w-sm">
+        <div className="fixed bottom-4 left-4 z-50 bg-card border border-hatchin-border rounded-xl shadow-2xl p-4 max-w-sm">
           <div className="flex items-center gap-3">
             <div className="flex-shrink-0">
               <div className="w-8 h-8 bg-red-500/15 rounded-full flex items-center justify-center">
@@ -665,12 +665,12 @@ export function LeftSidebar({
               </div>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-[#F1F1F3]">
+              <p className="text-sm font-medium text-foreground">
                 {deletedEntityData.type === 'project' && `"${(deletedEntityData.entity as Project).name}" deleted`}
                 {deletedEntityData.type === 'team' && `"${(deletedEntityData.entity as Team).name}" deleted`}
                 {deletedEntityData.type === 'agent' && `"${(deletedEntityData.entity as Agent).name}" deleted`}
               </p>
-              <p className="text-xs text-[#A6A7AB]">
+              <p className="text-xs text-muted-foreground">
                 {deletedEntityData.type === 'project' && deletedEntityData.relatedData && (
                   `${deletedEntityData.relatedData.teams?.length || 0} teams, ${deletedEntityData.relatedData.agents?.length || 0} agents included`
                 )}
@@ -692,7 +692,7 @@ export function LeftSidebar({
                   setShowUndoPopup(false);
                   setDeletedEntityData(null);
                 }}
-                className="px-3 py-1 bg-[#43444B] text-[#A6A7AB] text-xs rounded-lg hover:bg-[#37383B] transition-colors"
+                className="px-3 py-1 bg-muted text-muted-foreground text-xs rounded-lg hover:bg-hatchin-surface transition-colors"
               >
                 ✕
               </button>

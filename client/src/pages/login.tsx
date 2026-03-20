@@ -170,7 +170,7 @@ export default function LoginPage() {
         className="relative w-full lg:w-1/2 flex flex-col items-center justify-center bg-muted overflow-hidden border-t lg:border-t-0 lg:border-l border-white/5 py-20 lg:py-0 min-h-[700px] lg:min-h-screen shrink-0">
 
         {/* Dynamic Vibrant glowing background matching Framer AI aesthetic */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-[#050505]">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-slate-100 dark:bg-[#050505]">
           {/* Layer 1: Primary Top-Left Orb */}
           <motion.div
             className="absolute top-0 left-0 w-[150%] h-[150%] rounded-[100%] blur-[120px] mix-blend-screen will-change-transform"
@@ -365,7 +365,7 @@ export default function LoginPage() {
                 </div>
 
                 {/* Code Animation Mock */}
-                <div className="relative w-full max-w-[360px] h-[240px] rounded-2xl border border-white/10 bg-[#0A0A0A]/80 backdrop-blur-xl p-5 shadow-2xl overflow-hidden font-mono text-sm shadow-purple-500/10 text-left">
+                <div className="relative w-full max-w-[360px] h-[240px] rounded-2xl border border-white/10 bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur-xl p-5 shadow-2xl overflow-hidden font-mono text-sm shadow-purple-500/10 text-left">
                   <div className="flex gap-2 mb-4">
                     <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
                     <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
@@ -465,7 +465,7 @@ export default function LoginPage() {
                 </div>
 
                 {/* Dashboard / Graph Mock */}
-                <div className="relative w-full max-w-[360px] h-[240px] rounded-2xl border border-white/10 bg-[#0A0A0A]/80 backdrop-blur-xl p-5 shadow-2xl flex flex-col justify-end overflow-hidden shadow-emerald-500/10">
+                <div className="relative w-full max-w-[360px] h-[240px] rounded-2xl border border-white/10 bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur-xl p-5 shadow-2xl flex flex-col justify-end overflow-hidden shadow-emerald-500/10">
                   <div className="absolute top-5 left-5 right-5 flex justify-between items-center mb-6">
                     <div className="space-y-1">
                       <div className="text-xs text-muted-foreground font-medium tracking-wide">Project Velocity</div>

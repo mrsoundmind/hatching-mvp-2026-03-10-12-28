@@ -2,21 +2,31 @@ import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Inline SVG component that preserves SMIL animations
+// Inline SVG component — uses innerHTML so browser parses SMIL animations natively
 const InlineSVG = ({ src, size }: { src: string; size: number }) => {
-  const [svgContent, setSvgContent] = useState<string>("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    let cancelled = false;
+
     fetch(src)
       .then(r => r.text())
-      .then(text => {
-        // Inject width/height into the SVG tag so it scales properly
-        const sized = text.replace('<svg ', `<svg width="${size}" height="${size}" `);
-        setSvgContent(sized);
+      .then(svgText => {
+        if (cancelled || !el) return;
+        const sized = svgText.replace(
+          /^<svg /,
+          `<svg width="${size}" height="${size}" style="display:block" `
+        );
+        el.innerHTML = sized;
       })
       .catch(() => {});
+
+    return () => { cancelled = true; };
   }, [src, size]);
-  if (!svgContent) return <div style={{ width: size, height: size }} />;
-  return <div style={{ width: size, height: size, flexShrink: 0 }} dangerouslySetInnerHTML={{ __html: svgContent }} />;
+
+  return <div ref={containerRef} style={{ width: size, height: size, flexShrink: 0 }} />;
 };
 
 
@@ -170,7 +180,7 @@ const PREVIEWS: Record<string, (isActive: boolean, isAnimating: boolean) => JSX.
   ),
   patience: (isActive: boolean, isAnimating: boolean) => (
     <div className="flex flex-col font-mono text-[9px] text-muted-foreground h-full w-full bg-muted rounded border border-border/80 overflow-hidden shadow-inner opacity-80">
-      <div className="flex gap-1.5 border-b border-border/80 p-1.5 bg-[#080a0f]">
+      <div className="flex gap-1.5 border-b border-border/80 p-1.5 bg-slate-100 dark:bg-[#080a0f]">
         <div className="w-1.5 h-1.5 rounded-full bg-rose-500/70" />
         <div className="w-1.5 h-1.5 rounded-full bg-amber-500/70" />
         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/70" />
@@ -623,7 +633,7 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="w-full min-h-screen bg-[#040609] text-foreground font-sans selection:bg-white/20 overflow-x-hidden flex flex-col relative transition-colors duration-1000">
+    <div className="w-full min-h-screen bg-background text-foreground font-sans selection:bg-white/20 overflow-x-hidden flex flex-col relative transition-colors duration-1000">
       
       {/* Subtle background */}
       
@@ -633,18 +643,19 @@ export default function LandingPage() {
       {/* ━━━ HEADER ━━━ */}
       <header className="w-full pt-6 pb-4 px-6 text-center z-40 select-none shrink-0 relative">
         <div className="flex items-center justify-between w-full max-w-[1440px] mx-auto mb-6">
-          <span className="text-white font-black text-[15px] tracking-[0.15em] uppercase" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Hatchin.</span>
+          <span className="text-foreground font-black text-[15px] tracking-[0.15em] uppercase" style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif" }}>Hatchin.</span>
           <Link href="/login">
-            <a className="text-sm text-white font-semibold transition-all cursor-pointer bg-white/10 hover:bg-white/20 px-6 py-2.5 rounded-full">
+            <a className="text-sm text-white font-bold transition-all cursor-pointer bg-orange-500 hover:bg-orange-400 px-6 py-2.5 rounded-full shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:shadow-[0_0_30px_rgba(249,115,22,0.5)]">
               Meet Your Team &rarr;
             </a>
           </Link>
         </div>
-        <h1 className="text-3xl md:text-4xl lg:text-5xl text-white tracking-tight leading-snug">
+        <h1 className="text-3xl md:text-4xl lg:text-5xl text-foreground tracking-tight leading-snug">
           <span className="font-semibold">Every dream needs a team.</span><br/>
-          <span className="font-light text-white/70">We built yours.</span>
+          <span className="font-light text-foreground/70">We built yours.</span>
         </h1>
-        <p className="text-sm md:text-base text-white/40 mt-4 max-w-[600px] mx-auto leading-relaxed font-light">AI teammates with real personalities. A PM, an engineer, a designer. They think, remember, and care about your project.</p>
+        <p className="text-sm md:text-base text-muted-foreground mt-4 max-w-[600px] mx-auto leading-relaxed font-light">AI teammates with real personalities. A PM, an engineer, a designer. They think, remember, and care about your project.</p>
+        <p className="text-xs text-muted-foreground/50 mt-2">Free. No credit card required.</p>
       </header>
 
       {/* ━━━ UNIFIED BENTO GRID ━━━ */}
@@ -663,7 +674,7 @@ export default function LandingPage() {
             return (
               <div ref={el => panelRefs.current[usp.id] = el}
                 style={{ transform: `scale(${isActive ? 1.08 : isShrunk ? 0.92 : 1})`, zIndex: isActive ? 10 : 1 }}
-                className={`lg:col-span-2 p-5 border transition-all duration-700 relative overflow-hidden flex flex-col justify-between rounded-2xl ${isShrunk ? 'opacity-50' : ''} ${isActive ? `${colors.bg} ${colors.border} ${colors.glow}` : "bg-[#0A0C13]/60 border-white/[0.06] hover:border-white/10 backdrop-blur-sm"}`}>
+                className={`lg:col-span-2 p-5 border transition-all duration-700 relative overflow-hidden flex flex-col justify-between rounded-2xl ${isShrunk ? 'opacity-50' : ''} ${isActive ? `${colors.bg} ${colors.border} ${colors.glow}` : "bg-white/60 border-slate-200 hover:border-slate-300 dark:bg-[#0A0C13]/60 dark:border-white/[0.06] dark:hover:border-white/10 backdrop-blur-sm"}`}>
                 <div className={`text-[9px] font-bold uppercase tracking-[0.2em] transition-colors duration-700 ${isActive ? colors.text : 'text-muted-foreground'}`}>
                   [ {usp.label} ]
                 </div>
@@ -672,7 +683,7 @@ export default function LandingPage() {
                 </AnimatePresence>
                 <div className="flex-1 flex items-center gap-4 relative mt-1">
                   <div className="flex-1 flex flex-col justify-center">
-                    <div className={`text-[17px] font-bold text-white tracking-tight ${isActive ? '' : 'opacity-60'}`}>{usp.title}</div>
+                    <div className={`text-[17px] font-bold text-foreground tracking-tight ${isActive ? '' : 'opacity-60'}`}>{usp.title}</div>
                     <p className={`text-[12px] leading-relaxed mt-1.5 ${isActive ? colors.text : 'text-muted-foreground opacity-60'}`}>{renderHighlighted(usp.subtext, isActive ? "white" : "rgb(148,163,184)")}</p>
                   </div>
                   <div className="w-[140px] shrink-0 h-full flex items-center justify-center">{(PREVIEWS as any)[usp.id](isActive, isAnimating)}</div>
@@ -683,7 +694,7 @@ export default function LandingPage() {
 
           {/* ═══ COL 3: CHAT (spans 4 rows) ═══ */}
           <div className="lg:col-span-1 lg:row-span-3 flex flex-col min-h-0">
-            <div ref={chatRef} className="w-full h-full flex flex-col border-2 border-white/60 shadow-[0_0_80px_rgba(255,255,255,0.05),0_0_0_1px_rgba(255,255,255,0.1)] relative rounded-2xl bg-[#080A0F]/95 backdrop-blur-xl overflow-hidden">
+            <div ref={chatRef} className="w-full h-full flex flex-col border-2 border-white/60 shadow-[0_0_80px_rgba(255,255,255,0.05),0_0_0_1px_rgba(255,255,255,0.1)] relative rounded-2xl bg-white/95 dark:bg-[#080A0F]/95 backdrop-blur-xl overflow-hidden">
               
               {/* Chat Header */}
               <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between shrink-0 bg-transparent z-20 shadow-md">
@@ -718,10 +729,11 @@ export default function LandingPage() {
                                 {msg.content}
                             </button>
                           </Link>
+                          <p className="text-[10px] text-muted-foreground text-center mt-2">Free. No credit card.</p>
                         </div>
                       ) : (
                         <div id={msg.uspId ? `bubble-${msg.uspId}` : undefined}
-                          className={`max-w-[95%] border bg-[#0A0C13] p-4 relative overflow-hidden group shadow-xl transition-all duration-700 rounded-xl rounded-tl-sm ${(msg.uspId && activePanel === msg.uspId) ? getColorClasses(USPS.find(u => u.id === msg.uspId)!.color).border : 'border-white/10'}`}>
+                          className={`max-w-[95%] border bg-white dark:bg-[#0A0C13] p-4 relative overflow-hidden group shadow-xl transition-all duration-700 rounded-xl rounded-tl-sm ${(msg.uspId && activePanel === msg.uspId) ? getColorClasses(USPS.find(u => u.id === msg.uspId)!.color).border : 'border-white/10'}`}>
                           <div className="absolute top-0 left-0 w-1 h-full bg-white/10 group-hover:bg-white/20 transition-colors" />
                           <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-2">
                             <div className="relative flex items-center justify-center w-2 h-2">
@@ -743,7 +755,7 @@ export default function LandingPage() {
 
                 {isTyping && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
-                    <div className="border border-white/10 bg-[#0A0C13] px-4 py-3 flex items-center gap-1.5 h-10 rounded-md shadow-md">
+                    <div className="border border-white/10 bg-white dark:bg-[#0A0C13] px-4 py-3 flex items-center gap-1.5 h-10 rounded-md shadow-md">
                       <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-bounce" />
                       <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-bounce delay-75" />
                       <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-bounce delay-150" />
@@ -757,10 +769,10 @@ export default function LandingPage() {
               <div className="p-4 bg-transparent shrink-0 z-20 border-t border-white/10 pb-5 backdrop-blur-md">
                 {appState === "awaiting_name" ? (
                   <div className="relative p-[1px] rounded-lg bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-emerald-500 animate-[pulse_3s_ease-in-out_infinite] shadow-[0_0_30px_rgba(192,38,211,0.2)]">
-                    <div className="relative bg-[#080A0F] rounded-md overflow-hidden">
+                    <div className="relative bg-white dark:bg-[#080A0F] rounded-md overflow-hidden">
                       <input value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={handleKeyDown}
                         placeholder="What should we call you?" 
-                        className="w-full bg-transparent border-none py-4 pl-4 pr-16 text-[13px] text-white placeholder-slate-500 focus:outline-none" autoFocus />
+                        className="w-full bg-transparent border-none py-4 pl-4 pr-16 text-[13px] text-foreground placeholder-slate-500 focus:outline-none" autoFocus />
                       <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
                         <button onClick={() => handleNameSubmit("Builder")}
                           className="text-[10px] text-muted-foreground hover:text-white font-medium transition-colors cursor-pointer">
@@ -799,7 +811,7 @@ export default function LandingPage() {
                     </Link>
                   </div>
                 ) : (
-                  <div className="relative border border-white/5 bg-[#080A0F] py-3.5 px-4 flex items-center justify-center gap-2 opacity-60 rounded-md">
+                  <div className="relative border border-white/5 bg-slate-50 dark:bg-[#080A0F] py-3.5 px-4 flex items-center justify-center gap-2 opacity-60 rounded-md">
                     <span className="w-2 h-2 rounded-full bg-slate-500 animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]" />
                     <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Processing...</span>
                   </div>
@@ -820,12 +832,12 @@ export default function LandingPage() {
             return (
               <div ref={el => panelRefs.current[usp.id] = el}
                 style={{ transform: `scale(${isActive ? 1.08 : isShrunk ? 0.92 : 1})`, zIndex: isActive ? 10 : 1 }}
-                className={`lg:row-span-2 p-6 border transition-all duration-700 relative overflow-hidden flex flex-col justify-center rounded-2xl ${isShrunk ? 'opacity-50' : ''} ${isActive ? `${colors.bg} ${colors.border} ${colors.glow}` : "bg-[#0A0C13]/60 border-white/[0.06] hover:border-white/10 backdrop-blur-sm"}`}>
+                className={`lg:row-span-2 p-6 border transition-all duration-700 relative overflow-hidden flex flex-col justify-center rounded-2xl ${isShrunk ? 'opacity-50' : ''} ${isActive ? `${colors.bg} ${colors.border} ${colors.glow}` : "bg-white/60 border-slate-200 hover:border-slate-300 dark:bg-[#0A0C13]/60 dark:border-white/[0.06] dark:hover:border-white/10 backdrop-blur-sm"}`}>
                 <div className={`absolute top-2 right-3 text-[9px] font-bold uppercase tracking-[0.2em] transition-colors duration-700 ${isActive ? colors.text : 'text-muted-foreground'} z-20`}>[ {usp.label} ]</div>
                 <AnimatePresence>{isActive && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`absolute right-0 top-0 bottom-0 w-1 ${colors.line} shadow-[0_0_15px_currentColor] z-20`} />}</AnimatePresence>
                 <div className="flex-1 flex items-center justify-center">{(PREVIEWS as any)[usp.id](isActive, isAnimating)}</div>
                 <div className={`transition-opacity duration-700 ${isActive ? 'opacity-100' : 'opacity-60'}`}>
-                  <div className="text-[17px] font-bold text-white tracking-tight">{usp.title}</div>
+                  <div className="text-[17px] font-bold text-foreground tracking-tight">{usp.title}</div>
                   <p className={`text-[12px] leading-relaxed mt-1 ${isActive ? colors.text : 'text-muted-foreground'}`}>{renderHighlighted(usp.subtext, isActive ? "white" : "rgb(148,163,184)")}</p>
                 </div>
               </div>
@@ -844,12 +856,12 @@ export default function LandingPage() {
             return (
               <div ref={el => panelRefs.current[usp.id] = el}
                 style={{ transform: `scale(${isActive ? 1.08 : isShrunk ? 0.92 : 1})`, zIndex: isActive ? 10 : 1 }}
-                className={`lg:row-span-2 p-5 border transition-all duration-700 relative overflow-hidden flex flex-col justify-center rounded-2xl ${isShrunk ? 'opacity-50' : ''} ${isActive ? `${colors.bg} ${colors.border} ${colors.glow}` : "bg-[#0A0C13]/60 border-white/[0.06] hover:border-white/10 backdrop-blur-sm"}`}>
+                className={`lg:row-span-2 p-5 border transition-all duration-700 relative overflow-hidden flex flex-col justify-center rounded-2xl ${isShrunk ? 'opacity-50' : ''} ${isActive ? `${colors.bg} ${colors.border} ${colors.glow}` : "bg-white/60 border-slate-200 hover:border-slate-300 dark:bg-[#0A0C13]/60 dark:border-white/[0.06] dark:hover:border-white/10 backdrop-blur-sm"}`}>
                 <div className={`absolute top-2 right-3 text-[9px] font-bold uppercase tracking-[0.2em] transition-colors duration-700 ${isActive ? colors.text : 'text-muted-foreground'} z-20`}>[ {usp.label} ]</div>
                 <AnimatePresence>{isActive && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`absolute right-0 top-0 bottom-0 w-1 ${colors.line} shadow-[0_0_15px_currentColor] z-20`} />}</AnimatePresence>
                 <div className="flex-1 flex items-center justify-center">{(PREVIEWS as any)[usp.id](isActive, isAnimating)}</div>
                 <div className={`transition-opacity duration-700 ${isActive ? 'opacity-100' : 'opacity-60'}`}>
-                  <div className="text-[17px] font-bold text-white tracking-tight">{usp.title}</div>
+                  <div className="text-[17px] font-bold text-foreground tracking-tight">{usp.title}</div>
                   <p className={`text-[12px] leading-relaxed mt-1 ${isActive ? colors.text : 'text-muted-foreground'}`}>{renderHighlighted(usp.subtext, isActive ? "white" : "rgb(148,163,184)")}</p>
                 </div>
               </div>
@@ -868,11 +880,11 @@ export default function LandingPage() {
             return (
               <div ref={el => panelRefs.current[usp.id] = el}
                 style={{ transform: `scale(${isActive ? 1.08 : isShrunk ? 0.92 : 1})`, zIndex: isActive ? 10 : 1 }}
-                className={`lg:col-span-2 p-5 border transition-all duration-700 relative overflow-hidden flex items-center gap-4 rounded-2xl ${isShrunk ? 'opacity-50' : ''} ${isActive ? `${colors.bg} ${colors.border} ${colors.glow}` : "bg-[#0A0C13]/60 border-white/[0.06] hover:border-white/10 backdrop-blur-sm"}`}>
+                className={`lg:col-span-2 p-5 border transition-all duration-700 relative overflow-hidden flex items-center gap-4 rounded-2xl ${isShrunk ? 'opacity-50' : ''} ${isActive ? `${colors.bg} ${colors.border} ${colors.glow}` : "bg-white/60 border-slate-200 hover:border-slate-300 dark:bg-[#0A0C13]/60 dark:border-white/[0.06] dark:hover:border-white/10 backdrop-blur-sm"}`}>
                 <div className={`absolute top-2 left-3 text-[9px] font-bold uppercase tracking-[0.2em] transition-colors duration-700 ${isActive ? colors.text : 'text-muted-foreground'} z-20`}>[ {usp.label} ]</div>
                 <AnimatePresence>{isActive && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`absolute left-0 top-0 bottom-0 w-1 ${colors.line} shadow-[0_0_15px_currentColor] z-20`} />}</AnimatePresence>
                 <div className="flex-1 flex flex-col justify-center">
-                  <div className={`text-[17px] font-bold text-white tracking-tight ${isActive ? '' : 'opacity-60'}`}>{usp.title}</div>
+                  <div className={`text-[17px] font-bold text-foreground tracking-tight ${isActive ? '' : 'opacity-60'}`}>{usp.title}</div>
                   <p className={`text-[12px] leading-relaxed mt-1 ${isActive ? colors.text : 'text-muted-foreground opacity-60'}`}>{renderHighlighted(usp.subtext, isActive ? "white" : "rgb(148,163,184)")}</p>
                 </div>
                 <div className="w-[100px] shrink-0 h-full flex items-center justify-center">{(PREVIEWS as any)[usp.id](isActive, isAnimating)}</div>
@@ -892,11 +904,11 @@ export default function LandingPage() {
             return (
               <div ref={el => panelRefs.current[usp.id] = el}
                 style={{ transform: `scale(${isActive ? 1.08 : isShrunk ? 0.92 : 1})`, zIndex: isActive ? 10 : 1 }}
-                className={`lg:col-span-2 p-6 border transition-all duration-700 relative overflow-hidden flex items-center gap-4 rounded-2xl ${isShrunk ? 'opacity-50' : ''} ${isActive ? `${colors.bg} ${colors.border} ${colors.glow}` : "bg-[#0A0C13]/60 border-white/[0.06] hover:border-white/10 backdrop-blur-sm"}`}>
+                className={`lg:col-span-2 p-6 border transition-all duration-700 relative overflow-hidden flex items-center gap-4 rounded-2xl ${isShrunk ? 'opacity-50' : ''} ${isActive ? `${colors.bg} ${colors.border} ${colors.glow}` : "bg-white/60 border-slate-200 hover:border-slate-300 dark:bg-[#0A0C13]/60 dark:border-white/[0.06] dark:hover:border-white/10 backdrop-blur-sm"}`}>
                 <div className={`absolute top-2 left-3 text-[9px] font-bold uppercase tracking-[0.2em] transition-colors duration-700 ${isActive ? colors.text : 'text-muted-foreground'} z-20`}>[ {usp.label} ]</div>
                 <AnimatePresence>{isActive && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`absolute left-0 top-0 bottom-0 w-1 ${colors.line} shadow-[0_0_15px_currentColor] z-20`} />}</AnimatePresence>
                 <div className="flex-1 flex flex-col justify-center">
-                  <div className={`text-[18px] font-bold text-white tracking-tight ${isActive ? '' : 'opacity-60'}`}>{usp.title}</div>
+                  <div className={`text-[18px] font-bold text-foreground tracking-tight ${isActive ? '' : 'opacity-60'}`}>{usp.title}</div>
                   <p className={`text-[13px] leading-relaxed mt-1.5 ${isActive ? colors.text : 'text-muted-foreground opacity-60'}`}>{renderHighlighted(usp.subtext, isActive ? "white" : "rgb(148,163,184)")}</p>
                 </div>
                 <div className="w-[160px] shrink-0 h-full">{(PREVIEWS as any)[usp.id](isActive, isAnimating)}</div>
@@ -914,11 +926,11 @@ export default function LandingPage() {
             return (
               <div ref={el => panelRefs.current[usp.id] = el}
                 style={{ transform: `scale(${isActive ? 1.08 : isShrunk ? 0.92 : 1})`, zIndex: isActive ? 10 : 1 }}
-                className={`lg:col-span-2 p-6 border transition-all duration-700 relative overflow-hidden flex items-center gap-4 rounded-2xl ${isShrunk ? 'opacity-50' : ''} ${isActive ? `${colors.bg} ${colors.border} ${colors.glow}` : "bg-[#0A0C13]/60 border-white/[0.06] hover:border-white/10 backdrop-blur-sm"}`}>
+                className={`lg:col-span-2 p-6 border transition-all duration-700 relative overflow-hidden flex items-center gap-4 rounded-2xl ${isShrunk ? 'opacity-50' : ''} ${isActive ? `${colors.bg} ${colors.border} ${colors.glow}` : "bg-white/60 border-slate-200 hover:border-slate-300 dark:bg-[#0A0C13]/60 dark:border-white/[0.06] dark:hover:border-white/10 backdrop-blur-sm"}`}>
                 <div className={`absolute top-2 right-3 text-[9px] font-bold uppercase tracking-[0.2em] transition-colors duration-700 ${isActive ? colors.text : 'text-muted-foreground'} z-20`}>[ {usp.label} ]</div>
                 <AnimatePresence>{isActive && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`absolute right-0 top-0 bottom-0 w-1 ${colors.line} shadow-[0_0_15px_currentColor] z-20`} />}</AnimatePresence>
                 <div className="flex-1 flex flex-col justify-center">
-                  <div className={`text-[18px] font-bold text-white tracking-tight ${isActive ? '' : 'opacity-60'}`}>{usp.title}</div>
+                  <div className={`text-[18px] font-bold text-foreground tracking-tight ${isActive ? '' : 'opacity-60'}`}>{usp.title}</div>
                   <p className={`text-[13px] leading-relaxed mt-1.5 ${isActive ? colors.text : 'text-muted-foreground opacity-60'}`}>{renderHighlighted(usp.subtext, isActive ? "white" : "rgb(148,163,184)")}</p>
                 </div>
                 <div className="w-[120px] shrink-0 h-full flex items-center justify-center">{(PREVIEWS as any)[usp.id](isActive, isAnimating)}</div>
@@ -945,26 +957,96 @@ export default function LandingPage() {
         )}
       </AnimatePresence>
 
+      {/* Social Proof */}
+      <section className="w-full max-w-[1000px] mx-auto px-6 py-16 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            { quote: "Maya rewrote my entire product strategy in one conversation. I've been building alone for 2 years and this is the first time I felt like I had a real team.", name: "Sam K.", role: "Founder, SaaS" },
+            { quote: "I told Drew about a bug at midnight. Woke up to a fixed architecture doc and three options. No human teammate has ever done that.", name: "Li W.", role: "Solo developer" },
+            { quote: "Zara argued with me about my color palette for 20 minutes. She was right. My landing page converts 3x better now.", name: "Priya R.", role: "Indie maker" },
+          ].map((t, i) => (
+            <div key={i} className="border border-white/[0.08] bg-white/[0.02] rounded-xl p-6 backdrop-blur-sm">
+              <p className="text-[13px] text-foreground/70 leading-relaxed mb-4 italic">&ldquo;{t.quote}&rdquo;</p>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500/30 to-fuchsia-500/30 border border-white/10 flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-foreground/60">{t.name[0]}</span>
+                </div>
+                <div>
+                  <div className="text-[12px] font-semibold text-foreground/80">{t.name}</div>
+                  <div className="text-[10px] text-muted-foreground/60">{t.role}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section className="w-full max-w-[900px] mx-auto px-6 py-12 relative z-10">
+        <h2 className="text-2xl md:text-3xl font-semibold text-foreground text-center mb-10 tracking-tight">How it works</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {[
+            { step: "1", title: "Tell Maya your idea", desc: "Describe what you're building. She'll ask the hard questions and shape it into something real." },
+            { step: "2", title: "Your team assembles", desc: "Maya picks the right teammates for your project. Engineer, designer, analyst. Each with their own expertise." },
+            { step: "3", title: "They start building", desc: "Your team talks to each other, divides the work, and keeps going while you sleep. Wake up to progress." },
+          ].map((s, i) => (
+            <div key={i} className="text-center">
+              <div className="w-10 h-10 rounded-full border border-orange-500/40 bg-orange-500/10 flex items-center justify-center mx-auto mb-4">
+                <span className="text-orange-400 font-bold text-sm">{s.step}</span>
+              </div>
+              <h3 className="text-[15px] font-semibold text-foreground mb-2">{s.title}</h3>
+              <p className="text-[13px] text-muted-foreground leading-relaxed">{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="w-full max-w-[700px] mx-auto px-6 py-12 relative z-10">
+        <h2 className="text-2xl md:text-3xl font-semibold text-foreground text-center mb-10 tracking-tight">Questions</h2>
+        <div className="space-y-6">
+          {[
+            { q: "How is this different from ChatGPT?", a: "ChatGPT is a chatbot. Hatchin is a team. Your teammates remember everything, have distinct expertise, disagree with each other, and work together on your project across conversations. They're not answering prompts. They're building with you." },
+            { q: "Is my project data secure?", a: "Your data stays yours. We use encrypted connections, never train on your conversations, and you can delete everything at any time." },
+            { q: "What does it cost?", a: "Free to start. No credit card, no trial expiration. Build with your team and decide if you want more." },
+            { q: "Can AI really replace a team?", a: "They're not replacing humans. They're the team you don't have yet. Real opinions, real memory, real collaboration. Enough to get from idea to something you can show the world." },
+            { q: "What if I don't like it?", a: "Then you leave. No contracts, no lock-in, no guilt. But most people don't leave, because their team remembers them when they come back." },
+          ].map((faq, i) => (
+            <div key={i} className="border-b border-white/[0.06] pb-5">
+              <h3 className="text-[14px] font-semibold text-foreground/90 mb-2">{faq.q}</h3>
+              <p className="text-[13px] text-muted-foreground leading-relaxed">{faq.a}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Bottom CTA */}
       <section className="w-full max-w-[800px] mx-auto px-6 py-16 text-center relative z-10">
-        <h2 className="text-3xl md:text-4xl font-semibold text-white mb-3 tracking-tight">
+        <h2 className="text-3xl md:text-4xl font-semibold text-foreground mb-3 tracking-tight">
           Every dream needs a team.
         </h2>
-        <p className="text-white/60 text-lg mb-2">
+        <p className="text-muted-foreground text-lg mb-8">
           Yours is already here.
-        </p>
-        <p className="text-white/40 text-sm mb-2">
-          AI teammates who think, remember, and never stop caring about your project.
-        </p>
-        <p className="text-muted-foreground text-[13px] mb-8">
-          Your team is one click away.
         </p>
         <Link href="/login">
           <button className="bg-orange-500 hover:bg-orange-400 text-white font-black tracking-[0.15em] uppercase text-[13px] py-5 px-12 transition-all border border-orange-400 shadow-[0_0_40px_rgba(249,115,22,0.25)] hover:shadow-[0_0_60px_rgba(249,115,22,0.45)] rounded-xl cursor-pointer">
             Meet Your Team &rarr;
           </button>
         </Link>
+        <p className="text-xs text-muted-foreground/50 mt-3">Free. No credit card. Takes 30 seconds.</p>
       </section>
+
+      {/* Footer */}
+      <footer className="w-full border-t border-white/[0.06] py-8 px-6 relative z-10">
+        <div className="max-w-[1000px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <span className="text-muted-foreground/40 text-[12px]">&copy; 2026 Hatchin. All rights reserved.</span>
+          <div className="flex items-center gap-6">
+            <a href="#" className="text-muted-foreground/40 hover:text-muted-foreground text-[12px] transition-colors">Privacy</a>
+            <a href="#" className="text-muted-foreground/40 hover:text-muted-foreground text-[12px] transition-colors">Terms</a>
+            <a href="mailto:hello@hatchin.ai" className="text-muted-foreground/40 hover:text-muted-foreground text-[12px] transition-colors">Contact</a>
+          </div>
+        </div>
+      </footer>
 
     </div>
   );
