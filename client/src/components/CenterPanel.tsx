@@ -1,4 +1,4 @@
-import { Send } from "lucide-react";
+import { Send, PauseCircle, PlayCircle } from "lucide-react";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { Project, Team, Agent } from "@shared/schema";
@@ -117,6 +117,7 @@ export function CenterPanel({
   const [typingColleagues, setTypingColleagues] = useState<string[]>([]);
   const [isTeamWorking, setIsTeamWorking] = useState(false);
   const [teamWorkingTaskCount, setTeamWorkingTaskCount] = useState(0);
+  const [isAutonomyPaused, setIsAutonomyPaused] = useState(false);
   // UX-01: Inline approval cards for high-risk autonomous tasks
   const [approvalRequests, setApprovalRequests] = useState<Array<{
     taskId: string;
@@ -1089,6 +1090,8 @@ export function CenterPanel({
     else if (message.type === 'background_execution_started') {
       setIsTeamWorking(true);
       setTeamWorkingTaskCount(message.taskCount ?? 0);
+      // UX-04: execution started means not paused — reset pause state
+      setIsAutonomyPaused(false);
       // UX-05: Tab notification badge
       if (document.hidden) {
         document.title = '\u2728 Team working... | Hatchin';
@@ -1436,6 +1439,11 @@ export function CenterPanel({
       setApprovalRequests([]);
     }
   }, [activeProject?.id]);
+
+  // UX-04: Sync pause state from project data when project changes
+  useEffect(() => {
+    setIsAutonomyPaused((activeProject?.executionRules as any)?.autonomyPaused ?? false);
+  }, [activeProject?.id, activeProject?.executionRules]);
 
   // useEffect to listen to activeProjectId, activeTeamId, activeAgentId changes
   useEffect(() => {
@@ -1853,6 +1861,18 @@ export function CenterPanel({
     onSuccess: (_data, taskId) => {
       setApprovalRequests((prev) => prev.filter((r) => r.taskId !== taskId));
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+    },
+  });
+
+  // UX-04: Pause/resume autonomous execution for this project
+  const pauseMutation = useMutation({
+    mutationFn: (paused: boolean) =>
+      apiRequest('PATCH', `/api/projects/${activeProject?.id}`, {
+        executionRules: { ...((activeProject?.executionRules as any) ?? {}), autonomyPaused: paused },
+      }),
+    onSuccess: (_data, paused) => {
+      setIsAutonomyPaused(paused);
+      queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
     },
   });
 
@@ -2546,13 +2566,34 @@ export function CenterPanel({
 
                 {/* Team working indicator — shown during background autonomous execution */}
                 {isTeamWorking && (
-                  <div className="flex items-center gap-2 px-4 py-2 text-sm text-amber-600 bg-amber-50 rounded-lg mx-4 mb-2">
-                    <div className="flex gap-1">
-                      <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <div className="flex items-center justify-between px-4 py-2 text-sm text-amber-600 bg-amber-50 rounded-lg mx-4 mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1">
+                        {!isAutonomyPaused && (
+                          <>
+                            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                          </>
+                        )}
+                      </div>
+                      <span>
+                        {isAutonomyPaused
+                          ? 'Autonomous execution paused'
+                          : `Team is working on ${teamWorkingTaskCount} task${teamWorkingTaskCount !== 1 ? 's' : ''}...`}
+                      </span>
                     </div>
-                    <span>Team is working on {teamWorkingTaskCount} task{teamWorkingTaskCount !== 1 ? 's' : ''}...</span>
+                    <button
+                      onClick={() => pauseMutation.mutate(!isAutonomyPaused)}
+                      disabled={pauseMutation.isPending}
+                      className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md transition-colors hover:bg-amber-100 disabled:opacity-40"
+                    >
+                      {isAutonomyPaused ? (
+                        <><PlayCircle className="w-3.5 h-3.5" /> Resume</>
+                      ) : (
+                        <><PauseCircle className="w-3.5 h-3.5" /> Pause</>
+                      )}
+                    </button>
                   </div>
                 )}
 
