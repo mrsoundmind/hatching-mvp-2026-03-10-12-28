@@ -51,6 +51,8 @@ export const FEATURE_FLAGS = {
   backgroundExecution: (process.env.BACKGROUND_AUTONOMY_ENABLED ?? 'false').toLowerCase() === 'true',
 };
 
+export const MAX_HANDOFF_HOPS = Number(process.env.MAX_HANDOFF_HOPS ?? 4);
+
 export function resolveRuntimeModeFromEnv(env = process.env): RuntimeModeName {
   const llmMode = (env.LLM_MODE ?? 'prod').toLowerCase();
   const testProvider = (env.TEST_LLM_PROVIDER ?? '').toLowerCase();

@@ -176,12 +176,16 @@ export async function handleTaskJob(
     return;
   }
 
-  const [task, agents, project] = await Promise.all([
+  // Pause check: skip if project autonomy is paused (UX-04)
+  const project = await deps.storage.getProject(job.data.projectId);
+  if (!project) return;
+  if ((project.executionRules as any)?.autonomyPaused === true) return;
+
+  const [task, agents] = await Promise.all([
     deps.storage.getTask(job.data.taskId),
     deps.storage.getAgentsByProject(job.data.projectId),
-    deps.storage.getProject(job.data.projectId),
   ]);
-  if (!task || !project) return;
+  if (!task) return;
   const agent = agents.find((a) => a.id === job.data.agentId);
   if (!agent) return;
 
