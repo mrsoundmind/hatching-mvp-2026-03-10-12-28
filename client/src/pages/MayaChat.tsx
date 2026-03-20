@@ -280,7 +280,7 @@ export function MayaChat({ projectId }: MayaChatProps) {
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <div className="animate-spin w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading Maya...</p>
+          <p className="text-muted-foreground">Loading Maya...</p>
         </div>
       </div>
     );
@@ -288,13 +288,13 @@ export function MayaChat({ projectId }: MayaChatProps) {
 
   if (!project || !mayaAgent) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-gray-900 px-4 text-center">
-        <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mb-6">
+      <div className="flex flex-col items-center justify-center h-screen bg-background px-4 text-center">
+        <div className="w-16 h-16 bg-hatchin-panel rounded-full flex items-center justify-center mb-6">
           <span className="text-3xl">🤖</span>
         </div>
-        <h2 className="text-2xl font-bold text-white mb-3">Maya is Not Available for this Project</h2>
-        <p className="text-gray-400 max-w-md mb-8">
-          The Maya PM Agent is exclusively available for "Idea" projects to help you brainstorm and develop concepts.
+        <h2 className="text-2xl font-bold text-foreground mb-3">Maya is Not Available for this Project</h2>
+        <p className="text-muted-foreground max-w-md mb-8">
+          Maya is a project-level teammate, exclusively available for "Idea" projects to help you brainstorm and develop concepts.
         </p>
         <Button onClick={() => setLocation('/')} className="bg-purple-600 hover:bg-purple-700">
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -305,8 +305,8 @@ export function MayaChat({ projectId }: MayaChatProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
-      <div className="border-b border-gray-800 bg-gray-900/95 backdrop-blur sticky top-0 z-10">
+    <div className="min-h-screen bg-background">
+      <div className="border-b border-border bg-background/95 backdrop-blur sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -314,19 +314,19 @@ export function MayaChat({ projectId }: MayaChatProps) {
                 variant="ghost"
                 size="sm"
                 onClick={() => setLocation('/')}
-                className="text-gray-400 hover:text-white"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Projects
               </Button>
-              <div className="h-6 w-px bg-gray-700"></div>
+              <div className="h-6 w-px bg-border"></div>
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center">
                   <span className="text-sm">🤖</span>
                 </div>
                 <div>
-                  <h1 className="text-white font-semibold">Chat with Maya</h1>
-                  <p className="text-sm text-gray-400">{project.name} • AI Idea Partner</p>
+                  <h1 className="text-foreground font-semibold">Chat with Maya</h1>
+                  <p className="text-sm text-muted-foreground">{project.name} • Idea Partner</p>
                 </div>
               </div>
             </div>
@@ -343,15 +343,15 @@ export function MayaChat({ projectId }: MayaChatProps) {
       <div className="max-w-4xl mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-3">
-            <Card className="bg-gray-800 border-gray-700 h-[600px] flex flex-col">
+            <Card className="bg-hatchin-panel border-border h-[600px] flex flex-col">
               <CardHeader className="pb-4">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center">
                     <span className="text-lg">🤖</span>
                   </div>
                   <div>
-                    <CardTitle className="text-white">Maya</CardTitle>
-                    <p className="text-sm text-gray-400">AI Idea Partner • Online</p>
+                    <CardTitle className="text-foreground">Maya</CardTitle>
+                    <p className="text-sm text-muted-foreground">Idea Partner • Online</p>
                   </div>
                 </div>
               </CardHeader>
@@ -367,7 +367,7 @@ export function MayaChat({ projectId }: MayaChatProps) {
                     >
                       <div className={`max-w-[80%] p-3 rounded-lg ${msg.sender === 'user'
                         ? 'bg-purple-600 text-white'
-                        : 'bg-gray-700 text-gray-100'
+                        : 'bg-hatchin-surface text-foreground'
                         }`}>
                         <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                         <p className="text-xs opacity-70 mt-1">
@@ -383,7 +383,7 @@ export function MayaChat({ projectId }: MayaChatProps) {
                       animate={{ opacity: 1, y: 0 }}
                       className="flex justify-start"
                     >
-                      <div className="max-w-[80%] p-3 rounded-lg bg-gray-700 text-gray-100">
+                      <div className="max-w-[80%] p-3 rounded-lg bg-hatchin-surface text-foreground">
                         <p className="text-sm whitespace-pre-wrap">
                           {streamingContent}
                           <span className="ml-1 inline-block w-1.5 h-4 bg-purple-400 animate-pulse align-middle" />
@@ -402,7 +402,7 @@ export function MayaChat({ projectId }: MayaChatProps) {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Share your idea with Maya..."
-                    className="flex-1 bg-[#2A2D33] border-[#43444B] text-[#F1F1F3] placeholder-[#A6A7AB] focus:ring-hatchin-blue focus:border-hatchin-blue"
+                    className="flex-1 bg-hatchin-surface-elevated border-hatchin-border-subtle text-hatchin-text-bright placeholder-muted-foreground focus:ring-hatchin-blue focus:border-hatchin-blue"
                     onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                   />
                   <Button
@@ -418,9 +418,9 @@ export function MayaChat({ projectId }: MayaChatProps) {
           </div>
 
           <div className="lg:col-span-1">
-            <Card className="bg-gray-800 border-gray-700 h-[600px] flex flex-col">
-              <CardHeader className="pb-3 border-b border-gray-700 flex flex-row items-center justify-between">
-                <CardTitle className="text-white flex items-center text-lg">
+            <Card className="bg-hatchin-panel border-border h-[600px] flex flex-col">
+              <CardHeader className="pb-3 border-b border-border flex flex-row items-center justify-between">
+                <CardTitle className="text-foreground flex items-center text-lg">
                   <Brain className="w-5 h-5 mr-2 text-purple-400" />
                   Project Brain
                 </CardTitle>
@@ -431,35 +431,35 @@ export function MayaChat({ projectId }: MayaChatProps) {
                       <Plus className="w-4 h-4" />
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-gray-900 border-gray-700 text-white sm:max-w-md">
+                  <DialogContent className="bg-background border-border text-foreground sm:max-w-md">
                     <DialogHeader>
                       <DialogTitle>Add to Project Brain</DialogTitle>
-                      <DialogDescription className="text-gray-400">
-                        Manually insert context, goals, or notes into your project's shared memory so your AI agents can access it.
+                      <DialogDescription className="text-muted-foreground">
+                        Manually insert context, goals, or notes into your project's shared memory so your teammates can access it.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-300">Document Title</label>
+                        <label className="text-sm font-medium text-foreground">Document Title</label>
                         <Input
                           value={newDocTitle}
                           onChange={(e) => setNewDocTitle(e.target.value)}
                           placeholder="e.g., Target Audience Guidelines"
-                          className="bg-gray-800 border-gray-700 text-white placeholder-gray-500"
+                          className="bg-hatchin-panel border-border text-foreground placeholder-muted-foreground"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-300">Content</label>
+                        <label className="text-sm font-medium text-foreground">Content</label>
                         <Textarea
                           value={newDocContent}
                           onChange={(e) => setNewDocContent(e.target.value)}
                           placeholder="Enter the key information here..."
-                          className="min-h-[150px] bg-gray-800 border-gray-700 text-white placeholder-gray-500"
+                          className="min-h-[150px] bg-hatchin-panel border-border text-foreground placeholder-muted-foreground"
                         />
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button variant="ghost" onClick={() => setIsAddDocOpen(false)} className="text-gray-400">
+                      <Button variant="ghost" onClick={() => setIsAddDocOpen(false)} className="text-muted-foreground">
                         Cancel
                       </Button>
                       <Button
@@ -476,18 +476,18 @@ export function MayaChat({ projectId }: MayaChatProps) {
               <CardContent className="flex-1 overflow-y-auto pt-4 space-y-4">
                 {(!project?.brain?.documents || project.brain.documents.length === 0) ? (
                   <div className="h-full flex flex-col items-center justify-center text-center space-y-3 py-10">
-                    <div className="w-12 h-12 bg-gray-800 border border-gray-700 rounded-full flex items-center justify-center">
-                      <FileText className="w-6 h-6 text-gray-500" />
+                    <div className="w-12 h-12 bg-hatchin-panel border border-border rounded-full flex items-center justify-center">
+                      <FileText className="w-6 h-6 text-muted-foreground" />
                     </div>
                     <div>
-                      <h3 className="text-gray-300 font-medium mb-1">Maya's Memory</h3>
-                      <p className="text-xs text-gray-500 max-w-[200px] mb-4">
+                      <h3 className="text-foreground font-medium mb-1">Maya's Memory</h3>
+                      <p className="text-xs text-muted-foreground max-w-[200px] mb-4">
                         As you chat with Maya, she'll automatically build a memory of your project here.
                       </p>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="border-gray-600 text-gray-300 hover:bg-gray-700 mr-auto ml-auto"
+                        className="border-border text-foreground hover:bg-muted mr-auto ml-auto"
                         onClick={() => setIsAddDocOpen(true)}
                       >
                         <Plus className="w-4 h-4 mr-2" />
@@ -497,15 +497,15 @@ export function MayaChat({ projectId }: MayaChatProps) {
                   </div>
                 ) : (
                   <>
-                    <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Saved Context</h4>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Saved Context</h4>
                     {project.brain.documents.map((doc: any) => (
-                      <div key={doc.id} className="p-3 bg-gray-700 border border-gray-600 shadow-sm rounded-lg hover:border-gray-500 transition-colors">
+                      <div key={doc.id} className="p-3 bg-hatchin-surface border border-border shadow-sm rounded-lg hover:border-hatchin-border-subtle transition-colors">
                         <div className="flex items-start space-x-2">
                           <Lightbulb className="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" />
                           <div>
-                            <h4 className="text-sm font-medium text-white line-clamp-1">{doc.title}</h4>
-                            <p className="text-xs text-gray-400 line-clamp-3 mt-1 leading-relaxed">{doc.content}</p>
-                            <span className="text-[10px] text-gray-500 mt-2 block">
+                            <h4 className="text-sm font-medium text-foreground line-clamp-1">{doc.title}</h4>
+                            <p className="text-xs text-muted-foreground line-clamp-3 mt-1 leading-relaxed">{doc.content}</p>
+                            <span className="text-[10px] text-muted-foreground mt-2 block">
                               {new Date(doc.createdAt).toLocaleDateString()}
                             </span>
                           </div>
@@ -515,10 +515,10 @@ export function MayaChat({ projectId }: MayaChatProps) {
                   </>
                 )}
 
-                <div className="pt-4 mt-6 border-t border-gray-700">
-                  <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Automated Memory</h4>
-                  <div className="p-3 bg-gray-800/50 border border-gray-700 rounded-lg">
-                    <p className="text-xs text-gray-400 leading-relaxed italic">
+                <div className="pt-4 mt-6 border-t border-border">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Shared Memory</h4>
+                  <div className="p-3 bg-muted border border-border rounded-lg">
+                    <p className="text-xs text-muted-foreground leading-relaxed italic">
                       {project?.brain?.sharedMemory || "Maya will automatically extract key decisions from your chats and store them here as shared memory for the team."}
                     </p>
                   </div>

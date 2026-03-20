@@ -20,8 +20,8 @@ export default function LoginPage() {
   const ideaTexts = [
     "Building a fitness app for runners...",
     "Creating an e-commerce store...",
-    "Launching a SaaS productivity tool...",
-    "Designing a travel planning platform...",
+    "Launching a SaaS productivity app...",
+    "Designing a travel planning experience...",
   ];
   const [ideaIndex, setIdeaIndex] = useState(0);
   const ideaTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -94,10 +94,10 @@ export default function LoginPage() {
   ];
 
   return (
-    <main className="min-h-[100dvh] w-full flex flex-col lg:flex-row bg-[#030303] overflow-y-auto lg:overflow-hidden font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
+    <main className="min-h-[100dvh] w-full flex flex-col lg:flex-row bg-background overflow-y-auto lg:overflow-hidden font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
 
       {/* LEFT COLUMN: Authentication */}
-      <section className="relative w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 lg:p-16 z-10 min-h-[100dvh] lg:min-h-screen shrink-0 bg-[#030303] overflow-hidden">
+      <section className="relative w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 lg:p-16 z-10 min-h-[100dvh] lg:min-h-screen shrink-0 bg-background overflow-hidden">
         {/* Animated Background Orbs */}
         <div className="absolute inset-0 pointer-events-none">
           <motion.div
@@ -120,16 +120,16 @@ export default function LoginPage() {
         >
           {/* Hatchin Logo */}
           <div className="mb-10 flex items-center select-none">
-            <span className="text-3xl font-bold tracking-tighter text-white">Hatchin<span className="text-indigo-500">.</span></span>
+            <span className="text-3xl font-bold tracking-tighter text-foreground">Hatchin<span className="text-indigo-500">.</span></span>
           </div>
 
           {/* ✨ Re-polishing the headline section */}
           <div className="mb-12">
-            <h1 className="text-4xl font-semibold tracking-tight text-white mb-4">
+            <h1 className="text-4xl font-semibold tracking-tight text-foreground mb-4">
               Your AI team is ready. Let's build.
             </h1>
-            <p className="text-lg text-slate-400 leading-relaxed font-light">
-              Build your dreams from the ground up with Maya and your autonomous team.
+            <p className="text-lg text-muted-foreground leading-relaxed font-light">
+              Build your dreams from the ground up with Maya and your AI team.
             </p>
           </div>
 
@@ -156,8 +156,8 @@ export default function LoginPage() {
             <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-500" />
           </a>
 
-          <p className="mt-8 text-sm text-slate-500 font-light">
-            By continuing, you agree to our <a href="#" className="text-slate-400 hover:text-white transition-colors underline decoration-slate-600 underline-offset-2">Terms of Service</a> and <a href="#" className="text-slate-400 hover:text-white transition-colors underline decoration-slate-600 underline-offset-2">Privacy Policy</a>.
+          <p className="mt-8 text-sm text-muted-foreground font-light">
+            By continuing, you agree to our <a href="#" className="text-muted-foreground hover:text-foreground transition-colors underline decoration-border underline-offset-2">Terms of Service</a> and <a href="#" className="text-muted-foreground hover:text-foreground transition-colors underline decoration-border underline-offset-2">Privacy Policy</a>.
           </p>
         </motion.div>
       </section>
@@ -167,7 +167,7 @@ export default function LoginPage() {
         ref={rightPanelRef}
         onMouseMove={handleRightMouseMove}
         onMouseLeave={handleRightMouseLeave}
-        className="relative w-full lg:w-1/2 flex flex-col items-center justify-center bg-slate-900 overflow-hidden border-t lg:border-t-0 lg:border-l border-white/5 py-20 lg:py-0 min-h-[700px] lg:min-h-screen shrink-0">
+        className="relative w-full lg:w-1/2 flex flex-col items-center justify-center bg-muted overflow-hidden border-t lg:border-t-0 lg:border-l border-white/5 py-20 lg:py-0 min-h-[700px] lg:min-h-screen shrink-0">
 
         {/* Dynamic Vibrant glowing background matching Framer AI aesthetic */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-[#050505]">
@@ -244,19 +244,19 @@ export default function LoginPage() {
                 className="w-full flex flex-col items-center"
               >
                 <div className="mb-8 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 font-medium text-sm tracking-wide uppercase shadow-[0_0_15px_rgba(59,130,246,0.15)]">
-                  <Users2 className="w-4 h-4" /> Your Autonomous Team
+                  <Users2 className="w-4 h-4" /> Your Team, Always On
                 </div>
-                <h2 className="text-4xl lg:text-5xl font-semibold text-white mb-6 tracking-tight text-center leading-tight">
+                <h2 className="text-4xl lg:text-5xl font-semibold text-foreground mb-6 tracking-tight text-center leading-tight">
                   Your Ideas, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 drop-shadow-sm">Built. Automatically.</span>
                 </h2>
-                <p className="text-lg lg:text-xl text-slate-400 leading-relaxed text-center mb-6 px-4 font-light max-w-sm">
-                  Turn your boldest ideas into reality with a dedicated AI team that builds your dreams from the ground up.
+                <p className="text-lg lg:text-xl text-muted-foreground leading-relaxed text-center mb-6 px-4 font-light max-w-sm">
+                  Your AI team is assembled. Tell them what to build.
                 </p>
 
                 {/* Animated cycling idea pill — Task 2 */}
                 <div className="mb-10 w-full max-w-sm">
                   <div className="relative flex items-center gap-2 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 overflow-hidden">
-                    <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold shrink-0">Idea</span>
+                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold shrink-0">Idea</span>
                     <div className="w-px h-3 bg-white/10 shrink-0" />
                     <AnimatePresence mode="wait">
                       <motion.span
@@ -265,7 +265,7 @@ export default function LoginPage() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -6 }}
                         transition={{ duration: 0.35 }}
-                        className="text-sm text-slate-300 font-light truncate"
+                        className="text-sm text-foreground font-light truncate"
                       >
                         {ideaTexts[ideaIndex]}
                       </motion.span>
@@ -302,8 +302,8 @@ export default function LoginPage() {
                           <span className="text-white font-semibold text-lg drop-shadow-sm">{hatch.name[0]}</span>
                         </div>
                         <div>
-                          <h3 className="text-white font-medium text-sm">{hatch.name}</h3>
-                          <p className="text-xs text-slate-400">{hatch.role}</p>
+                          <h3 className="text-foreground font-medium text-sm">{hatch.name}</h3>
+                          <p className="text-xs text-muted-foreground">{hatch.role}</p>
                         </div>
                       </div>
                       <div className="space-y-2 mt-4">
@@ -336,17 +336,17 @@ export default function LoginPage() {
                 <div className="mb-8 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 font-medium text-sm tracking-wide uppercase shadow-[0_0_15px_rgba(168,85,247,0.15)]">
                   <Code2 className="w-4 h-4" /> Bringing Visions to Life
                 </div>
-                <h2 className="text-4xl lg:text-5xl font-semibold text-white mb-6 tracking-tight text-center leading-tight">
+                <h2 className="text-4xl lg:text-5xl font-semibold text-foreground mb-6 tracking-tight text-center leading-tight">
                   Dreams made <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-rose-400 drop-shadow-sm">Real.</span>
                 </h2>
-                <p className="text-lg lg:text-xl text-slate-400 leading-relaxed text-center mb-6 px-4 font-light max-w-sm">
-                  Your autonomous team takes your vision and transforms it into a living, breathing application.
+                <p className="text-lg lg:text-xl text-muted-foreground leading-relaxed text-center mb-6 px-4 font-light max-w-sm">
+                  Your AI team takes your vision and turns it into a living, breathing application.
                 </p>
 
                 {/* Cycling idea pill — Slide 2 */}
                 <div className="mb-10 w-full max-w-sm">
                   <div className="relative flex items-center gap-2 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 overflow-hidden">
-                    <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold shrink-0">Idea</span>
+                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold shrink-0">Idea</span>
                     <div className="w-px h-3 bg-white/10 shrink-0" />
                     <AnimatePresence mode="wait">
                       <motion.span
@@ -355,7 +355,7 @@ export default function LoginPage() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -6 }}
                         transition={{ duration: 0.35 }}
-                        className="text-sm text-slate-300 font-light truncate"
+                        className="text-sm text-foreground font-light truncate"
                       >
                         {ideaTexts[ideaIndex]}
                       </motion.span>
@@ -393,7 +393,7 @@ export default function LoginPage() {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 1.4 }}
-                    className="text-slate-400 ml-12 mb-2"
+                    className="text-muted-foreground ml-12 mb-2"
                   >{`// Magic happens here`}</motion.div>
                   <motion.div
                     initial={{ opacity: 0, x: -10 }}
@@ -436,17 +436,17 @@ export default function LoginPage() {
                 <div className="mb-8 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium text-sm tracking-wide uppercase shadow-[0_0_15px_rgba(16,185,129,0.15)]">
                   <Sparkles className="w-4 h-4" /> Always Learning Your Style
                 </div>
-                <h2 className="text-4xl lg:text-5xl font-semibold text-white mb-6 tracking-tight text-center leading-tight">
+                <h2 className="text-4xl lg:text-5xl font-semibold text-foreground mb-6 tracking-tight text-center leading-tight">
                   Growing <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 drop-shadow-sm">Together.</span>
                 </h2>
-                <p className="text-lg lg:text-xl text-slate-400 leading-relaxed text-center mb-6 px-4 font-light max-w-sm">
+                <p className="text-lg lg:text-xl text-muted-foreground leading-relaxed text-center mb-6 px-4 font-light max-w-sm">
                   Your AI colleagues relentlessly learn your style, culture, and goals to make your dream project absolutely perfect.
                 </p>
 
                 {/* Cycling idea pill — Slide 3 */}
                 <div className="mb-10 w-full max-w-sm">
                   <div className="relative flex items-center gap-2 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 overflow-hidden">
-                    <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold shrink-0">Idea</span>
+                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold shrink-0">Idea</span>
                     <div className="w-px h-3 bg-white/10 shrink-0" />
                     <AnimatePresence mode="wait">
                       <motion.span
@@ -455,7 +455,7 @@ export default function LoginPage() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -6 }}
                         transition={{ duration: 0.35 }}
-                        className="text-sm text-slate-300 font-light truncate"
+                        className="text-sm text-foreground font-light truncate"
                       >
                         {ideaTexts[ideaIndex]}
                       </motion.span>
@@ -468,8 +468,8 @@ export default function LoginPage() {
                 <div className="relative w-full max-w-[360px] h-[240px] rounded-2xl border border-white/10 bg-[#0A0A0A]/80 backdrop-blur-xl p-5 shadow-2xl flex flex-col justify-end overflow-hidden shadow-emerald-500/10">
                   <div className="absolute top-5 left-5 right-5 flex justify-between items-center mb-6">
                     <div className="space-y-1">
-                      <div className="text-xs text-slate-400 font-medium tracking-wide">Project Velocity</div>
-                      <div className="text-2xl font-semibold text-white">98.4%</div>
+                      <div className="text-xs text-muted-foreground font-medium tracking-wide">Project Velocity</div>
+                      <div className="text-2xl font-semibold text-foreground">98.4%</div>
                     </div>
                     <div className="px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 text-xs font-medium">
                       +12% vs last hatch

@@ -18,7 +18,7 @@ function TypingText({ text }: { text: string }) {
         }, 48);
         return () => clearInterval(timer);
     }, [text]);
-    return <span className="text-[12px] text-gray-300">{displayed}</span>;
+    return <span className="text-[12px] text-foreground">{displayed}</span>;
 }
 
 // Step 1: Mini chat preview animation
@@ -86,7 +86,7 @@ function AgentHatch() {
                         >
                             {def?.emoji ?? agent.role[0]}
                         </div>
-                        <span className="text-[10px] text-gray-400">{def?.characterName ?? agent.role}</span>
+                        <span className="text-[10px] text-muted-foreground">{def?.characterName ?? agent.role}</span>
                     </motion.div>
                 );
             })}
@@ -112,7 +112,7 @@ function BrainFill() {
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.6 + 0.3 }}
-                    className="flex items-center gap-2 text-[11px] text-gray-300"
+                    className="flex items-center gap-2 text-[11px] text-foreground"
                 >
                     <div className="w-1.5 h-1.5 rounded-full bg-[#47DB9A] flex-shrink-0" />
                     {item}
@@ -186,7 +186,7 @@ export default function OnboardingPage() {
     };
 
     return (
-        <main className="min-h-screen bg-[#0A0A0A] flex flex-col items-center justify-center p-6 overflow-hidden relative">
+        <main className="min-h-screen bg-background flex flex-col items-center justify-center p-6 overflow-hidden relative">
             <div className="absolute inset-0 pointer-events-none">
                 <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-blue-500/10 blur-[120px]" />
                 <div className="absolute bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-indigo-500/10 blur-[120px]" />
@@ -207,15 +207,15 @@ export default function OnboardingPage() {
 
                             {/* Logo */}
                             <div className="flex justify-center mb-8 mx-auto">
-                                <span className="text-3xl font-bold tracking-tighter text-white">
+                                <span className="text-3xl font-bold tracking-tighter text-foreground">
                                     Hatchin<span className="text-indigo-500">.</span>
                                 </span>
                             </div>
-                            <h1 className="text-3xl font-semibold text-white mb-4 text-center tracking-tight">
+                            <h1 className="text-3xl font-semibold text-foreground mb-4 text-center tracking-tight">
                                 Welcome,{" "}
                                 <span className="text-blue-400">{user?.name?.split(" ")[0] || "Builder"}</span>
                             </h1>
-                            <p className="text-slate-400 text-center mb-10 max-w-sm mx-auto leading-relaxed">
+                            <p className="text-muted-foreground text-center mb-10 max-w-sm mx-auto leading-relaxed">
                                 Your AI team is ready. Let's show you how it works.
                             </p>
 
@@ -241,10 +241,10 @@ export default function OnboardingPage() {
                         >
                             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500" />
 
-                            <h2 className="text-2xl font-semibold text-white mb-2 tracking-tight text-center">
+                            <h2 className="text-2xl font-semibold text-foreground mb-2 tracking-tight text-center">
                                 What's your role?
                             </h2>
-                            <p className="text-slate-400 text-sm text-center mb-8">
+                            <p className="text-muted-foreground text-sm text-center mb-8">
                                 Your AI team will tailor how they communicate with you.
                             </p>
 
@@ -255,8 +255,8 @@ export default function OnboardingPage() {
                                         onClick={() => handleSelectDesignation(opt.label)}
                                         className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all text-sm font-medium ${
                                             designation === opt.label
-                                                ? "bg-indigo-500/20 border-indigo-500/60 text-white"
-                                                : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:border-white/20"
+                                                ? "bg-indigo-500/20 border-indigo-500/60 text-foreground"
+                                                : "bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10 hover:border-white/20"
                                         }`}
                                     >
                                         <span className="text-lg">{opt.emoji}</span>
@@ -266,7 +266,7 @@ export default function OnboardingPage() {
                             </div>
 
                             <div className="flex justify-between items-center pt-6 border-t border-white/10">
-                                <Button onClick={() => setStep(1)} variant="ghost" className="text-slate-400 hover:text-white hover:bg-white/5">
+                                <Button onClick={() => setStep(1)} variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-white/5">
                                     Back
                                 </Button>
                                 <Button
@@ -291,7 +291,7 @@ export default function OnboardingPage() {
                         >
                             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500" />
 
-                            <h2 className="text-2xl font-semibold text-white mb-8 tracking-tight text-center">
+                            <h2 className="text-2xl font-semibold text-foreground mb-8 tracking-tight text-center">
                                 How Hatchin Works
                             </h2>
 
@@ -310,8 +310,8 @@ export default function OnboardingPage() {
                                         </div>
 
                                         <div className="flex-1">
-                                            <h3 className="text-white font-medium mb-1">{s.title}</h3>
-                                            <p className="text-slate-400 text-sm leading-relaxed">
+                                            <h3 className="text-foreground font-medium mb-1">{s.title}</h3>
+                                            <p className="text-muted-foreground text-sm leading-relaxed">
                                                 {s.subtitle}
                                             </p>
                                         </div>
@@ -323,7 +323,7 @@ export default function OnboardingPage() {
                                 <Button
                                     onClick={() => setStep(2)}
                                     variant="ghost"
-                                    className="text-slate-400 hover:text-white hover:bg-white/5"
+                                    className="text-muted-foreground hover:text-foreground hover:bg-white/5"
                                 >
                                     Back
                                 </Button>
