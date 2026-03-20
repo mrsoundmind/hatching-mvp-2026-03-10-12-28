@@ -199,7 +199,7 @@ export function useRightSidebarState(
           whoFor: activeProject.coreDirection?.whoFor || '',
         }
       });
-      dispatch({ type: 'UPDATE_EXECUTION_RULES', payload: activeProject.executionRules || '' });
+      dispatch({ type: 'UPDATE_EXECUTION_RULES', payload: (activeProject.executionRules as any)?.rules || '' });
       dispatch({ type: 'UPDATE_TEAM_CULTURE', payload: activeProject.teamCulture || '' });
     }
   }, [activeProject]);

@@ -45,7 +45,11 @@ export const projects = pgTable("projects", {
     }>;
     sharedMemory?: string;
   }>().default({}),
-  executionRules: text("execution_rules"),
+  executionRules: jsonb("execution_rules").$type<{
+    autonomyEnabled?: boolean;
+    rules?: string;
+    taskGraph?: unknown;
+  }>().default({}),
   teamCulture: text("team_culture"),
 }, (table) => ({
   userIdIdx: index("projects_user_id_idx").on(table.userId),

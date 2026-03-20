@@ -283,6 +283,28 @@ app.use((req, res, next) => {
         },
       });
       console.log('[Hatchin][BackgroundRunner] Autonomy background jobs started');
+
+      // Wire task execution worker (pg-boss .work() handler)
+      const { startTaskWorker } = await import('./autonomy/execution/taskExecutionPipeline.js');
+      await startTaskWorker({
+        storage: storageInstance,
+        broadcastToConversation: (convId: string, payload: unknown) => {
+          const broadcast = getGlobalBroadcast();
+          if (broadcast) broadcast(convId, payload);
+        },
+        generateText: async (prompt: string, systemPrompt: string, maxTokens?: number) => {
+          const result = await generateChatWithRuntimeFallback({
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: prompt },
+            ],
+            maxTokens: maxTokens ?? 120,
+            temperature: 0.7,
+          });
+          return result.content ?? '';
+        },
+      });
+      console.log('[Hatchin][TaskWorker] Autonomous task execution worker registered');
     } catch (err: any) {
       console.error('[Hatchin][BackgroundRunner] Failed to start:', err.message);
     }
@@ -303,6 +325,9 @@ app.use((req, res, next) => {
         try {
           const { backgroundRunner } = await import('./autonomy/background/backgroundRunner.js');
           backgroundRunner.stop();
+          const { stopJobQueue } = await import('./autonomy/execution/jobQueue.js');
+          await stopJobQueue();
+          console.log('[Hatchin] Job queue stopped cleanly.');
         } catch { /* non-critical */ }
       }
 

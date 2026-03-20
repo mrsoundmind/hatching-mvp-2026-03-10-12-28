@@ -13,7 +13,9 @@ export async function persistTaskGraph(
   graph: unknown,
   storage: IStorage,
 ): Promise<void> {
-  await storage.updateProject(projectId, { executionRules: { taskGraph: graph } } as any);
+  const project = await storage.getProject(projectId);
+  const existing = (project?.executionRules as any) ?? {};
+  await storage.updateProject(projectId, { executionRules: { ...existing, taskGraph: graph } } as any);
 }
 
 /**

@@ -1,6 +1,7 @@
 import { evaluateSafetyScore, AUTONOMOUS_SAFETY_THRESHOLDS } from '../../ai/safety.js';
 import { getJobQueue } from './jobQueue.js';
 import { BUDGETS } from '../config/policies.js';
+import { logAutonomyEvent } from '../events/eventLogger.js';
 import type { IStorage } from '../../storage.js';
 
 export interface ExecuteTaskInput {
@@ -56,6 +57,21 @@ export async function executeTask(
   });
 
   await input.storage.updateTask(input.task.id, { status: 'completed' });
+
+  // Log autonomy event so cost cap counter increments (EXEC-03)
+  await logAutonomyEvent({
+    eventType: 'autonomous_task_execution',
+    projectId: input.task.projectId,
+    hatchId: input.agent.id,
+    conversationId: input.conversationId,
+    confidence: 1.0,
+    riskScore: null,
+    latencyMs: null,
+    mode: 'autonomous',
+    provider: null,
+    teamId: null,
+    payload: { taskId: input.task.id, taskTitle: input.task.title, agentName: input.agent.name },
+  });
 
   input.broadcastToConversation(input.conversationId, {
     type: 'task_execution_completed',

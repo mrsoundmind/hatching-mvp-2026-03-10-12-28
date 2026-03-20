@@ -45,7 +45,9 @@ export type AutonomyEventType =
   | 'friction_detected'
   | 'proactive_outreach_queued'
   | 'proactive_outreach_sent'
-  | 'world_update_detected';
+  | 'world_update_detected'
+  // Task execution events
+  | 'autonomous_task_execution';
 
 export interface AutonomyEvent {
   eventType: AutonomyEventType;

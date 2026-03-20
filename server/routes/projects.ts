@@ -23,7 +23,11 @@ const updateProjectSchema = z.object({
     })).optional(),
     sharedMemory: z.string().optional(),
   }).nullable().optional(),
-  executionRules: z.string().nullable().optional(),
+  executionRules: z.object({
+    autonomyEnabled: z.boolean().optional(),
+    rules: z.string().optional(),
+    taskGraph: z.unknown().optional(),
+  }).nullable().optional(),
   starterPack: z.string().max(100).nullable().optional(),
 }).strict();
 

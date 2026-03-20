@@ -209,7 +209,7 @@ export class MemStorage implements IStorage {
       progress: 45,
       timeSpent: "32h 15m",
       coreDirection: {},
-      executionRules: null,
+      executionRules: {},
       teamCulture: null,
       brain: {},
     };
@@ -441,7 +441,7 @@ export class MemStorage implements IStorage {
       progress: insertProject.progress || 0,
       timeSpent: insertProject.timeSpent || "0h 0m",
       coreDirection: insertProject.coreDirection || {} as any,
-      executionRules: insertProject.executionRules || null,
+      executionRules: (insertProject.executionRules as any) || {},
       teamCulture: insertProject.teamCulture || null,
       brain: insertProject.brain || {} as any,
     };

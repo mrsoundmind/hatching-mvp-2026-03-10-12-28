@@ -318,6 +318,15 @@ export function processHandoffRequest(
   handoffRequest: HandoffRequest,
   availableAgents: Agent[]
 ): { accepted: boolean; reason: string } {
+  // HAND-03: Check for handoff cycles before proceeding
+  const cycleCheck = handoffTracker.detectCycle(handoffRequest.fromAgent.id, handoffRequest.toAgent.id);
+  if (cycleCheck.hasCycle) {
+    return {
+      accepted: false,
+      reason: `Handoff cycle detected: ${cycleCheck.chain.join(' -> ')}. Breaking cycle.`
+    };
+  }
+
   // Check if target agent is available
   const targetAgent = availableAgents.find(agent => agent.id === handoffRequest.toAgent.id);
   
@@ -395,6 +404,36 @@ export class HandoffTracker {
     return [...this.handoffHistory];
   }
   
+  // HAND-03: Detect cycles in handoff chain (A→B→C→A)
+  detectCycle(fromAgentId: string, toAgentId: string, windowMs: number = 300000): {
+    hasCycle: boolean;
+    chain: string[];
+  } {
+    const cutoff = Date.now() - windowMs;
+    const recentHandoffs = this.handoffHistory.filter(h => h.timestamp.getTime() > cutoff);
+
+    // BFS: can we reach fromAgentId starting from toAgentId via recent handoff edges?
+    const queue = [toAgentId];
+    const visited = new Set<string>([toAgentId]);
+    const chain: string[] = [fromAgentId, toAgentId];
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      for (const h of recentHandoffs) {
+        if (h.fromAgent.id === current && !visited.has(h.toAgent.id)) {
+          visited.add(h.toAgent.id);
+          chain.push(h.toAgent.id);
+          if (h.toAgent.id === fromAgentId) {
+            return { hasCycle: true, chain };
+          }
+          queue.push(h.toAgent.id);
+        }
+      }
+    }
+
+    return { hasCycle: false, chain };
+  }
+
   getHandoffStats(): {
     totalHandoffs: number;
     successfulHandoffs: number;

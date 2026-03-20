@@ -235,7 +235,7 @@ async function runAutonomousExecutionCycle(): Promise<void> {
         const trigger = resolveAutonomyTrigger({
           lastUserActivityAt,
           pendingTasks: tasks.map((t: any) => ({ id: t.id, status: t.status })),
-          autonomyEnabled: (project.executionRules as any)?.autonomyEnabled ?? false,
+          autonomyEnabled: project.executionRules?.autonomyEnabled ?? false,
         });
         if (!trigger.shouldExecute) continue;
         const toQueue = trigger.tasksToExecute.slice(0, BUDGETS.maxConcurrentAutonomousTasks);

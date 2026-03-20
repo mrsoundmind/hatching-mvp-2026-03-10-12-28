@@ -2496,68 +2496,95 @@ export function registerChatRoutes(
             devLog('Behavior personality persist failed (non-critical):', behaviorPersistErr);
           }
 
-          // Auto task extraction from conversation
+          // Smart task detection - intent classifier pipeline (zero LLM cost)
           try {
-            const { extractTasksFromMessage, extractTasksFallback } = await import('../ai/taskExtractor.js');
-
-            // Get available agents for the project
             const projectAgents = await storage.getAgentsByProject(projectId);
-            const availableAgentRoles = projectAgents.map(agent => agent.role);
+            const agentList = projectAgents.map(a => ({ id: a.id, name: a.name, role: a.role }));
+            const intent = classifyTaskIntent(userMessage.content, {
+              availableAgents: agentList,
+              conversationDepth: recentMessages.length,
+            });
 
-            const projectContext = {
-              projectName: chatContext.projectName,
-              teamName: chatContext.teamName,
-              agentRole: respondingAgent.role,
-              availableAgents: availableAgentRoles,
-              conversationId
-            };
-
-            // Extract tasks from the conversation
-            let taskResult = await extractTasksFromMessage(
-              userMessage.content,
-              accumulatedContent,
-              projectContext
-            );
-
-            // Fallback to keyword matching if AI extraction fails
-            if (!taskResult.hasTasks && taskResult.confidence < 0.5) {
-              taskResult = extractTasksFallback(
-                userMessage.content,
-                accumulatedContent,
-                availableAgentRoles
-              );
-            }
-
-            // If tasks were found, send them to the client for approval
-            if (taskResult.hasTasks && taskResult.tasks.length > 0) {
-              devLog('🎯 Found', taskResult.tasks.length, 'potential tasks from conversation');
-              // Normalize suggestedAssignee to include agent id/name/role
-              const agentsForProject = await storage.getAgentsByProject(projectId);
-              const normalizedTasks = taskResult.tasks.map((t: any) => {
-                let suggested = t.suggestedAssignee;
-                if (typeof suggested === 'string') {
-                  const matchAgent = agentsForProject.find(a => a.role === suggested);
-                  if (matchAgent) {
-                    return {
-                      ...t,
-                      suggestedAssignee: { id: matchAgent.id, name: matchAgent.name, role: matchAgent.role }
-                    };
-                  }
+            if (intent.type === 'EXPLICIT_TASK_REQUEST') {
+              const userId = (ws as any).__userId || 'anonymous';
+              const rateCheck = checkRateLimit(userId);
+              if (!rateCheck.allowed) {
+                devLog('Rate limit hit for task creation:', rateCheck.message);
+              } else {
+                const existingTasks = await storage.getTasksByProject(projectId);
+                const dupCheck = checkForDuplicate(intent.taskDescription, existingTasks as any);
+                if (dupCheck.isDuplicate) {
+                  devLog('Duplicate task detected:', intent.taskDescription);
+                  ws.send(JSON.stringify({
+                    type: 'task_suggestions',
+                    tasks: [{ title: intent.taskDescription, isDuplicate: true, existingTask: dupCheck.similarTask }],
+                    confidence: 0.9,
+                    conversationId,
+                    projectId,
+                  }));
+                } else {
+                  const dueDate = extractDueDate(userMessage.content);
+                  const priority = extractPriority(userMessage.content) || 'medium';
+                  const newTask = await storage.createTask({
+                    projectId,
+                    title: intent.taskDescription,
+                    status: 'todo',
+                    priority,
+                    dueDate: dueDate ? dueDate.toISOString() : null,
+                    metadata: { sourceConversationId: conversationId, createdFromChat: true },
+                  } as any);
+                  devLog('Task created directly:', newTask.title);
+                  ws.send(JSON.stringify({ type: 'task_created_direct', task: newTask, conversationId, projectId }));
                 }
-                return t;
-              });
-
-              ws.send(JSON.stringify({
-                type: 'task_suggestions',
-                tasks: normalizedTasks,
-                confidence: taskResult.confidence,
-                conversationId,
-                projectId
-              }));
+              }
+            } else if (intent.type === 'USER_DELEGATION') {
+              const userId = (ws as any).__userId || 'anonymous';
+              const rateCheck = checkRateLimit(userId);
+              if (rateCheck.allowed) {
+                const dueDate = extractDueDate(userMessage.content);
+                const priority = extractPriority(userMessage.content) || 'medium';
+                const newTask = await storage.createTask({
+                  projectId,
+                  title: intent.taskDescription,
+                  status: 'todo',
+                  priority,
+                  assignee: intent.targetAgentName,
+                  dueDate: dueDate ? dueDate.toISOString() : null,
+                  metadata: { sourceConversationId: conversationId, createdFromChat: true, delegatedTo: intent.targetAgentId },
+                } as any);
+                devLog('Delegated task created:', newTask.title, 'to', intent.targetAgentName);
+                ws.send(JSON.stringify({ type: 'task_created_direct', task: newTask, conversationId, projectId }));
+              }
+            } else if (intent.type === 'TASK_LIFECYCLE_COMMAND') {
+              const projectTasks = await storage.getTasksByProject(projectId);
+              const lifecycleCtx: LifecycleContext = {
+                projectTasks: projectTasks.map((t: any) => ({ id: t.id, title: t.title, status: t.status, priority: t.priority, assignee: t.assignee, dueDate: t.dueDate })),
+                agents: agentList,
+                updateTask: (id: string, updates: Record<string, any>) => storage.updateTask(id, updates),
+                deleteTask: async (id: string) => { await storage.updateTask(id, { status: 'completed' }); },
+              };
+              const result = await executeLifecycleCommand(intent, lifecycleCtx);
+              ws.send(JSON.stringify({ type: 'task_lifecycle_result', result, conversationId, projectId }));
             }
-          } catch (error) {
-            console.error('Error extracting tasks from conversation:', error);
-            // Don't fail the entire response if task extraction fails
+
+            // Completion detection on agent response
+            const completionSignal = detectCompletionSignal(accumulatedContent);
+            if (completionSignal.detected && completionSignal.taskHint) {
+              const projectTasks = await storage.getTasksByProject(projectId);
+              const { fuzzyMatchTask } = await import('../ai/tasks/taskLifecycle.js');
+              const matches = fuzzyMatchTask(completionSignal.taskHint, projectTasks as any);
+              if (matches.length === 1) {
+                ws.send(JSON.stringify({
+                  type: 'task_completion_suggested',
+                  task: matches[0],
+                  phrase: completionSignal.phrase,
+                  conversationId,
+                  projectId,
+                }));
+              }
+            }
+          } catch (taskError) {
+            devLog('Smart task detection error (non-critical):', taskError);
           }
 
           if ((analysis.complexity === 'high' || selectedAgents.length > 1) && userMessage.content) {

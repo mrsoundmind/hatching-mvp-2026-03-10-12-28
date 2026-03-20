@@ -171,6 +171,42 @@ const requiredServerSchemas = z.union([
     value: z.string(),
     updatedBy: z.string().optional(),
   }),
+  // Autonomy execution events
+  z.object({
+    type: z.literal('task_requires_approval'),
+    taskId: z.string(),
+    agentName: z.string(),
+    riskReasons: z.array(z.string()).optional(),
+  }),
+  z.object({
+    type: z.literal('task_execution_completed'),
+    taskId: z.string(),
+    agentId: z.string(),
+    agentName: z.string(),
+  }),
+  z.object({
+    type: z.literal('background_execution_started'),
+  }).passthrough(),
+  z.object({
+    type: z.literal('background_execution_completed'),
+  }).passthrough(),
+  // Smart task detection events
+  z.object({
+    type: z.literal('task_created_direct'),
+  }).passthrough(),
+  z.object({
+    type: z.literal('task_lifecycle_result'),
+  }).passthrough(),
+  z.object({
+    type: z.literal('task_completion_suggested'),
+  }).passthrough(),
+  z.object({
+    type: z.literal('return_briefing'),
+    projectId: z.string(),
+    summary: z.string(),
+    completedTasks: z.number(),
+    newMessages: z.number(),
+  }),
 ]);
 
 export const wsServerMessageSchema = requiredServerSchemas;
