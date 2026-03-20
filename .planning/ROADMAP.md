@@ -65,7 +65,7 @@ Plans:
   4. Each Hatch in the chain has access to the previous Hatch's output when composing its response
   5. User can approve or reject a high-risk action proposal with a single button click, no typing required
   6. User can pause or cancel all ongoing autonomous execution at any point
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 Plans:
 - [ ] 07-01-PLAN.md — HandoffOrchestrator with routing via evaluateConductorDecision, cycle detection, max-hops guard
@@ -113,7 +113,7 @@ Plans:
 | 4. Data Reliability and Resilience | v1.0 | 3/3 | Complete | 2026-03-19 |
 | 5. Route Architecture Cleanup | v1.0 | 2/2 | Complete | 2026-03-19 |
 | 6. Background Execution Foundation | 4/4 | Complete   | 2026-03-20 | 2026-03-20 |
-| 7. Agent Handoffs and Approval UI | v1.1 | 0/4 | Planning complete | - |
+| 7. Agent Handoffs and Approval UI | 1/4 | In Progress|  | - |
 | 8. Chat Summary and Tab Notifications | v1.1 | 0/2 | Not started | - |
 | 9. Progressive Trust and Inactivity Trigger | v1.1 | 0/2 | Not started | - |
 
