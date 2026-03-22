@@ -81,11 +81,11 @@ Plans:
   1. When a user returns after autonomous work completed, Maya delivers exactly one briefing message leading with outcomes ("Authentication module scoped — two items need your review"), not process details
   2. The briefing does not repeat if the user sends another message shortly after; it appears once per absence session
   3. The browser tab title shows a badge or flashing indicator when autonomous work completes while the tab is in the background
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 08-01: SummaryBriefingBuilder with idempotency guard and join_conversation trigger hook
-- [ ] 08-02: Browser tab notification (document.title badge + Page Visibility API detection)
+- [ ] 08-01-PLAN.md — Maya return briefing with LLM voice, DB-backed idempotency, 15-min absence threshold
+- [ ] 08-02-PLAN.md — Flashing tab title (Slack pattern) and OS Notification API on completion
 
 ### Phase 9: Progressive Trust and Inactivity Trigger
 **Goal**: Agents earn higher autonomy through track record and the system can start working when users go idle
