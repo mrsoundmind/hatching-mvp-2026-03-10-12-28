@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Autonomous Execution Loop
-status: completed
-last_updated: "2026-03-22T16:33:55.570Z"
-last_activity: 2026-03-22 — Completed 08-02 (flashing tab title + OS notification, UX-05)
+status: planning
+last_updated: "2026-03-23T02:32:34.615Z"
+last_activity: 2026-03-23 — Completed 09-01 (trustMeta schema type + 10 behavioral trust scoring tests)
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 12
+  completed_plans: 11
   percent: 90
 ---
 
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-03-19)
 
 ## Current Position
 
-Phase: 8 of 9 (Chat Summary and Tab Notifications)
-Plan: 2 of 2 complete (08-01, 08-02 done) — Phase 8 complete
-Status: Phase 8 complete — ready for Phase 9 (Progressive Trust and Inactivity Trigger)
-Last activity: 2026-03-22 — Completed 08-02 (flashing tab title + OS notification, UX-05)
+Phase: 9 of 9 (Progressive Trust and Inactivity Trigger)
+Plan: 1 of 2 complete (09-01 done) — Phase 9 in progress
+Status: 09-01 complete — trust schema type + behavioral tests done; 09-02 next
+Last activity: 2026-03-23 — Completed 09-01 (trustMeta schema type + 10 behavioral trust scoring tests)
 
-Progress: [█████████░] 90% (10/10 plans done across phases 1-8)
+Progress: [█████████░] 92% (11/12 plans done)
 
 ---
 
@@ -47,7 +47,7 @@ Progress: [█████████░] 90% (10/10 plans done across phases 1
 | 6 | Background Execution Foundation | Complete | All 4 plans done: trigger resolver, safety extension, execution pipeline, cron wiring + CenterPanel indicator |
 | 7 | Agent Handoffs and Approval UI | Complete | Handoff orchestrator, announcement, approval cards, pause/resume |
 | 8 | Chat Summary and Tab Notifications | Complete | Return briefing as new_message, flashing tab title + OS notification |
-| 9 | Progressive Trust and Inactivity Trigger | Not started | — |
+| 9 | Progressive Trust and Inactivity Trigger | In Progress | 09-01 done: trustMeta schema type + 10 behavioral tests; 09-02 pending |
 
 ---
 
@@ -83,6 +83,7 @@ Progress: [█████████░] 90% (10/10 plans done across phases 1
 - [Phase 08]: DB-backed lastSeenAt/lastBriefedAt on projects table tracks absence across server restarts
 - [Phase 08]: 15-minute absence threshold for return briefing (down from hardcoded 2-hour window)
 - [Phase 08]: Return briefing stored as real agent message and broadcast as new_message — not a separate return_briefing WS event
+- [Phase 09-progressive-trust-and-inactivity-trigger]: trustMeta shape inlined in schema.ts rather than importing TrustMeta from server/ — shared/ must not import from server/
 
 ## Blockers / Concerns
 
