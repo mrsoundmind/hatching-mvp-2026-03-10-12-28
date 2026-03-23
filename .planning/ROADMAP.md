@@ -95,11 +95,11 @@ Plans:
   1. An agent that has completed tasks successfully is offered higher-risk work without manual approval over time
   2. After 4+ hours of user inactivity, queued autonomous work begins automatically (when feature flag enabled)
   3. The inactivity trigger can be disabled per-project without affecting any other autonomy behavior
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 09-01: Trust score accumulation on task completion and autonomy threshold adjustment
-- [ ] 09-02: Inactivity detection cron job gated by INACTIVITY_AUTONOMY_ENABLED flag
+- [ ] 09-01-PLAN.md — Trust schema type fix + behavioral verification tests for SAFE-04
+- [ ] 09-02-PLAN.md — inactivityAutonomyEnabled flag + backgroundRunner gating + inactivity tests for EXEC-04
 
 ## Progress
 
@@ -115,7 +115,7 @@ Plans:
 | 6. Background Execution Foundation | 4/4 | Complete   | 2026-03-20 | 2026-03-20 |
 | 7. Agent Handoffs and Approval UI | 4/4 | Complete   | 2026-03-20 | - |
 | 8. Chat Summary and Tab Notifications | 2/2 | Complete   | 2026-03-22 | - |
-| 9. Progressive Trust and Inactivity Trigger | v1.1 | 0/2 | Not started | - |
+| 9. Progressive Trust and Inactivity Trigger | v1.1 | 0/2 | Planning complete | - |
 
 ---
 
