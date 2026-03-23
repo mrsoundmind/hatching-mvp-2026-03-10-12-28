@@ -222,11 +222,9 @@ async function runAutonomousExecutionCycle(): Promise<void> {
           devLog(`[BackgroundRunner] Project ${project.id} hit daily cap (${todayCount}/${BUDGETS.maxBackgroundLlmCallsPerProjectPerDay})`);
           continue;
         }
-        let lastUserActivityAt: Date | null = null;
-        try {
-          const recentMessages = await _storage.getMessagesByConversation(`project:${project.id}`, { limit: 1 });
-          if (recentMessages[0]?.createdAt) lastUserActivityAt = new Date(recentMessages[0].createdAt);
-        } catch { /* non-critical */ }
+        const lastUserActivityAt: Date | null = project.lastSeenAt
+          ? new Date(project.lastSeenAt)
+          : null;
         if (lastUserActivityAt) {
           const daysInactive = (Date.now() - lastUserActivityAt.getTime()) / 86400000;
           if (daysInactive > 7) continue;
@@ -238,16 +236,28 @@ async function runAutonomousExecutionCycle(): Promise<void> {
           autonomyEnabled: project.executionRules?.autonomyEnabled ?? false,
         });
         if (!trigger.shouldExecute) continue;
+
+        // EXEC-04: Gate inactivity triggers on per-project flag
+        if (
+          trigger.reason === 'inactivity' &&
+          !project.executionRules?.inactivityAutonomyEnabled
+        ) {
+          devLog(`[BackgroundRunner] Skipping inactivity trigger for project ${project.id} — inactivityAutonomyEnabled is false`);
+          continue;
+        }
+
         const toQueue = trigger.tasksToExecute.slice(0, BUDGETS.maxConcurrentAutonomousTasks);
+        // Fetch agents once per project, not per task (N+1 fix)
+        const agents = await _storage.getAgentsByProject(project.id);
         for (const taskId of toQueue) {
           const task = tasks.find((t: any) => t.id === taskId);
           if (!task) continue;
-          const agents = await _storage.getAgentsByProject(project.id);
           const agent = task.assignee
             ? agents.find((a: any) => a.role === task.assignee || a.name === task.assignee)
             : agents[0];
           if (!agent) continue;
           await queueTaskExecution({ taskId, projectId: project.id, agentId: agent.id });
+          devLog(`[BackgroundRunner] Queued task ${taskId} for project ${project.id} (trigger: ${trigger.reason})`);
         }
       } catch (err) {
         devLog(`[BackgroundRunner] Error processing project ${project.id} for execution: ${(err as Error).message}`);

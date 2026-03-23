@@ -48,6 +48,7 @@ export const projects = pgTable("projects", {
   executionRules: jsonb("execution_rules").$type<{
     autonomyEnabled?: boolean;
     autonomyPaused?: boolean;
+    inactivityAutonomyEnabled?: boolean;
     rules?: string;
     taskGraph?: unknown;
   }>().default({}),
