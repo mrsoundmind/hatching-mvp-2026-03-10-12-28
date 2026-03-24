@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
-milestone: none
-milestone_name: none
-status: between_milestones
-last_updated: "2026-03-23T04:00:00Z"
-last_activity: 2026-03-23 — Completed v1.1 milestone archival
+milestone: v1.3
+milestone_name: Autonomy Visibility & Right Sidebar Revamp
+status: defining_requirements
+last_updated: "2026-03-24T00:00:00Z"
+last_activity: 2026-03-24 — Milestone v1.3 started
 progress:
   total_phases: 0
   completed_phases: 0
@@ -17,18 +17,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-23)
+See: .planning/PROJECT.md (updated 2026-03-24)
 
 **Core value:** No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
-**Current focus:** Between milestones — v1.1 shipped, next milestone not yet defined.
+**Current focus:** v1.3 — Autonomy Visibility & Right Sidebar Revamp
 
 ---
 
 ## Current Position
 
-Status: Between milestones
-Last milestone: v1.1 Autonomous Execution Loop (shipped 2026-03-23)
-Next action: `/gsd:new-milestone` to start next cycle
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-24 — Milestone v1.3 started
 
 ---
 
@@ -38,5 +39,6 @@ Next action: `/gsd:new-milestone` to start next cycle
 |-----------|--------|-------|---------|
 | v1.0 Text-Perfect, Human-First | 5 | 25 | 2026-03-19 |
 | v1.1 Autonomous Execution Loop | 4 | 12 | 2026-03-23 |
+| v1.2 Billing + LLM Intelligence | 1 | 1 | 2026-03-23 |
 
 ---

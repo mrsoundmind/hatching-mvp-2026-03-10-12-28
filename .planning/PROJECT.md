@@ -10,9 +10,26 @@ Hatchin solves the prompting problem. Most people can't use AI effectively becau
 
 No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
 
+## Current Milestone: v1.3 Autonomy Visibility & Right Sidebar Revamp
+
+**Goal:** Make the autonomy backend visible and controllable from the frontend — tabbed sidebar with activity feed, handoff visualization, approvals hub, brain redesign with file upload, autonomy settings.
+
+**Target features:**
+- Right sidebar revamp (Activity / Brain & Docs / Approvals tabs)
+- Live autonomy progress feed with stats card and filters
+- Handoff visualization (chat cards + sidebar timeline + user-initiated)
+- Agent "working" avatar state for background execution
+- Pending approvals hub + task pipeline view
+- Project brain redesign with PDF/doc upload
+- Autonomy settings UI (toggles, cost cap, autonomy level)
+- Work output viewer + deliberation visibility
+
+**Details:** See `.planning/v1.3-autonomy-visibility-sidebar-revamp.md`
+
 ## Current State
 
-**Shipped:** v1.1 — Autonomous Execution Loop (2026-03-23)
+**Shipped:** v1.2 — Billing + LLM Intelligence (2026-03-23)
+**Previous:** v1.1 — Autonomous Execution Loop (2026-03-23)
 **Previous:** v1.0 — Text-Perfect, Human-First (2026-03-19)
 **Codebase:** ~50,000+ LOC TypeScript
 **Branch:** `reconcile-codex` (active development)
@@ -56,7 +73,7 @@ Future: multiple real humans working alongside their Hatch team in the same proj
 
 ## Next Milestone
 
-Not yet defined. Run `/gsd:new-milestone` to start the next cycle.
+v1.3 in progress. See `.planning/v1.3-autonomy-visibility-sidebar-revamp.md` for full scope.
 
 ## Use Cases (What "Initiating Dreams" Looks Like)
 
@@ -173,4 +190,4 @@ Hatchin: user just talks. The Hatches:
 | Trust scoring via successRate * maturityFactor (bounded 0–1) | Simple, predictable, needs 10+ completions to reach full trust | ✓ Good |
 
 ---
-*Last updated: 2026-03-23 after v1.1 milestone completion*
+*Last updated: 2026-03-24 after v1.3 milestone initialization*
