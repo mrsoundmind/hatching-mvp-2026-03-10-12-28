@@ -71,19 +71,39 @@ The project brain is singular. No re-adding context. No onboarding every new pro
 ### Collaboration
 Future: multiple real humans working alongside their Hatch team in the same project. Real teammates and AI teammates in the same conversation — the Hatches serve the whole team, not just one person.
 
-## Next Milestone
+## Next Milestone: v2.0 Hatches That Deliver
 
-v1.3 in progress. See `.planning/v1.3-autonomy-visibility-sidebar-revamp.md` for full scope.
+**Goal:** Transform Hatchin from "AI chatroom" to "AI team that ships coordinated work" — linked deliverable packages, visible team coordination, async production, professional export.
+
+**The problem v2.0 solves:** Individual deliverables are table stakes (ChatGPT can write a PRD). The differentiator is **cross-agent coordination** — PM writes PRD → Engineer writes tech spec referencing it → Designer creates brief based on both → Marketing drafts GTM from the PRD. Five linked documents from a coordinated team. Can't do that in any single-chat AI.
+
+**Target features:**
+- Deliverable system — artifact-style panel (Claude desktop pattern), iteratable through conversation
+- Cross-agent deliverable chains — linked documents where downstream agents reference upstream output
+- Project packages — grouped deliverables by goal ("Launch Package", "Content Sprint", "Research Package")
+- Both trigger paths — organic detection from chat + explicit user request
+- Async deliverable production — team produces documents in background, notifies on completion
+- Professional export — branded PDF with TOC, attribution, clean typography
+- Zero-friction onboarding — first deliverable generating within 3 minutes of signup
+- Visible team coordination — attribution, handoff notes in deliverables, cross-agent discussion
+- Landing page demonstration — show actual output, not feature descriptions
+
+**Use-case clusters:**
+1. Product Launch — PM → PRD, Engineer → tech spec, Designer → design brief, Marketing → GTM plan
+2. Marketing Content — Copywriter → blog posts, Social → calendar, SEO → keyword strategy, Email → sequences
+3. Planning & Research — PM → project plan, Analyst → competitive analysis, Ops → SOPs
+
+**Details:** See `.planning/v2.0-hatches-that-deliver.md` (to be created)
 
 ## Use Cases (What "Initiating Dreams" Looks Like)
 
-- A non-technical founder talks to their team about a SaaS idea → Hatches shape the product, break it into tasks, assign ownership, and start executing
-- A designer uses the Designer Hatch to get better at their craft — critique, inspiration, iteration feedback
-- A solo developer talks through architecture decisions with their Engineer Hatch — no rubber duck, a real specialist
-- A marketer drafts a campaign by thinking out loud with the Marketing Hatch — the Hatch asks the right questions, fills in the gaps
-- Anyone wakes up with an idea and has a team ready to run with it by end of day
+- A non-technical founder describes a SaaS idea → PM drafts a PRD, Engineer writes a tech spec referencing it, Marketing produces a GTM plan — all linked, all overnight, all exportable as a professional package
+- A marketer says "I need a content push for launch" → Copywriter drafts blog posts, Social Media generates a content calendar, Email creates a drip sequence — coordinated, on-brand, ready to publish
+- A solo developer talks through architecture decisions with their Engineer Hatch → Engineer produces a technical spec document, flags risks, hands off to QA for a test plan
+- A designer uses the Designer Hatch to get better at their craft — critique, inspiration, iteration feedback — plus a design brief document they can share with stakeholders
+- Anyone wakes up with an idea and has a team ready to run with it — and wakes up the next morning to "Your team produced 4 documents overnight. Review when ready."
 
-The common thread: **you never start from scratch, you never feel alone, you never have to manage AI like a tool.**
+The common thread: **you never start from scratch, you never feel alone, and your team produces real work — not just conversation.**
 
 ## Requirements
 
@@ -172,6 +192,10 @@ Hatchin: user just talks. The Hatches:
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
+| Use-case-driven development (not feature-driven) | Organizes work around user goals, ensures every feature serves a real workflow | Pending — v2.0 |
+| Deliverable chains as core differentiator | Single deliverables = ChatGPT. Coordinated team output = unique value. | Pending — v2.0 |
+| Artifact panel (Claude desktop pattern) | Proven UX, users already understand it, iterable through conversation | Pending — v2.0 |
+| Text-first deliverables, visual via MCPs later | LLMs produce excellent text. Be realistic about capabilities. | Pending — v2.0 |
 |----------|-----------|---------|
 | Text-first, then multimodal | Perfect the conversation before adding complexity | ✓ Good — v1.0 shipped with strong conversation quality |
 | LangGraph for multi-agent routing | Extensible state machine, supports peer review, deliberation | ✓ Good |
@@ -190,4 +214,4 @@ Hatchin: user just talks. The Hatches:
 | Trust scoring via successRate * maturityFactor (bounded 0–1) | Simple, predictable, needs 10+ completions to reach full trust | ✓ Good |
 
 ---
-*Last updated: 2026-03-24 after v1.3 milestone initialization*
+*Last updated: 2026-03-25 after v2.0 milestone definition*

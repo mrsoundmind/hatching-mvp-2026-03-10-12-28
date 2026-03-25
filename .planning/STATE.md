@@ -1,12 +1,12 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: Autonomy Visibility & Right Sidebar Revamp
-status: ready_to_plan
-last_updated: "2026-03-24T00:00:00Z"
-last_activity: 2026-03-24 — Roadmap created, 5 phases defined, 23/23 requirements mapped
+milestone: v2.0
+milestone_name: Hatches That Deliver
+status: defining_requirements
+last_updated: "2026-03-25T00:00:00Z"
+last_activity: 2026-03-25 — v2.0 milestone defined, PROJECT.md updated, entering requirements phase
 progress:
-  total_phases: 5
+  total_phases: 0
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,19 +17,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-24)
+See: .planning/PROJECT.md (updated 2026-03-25)
 
 **Core value:** No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
-**Current focus:** v1.3 — Phase 11: Sidebar Shell + Activity Feed
+**Current focus:** v2.0 — Hatches That Deliver (defining requirements)
 
 ---
 
 ## Current Position
 
-Phase: 11 of 15 (Sidebar Shell + Activity Feed)
-Plan: — (not yet planned)
-Status: Ready to plan
-Last activity: 2026-03-24 — Roadmap created, ready for /gsd:plan-phase 11
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements for v2.0
+Last activity: 2026-03-25 — v2.0 milestone defined
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -38,7 +38,7 @@ Progress: [░░░░░░░░░░] 0%
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0 (v1.3)
+- Total plans completed: 0 (v2.0)
 - Average duration: —
 - Total execution time: —
 
@@ -56,13 +56,20 @@ Progress: [░░░░░░░░░░] 0%
 
 ### Decisions
 
-Key architectural decisions for v1.3 (from research):
-- **Phase 11 is gating**: Tab shell must exist before any other phase can mount components
-- **CSS tab hiding not unmounting**: `display:none` + `aria-hidden` preserves scroll and draft state — never conditionally unmount tabs
-- **Typed CustomEvent registry**: Create `client/src/lib/autonomyEvents.ts` before any child sidebar component — prevents silent listener gaps during the 850-line RightSidebar decomposition
-- **Feed aggregation at API layer**: `GET /api/autonomy/events` returns outcome-level summaries (1-3 items per handoff chain), not raw micro-events (15-30)
-- **TOAST risk on Phase 14**: Measure `SELECT id, pg_column_size(brain) FROM projects` before planning Phase 14 to decide between metadata-only JSONB or a new `project_documents` migration
-- **multer v2 required**: v1.x has active CVEs (CVE-2025-47935, CVE-2025-47944); pin to `^2.0.2`
+Key decisions for v2.0:
+- **Use-case-driven development**: Organize around user goals (Product Launch, Marketing Content, Planning & Research), not features
+- **Deliverable chains as core differentiator**: Single deliverables = ChatGPT. Coordinated team output across agents = unique value
+- **Artifact panel (Claude desktop pattern)**: Proven UX, iterable through conversation
+- **Text-first deliverables**: Focus on what LLMs produce well (PRDs, specs, plans, copy). Visual outputs via MCP integrations later
+- **Both trigger paths**: Explicit request (reliable, ship first) + organic detection from conversation (magic, add later)
+- **Project packages as unit of value**: "Launch Package" not 12 loose docs
+- **Zero-friction onboarding**: First deliverable generating within 3 minutes of signup
+- **Professional PDF export**: Branded, with TOC and attribution — word-of-mouth moment
+
+### v1.3 Context (preserved)
+- v1.3 (Sidebar Shell + Activity Feed) is defined but 0% executed — ships before v2.0
+- v1.3 provides the architectural foundation (tabbed sidebar, activity feed) that v2.0 fills with deliverable content
+- v1.3 decisions still relevant: CSS tab hiding, typed CustomEvent registry, feed aggregation at API layer
 
 ### Pending Todos
 
@@ -70,14 +77,16 @@ None yet.
 
 ### Blockers/Concerns
 
-- **Phase 14 schema decision pending**: TOAST mitigation approach (JSONB size limits vs. `project_documents` migration) requires measuring production `brain` column sizes before Phase 14 planning begins
-- **Phase 13 approval schema gap**: `autonomy_events` lacks explicit `approval_status` + expiry TTL columns — validate against `server/routes/autonomy.ts` shape before Phase 13 planning
+- **v1.3 must ship first**: v2.0 artifact panel depends on v1.3 sidebar shell architecture
+- **Deliverable schema design**: Need to research artifact/deliverable data models before requirements finalization
+- **PDF export library**: Need to evaluate options (puppeteer, react-pdf, etc.) during research phase
+- **Chain orchestration complexity**: Extending handoff system for deliverable production needs careful design
 
 ---
 
 ## Session Continuity
 
-Last session: 2026-03-24
-Stopped at: Roadmap creation complete — 5 phases, 23/23 requirements mapped
+Last session: 2026-03-25
+Stopped at: v2.0 milestone defined, entering requirements phase
 Resume file: None
-Next action: `/gsd:plan-phase 11`
+Next action: Research decision → Define requirements → Create roadmap
