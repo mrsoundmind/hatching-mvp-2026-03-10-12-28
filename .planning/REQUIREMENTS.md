@@ -80,10 +80,10 @@ Requirements for the autonomy visibility milestone. Each maps to roadmap phases.
 
 ### Handoff Visualization
 
-- [ ] **HAND-01**: Handoff messages in chat render as visual cards with from-agent avatar, arrow, to-agent avatar, and task title
-- [ ] **HAND-02**: Activity tab shows a vertical handoff chain timeline with animated connectors between agents
-- [ ] **HAND-03**: User can manually hand off a task to another agent via "Hand off to..." dropdown button in chat input
-- [ ] **HAND-04**: User sees a deliberation indicator card when multiple agents are coordinating, expandable to show details
+- [x] **HAND-01**: Handoff messages in chat render as visual cards with from-agent avatar, arrow, to-agent avatar, and task title
+- [x] **HAND-02**: Activity tab shows a vertical handoff chain timeline with animated connectors between agents
+- [x] **HAND-03**: User can manually hand off a task to another agent via "Hand off to..." dropdown button in chat input
+- [x] **HAND-04**: User sees a deliberation indicator card when multiple agents are coordinating, expandable to show details
 
 ### Agent Status
 
@@ -180,10 +180,10 @@ Deferred to v2.1+. Tracked but not in current roadmap.
 | FEED-04 | Phase 11 | Complete |
 | FEED-05 | Phase 11 | Complete |
 | AGNT-01 | Phase 11 | Complete |
-| HAND-01 | Phase 12 | Pending |
-| HAND-02 | Phase 12 | Pending |
-| HAND-03 | Phase 12 | Pending |
-| HAND-04 | Phase 12 | Pending |
+| HAND-01 | Phase 12 | Complete |
+| HAND-02 | Phase 12 | Complete |
+| HAND-03 | Phase 12 | Complete |
+| HAND-04 | Phase 12 | Complete |
 | APPR-01 | Phase 13 | Pending |
 | APPR-02 | Phase 13 | Pending |
 | APPR-03 | Phase 13 | Pending |

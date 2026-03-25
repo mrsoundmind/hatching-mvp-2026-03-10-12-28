@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Autonomy Visibility & Right Sidebar Revamp
 status: completed
-stopped_at: Completed 12-01-PLAN.md
-last_updated: "2026-03-25T10:11:07.306Z"
+stopped_at: Completed 12-02-PLAN.md
+last_updated: "2026-03-25T10:17:54.030Z"
 last_activity: 2026-03-25 — Completed 11-02 (3-tab sidebar shell with CSS-hidden panels)
 progress:
   total_phases: 11
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
   percent: 67
 ---
 
@@ -74,6 +74,7 @@ Progress: [██████░░░░] 67%
 ---
 | Phase 11 P01 | 3min | 2 tasks | 6 files |
 | Phase 11 P03 | 4min | 3 tasks | 8 files |
+| Phase 12 P02 | 257 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,7 @@ Key decisions for v2.0:
 - [Phase 11]: Called useAgentWorkingState in ProjectTree directly since LeftSidebar delegates all avatar rendering to ProjectTree
 - [Phase 12]: HandoffCard renders in the message loop when metadata.isHandoffAnnouncement===true, replacing MessageBubble for that message
 - [Phase 12]: DeliberationCard auto-resolves after 30s timeout — clears even if no synthesis_completed arrives
+- [Phase 12]: Extracted pure grouping logic to handoffChainUtils.ts (no JSX) so vitest node env can import without JSX parse errors — HandoffChainTimeline re-exports for consumers
 
 ### Research Flags (for /gsd:research-phase during planning)
 
@@ -144,7 +146,7 @@ Four new npm packages required (all others already installed):
 
 ## Session Continuity
 
-Last session: 2026-03-25T10:11:02.916Z
-Stopped at: Completed 12-01-PLAN.md
+Last session: 2026-03-25T10:17:54.028Z
+Stopped at: Completed 12-02-PLAN.md
 Resume file: None
 Next action: Execute 11-02-PLAN.md (Sidebar Shell + Tab Components)
