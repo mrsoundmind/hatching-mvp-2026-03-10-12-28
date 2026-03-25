@@ -5,6 +5,7 @@ status: draft
 shadcn_initialized: true
 preset: new-york / neutral base / css-variables
 created: 2026-03-25
+revised: 2026-03-25
 ---
 
 # Phase 13 — UI Design Contract: Approvals Hub + Task Pipeline
@@ -42,7 +43,7 @@ Declared values (must be multiples of 4):
 | 3xl | 64px | Not used at sidebar width |
 
 Exceptions:
-- Touch targets for Approve/Reject buttons: minimum 36px height (accessibility; sidebar is narrow so full 44px not required — text + padding achieves 36px naturally at `px-3 py-1.5`)
+- Touch targets for Approve Task/Reject Task buttons: minimum 36px height (accessibility; sidebar is narrow so full 44px not required — text + padding achieves 36px naturally at `px-3 py-1.5`)
 - Pipeline stage column headers: `py-2` (8px) top/bottom — sidebar width constraint forces compact header rows
 - Color-coded left border accent bar on approval items: 3px wide (matches existing `ActivityFeedItem` pattern)
 
@@ -55,15 +56,16 @@ Source: Established pattern in `ActivityFeedItem.tsx` and `AutonomousApprovalCar
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Body | 14px (text-sm) | 400 (regular) | 1.5 |
-| Label | 12px (text-xs) | 500 (medium) | 1.4 |
+| Label | 12px (text-xs) | 600 (semibold) | 1.4 |
 | Micro | 10px (text-[10px]) | 400 (regular) | 1.3 |
 | Heading | 16px (text-base) | 600 (semibold) | 1.2 |
 
 Notes:
 - Body (14px/400) is used for primary content in approval cards — agent name, task description.
-- Label (12px/500) is used for status badges, pipeline stage labels, timestamps, button text.
+- Label (12px/600) is used for status badges, pipeline stage labels, timestamps, button text. Weight raised from 500 to 600 — medium (500) at 12px is near-invisible as a weight distinction from regular at sidebar scale; semibold (600) provides clear hierarchy contrast.
 - Micro (10px/400) is used for relative timestamps and secondary metadata — matches existing `ActivityFeedItem` pattern.
 - Heading (16px/600) is used for empty state headings only; section titles inside the tab use Label.
+- Only 2 weights in use: 400 (regular) and 600 (semibold).
 - No markdown headers or bullet lists in any copy (CLAUDE.md prompt rule applies to components too).
 
 Source: Confirmed from `ActivityFeedItem.tsx` (text-xs, text-[10px]) and `AutonomousApprovalCard.tsx` (text-sm font-semibold, text-xs). Applied consistently to Phase 13 components.
@@ -76,14 +78,14 @@ Source: Confirmed from `ActivityFeedItem.tsx` (text-xs, text-[10px]) and `Autono
 |------|-------|-------|
 | Dominant (60%) | `var(--hatchin-panel)` / `var(--hatchin-dark)` | Approvals tab background, pipeline view background |
 | Secondary (30%) | `var(--hatchin-surface)` / `var(--hatchin-card)` | Approval item cards, pipeline stage lanes |
-| Accent (10%) | `var(--hatchin-blue)` = #6C82FF | Approve button background, active pipeline stage outline |
-| Destructive | `var(--destructive)` / red-400 | Reject button text/border, expired badge background |
+| Accent (10%) | `var(--hatchin-blue)` = #6C82FF | Approve Task button background, active pipeline stage outline |
+| Destructive | `var(--destructive)` / red-400 | Reject Task button text/border, expired badge background |
 | Semantic: Amber | `amber-400` | Pending approval dot on Approvals tab badge (matches existing SidebarTabBar pattern) |
 | Semantic: Green | `var(--hatchin-green)` | Done stage pill, approved state icon |
 | Semantic: Orange | `var(--hatchin-orange)` | Review stage pill, high-risk approval left-bar accent |
 
 Accent reserved for:
-- Approve action button background (`bg-hatchin-blue text-white`)
+- Approve Task action button background (`bg-hatchin-blue text-white`)
 - Active/selected pipeline stage outline
 - Keyboard-focus ring on approval action buttons
 
@@ -93,6 +95,12 @@ Do NOT use accent for:
 - Text labels
 
 Source: Established color semantics confirmed in `AutonomousApprovalCard.tsx` (hatchin-blue for Approve, red-400/red-500 for Reject), `ActivityFeedItem.tsx` (hatchin-green for task, hatchin-blue for handoff, hatchin-orange for review, amber-400 for approval).
+
+---
+
+## Focal Point
+
+**Primary focal point (loaded state):** The `ApprovalItem` list — specifically the two action buttons ("Approve Task" / "Reject Task") on the topmost pending approval card. The 3px color-coded left border and the blue Approve Task button draw the eye immediately to the item requiring a decision. The TaskPipelineView renders below and is visually subordinate (smaller text, muted color dots, no interactive affordances).
 
 ---
 
@@ -109,8 +117,8 @@ Single pending approval row within the Approvals tab. Renders:
 - 3px color-coded left border (orange for high-risk, amber for mid-risk)
 - Agent name (text-sm font-semibold, `var(--hatchin-text-bright)`)
 - Risk reasons (text-xs, `var(--muted-foreground)`, joined with " · ")
-- Approve button (hatchin-blue bg, white text, CheckCircle icon, 12px text)
-- Reject button (red-500/30 border, red-400 text, XCircle icon, 12px text)
+- Approve Task button (hatchin-blue bg, white text, CheckCircle icon, 12px text)
+- Reject Task button (red-500/30 border, red-400 text, XCircle icon, 12px text)
 - Expiry indicator — when expired: replace buttons with "Expired" badge in red-500/20 bg, red-400 text
 
 Layout: matches `AutonomousApprovalCard.tsx` anatomy — same visual language, different context (sidebar vs. chat). Do not introduce new visual vocabulary.
@@ -132,9 +140,9 @@ Empty state for the Approvals tab. Uses the existing `EmptyState` component from
 
 ## Interaction Contracts
 
-### Approve / Reject action
+### Approve Task / Reject Task action
 - Single click triggers action. No confirmation dialog for approve.
-- Reject: no confirmation dialog (low-risk reversal — approvals are for paused autonomous tasks, not deletions).
+- Reject Task: no confirmation dialog (low-risk reversal — approvals are for paused autonomous tasks, not deletions).
 - Both buttons enter `disabled + opacity-50` while the mutation is in flight (`isLoading: true`).
 - On success: the `ApprovalItem` exits with Framer Motion `opacity: 0, y: -4` (200ms ease-out), matching `AutonomousApprovalCard` exit animation.
 - On error: both buttons re-enable; show toast with "Couldn't process your decision. Try again." (no modal).
@@ -167,8 +175,8 @@ Each `ApprovalItem` must handle 4 states:
 
 | State | Visual Treatment |
 |-------|-----------------|
-| Pending (default) | Full card with Approve/Reject buttons enabled |
-| Loading | Approve/Reject buttons disabled, `opacity-50`, no spinner needed |
+| Pending (default) | Full card with Approve Task/Reject Task buttons enabled |
+| Loading | Approve Task/Reject Task buttons disabled, `opacity-50`, no spinner needed |
 | Approved | Item exits via Framer Motion fade-out (removed from list) |
 | Expired | Buttons replaced by "Expired" badge (red-400 text, red-500/10 bg) |
 
@@ -185,8 +193,8 @@ Each `ApprovalItem` must handle 4 states:
 
 | Element | Copy |
 |---------|------|
-| Primary CTA (approve) | "Approve" |
-| Primary CTA (reject) | "Reject" |
+| Primary CTA (approve) | "Approve Task" |
+| Primary CTA (reject) | "Reject Task" |
 | Empty state heading | "Nothing needs your approval" |
 | Empty state body | "When a Hatch starts something that needs a sign-off, it'll show up here. You're in control of what gets acted on." |
 | Expired approval label | "Expired" |
@@ -234,7 +242,7 @@ No third-party registry blocks are required for this phase. All components are b
 
 ## Accessibility Notes
 
-- Approve and Reject buttons must have explicit `aria-label` including the task context: `aria-label={`Approve task: ${taskTitle}`}` and `aria-label={`Reject task: ${taskTitle}`}`.
+- Approve Task and Reject Task buttons must have explicit `aria-label` including the task context: `aria-label={`Approve task: ${taskTitle}`}` and `aria-label={`Reject task: ${taskTitle}`}`.
 - Pipeline stage list: use `role="list"` and `role="listitem"` — it is a structured enumeration.
 - Approvals list: use `role="list"` — enables screen-reader traversal.
 - Expired badge: `aria-label="Approval expired"` on the badge element.
