@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Autonomy Visibility & Right Sidebar Revamp
 status: completed
-stopped_at: Completed 11-01-PLAN.md
-last_updated: "2026-03-25T07:02:45.980Z"
-last_activity: 2026-03-25 — Completed 11-01 (hooks + backend endpoints)
+stopped_at: Completed 11-02-PLAN.md
+last_updated: "2026-03-25T07:11:36.680Z"
+last_activity: 2026-03-25 — Completed 11-02 (3-tab sidebar shell with CSS-hidden panels)
 progress:
   total_phases: 11
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
-  percent: 33
+  completed_plans: 2
+  percent: 67
 ---
 
 # State: Hatchin
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-03-25)
 ## Current Position
 
 Phase: 11 — Sidebar Shell + Activity Feed
-Plan: 11-02 (next)
-Status: Plan 11-01 complete (data foundation). 1/3 plans done in Phase 11.
-Last activity: 2026-03-25 — Completed 11-01 (hooks + backend endpoints)
+Plan: 11-03 (next)
+Status: Plan 11-02 complete (sidebar tab shell). 2/3 plans done in Phase 11.
+Last activity: 2026-03-25 — Completed 11-02 (3-tab sidebar shell with CSS-hidden panels)
 
-Progress: [███░░░░░░░] 33%
+Progress: [██████░░░░] 67%
 
 ---
 
@@ -95,6 +95,8 @@ Key decisions for v2.0:
 - **deliverable_versions as separate table**: Keeps base row small; supports pagination; enables future full-text search on content
 - **sourceConversationId on every deliverable**: Chat context preserved; "revise this" can target the originating conversation
 - **COORD-02 async notifications use existing Maya briefing pattern**: No new notification infrastructure needed
+- [Phase 11]: CSS-hide pattern (display:none) for tab panels to preserve scroll/draft state
+- [Phase 11]: Separate layoutId namespaces: sidebar-tab vs brain-tab-indicator to avoid Framer Motion conflicts
 
 ### Research Flags (for /gsd:research-phase during planning)
 
@@ -138,7 +140,7 @@ Four new npm packages required (all others already installed):
 
 ## Session Continuity
 
-Last session: 2026-03-25T07:02:45.978Z
-Stopped at: Completed 11-01-PLAN.md
+Last session: 2026-03-25T07:11:36.678Z
+Stopped at: Completed 11-02-PLAN.md
 Resume file: None
 Next action: Execute 11-02-PLAN.md (Sidebar Shell + Tab Components)

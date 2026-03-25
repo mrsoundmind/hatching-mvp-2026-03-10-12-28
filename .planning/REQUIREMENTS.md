@@ -65,10 +65,10 @@ Requirements for the autonomy visibility milestone. Each maps to roadmap phases.
 
 ### Sidebar Structure
 
-- [ ] **SIDE-01**: User sees a tabbed right sidebar with Activity, Brain & Docs, and Approvals tabs
-- [ ] **SIDE-02**: Tab selection persists across navigation (inactive tabs retain scroll position and draft state via CSS-hide)
-- [ ] **SIDE-03**: Activity tab shows unread event count badge; Approvals tab shows pending approval count badge
-- [ ] **SIDE-04**: Sidebar tabs work on mobile via Sheet drawer with swipe-between-tabs gesture
+- [x] **SIDE-01**: User sees a tabbed right sidebar with Activity, Brain & Docs, and Approvals tabs
+- [x] **SIDE-02**: Tab selection persists across navigation (inactive tabs retain scroll position and draft state via CSS-hide)
+- [x] **SIDE-03**: Activity tab shows unread event count badge; Approvals tab shows pending approval count badge
+- [x] **SIDE-04**: Sidebar tabs work on mobile via Sheet drawer with swipe-between-tabs gesture
 
 ### Activity Feed
 
@@ -76,7 +76,7 @@ Requirements for the autonomy visibility milestone. Each maps to roadmap phases.
 - [x] **FEED-02**: User sees a stats summary card at top of Activity tab showing tasks completed, handoffs, and cost spent
 - [ ] **FEED-03**: User can filter feed by event type (handoffs, tasks, reviews), by agent, or by time range via filter chips
 - [x] **FEED-04**: Rapid events are aggregated ("5 tasks assigned" instead of 5 separate items) to prevent flooding
-- [ ] **FEED-05**: User sees a compelling empty state explaining what the Activity feed shows before any autonomous work happens
+- [x] **FEED-05**: User sees a compelling empty state explaining what the Activity feed shows before any autonomous work happens
 
 ### Handoff Visualization
 
@@ -170,15 +170,15 @@ Deferred to v2.1+. Tracked but not in current roadmap.
 | ONBD-02 | Phase 21 | Pending |
 | COORD-01 | Phase 16 | Pending |
 | COORD-02 | Phase 18 | Pending |
-| SIDE-01 | Phase 11 | Pending |
-| SIDE-02 | Phase 11 | Pending |
-| SIDE-03 | Phase 11 | Pending |
-| SIDE-04 | Phase 11 | Pending |
+| SIDE-01 | Phase 11 | Complete |
+| SIDE-02 | Phase 11 | Complete |
+| SIDE-03 | Phase 11 | Complete |
+| SIDE-04 | Phase 11 | Complete |
 | FEED-01 | Phase 11 | Complete |
 | FEED-02 | Phase 11 | Complete |
 | FEED-03 | Phase 11 | Pending |
 | FEED-04 | Phase 11 | Complete |
-| FEED-05 | Phase 11 | Pending |
+| FEED-05 | Phase 11 | Complete |
 | AGNT-01 | Phase 11 | Pending |
 | HAND-01 | Phase 12 | Pending |
 | HAND-02 | Phase 12 | Pending |
