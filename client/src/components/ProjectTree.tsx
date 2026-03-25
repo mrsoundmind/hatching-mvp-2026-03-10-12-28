@@ -6,6 +6,7 @@ import type { Project, Team, Agent } from "@shared/schema";
 import { getAgentColors } from '@/lib/agentColors';
 import { getRoleDefinition } from '@shared/roleRegistry';
 import AgentAvatar from '@/components/avatars/AgentAvatar';
+import { useAgentWorkingState } from '@/hooks/useAgentWorkingState';
 
 interface ProjectTreeProps {
   projects: Project[];
@@ -52,6 +53,8 @@ export function ProjectTree({
   onUpdateAgent,
   searchQuery = "",
 }: ProjectTreeProps) {
+  const workingAgents = useAgentWorkingState();
+
   // Helper function to highlight search matches
   const highlightMatch = (text: string, query: string) => {
     if (!query.trim()) return text;
@@ -293,14 +296,14 @@ export function ProjectTree({
         return (
           <div key={project.id} className="flex flex-col">
             {index > 0 && (
-              <div className="h-px w-full bg-gradient-to-r from-transparent via-hatchin-blue/20 to-transparent my-1" />
+              <div className="premium-divider my-2 mx-1" />
             )}
             <div className="space-y-0.5">
               {/* Project Level */}
-              <div className="flex items-center justify-between px-3 py-2 rounded-lg transition-all duration-200 group">
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-200 group">
                 <div
-                  className={`flex items-center gap-2 min-w-0 flex-1 cursor-pointer rounded-lg py-1.5 px-2 transition-all duration-200 hover:bg-hatchin-border hover:shadow-sm relative ${isProjectActive && !activeTeamId && !activeAgentId
-                    ? 'bg-hatchin-blue/10 border-l-2 border-hatchin-blue'
+                  className={`flex items-center gap-2 min-w-0 flex-1 cursor-pointer rounded-xl py-2 px-2.5 transition-all duration-200 hover:bg-[var(--glass-hover-bg)] hover:shadow-sm relative ${isProjectActive && !activeTeamId && !activeAgentId
+                    ? 'bg-[var(--glass-frosted-strong)] sidebar-active-accent elevation-1'
                     : ''
                     }`}
                   onClick={() => onSelectProject(project.id)}
@@ -345,7 +348,7 @@ export function ProjectTree({
                 </div>
                 <div className="relative flex-shrink-0">
                   <button
-                    className="opacity-0 group-hover:opacity-100 hatchin-text-muted hover:hatchin-text transition-opacity"
+                    className="opacity-0 group-hover:opacity-100 hatchin-text-muted hover:hatchin-text transition-opacity duration-200"
                     onClick={(e) => handleContextMenuToggle(project.id, e)}
                   >
                     <MoreHorizontal className="w-3.5 h-3.5" />
@@ -425,11 +428,20 @@ export function ProjectTree({
                 </div>
               </div>
               {/* Teams and Individual Agents */}
+              <AnimatePresence initial={false}>
               {isProjectExpanded && (
+                <motion.div
+                  key={`project-children-${project.id}`}
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  className="overflow-hidden"
+                >
                 <div className="ml-7 space-y-1">
                   {/* Teams */}
                   {projectTeams.map(team => {
-                    const teamAgents = agents.filter(a => a.teamId === team.id);
+                    const teamAgents = agents.filter(a => a.teamId === team.id && !a.isSpecialAgent);
                     const isTeamActive = team.id === activeTeamId;
                     const isTeamExpanded = expandedTeams.has(team.id);
 
@@ -437,8 +449,8 @@ export function ProjectTree({
                       <div key={team.id} className="space-y-1">
                         {/* Team Level */}
                         <div
-                          className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 group hover:bg-hatchin-border hover:shadow-sm relative ${isTeamActive && !activeAgentId
-                            ? 'bg-hatchin-blue/10 border-l-2 border-hatchin-blue'
+                          className={`flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition-all duration-200 group hover:bg-[var(--glass-hover-bg)] hover:shadow-sm relative ${isTeamActive && !activeAgentId
+                            ? 'bg-[var(--glass-frosted-strong)] sidebar-active-accent elevation-1'
                             : ''
                             }`}
                           onClick={() => onSelectTeam(team.id)}
@@ -565,15 +577,15 @@ export function ProjectTree({
                               return (
                                 <div
                                   key={agent.id}
-                                  className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 relative group hover:bg-hatchin-border hover:shadow-sm ${isAgentActive
-                                    ? 'bg-hatchin-blue/10 border-l-2 border-hatchin-blue'
+                                  className={`flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition-all duration-200 relative group hover:bg-[var(--glass-hover-bg)] hover:shadow-sm ${isAgentActive
+                                    ? 'bg-[var(--glass-frosted-strong)] sidebar-active-accent elevation-1'
                                     : ''
                                     }`}
                                   onClick={() => onSelectAgent(agent.id)}
                                 >
                                   <div className="flex items-center gap-2 min-w-0 flex-1">
                                     <React.Suspense fallback={<div className={`w-5 h-5 rounded-full flex-shrink-0 ${getAgentColors(agent.role).avatarBg}`} />}>
-                                      <AgentAvatar role={agent.role} state="idle" size={20} />
+                                      <AgentAvatar role={agent.role} state={workingAgents.has(agent.id) ? "working" : "idle"} size={20} />
                                     </React.Suspense>
                                     {editingAgent === agent.id ? (
                                       <input
@@ -588,7 +600,7 @@ export function ProjectTree({
                                       />
                                     ) : (
                                       <span
-                                        className="hatchin-text-muted text-xs truncate cursor-pointer hover:bg-hatchin-border/50 px-1 py-0.5 rounded"
+                                        className="hatchin-text text-xs font-medium truncate cursor-pointer hover:bg-[var(--glass-hover-bg)] px-1 py-0.5 rounded transition-colors duration-150"
                                         onDoubleClick={() => handleDoubleClick('agent', agent.id, agent.role || agent.name)}
                                       >
                                         {highlightMatch(getRoleDefinition(agent.role)?.characterName ?? agent.name, searchQuery)}
@@ -668,7 +680,7 @@ export function ProjectTree({
 
                   {/* Individual Agents (not part of any team) */}
                   {(() => {
-                    const individualAgents = agents.filter(a => a.projectId === project.id && !a.teamId);
+                    const individualAgents = agents.filter(a => a.projectId === project.id && !a.teamId && !a.isSpecialAgent);
                     return individualAgents.map(agent => {
                       const isAgentActive = agent.id === activeAgentId;
 
@@ -683,7 +695,7 @@ export function ProjectTree({
                         >
                           <div className="flex items-center gap-2 min-w-0 flex-1">
                             <React.Suspense fallback={<div className={`w-5 h-5 rounded-full flex-shrink-0 ${getAgentColors(agent.role).avatarBg}`} />}>
-                              <AgentAvatar role={agent.role} state="idle" size={20} />
+                              <AgentAvatar role={agent.role} state={workingAgents.has(agent.id) ? "working" : "idle"} size={20} />
                             </React.Suspense>
                             {editingAgent === agent.id ? (
                               <input
@@ -698,7 +710,7 @@ export function ProjectTree({
                               />
                             ) : (
                               <span
-                                className="hatchin-text-muted text-xs truncate cursor-pointer hover:bg-hatchin-border/50 px-1 py-0.5 rounded"
+                                className="hatchin-text text-xs font-medium truncate cursor-pointer hover:bg-[var(--glass-hover-bg)] px-1 py-0.5 rounded transition-colors duration-150"
                                 onDoubleClick={() => handleDoubleClick('agent', agent.id, agent.name)}
                               >
                                 {highlightMatch(getRoleDefinition(agent.role)?.characterName ?? agent.name, searchQuery)}
@@ -771,7 +783,9 @@ export function ProjectTree({
                     });
                   })()}
                 </div>
+                </motion.div>
               )}
+              </AnimatePresence>
             </div>
           </div>
         );

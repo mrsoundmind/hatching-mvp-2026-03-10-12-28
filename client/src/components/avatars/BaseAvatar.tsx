@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 /** Brand accent — mirrors CSS var(--hatchin-blue) for SVG fill contexts */
 const HATCHIN_BLUE = "#6C82FF";
 
-export type AvatarState = "idle" | "thinking" | "speaking" | "celebrating";
+export type AvatarState = "idle" | "thinking" | "speaking" | "celebrating" | "working";
 
 export interface AvatarProps {
   state?: AvatarState;
@@ -28,6 +28,7 @@ export const avatarVariants = {
       ease: "easeOut",
     },
   },
+  working: {},
 };
 
 // Eye animations — idle blinks naturally every ~7s, thinking eyes shift upward
@@ -129,6 +130,18 @@ export function AvatarWrapper({ state, size, className = "", children }: AvatarW
           }}
         />
       </motion.div>
+
+      {/* Working state — rotating dashed ring overlay */}
+      {state === "working" && (
+        <div
+          className="absolute inset-0 rounded-full pointer-events-none"
+          style={{
+            border: '2px dashed rgba(108,130,255,0.6)',
+            animation: 'agent-working-ring 3s linear infinite',
+            boxShadow: '0 0 8px rgba(108,130,255,0.3)',
+          }}
+        />
+      )}
     </div>
   );
 }
