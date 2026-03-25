@@ -2,6 +2,7 @@ import { useAutonomyFeed } from '@/hooks/useAutonomyFeed';
 import { AutonomyStatsCard } from './AutonomyStatsCard';
 import { FeedFilters } from './FeedFilters';
 import { ActivityFeedItem } from './ActivityFeedItem';
+import { HandoffChainTimeline } from './HandoffChainTimeline';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Activity } from 'lucide-react';
 
@@ -37,26 +38,32 @@ export function ActivityTab({ projectId, agents }: ActivityTabProps) {
         agents={agents}
       />
 
-      {/* Feed list */}
-      <div className="flex-1 overflow-y-auto hide-scrollbar space-y-0.5">
-        {isLoading && events.length === 0 ? (
-          <>
-            <div className="h-14 rounded-lg bg-[var(--hatchin-surface-hover)] animate-shimmer mb-2" />
-            <div className="h-14 rounded-lg bg-[var(--hatchin-surface-hover)] animate-shimmer mb-2" />
-            <div className="h-14 rounded-lg bg-[var(--hatchin-surface-hover)] animate-shimmer mb-2" />
-          </>
-        ) : events.length === 0 ? (
-          <EmptyState
-            icon={Activity}
-            title="Your team is ready"
-            description="When your Hatches start working autonomously, you'll see their progress here. Try asking one to work on something in the background."
-          />
-        ) : (
-          events.map((event) => (
-            <ActivityFeedItem key={event.id} event={event} />
-          ))
-        )}
-      </div>
+      {/* Feed list — show timeline when handoff filter active, flat list otherwise */}
+      {activeFilter === 'handoff' ? (
+        <div className="flex-1 overflow-y-auto hide-scrollbar px-3 py-2">
+          <HandoffChainTimeline events={events} />
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto hide-scrollbar space-y-0.5">
+          {isLoading && events.length === 0 ? (
+            <>
+              <div className="h-14 rounded-lg bg-[var(--hatchin-surface-hover)] animate-shimmer mb-2" />
+              <div className="h-14 rounded-lg bg-[var(--hatchin-surface-hover)] animate-shimmer mb-2" />
+              <div className="h-14 rounded-lg bg-[var(--hatchin-surface-hover)] animate-shimmer mb-2" />
+            </>
+          ) : events.length === 0 ? (
+            <EmptyState
+              icon={Activity}
+              title="Your team is ready"
+              description="When your Hatches start working autonomously, you'll see their progress here. Try asking one to work on something in the background."
+            />
+          ) : (
+            events.map((event) => (
+              <ActivityFeedItem key={event.id} event={event} />
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

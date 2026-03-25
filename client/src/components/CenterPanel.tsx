@@ -1,4 +1,4 @@
-import { Send, PauseCircle, PlayCircle } from "lucide-react";
+import { Send, PauseCircle, PlayCircle, ArrowRightLeft } from "lucide-react";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { Project, Team, Agent } from "@shared/schema";
@@ -21,6 +21,8 @@ import { HandoffCard } from './chat/HandoffCard';
 import { DeliberationCard } from './chat/DeliberationCard';
 import { dispatchAutonomyEvent, AUTONOMY_EVENTS } from '@/lib/autonomyEvents';
 import type { HandoffAnnouncedPayload } from '@/lib/autonomyEvents';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import AgentAvatar from '@/components/avatars/AgentAvatar';
 // UsageBar removed — will redesign as notification-only in v1.2 billing
 
 interface ChatContext {
@@ -2090,6 +2092,26 @@ export function CenterPanel({
     setReplyingTo(null);
   };
 
+  // Handoff dropdown — list of agents eligible to receive a handoff
+  const handoffableAgents = useMemo(() => {
+    // Get the currently-focused agent (if in agent mode)
+    const focusedAgentId = currentChatContext?.mode === 'agent' ? currentChatContext?.participantIds[0] : null;
+    return activeProjectAgents.filter((agent) => {
+      // Exclude Maya (special agent)
+      if ((agent as unknown as { isSpecialAgent?: boolean; is_special_agent?: boolean }).isSpecialAgent ||
+          (agent as unknown as { isSpecialAgent?: boolean; is_special_agent?: boolean }).is_special_agent) return false;
+      // Exclude the currently focused agent
+      if (focusedAgentId && agent.id === focusedAgentId) return false;
+      return true;
+    });
+  }, [activeProjectAgents, currentChatContext]);
+
+  // Prepopulate input with @AgentName mention for manual handoff
+  const handleHandoff = (agent: { id: string; name: string; role: string }) => {
+    setInputValue(`@${agent.name} `);
+    messageInputRef.current?.focus();
+  };
+
 
   const handleActionClick = async (action: string) => {
     if (!currentChatContext) return;
@@ -2876,6 +2898,35 @@ export function CenterPanel({
         )}
 
         <form onSubmit={handleChatSubmit} className="relative rounded-lg">
+          {/* Hand off to... dropdown — only shown when a project is active and there are eligible agents */}
+          {activeProject && handoffableAgents.length > 0 && (
+            <div className="flex items-center px-2 pt-1.5">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 px-2 py-1 text-[11px] hatchin-text-muted hover:hatchin-text hover:bg-[var(--hatchin-surface-hover)] rounded-md transition-colors"
+                  >
+                    <ArrowRightLeft className="w-3 h-3" />
+                    Hand off to...
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-[200px]">
+                  {handoffableAgents.map((agent) => (
+                    <DropdownMenuItem
+                      key={agent.id}
+                      onClick={() => handleHandoff(agent)}
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <AgentAvatar agentName={agent.name} role={agent.role} size={20} />
+                      <span className="text-sm">{agent.name}</span>
+                      <span className="text-xs hatchin-text-muted">{agent.role}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
           <textarea
             ref={messageInputRef}
             data-testid="input-message"
