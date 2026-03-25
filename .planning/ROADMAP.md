@@ -6,6 +6,7 @@
 - ✅ **v1.1 Autonomous Execution Loop** — Phases 6-9 (shipped 2026-03-23) — [archive](milestones/v1.1-ROADMAP.md)
 - ✅ **v1.2 Billing + LLM Intelligence** — Phase 10 (shipped 2026-03-23) — [archive](milestones/v1.2-ROADMAP.md)
 - 🚧 **v1.3 Autonomy Visibility & Right Sidebar Revamp** — Phases 11-15 (in progress)
+- 📋 **v2.0 Hatches That Deliver** — Phases 16-21 (planned)
 
 ---
 
@@ -60,6 +61,21 @@ See archived roadmap: [milestones/v1.2-ROADMAP.md](milestones/v1.2-ROADMAP.md)
 - [ ] **Phase 13: Approvals Hub + Task Pipeline** - Dedicated approvals tab, task pipeline view, expiry handling
 - [ ] **Phase 14: Brain Redesign + Autonomy Settings** - File upload to project brain, knowledge base UI, autonomy dial, work output viewer
 - [ ] **Phase 15: Polish** - Premium component designs via Stitch/Magic MCPs, visual consistency pass
+
+---
+
+## 📋 v2.0 Hatches That Deliver (Planned)
+
+**Milestone Goal:** Transform Hatchin from "AI chatroom" to "AI team that ships coordinated work" — split-panel artifact viewer, schema-enforced deliverable generation, cross-agent document chains, project packages, organic detection, professional PDF export, and zero-friction onboarding.
+
+### Phases
+
+- [ ] **Phase 16: Database Foundation + Artifact Panel Shell** - Three new DB tables, CRUD API, artifact panel shell, deliverable chat card, coordination attribution
+- [ ] **Phase 17: Deliverable Generation + Schema Enforcement** - Type registry, deliverable generator, streaming into panel, version history, deliverable browser
+- [ ] **Phase 18: Cross-Agent Deliverable Chains** - Chain orchestrator, upstream context injection, stale reference warnings, visual chain diagram, async notifications
+- [ ] **Phase 19: Organic Detection + Iteration UX** - Two-stage intent detection, confirmation card, section-level iteration, diff highlighting
+- [ ] **Phase 20: Project Packages + Background Production** - Package templates, package UI, agent-missing recovery, background package execution
+- [ ] **Phase 21: Zero-Friction Onboarding + PDF Export** - Project type classifier, first-deliverable onboarding, branded PDF export, package PDF export
 
 ---
 
@@ -125,6 +141,71 @@ Plans:
 
 ---
 
+### Phase 16: Database Foundation + Artifact Panel Shell
+**Goal**: Users can open a split-panel artifact viewer beside chat that displays deliverables with attribution — the data and UI foundation that every v2.0 feature requires
+**Depends on**: Phase 15 (v1.3 must ship first; v1.3 sidebar provides the shell this overlays)
+**Requirements**: ARTF-01, ARTF-02, ARTF-03, ARTF-04, COORD-01
+**Success Criteria** (what must be TRUE):
+  1. User can open any deliverable and see a split-panel view — chat remains fully visible and usable on the left, the document opens in a panel on the right without covering the conversation
+  2. Each open deliverable shows which Hatch produced it (avatar, name, role), handoff notes where relevant, and a status badge (Draft / In Review / Complete)
+  3. User can navigate back and forward through up to 20 saved versions of a deliverable and restore any previous version with one click
+  4. User can copy the full deliverable content to clipboard or download it as a .md file from within the panel using a single button click
+**Plans**: TBD
+
+### Phase 17: Deliverable Generation + Schema Enforcement
+**Goal**: Users can request a structured deliverable from any Hatch, see it stream into the artifact panel in real time, and browse all project deliverables from a list view
+**Depends on**: Phase 16
+**Requirements**: DLVR-01, DLVR-02, DLVR-03, DLVR-04, DLVR-05
+**Success Criteria** (what must be TRUE):
+  1. User can say "write me a PRD" (or tech spec, design brief, GTM plan, blog post, project plan) and the appropriate Hatch generates a document with the correct canonical sections — the document renders in the artifact panel as it streams, not after completion
+  2. Each role reliably produces documents with consistent section structure across regenerations — the PM always produces Executive Summary, Problem, Goals, User Stories, Success Metrics, Timeline; the Engineer always produces Overview, Architecture, Implementation Plan, Dependencies, Risks, Testing Strategy
+  3. User can browse all deliverables for a project in a list or grid view and filter them by deliverable type, the Hatch that produced them, or current status
+  4. User can say "make the timeline more aggressive" or "add a risks section" while a deliverable is open and the Hatch updates only the relevant section in-place — not the whole document
+**Plans**: TBD
+
+### Phase 18: Cross-Agent Deliverable Chains
+**Goal**: When one Hatch finishes a deliverable, downstream Hatches can produce linked documents that genuinely reference the upstream content — not generic placeholder text
+**Depends on**: Phase 17
+**Requirements**: CHAIN-01, CHAIN-02, CHAIN-03, CHAIN-04, COORD-02
+**Success Criteria** (what must be TRUE):
+  1. After a PM produces a PRD, the Engineer Hatch can produce a tech spec that explicitly references sections, decisions, and requirements from that PRD — the reference is substantive, not generic
+  2. When a user iterates an upstream deliverable (PRD revised from v1 to v2), all downstream deliverables (tech spec, design brief) show a visible "may be outdated" warning with a one-click update action
+  3. User sees a visual chain diagram in the artifact panel showing the relationship between linked deliverables (PRD → Tech Spec → Design Brief → GTM Plan) with the current status shown at each step
+  4. When background deliverable production completes overnight, the user receives a Maya return briefing in chat ("Your team produced 4 documents. Review when ready.") rather than having to discover the work by browsing
+**Plans**: TBD
+
+### Phase 19: Organic Detection + Iteration UX
+**Goal**: Hatches recognize when a conversation has enough context to produce a deliverable and propose it — never auto-creating — and iteration through chat updates documents with surgical precision
+**Depends on**: Phase 17
+**Requirements**: DTCT-01, DTCT-02
+**Success Criteria** (what must be TRUE):
+  1. When a conversation reaches sufficient context for a deliverable (a PRD-worthy product discussion, a GTM-worthy launch conversation), the relevant Hatch offers a confirmation card ("Ready to write this up as a PRD?") — the user must click to confirm before generation starts
+  2. Organic detection never fires on a casual or exploratory conversation — a brainstorm or question-and-answer exchange does not trigger a deliverable proposal
+**Plans**: TBD
+
+### Phase 20: Project Packages + Background Production
+**Goal**: Users can trigger a coordinated multi-agent deliverable package and track its progress as Hatches produce linked documents in the background
+**Depends on**: Phase 18
+**Requirements**: PKG-01, PKG-02, PKG-03
+**Success Criteria** (what must be TRUE):
+  1. User can trigger a named package ("Launch Package", "Content Sprint", "Research Package") and the system coordinates the appropriate chain of Hatches to produce all required deliverables in sequence
+  2. While a package is running, user sees a progress indicator showing which deliverables are complete, which Hatch is currently working, and how many remain — not just a spinner
+  3. If a package requires a Hatch type not present in the project, the user sees a clear "Agent missing" status for that step and a direct link to add the required Hatch — the package does not silently stall on that step
+**Plans**: TBD
+
+### Phase 21: Zero-Friction Onboarding + PDF Export
+**Goal**: New users receive their first deliverable offer within 3 minutes of signup, and any deliverable or package can be exported as a professionally branded PDF
+**Depends on**: Phases 19, 17
+**Requirements**: ONBD-01, ONBD-02, XPRT-01, XPRT-02
+**Success Criteria** (what must be TRUE):
+  1. A new user completing onboarding receives a contextually relevant first-deliverable offer within 3 minutes — a product startup gets a PRD offer, a marketer gets a content brief offer, a solo developer gets a project plan offer
+  2. The first deliverable is explicitly framed as a starting point ("Here's a first draft — tell me what to change") so new users immediately understand they can iterate through conversation
+  3. User can export any single deliverable as a PDF with a cover page, table of contents, agent attribution section, page numbers, and Hatchin branding — the PDF is professional enough to share with external stakeholders
+  4. User can export an entire package (Launch Package, Content Sprint) as a single combined PDF containing all linked deliverables in logical reading order
+**Plans**: TBD
+
+---
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -144,6 +225,12 @@ Plans:
 | 13. Approvals Hub + Task Pipeline | v1.3 | 0/? | Not started | - |
 | 14. Brain Redesign + Autonomy Settings | v1.3 | 0/? | Not started | - |
 | 15. Polish | v1.3 | 0/? | Not started | - |
+| 16. Database Foundation + Artifact Panel Shell | v2.0 | 0/? | Not started | - |
+| 17. Deliverable Generation + Schema Enforcement | v2.0 | 0/? | Not started | - |
+| 18. Cross-Agent Deliverable Chains | v2.0 | 0/? | Not started | - |
+| 19. Organic Detection + Iteration UX | v2.0 | 0/? | Not started | - |
+| 20. Project Packages + Background Production | v2.0 | 0/? | Not started | - |
+| 21. Zero-Friction Onboarding + PDF Export | v2.0 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-03-17*
@@ -151,3 +238,4 @@ Plans:
 *v1.1 shipped: 2026-03-23*
 *v1.2 shipped: 2026-03-23*
 *v1.3 roadmap added: 2026-03-24*
+*v2.0 roadmap added: 2026-03-25*

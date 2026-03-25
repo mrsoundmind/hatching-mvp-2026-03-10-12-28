@@ -146,30 +146,30 @@ Deferred to v2.1+. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ARTF-01 | TBD | Pending |
-| ARTF-02 | TBD | Pending |
-| ARTF-03 | TBD | Pending |
-| ARTF-04 | TBD | Pending |
-| DLVR-01 | TBD | Pending |
-| DLVR-02 | TBD | Pending |
-| DLVR-03 | TBD | Pending |
-| DLVR-04 | TBD | Pending |
-| DLVR-05 | TBD | Pending |
-| CHAIN-01 | TBD | Pending |
-| CHAIN-02 | TBD | Pending |
-| CHAIN-03 | TBD | Pending |
-| CHAIN-04 | TBD | Pending |
-| PKG-01 | TBD | Pending |
-| PKG-02 | TBD | Pending |
-| PKG-03 | TBD | Pending |
-| DTCT-01 | TBD | Pending |
-| DTCT-02 | TBD | Pending |
-| XPRT-01 | TBD | Pending |
-| XPRT-02 | TBD | Pending |
-| ONBD-01 | TBD | Pending |
-| ONBD-02 | TBD | Pending |
-| COORD-01 | TBD | Pending |
-| COORD-02 | TBD | Pending |
+| ARTF-01 | Phase 16 | Pending |
+| ARTF-02 | Phase 16 | Pending |
+| ARTF-03 | Phase 16 | Pending |
+| ARTF-04 | Phase 16 | Pending |
+| DLVR-01 | Phase 17 | Pending |
+| DLVR-02 | Phase 17 | Pending |
+| DLVR-03 | Phase 17 | Pending |
+| DLVR-04 | Phase 17 | Pending |
+| DLVR-05 | Phase 17 | Pending |
+| CHAIN-01 | Phase 18 | Pending |
+| CHAIN-02 | Phase 18 | Pending |
+| CHAIN-03 | Phase 18 | Pending |
+| CHAIN-04 | Phase 18 | Pending |
+| PKG-01 | Phase 20 | Pending |
+| PKG-02 | Phase 20 | Pending |
+| PKG-03 | Phase 20 | Pending |
+| DTCT-01 | Phase 19 | Pending |
+| DTCT-02 | Phase 19 | Pending |
+| XPRT-01 | Phase 21 | Pending |
+| XPRT-02 | Phase 21 | Pending |
+| ONBD-01 | Phase 21 | Pending |
+| ONBD-02 | Phase 21 | Pending |
+| COORD-01 | Phase 16 | Pending |
+| COORD-02 | Phase 18 | Pending |
 | SIDE-01 | Phase 11 | Pending |
 | SIDE-02 | Phase 11 | Pending |
 | SIDE-03 | Phase 11 | Pending |
@@ -195,12 +195,10 @@ Deferred to v2.1+. Tracked but not in current roadmap.
 | PLSH-01 | Phase 15 | Pending |
 
 **Coverage:**
-- v2.0 requirements: 24 total
-- v1.3 requirements: 23 total
-- Total: 47
-- Unmapped (v2.0): 24 (TBD — roadmap pending)
-- Unmapped (v1.3): 0 ✓
+- v2.0 requirements: 24 total — 24/24 mapped ✓
+- v1.3 requirements: 23 total — 23/23 mapped ✓
+- Total: 47 — 47/47 mapped ✓
 
 ---
 *Requirements defined: 2026-03-24 (v1.3), 2026-03-25 (v2.0)*
-*Last updated: 2026-03-25 — v2.0 requirements added*
+*Last updated: 2026-03-25 — v2.0 traceability complete (24/24 mapped to Phases 16-21)*
