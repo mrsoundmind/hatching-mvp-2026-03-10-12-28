@@ -56,7 +56,7 @@ See archived roadmap: [milestones/v1.2-ROADMAP.md](milestones/v1.2-ROADMAP.md)
 
 ### Phases
 
-- [ ] **Phase 11: Sidebar Shell + Activity Feed** - Tab structure, live autonomy event feed, stats card, agent working avatar state, empty states
+- [x] **Phase 11: Sidebar Shell + Activity Feed** - Tab structure, live autonomy event feed, stats card, agent working avatar state, empty states (completed 2026-03-25)
 - [ ] **Phase 12: Handoff Visualization** - Chat handoff cards, sidebar handoff timeline, user-initiated handoff, deliberation indicator
 - [ ] **Phase 13: Approvals Hub + Task Pipeline** - Dedicated approvals tab, task pipeline view, expiry handling
 - [ ] **Phase 14: Brain Redesign + Autonomy Settings** - File upload to project brain, knowledge base UI, autonomy dial, work output viewer
@@ -220,7 +220,7 @@ Plans:
 | 8. Chat Summary and Tab Notifications | v1.1 | — | Complete | 2026-03-23 |
 | 9. Progressive Trust and Inactivity Trigger | v1.1 | — | Complete | 2026-03-23 |
 | 10. Billing + LLM Intelligence | v1.2 | — | Complete | 2026-03-23 |
-| 11. Sidebar Shell + Activity Feed | 2/3 | In Progress|  | - |
+| 11. Sidebar Shell + Activity Feed | 3/3 | Complete   | 2026-03-25 | - |
 | 12. Handoff Visualization | v1.3 | 0/? | Not started | - |
 | 13. Approvals Hub + Task Pipeline | v1.3 | 0/? | Not started | - |
 | 14. Brain Redesign + Autonomy Settings | v1.3 | 0/? | Not started | - |

@@ -74,7 +74,7 @@ Requirements for the autonomy visibility milestone. Each maps to roadmap phases.
 
 - [x] **FEED-01**: User sees a real-time feed of autonomy events (task started, completed, handoff, peer review) with agent avatars and timestamps
 - [x] **FEED-02**: User sees a stats summary card at top of Activity tab showing tasks completed, handoffs, and cost spent
-- [ ] **FEED-03**: User can filter feed by event type (handoffs, tasks, reviews), by agent, or by time range via filter chips
+- [x] **FEED-03**: User can filter feed by event type (handoffs, tasks, reviews), by agent, or by time range via filter chips
 - [x] **FEED-04**: Rapid events are aggregated ("5 tasks assigned" instead of 5 separate items) to prevent flooding
 - [x] **FEED-05**: User sees a compelling empty state explaining what the Activity feed shows before any autonomous work happens
 
@@ -87,7 +87,7 @@ Requirements for the autonomy visibility milestone. Each maps to roadmap phases.
 
 ### Agent Status
 
-- [ ] **AGNT-01**: Agent avatars show a pulsing/rotating "working" animation when executing tasks in background
+- [x] **AGNT-01**: Agent avatars show a pulsing/rotating "working" animation when executing tasks in background
 
 ### Approvals & Tasks
 
@@ -176,10 +176,10 @@ Deferred to v2.1+. Tracked but not in current roadmap.
 | SIDE-04 | Phase 11 | Complete |
 | FEED-01 | Phase 11 | Complete |
 | FEED-02 | Phase 11 | Complete |
-| FEED-03 | Phase 11 | Pending |
+| FEED-03 | Phase 11 | Complete |
 | FEED-04 | Phase 11 | Complete |
 | FEED-05 | Phase 11 | Complete |
-| AGNT-01 | Phase 11 | Pending |
+| AGNT-01 | Phase 11 | Complete |
 | HAND-01 | Phase 12 | Pending |
 | HAND-02 | Phase 12 | Pending |
 | HAND-03 | Phase 12 | Pending |
