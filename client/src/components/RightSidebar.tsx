@@ -1,12 +1,14 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronRight, Check, Sparkles, Activity, ShieldCheck } from "lucide-react";
+import { ChevronDown, ChevronRight, Check, Sparkles, ShieldCheck } from "lucide-react";
 import { ProgressTimeline } from "@/components/ProgressTimeline";
 import { useToast } from "@/hooks/use-toast";
 import { useRightSidebarState } from "@/hooks/useRightSidebarState";
 import { useRealTimeUpdates } from "@/hooks/useRealTimeUpdates";
 import { useAutonomyFeed } from "@/hooks/useAutonomyFeed";
+import { useQuery } from "@tanstack/react-query";
 import { SidebarTabBar } from "./sidebar/SidebarTabBar";
+import { ActivityTab } from "./sidebar/ActivityTab";
 import { EmptyState } from "./ui/EmptyState";
 import TaskManager from "./TaskManager";
 import type { Project, Team, Agent } from "@shared/schema";
@@ -24,6 +26,18 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
   const { toast } = useToast();
   const { state, actions } = useRightSidebarState(activeProject, activeTeam, activeAgent);
   const { unreadCount, clearUnread } = useAutonomyFeed(activeProject?.id);
+
+  // Fetch project agents for ActivityTab filter dropdown
+  const { data: projectAgents } = useQuery<Agent[]>({
+    queryKey: ['/api/projects', activeProject?.id, 'agents'],
+    queryFn: async () => {
+      const res = await fetch(`/api/projects/${activeProject!.id}/agents`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!activeProject?.id,
+    staleTime: 60_000,
+  });
 
   const { activeTab } = state;
   const { setActiveTab } = actions;
@@ -331,10 +345,9 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
         aria-hidden={activeTab !== 'activity'}
         className="flex-1 flex flex-col overflow-y-auto hide-scrollbar"
       >
-        <EmptyState
-          icon={Activity}
-          title="Your team is ready"
-          description="When your Hatches start working autonomously, you'll see their progress here. Try asking one to work on something in the background."
+        <ActivityTab
+          projectId={activeProject?.id}
+          agents={projectAgents?.map(a => ({ id: a.id, name: a.name, role: a.role })) || []}
         />
       </div>
 
