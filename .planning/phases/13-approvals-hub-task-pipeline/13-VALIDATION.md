@@ -2,8 +2,8 @@
 phase: 13
 slug: approvals-hub-task-pipeline
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-25
 ---
 
@@ -39,8 +39,9 @@ created: 2026-03-25
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
 | 13-01-01 | 01 | 1 | APPR-01 | manual — React component | `npm run typecheck` | N/A | ⬜ pending |
-| 13-01-02 | 01 | 1 | APPR-03 | unit | `npx vitest run scripts/test-approval-expiry.test.ts` | ❌ W0 | ⬜ pending |
-| 13-02-01 | 02 | 2 | APPR-02 | unit | `npx vitest run scripts/test-task-pipeline-view.test.ts` | ❌ W0 | ⬜ pending |
+| 13-01-02 | 01 | 1 | APPR-03 | unit | `npx vitest run scripts/test-approval-expiry.test.ts` | ✅ Plan 01 Task 1 | ⬜ pending |
+| 13-01-03 | 01 | 1 | APPR-02 | unit | `npx vitest run scripts/test-task-pipeline-view.test.ts` | ✅ Plan 01 Task 1 | ⬜ pending |
+| 13-02-01 | 02 | 2 | APPR-02 | manual — React component | `npm run typecheck` | N/A | ⬜ pending |
 | 13-02-02 | 02 | 2 | APPR-04 | manual — React component | `npm run typecheck` | N/A | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
@@ -49,8 +50,8 @@ created: 2026-03-25
 
 ## Wave 0 Requirements
 
-- [ ] `scripts/test-approval-expiry.test.ts` — unit test for `isApprovalExpired` pure function
-- [ ] `scripts/test-task-pipeline-view.test.ts` — unit test for task status → pipeline stage mapping
+- [x] `scripts/test-approval-expiry.test.ts` — unit test for `isApprovalExpired` pure function (Plan 01 Task 1)
+- [x] `scripts/test-task-pipeline-view.test.ts` — unit test for task status → pipeline stage mapping (Plan 01 Task 1)
 
 *Visual component tests are manual-only — React component rendering tests would require `@testing-library/react` which is not currently installed.*
 
@@ -69,11 +70,11 @@ created: 2026-03-25
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** pending
