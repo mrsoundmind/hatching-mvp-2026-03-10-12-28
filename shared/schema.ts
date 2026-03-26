@@ -47,7 +47,7 @@ export const projects = pgTable("projects", {
       id: string;
       title: string;
       content: string;
-      type: 'idea-development' | 'project-plan' | 'meeting-notes' | 'research';
+      type: 'idea-development' | 'project-plan' | 'meeting-notes' | 'research' | 'uploaded-pdf' | 'uploaded-docx' | 'uploaded-txt' | 'uploaded-md';
       createdAt: string;
     }>;
     sharedMemory?: string;
@@ -56,6 +56,8 @@ export const projects = pgTable("projects", {
     autonomyEnabled?: boolean;
     autonomyPaused?: boolean;
     inactivityAutonomyEnabled?: boolean;
+    autonomyLevel?: 'observe' | 'propose' | 'confirm' | 'autonomous';
+    inactivityTriggerMinutes?: number;
     rules?: string;
     taskGraph?: unknown;
   }>().default({}),

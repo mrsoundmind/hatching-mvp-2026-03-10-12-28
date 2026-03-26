@@ -6,7 +6,7 @@
  * Any error or unsupported extension returns an empty string.
  */
 import path from 'path';
-import pdfParse from 'pdf-parse';
+import { PDFParse } from 'pdf-parse';
 import mammoth from 'mammoth';
 
 export const MAX_CHARS = 50_000;
@@ -24,7 +24,8 @@ export async function extractDocumentText(buffer: Buffer, filename: string): Pro
   try {
     switch (ext) {
       case '.pdf': {
-        const result = await pdfParse(buffer);
+        const parser = new PDFParse({ data: new Uint8Array(buffer) });
+        const result = await parser.getText();
         return result.text.slice(0, MAX_CHARS);
       }
       case '.docx': {
