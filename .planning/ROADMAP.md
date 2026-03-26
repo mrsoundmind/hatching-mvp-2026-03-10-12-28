@@ -228,7 +228,7 @@ Plans:
 | 10. Billing + LLM Intelligence | v1.2 | — | Complete | 2026-03-23 |
 | 11. Sidebar Shell + Activity Feed | v1.3 | 3/3 | Complete | 2026-03-25 |
 | 12. Handoff Visualization | v1.3 | 2/2 | Complete | 2026-03-25 |
-| 13. Approvals Hub + Task Pipeline | 2/2 | Complete   | 2026-03-26 | - |
+| 13. Approvals Hub + Task Pipeline | 2/2 | Complete    | 2026-03-26 | - |
 | 14. Brain Redesign + Autonomy Settings | v1.3 | 0/? | Not started | - |
 | 15. Polish | v1.3 | 0/? | Not started | - |
 | 16. Database Foundation + Artifact Panel Shell | v2.0 | 0/? | Not started | - |
