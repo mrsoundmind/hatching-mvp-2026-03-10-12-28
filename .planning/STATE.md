@@ -4,7 +4,7 @@ milestone: v1.3
 milestone_name: Autonomy Visibility & Right Sidebar Revamp
 status: completed
 stopped_at: Completed 14-02-PLAN.md
-last_updated: "2026-03-26T09:11:11.161Z"
+last_updated: "2026-03-26T09:15:04.174Z"
 last_activity: 2026-03-26 — Completed 14-01 (brain upload backend + autonomy settings schema)
 progress:
   total_phases: 11
