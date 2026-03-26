@@ -59,7 +59,7 @@ See archived roadmap: [milestones/v1.2-ROADMAP.md](milestones/v1.2-ROADMAP.md)
 - [x] **Phase 11: Sidebar Shell + Activity Feed** - Tab structure, live autonomy event feed, stats card, agent working avatar state, empty states (completed 2026-03-25)
 - [x] **Phase 12: Handoff Visualization** - Chat handoff cards, sidebar handoff timeline, user-initiated handoff, deliberation indicator (completed 2026-03-25)
 - [x] **Phase 13: Approvals Hub + Task Pipeline** - Dedicated approvals tab, task pipeline view, expiry handling (completed 2026-03-26)
-- [ ] **Phase 14: Brain Redesign + Autonomy Settings** - File upload to project brain, knowledge base UI, autonomy dial, work output viewer
+- [x] **Phase 14: Brain Redesign + Autonomy Settings** - File upload to project brain, knowledge base UI, autonomy dial, work output viewer (completed 2026-03-26)
 - [ ] **Phase 15: Polish** - Premium component designs via Stitch/Magic MCPs, visual consistency pass
 
 ---
@@ -232,7 +232,7 @@ Plans:
 | 11. Sidebar Shell + Activity Feed | v1.3 | 3/3 | Complete | 2026-03-25 |
 | 12. Handoff Visualization | v1.3 | 2/2 | Complete | 2026-03-25 |
 | 13. Approvals Hub + Task Pipeline | 2/2 | Complete    | 2026-03-26 | - |
-| 14. Brain Redesign + Autonomy Settings | 1/2 | In Progress|  | - |
+| 14. Brain Redesign + Autonomy Settings | 2/2 | Complete   | 2026-03-26 | - |
 | 15. Polish | v1.3 | 0/? | Not started | - |
 | 16. Database Foundation + Artifact Panel Shell | v2.0 | 0/? | Not started | - |
 | 17. Deliverable Generation + Schema Enforcement | v2.0 | 0/? | Not started | - |

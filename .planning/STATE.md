@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Autonomy Visibility & Right Sidebar Revamp
-status: in_progress
-stopped_at: Completed 14-01-PLAN.md
-last_updated: "2026-03-26T08:57:37Z"
+status: completed
+stopped_at: "Checkpoint: 14-02-PLAN.md Task 3 human-verify"
+last_updated: "2026-03-26T09:08:00.198Z"
 last_activity: 2026-03-26 — Completed 14-01 (brain upload backend + autonomy settings schema)
 progress:
   total_phases: 11
-  completed_phases: 3
-  total_plans: 8
-  completed_plans: 8
+  completed_phases: 4
+  total_plans: 9
+  completed_plans: 9
   percent: 70
 ---
 
@@ -78,6 +78,7 @@ Progress: [███████░░░] 70%
 | Phase 13 P01 | 161 | 2 tasks | 5 files |
 | Phase 13 P02 | 173 | 2 tasks | 6 files |
 | Phase 14 P01 | 227s | 2 tasks | 6 files |
+| Phase 14 P02 | 359 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,8 @@ Key decisions for v2.0:
 - [Phase 13]: blocked status intentionally maps to Review display label in PIPELINE_STAGES — DB has no review status value
 - [Phase 13]: Identical queryKey in ApprovalsTab + RightSidebar ensures TanStack deduplication — one fetch serves both consumers
 - [Phase 13]: SidebarTabBar extended from 2 to 3 tabs with ShieldCheck + amber dot badge for approvals
+- [Phase 14]: Old brain tab content (agent/team/project views) replaced entirely with BrainDocsTab — all contexts now show upload, docs, autonomy settings, work outputs
+- [Phase 14]: Optimistic document deletion with rollback — card removed immediately, restored on server error
 
 ### Research Flags (for /gsd:research-phase during planning)
 
@@ -157,7 +160,7 @@ Four new npm packages required (all others already installed):
 
 ## Session Continuity
 
-Last session: 2026-03-26T08:57:37Z
-Stopped at: Completed 14-01-PLAN.md
+Last session: 2026-03-26T09:08:00.195Z
+Stopped at: Checkpoint: 14-02-PLAN.md Task 3 human-verify
 Resume file: None
 Next action: Execute 14-02-PLAN.md (Brain Redesign UI + Autonomy Settings Frontend)
