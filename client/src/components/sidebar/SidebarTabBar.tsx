@@ -7,7 +7,7 @@ interface SidebarTabBarProps {
   activeTab: SidebarTab;
   onTabChange: (tab: SidebarTab) => void;
   unreadActivityCount: number;
-  hasPendingApprovals: boolean;
+  hasPendingApprovals?: boolean;
 }
 
 const TABS: Array<{ id: SidebarTab; label: string; icon: typeof Activity }> = [
@@ -20,7 +20,7 @@ export function SidebarTabBar({
   activeTab,
   onTabChange,
   unreadActivityCount,
-  hasPendingApprovals,
+  hasPendingApprovals = false,
 }: SidebarTabBarProps) {
   return (
     <div className="mb-4 grid grid-cols-3 gap-1 rounded-xl border border-[var(--hatchin-border-subtle)] bg-[var(--hatchin-surface)] p-1 relative">
@@ -55,7 +55,10 @@ export function SidebarTabBar({
                 </span>
               )}
               {tab.id === 'approvals' && hasPendingApprovals && (
-                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                <span
+                  className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-amber-400 rounded-full animate-pulse"
+                  aria-label="Pending approvals"
+                />
               )}
             </span>
             <span className="relative">{tab.label}</span>

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronRight, Check, Sparkles, ShieldCheck } from "lucide-react";
+import { ChevronDown, ChevronRight, Check, Sparkles } from "lucide-react";
 import { ProgressTimeline } from "@/components/ProgressTimeline";
 import { useToast } from "@/hooks/use-toast";
 import { useRightSidebarState } from "@/hooks/useRightSidebarState";
@@ -9,9 +9,10 @@ import { useAutonomyFeed } from "@/hooks/useAutonomyFeed";
 import { useQuery } from "@tanstack/react-query";
 import { SidebarTabBar } from "./sidebar/SidebarTabBar";
 import { ActivityTab } from "./sidebar/ActivityTab";
-import { EmptyState } from "./ui/EmptyState";
+import { ApprovalsTab } from "./sidebar/ApprovalsTab";
+import { isApprovalExpired } from "./sidebar/approvalUtils";
 import TaskManager from "./TaskManager";
-import type { Project, Team, Agent } from "@shared/schema";
+import type { Project, Team, Agent, Task } from "@shared/schema";
 import { getAgentColors } from "@/lib/agentColors";
 import { getRoleDefinition } from "@shared/roleRegistry";
 import AgentAvatar from "@/components/avatars/AgentAvatar";
@@ -38,6 +39,34 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
     enabled: !!activeProject?.id,
     staleTime: 60_000,
   });
+
+  // Fetch all project tasks for hasPendingApprovals badge wiring.
+  // MUST match ApprovalsTab queryKey exactly for TanStack deduplication.
+  const { data: allTasks } = useQuery<Task[]>({
+    queryKey: ['/api/tasks', `?projectId=${activeProject?.id}`],
+    queryFn: async () => {
+      const res = await fetch(`/api/tasks?projectId=${activeProject!.id}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!activeProject?.id,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
+
+  const hasPendingApprovals = React.useMemo(
+    () =>
+      (allTasks ?? []).some(t => {
+        const meta = t.metadata as Record<string, unknown>;
+        return (
+          meta?.awaitingApproval === true &&
+          !meta?.approvedAt &&
+          !meta?.rejectedAt &&
+          !isApprovalExpired(t)
+        );
+      }),
+    [allTasks]
+  );
 
   const { activeTab } = state;
   const { setActiveTab } = actions;
@@ -336,7 +365,7 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
         activeTab={activeTab}
         onTabChange={handleTabChange}
         unreadActivityCount={unreadCount}
-        hasPendingApprovals={false} // Phase 13 will wire this
+        hasPendingApprovals={hasPendingApprovals}
       />
 
       {/* Activity tab panel (CSS-hidden, never unmounted) */}
@@ -349,6 +378,15 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
           projectId={activeProject?.id}
           agents={projectAgents?.map(a => ({ id: a.id, name: a.name, role: a.role })) || []}
         />
+      </div>
+
+      {/* Approvals tab panel (CSS-hidden, never unmounted) */}
+      <div
+        style={{ display: activeTab === 'approvals' ? 'flex' : 'none' }}
+        aria-hidden={activeTab !== 'approvals'}
+        className="flex-1 flex flex-col overflow-y-auto hide-scrollbar"
+      >
+        <ApprovalsTab projectId={activeProject?.id} />
       </div>
 
       {/* Brain & Docs tab panel (CSS-hidden, never unmounted) — contains ALL existing content */}
@@ -885,18 +923,6 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
         )}
       </div>
 
-      {/* Approvals tab panel (CSS-hidden, never unmounted) */}
-      <div
-        style={{ display: activeTab === 'approvals' ? 'flex' : 'none' }}
-        aria-hidden={activeTab !== 'approvals'}
-        className="flex-1 flex flex-col overflow-y-auto hide-scrollbar"
-      >
-        <EmptyState
-          icon={ShieldCheck}
-          title="All clear!"
-          description="No pending approvals. When a Hatch needs your sign-off on something risky, it'll show up here."
-        />
-      </div>
     </aside>
   );
 }
