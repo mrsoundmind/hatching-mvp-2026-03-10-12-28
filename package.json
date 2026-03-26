@@ -24,6 +24,9 @@
     "perf:samples": "tsx scripts/generate-performance-samples.ts",
     "gate:performance": "tsx scripts/gate-performance.ts",
     "report:autonomy": "tsx scripts/report-autonomy.ts",
+    "benchmark": "tsx scripts/benchmark-suite.ts",
+    "benchmark:report": "tsx scripts/benchmark-report.ts",
+    "benchmark:full": "tsx scripts/benchmark-suite.ts && tsx scripts/benchmark-report.ts",
     "test:integrity": "tsx scripts/test-conversation-integrity.ts",
     "test:memory": "tsx scripts/test-memory-persistence.ts",
     "test:memory:restart": "tsx scripts/test-memory-persistence.ts --write-only && tsx scripts/test-memory-persistence.ts --verify-only",
@@ -31,6 +34,9 @@
     "test:injection": "tsx scripts/test-prompt-injection.ts",
     "test:dto": "tsx scripts/test-dto-contracts.ts",
     "test:tone": "tsx scripts/test-tone-guard.ts",
+    "test:voice": "tsx scripts/test-voice-distinctiveness.ts",
+    "test:pushback": "tsx scripts/test-agent-pushback.ts",
+    "test:reasoning": "tsx scripts/test-reasoning-patterns.ts",
     "test:ws-race": "tsx scripts/test-ws-race.ts",
     "test:ws-reconnect": "tsx scripts/test-ws-reconnect.ts"
   },
@@ -79,6 +85,7 @@
     "@types/cors": "^2.8.19",
     "@types/express-rate-limit": "^5.1.3",
     "@types/memoizee": "^0.4.12",
+    "@types/multer": "^2.1.0",
     "@types/node-cron": "^3.0.11",
     "@vitejs/plugin-react": "^4.3.2",
     "autoprefixer": "^10.4.20",
@@ -102,9 +109,11 @@
     "input-otp": "^1.4.2",
     "langsmith": "^0.3.69",
     "lucide-react": "^0.453.0",
+    "mammoth": "^1.12.0",
     "memoizee": "^0.4.17",
     "memorystore": "^1.6.7",
     "motion": "^12.38.0",
+    "multer": "^2.1.1",
     "next-themes": "^0.4.6",
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
@@ -112,6 +121,7 @@
     "openid-client": "^6.6.2",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
+    "pdf-parse": "^2.4.5",
     "pg-boss": "^10.4.2",
     "postcss": "^8.4.47",
     "react": "^18.3.1",
@@ -125,6 +135,7 @@
     "recharts": "^2.15.2",
     "rehype-highlight": "^7.0.2",
     "remark-gfm": "^4.0.1",
+    "stripe": "^20.4.1",
     "tailwind-merge": "^2.6.0",
     "tailwindcss": "^3.4.17",
     "tailwindcss-animate": "^1.0.7",
@@ -139,6 +150,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/connect-pg-simple": "^7.0.3",
     "@types/express": "4.17.21",
     "@types/express-session": "^1.18.0",
@@ -148,7 +160,9 @@
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "@types/ws": "^8.5.13",
-    "drizzle-kit": "^0.30.4"
+    "drizzle-kit": "^0.30.4",
+    "tdd-guard-vitest": "^0.1.6",
+    "vitest": "^4.1.0"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
