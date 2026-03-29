@@ -146,7 +146,14 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. All new sidebar tab components use designs generated via Stitch/Magic MCPs and are visually indistinguishable from the quality level of existing Hatchin components
   2. New components are consistent in spacing, color usage, typography, and animation style with the established Tailwind design tokens and Framer Motion patterns across the app
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+- [ ] 15-01-PLAN.md — Top-level sidebar polish: SidebarTabBar mobile touch targets, ApprovalsEmptyState floating animation, AutonomyStatsCard premium card
+- [ ] 15-02-PLAN.md — Activity tab content polish: ActivityFeedItem premium card, FeedFilters Shadcn Select, HandoffChainTimeline staggered animation
+- [ ] 15-03-PLAN.md — Approvals tab polish: ApprovalItem touch targets and premium card, TaskPipelineView stage colors and hover
+- [ ] 15-04-PLAN.md — Brain tab content polish: DocumentCard hover lift, DocumentUploadZone Tailwind migration, AutonomySettingsPanel section dividers
+- [ ] 15-05-PLAN.md — Remaining content polish: WorkOutputSection prose rendering, BrainDocsTab section dividers, ActivityTab shimmer skeleton
+- [ ] 15-06-PLAN.md — Cross-cutting polish: avatar working animation enhancement, AutonomousApprovalCard normalization, Sheet drawer frosted glass + visual audit checkpoint
 
 ---
 
@@ -231,9 +238,9 @@ Plans:
 | 10. Billing + LLM Intelligence | v1.2 | — | Complete | 2026-03-23 |
 | 11. Sidebar Shell + Activity Feed | v1.3 | 3/3 | Complete | 2026-03-25 |
 | 12. Handoff Visualization | v1.3 | 2/2 | Complete | 2026-03-25 |
-| 13. Approvals Hub + Task Pipeline | 2/2 | Complete    | 2026-03-26 | - |
-| 14. Brain Redesign + Autonomy Settings | 2/2 | Complete    | 2026-03-26 | - |
-| 15. Polish | v1.3 | 0/? | Not started | - |
+| 13. Approvals Hub + Task Pipeline | v1.3 | 2/2 | Complete | 2026-03-26 |
+| 14. Brain Redesign + Autonomy Settings | v1.3 | 2/2 | Complete | 2026-03-26 |
+| 15. Polish | v1.3 | 0/6 | Not started | - |
 | 16. Database Foundation + Artifact Panel Shell | v2.0 | 0/? | Not started | - |
 | 17. Deliverable Generation + Schema Enforcement | v2.0 | 0/? | Not started | - |
 | 18. Cross-Agent Deliverable Chains | v2.0 | 0/? | Not started | - |
