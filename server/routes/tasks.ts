@@ -1,10 +1,9 @@
 import type { Express, Request } from 'express';
 import { storage } from '../storage.js';
 import { insertTaskSchema, type Task } from '@shared/schema';
-import { parseConversationId } from '@shared/conversationId';
 import { randomUUID } from 'crypto';
 import { getCharacterProfile } from '../ai/characterProfiles.js';
-import { TaskDetectionAI, type TaskSuggestion, type ConversationContext } from '../ai/taskDetection.js';
+import { extractOrganicTasks } from '../ai/tasks/organicExtractor.js';
 import { z } from 'zod';
 
 const updateTaskSchema = z.object({
@@ -104,7 +103,7 @@ export function registerTaskRoutes(app: Express, deps: RegisterTaskDeps): void {
     }
   });
 
-  // Task Suggestion Endpoints
+  // Task Suggestion Endpoints — uses new organic extractor (Groq free tier)
   app.post("/api/task-suggestions/analyze", async (req, res) => {
     try {
       const { conversationId, projectId, teamId, agentId, messages: providedMessages } = req.body;
@@ -129,14 +128,8 @@ export function registerTaskRoutes(app: Express, deps: RegisterTaskDeps): void {
         return res.json({ suggestions: [] });
       }
 
-      // Check if we should analyze this conversation
-      const analyzedMessages = messages.map(m => ({
-        role: m.messageType === 'user' ? 'user' : 'assistant',
-        content: typeof m.content === 'string' ? m.content : '',
-        timestamp: new Date(m.createdAt)
-      }));
-      const shouldAnalyze = await TaskDetectionAI.shouldAnalyzeConversation(analyzedMessages);
-      if (!shouldAnalyze) {
+      // Need at least 3 messages with task keywords to analyze
+      if (messages.length < 3) {
         return res.json({ suggestions: [] });
       }
 
@@ -147,44 +140,54 @@ export function registerTaskRoutes(app: Express, deps: RegisterTaskDeps): void {
         (teamId && agent.teamId === teamId)
       );
 
-      // Create conversation context with proper role mapping
-      const context: ConversationContext = {
-        messages: messages.map(msg => {
-          // Map messageType to role correctly
-          let role: 'user' | 'assistant' | 'system' = 'assistant';
-          if (msg.messageType === 'user') {
-            role = 'user';
-          } else if (msg.messageType === 'agent') {
-            role = 'assistant';
-          }
+      // Get existing tasks to deduplicate
+      const existingTasks = projectId ? await storage.getTasksByProject(projectId) : [];
 
-          const safeContent = typeof msg.content === 'string' ? msg.content : '';
+      // Get project name for context
+      const project = projectId ? await storage.getProject(projectId) : null;
 
-          devLog('Message mapping:', {
-            messageType: msg.messageType,
-            role,
-            content: safeContent.substring(0, 50) + '...'
-          });
+      // Build conversation pair from last user + agent messages
+      const userMsgs = messages.filter(m => m.messageType === 'user');
+      const agentMsgs = messages.filter(m => m.messageType === 'agent');
+      const lastUserMsg = userMsgs[userMsgs.length - 1];
+      const lastAgentMsg = agentMsgs[agentMsgs.length - 1];
 
-          return {
-            role,
-            content: safeContent,
-            timestamp: new Date(msg.createdAt)
-          };
-        }),
-        projectId,
-        teamId,
-        agentId,
-        availableAgents: projectAgents.map(agent => ({
-          id: agent.id,
-          name: agent.name,
-          role: agent.role,
-          expertise: typeof agent.personality === 'object' && agent.personality ? (agent.personality as any).expertise || [] : []
-        }))
-      };
+      if (!lastUserMsg) {
+        return res.json({ suggestions: [] });
+      }
 
-      // Analyze conversation for task suggestions
-      const suggestions = await TaskDetectionAI.analyzeConversationForTasks(context);
+      // Use new organic extractor (routes to Groq free tier)
+      const result = await extractOrganicTasks(
+        typeof lastUserMsg.content === 'string' ? lastUserMsg.content : '',
+        lastAgentMsg ? (typeof lastAgentMsg.content === 'string' ? lastAgentMsg.content : '') : '',
+        {
+          projectName: project?.name || 'Unknown',
+          agentRole: projectAgents[0]?.role || 'General',
+          availableAgents: projectAgents.map(a => a.role),
+          conversationId,
+          existingTasks: existingTasks.map(t => ({
+            id: t.id,
+            title: t.title,
+            status: t.status,
+            priority: t.priority ?? undefined,
+          })),
+        }
+      );
+
+      // Map organic tasks to the suggestion format expected by frontend
+      const suggestions = result.tasks.map(task => ({
+        id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        title: task.title,
+        description: task.description,
+        priority: task.priority === 'urgent' ? 'High' : task.priority === 'high' ? 'High' : task.priority === 'low' ? 'Low' : 'Medium',
+        suggestedAssignee: (() => {
+          const match = projectAgents.find(a => a.role.toLowerCase() === task.suggestedAssignee.toLowerCase());
+          return match ? { id: match.id, name: match.name, role: match.role } : { id: '', name: task.suggestedAssignee, role: task.suggestedAssignee };
+        })(),
+        category: 'General',
+        estimatedEffort: 'Medium',
+        reasoning: task.reasoning,
+      }));
 
       res.json({ suggestions });
     } catch (error) {
