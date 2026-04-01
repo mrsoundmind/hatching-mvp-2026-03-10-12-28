@@ -17,13 +17,15 @@ Hatchin is an **AI-powered collaborative project execution platform**. Think of 
 - Execute tasks autonomously in the background and hand off work between specialists
 - Self-review quality via peer review gates and progressive trust scoring
 
-**Current Phase**: v1.3 in progress (2026-03-24). v1.2 shipped (16/16). v1.1 shipped (17/17). v1.0 shipped (31/31). Post-v1.1: World-class agent intelligence upgrade shipped (30 roles, 294 new tests).
+**Current Phase**: Post-v2.0 — production hardening + next milestone planning. v2.0 shipped (2026-03-30). v1.3 shipped (23/23). v1.2 shipped (16/16). v1.1 shipped (17/17). v1.0 shipped (31/31). Post-v1.1: World-class agent intelligence upgrade shipped (30 roles, 294 new tests). Smart Task Detection rewrite complete (7/7 phases).
 
-**Latest Milestone**: v1.3 — Autonomy Visibility & Right Sidebar Revamp (5 phases, 23 requirements, in progress). Tabbed right sidebar (Activity/Brain & Docs/Approvals), live autonomy feed, handoff visualization, agent working avatar state, approvals hub, task pipeline, project brain file upload, autonomy settings dial, work output viewer. Details: `.planning/v1.3-autonomy-visibility-sidebar-revamp.md`.
+**Latest Milestone**: v2.0 — Hatches That Deliver (shipped 2026-03-30). Cross-agent deliverable chains, artifact panel, PDF export, 15 deliverable types, 3 package templates (launch/content-sprint/research), organic detection, zero-friction onboarding.
 
-**Previous Milestone**: v1.2 — Billing + LLM Intelligence (shipped 2026-03-23). Stripe monetization (Free/Pro tiers, $19/mo), smart LLM routing (Gemini Flash/Pro + Groq free tier), token tracking, usage capping, conversation compaction, reasoning cache, background task batching. Audit: `.planning/v1.2-MILESTONE-AUDIT.md`.
+**Previous Milestones**:
+- v1.3 — Autonomy Visibility & Right Sidebar Revamp (shipped, 23/23 requirements). Tabbed right sidebar (Activity/Brain & Docs/Approvals), live autonomy feed, handoff visualization, agent working avatar state, approvals hub, task pipeline, project brain file upload, autonomy settings dial, work output viewer.
+- v1.2 — Billing + LLM Intelligence (shipped 2026-03-23). Stripe monetization (Free/Pro tiers, $19/mo), smart LLM routing (Gemini Flash/Pro + Groq free tier), token tracking, usage capping, conversation compaction, reasoning cache, background task batching.
 
-**Current Branch**: `reconcile-codex` (feature branch) — main is the canonical production branch.
+**Current Branch**: `main` (production).
 
 ### v1.1 — Autonomous Execution Loop
 
@@ -96,39 +98,67 @@ Stripe billing (Free $0 / Pro $19/mo), smart LLM model routing, token tracking, 
 
 **Audit:** `.planning/v1.2-MILESTONE-AUDIT.md` — 16/16 requirements, 8/8 E2E flows verified
 
-### v1.3 — Autonomy Visibility & Right Sidebar Revamp (in progress, started 2026-03-24)
+### v1.3 — Autonomy Visibility & Right Sidebar Revamp (shipped, 23/23 requirements)
 
 The autonomy backend (v1.1) is powerful but invisible. v1.3 makes it visible and controllable.
 
-- **Right Sidebar Revamp (SIDE-01–04):** Tabbed layout — Activity / Brain & Docs / Approvals. CSS-hide inactive tabs (preserves scroll/draft state). Badge counts for unread events and pending approvals. Mobile-responsive via Sheet drawer with swipe gesture.
+- **Right Sidebar Revamp (SIDE-01–04):** Tabbed layout — Activity / Tasks / Brain. CSS-hide inactive tabs (preserves scroll/draft state). Badge counts for unread events and pending approvals. Mobile-responsive via Sheet drawer.
 
-- **Live Activity Feed (FEED-01–05):** Real-time feed of autonomy events (task started, completed, handoff, peer review) with agent avatars and timestamps. Stats summary card (tasks completed, handoffs, cost). Filter chips by event type, agent, or time range. Event aggregation prevents flooding. Compelling empty state for new projects.
+- **Live Activity Feed (FEED-01–05):** Real-time feed of autonomy events with agent avatars and timestamps. Stats summary card (tasks completed, handoffs, cost). Filter chips by event type, agent, or time range. Event aggregation prevents flooding. Compelling empty state.
 
-- **Handoff Visualization (HAND-01–04):** Chat handoff cards replace plain text announcements (from-agent avatar → arrow → to-agent avatar + task title). Sidebar handoff chain timeline with animated connectors. "Hand off to..." dropdown button for user-initiated handoffs. Deliberation indicator card when agents coordinate.
+- **Handoff Visualization (HAND-01–04):** Chat handoff cards (from-agent → to-agent + task title). Sidebar handoff chain timeline with animated connectors. "Hand off to..." dropdown button. Deliberation indicator card.
 
-- **Agent Status (AGNT-01):** Avatar "working" state — pulsing/rotating animation when executing background tasks.
+- **Agent Status (AGNT-01):** Avatar "working" state — pulsing/rotating animation during background execution.
 
-- **Approvals Hub (APPR-01–04):** Dedicated Approvals tab with one-click approve/reject. Task pipeline view (Queued → Assigned → In Progress → Review → Done). Approval expiry handling with clear "expired" messaging. Empty state.
+- **Approvals Hub (APPR-01–04):** One-click approve/reject. Task pipeline view (5 stages). Approval expiry handling. Empty state.
 
-- **Brain Redesign (BRAIN-01–04):** PDF/DOCX/TXT/MD file upload via drag-and-drop (10MB max, multer v2 + pdf-parse). Card-based knowledge base with type badges. 4-level autonomy dial (Observe/Propose/Confirm/Autonomous). Work output viewer for background deliverables.
+- **Brain Redesign (BRAIN-01–04):** PDF/DOCX/TXT/MD file upload via drag-and-drop (10MB max). Card-based knowledge base with type badges. 4-level autonomy dial (Observe/Propose/Confirm/Autonomous). Work output viewer.
 
-- **Polish (PLSH-01):** Premium component design via Stitch/Magic MCPs matching Hatchin's visual style.
+- **Polish (PLSH-01):** Premium design tokens and animations across all components.
 
-**Key modules (v1.3 — will be created):**
-- `client/src/components/sidebar/` — SidebarTabBar, ActivityFeed, FeedItem, AutonomyStatsCard, EmptyState, HandoffChainTimeline, DeliberationCard, ApprovalsTab, ApprovalItem, TaskPipelineView, BrainDocsTab, DocumentUpload, DocumentViewer, AutonomySettings, WorkOutputViewer
-- `client/src/components/chat/` — HandoffCard, HandoffButton
-- `client/src/hooks/useAutonomyFeed.ts` — real-time autonomy event feed hook
+**Key modules (v1.3):**
+- `client/src/components/sidebar/` — SidebarTabBar, ActivityTab, ActivityFeedItem, AutonomyStatsCard, FeedFilters, EmptyState, HandoffChainTimeline, ApprovalsTab, ApprovalItem, TaskPipelineView, BrainDocsTab, DocumentUploadZone, DocumentCard, AutonomySettingsPanel, WorkOutputSection, TasksTab
+- `client/src/components/chat/` — HandoffCard, DeliberationCard
+- `client/src/hooks/` — useAutonomyFeed, useSidebarEvent, useAgentWorkingState
+- `server/lib/extractDocumentText.ts` — PDF/DOCX/TXT/MD text extraction
 
-**Architecture decisions (v1.3):**
-- CustomEvent bridge from CenterPanel to sidebar (existing pattern)
-- CSS-hide tabs (not conditional unmount) to preserve state
-- multer v2.0.2 required (v1.x has active CVEs)
-- No DB migrations — all data fits existing JSONB columns
-- Wrap-then-restructure sidebar approach
+### v2.0 — Hatches That Deliver (shipped 2026-03-30)
 
-**Phases:** 11 (Sidebar Shell + Activity Feed) → 12 (Handoff Viz) → 13 (Approvals Hub) → 14 (Brain Redesign) → 15 (Polish). Phase 11 gates all. Phases 12-14 are independent. Phase 15 depends on all.
+Transforms Hatchin from "AI chatroom" to "AI team that ships coordinated work."
 
-**Details:** `.planning/v1.3-autonomy-visibility-sidebar-revamp.md`
+- **Deliverable System:** 15 deliverable types with role-to-type mapping and canonical section schemas. Streaming generation via Groq. Version history with restore. Iterate by section.
+
+- **Cross-Agent Chains:** Upstream context injection, handoff orchestration, stale reference detection. 3 package templates: launch, content-sprint, research.
+
+- **Artifact Panel:** Right-side split panel with markdown rendering, version navigation, refine input. Inline DeliverableChatCard in conversation.
+
+- **Professional Export:** Branded PDF with table of contents, attribution, and Hatchin branding.
+
+- **Organic Detection:** Regex-based intent detection from conversation, conservative thresholds, ProposalCard accept/dismiss UX.
+
+**Key modules (v2.0):**
+- `shared/schema.ts` — deliverables, deliverableVersions, deliverablePackages tables
+- `shared/deliverableTypes.ts` — 15 types with role mapping + section schemas
+- `server/routes/deliverables.ts` — 13 API endpoints (CRUD, generate, iterate, download, versions, packages)
+- `server/ai/deliverableGenerator.ts` — Groq-based streaming generation
+- `server/ai/deliverableDetector.ts` — Organic intent detection
+- `server/ai/deliverableChainOrchestrator.ts` — Cross-agent chain coordination
+- `server/ai/pdfExport.ts` — Branded PDF export
+- `client/src/components/ArtifactPanel.tsx` — Split-panel viewer
+- `client/src/components/DeliverableChatCard.tsx` — Inline deliverable in chat
+- `client/src/components/PackageProgress.tsx` — Package progress tracking
+
+### Smart Task Detection Rewrite (shipped 2026-03-31, 7/7 phases)
+
+Replaced broken task detection with intent-classified pipeline. Zero-LLM pattern-based gating, Groq free tier for organic extraction.
+
+- **Intent Classifier:** 5 intent types (EXPLICIT_TASK_REQUEST, USER_DELEGATION, TASK_LIFECYCLE_COMMAND, ORGANIC_CANDIDATE, NO_TASK_INTENT). Zero LLM cost.
+- **Lifecycle Commands:** Status/priority/assignee updates, delete, query, filtered_query, progress. Fuzzy task matching.
+- **Organic Extraction:** Groq-based, 30s cooldown, Jaccard duplicate detection (≥ 0.7).
+- **Agent Awareness:** Assigned tasks injected into agent prompts with overdue warnings. Completion detection from agent responses.
+
+**Key modules:**
+- `server/ai/tasks/` — intentClassifier, taskCreator, taskLifecycle, organicExtractor, duplicateDetector, completionDetector
 
 ---
 
@@ -188,13 +218,13 @@ hatching-mvp-5th-march/
 │   │   ├── RightSidebar.tsx      # Project metadata editor (brain, direction, culture)
 │   │   ├── MessageBubble.tsx     # Message rendering (user/agent/system)
 │   │   ├── ProjectTree.tsx       # Hierarchical project browser
-│   │   ├── TaskManager.tsx       # Task list with filters + status
+│   │   ├── TaskApprovalModal.tsx  # AI task approval flow (used by CenterPanel)
 │   │   ├── AddHatchModal.tsx     # Create agent modal
 │   │   ├── WelcomeModal.tsx      # First-time onboarding (egg animation)
 │   │   ├── QuickStartModal.tsx   # Quick project creation
 │   │   ├── StarterPacksModal.tsx # Template selection
 │   │   ├── OnboardingSteps.tsx   # Step-by-step onboarding UI
-│   │   ├── TaskSuggestionModal.tsx # AI task approval flow
+│   │   ├── ArtifactPanel.tsx      # Deliverable viewer (v2.0)
 │   │   ├── EggHatchingAnimation.tsx # Animated egg 🥚 loading state
 │   │   ├── ErrorFallbacks.tsx    # AppErrorFallback + PanelErrorFallback components
 │   │   ├── AutonomousApprovalCard.tsx # Inline approval UI for high-risk actions
@@ -228,7 +258,7 @@ hatching-mvp-5th-march/
 │   │   ├── safety.ts             # Risk scoring + intervention gates
 │   │   ├── forecast.ts           # Decision outcome prediction
 │   │   ├── expertiseMatching.ts  # Agent specialty scoring
-│   │   ├── taskDetection.ts      # Extract tasks from chat messages
+│   │   ├── tasks/                # Smart Task Detection pipeline (intentClassifier, organicExtractor, etc.)
 │   │   ├── personalityEvolution.ts # Agent learning from feedback
 │   │   ├── trainingSystem.ts     # Feedback collection for training
 │   │   ├── colleagueLogic.ts     # Role-specific response logic
@@ -952,11 +982,16 @@ const result = await db.execute(sql`SELECT * FROM projects WHERE id = ${projectI
 - [x] **Billing + LLM Intelligence** — Stripe monetization, Free/Pro tiers ($19/mo), smart LLM routing (Flash/Pro/Groq), token tracking, usage capping, conversation compaction, reasoning cache, task batching
 - Audit: `.planning/v1.2-MILESTONE-AUDIT.md` — 16/16 requirements, 8/8 E2E flows
 
-### v1.3 — In Progress (started 2026-03-24)
-- [ ] **Autonomy Visibility & Right Sidebar Revamp** — 5 phases (11-15), 23 requirements
-- Details: `.planning/v1.3-autonomy-visibility-sidebar-revamp.md`
+### v1.3 — Completed (shipped 2026-03-29)
+- [x] **Autonomy Visibility & Right Sidebar Revamp** — 5 phases (11-15), 23/23 requirements
 
-### Short-Term (post-v1.3)
+### v2.0 — Completed (shipped 2026-03-30)
+- [x] **Hatches That Deliver** — Deliverable system, cross-agent chains, artifact panel, PDF export, organic detection
+
+### Smart Task Detection — Completed (shipped 2026-03-31)
+- [x] **7-phase rewrite** — Intent classifier, lifecycle commands, organic extraction, agent awareness, frontend, cleanup
+
+### Short-Term (current)
 - [ ] Write CHANGELOG and README for onboarding new developers
 - [ ] User analytics / usage metrics (Posthog or custom)
 - [ ] Conversation archival and search
@@ -1165,5 +1200,5 @@ class HatchinGraphError extends Error {
 
 ---
 
-*Last updated: 2026-03-24 | Branch: reconcile-codex | v1.2 shipped | v1.3 in progress: Autonomy Visibility & Right Sidebar Revamp (5 phases, 23 requirements) | Author: Claude Code*
+*Last updated: 2026-04-01 | Branch: main | v2.0 shipped | v1.3 shipped | Smart Task Detection complete | Author: Claude Code*
 *This file should be updated whenever a significant architectural change is made.*
