@@ -1,204 +1,156 @@
-# Requirements: Hatchin
+# Requirements: Hatchin v3.0 Reliable Autonomy
 
-**Defined:** 2026-03-24 (v1.3), 2026-03-25 (v2.0)
+**Defined:** 2026-04-13
 **Core Value:** No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
 
----
-
-## v2.0 Requirements — Hatches That Deliver
-
-Requirements for transforming Hatchin from "AI chatroom" to "AI team that ships coordinated work."
-
-### Artifact Panel
-
-- [ ] **ARTF-01**: User sees a split-panel artifact viewer that slides in beside chat (non-blocking — chat remains visible and usable) when a deliverable is opened
-- [ ] **ARTF-02**: User sees deliverables stored with version history (back/forward navigation, up to 20 versions retained) and can restore any previous version
-- [ ] **ARTF-03**: Each deliverable shows agent attribution (avatar, name, role) and status badge (Draft / In Review / Complete)
-- [ ] **ARTF-04**: User can copy deliverable content to clipboard and download as .md file with one click from the artifact panel
-
-### Deliverable Generation
-
-- [ ] **DLVR-01**: User can explicitly request a deliverable ("write me a PRD", "create a tech spec") and the appropriate Hatch generates a structured document with schema-enforced sections
-- [ ] **DLVR-02**: Deliverable content streams into the artifact panel as it generates (30-60 seconds), with visible progress
-- [ ] **DLVR-03**: Each role maps to specific deliverable types via a type registry (PM→PRD/UserStories, Engineer→TechSpec, Designer→DesignBrief, Marketing→GTMPlan, Copywriter→BlogPost, etc.) with canonical section schemas per type
-- [ ] **DLVR-04**: User can browse all project deliverables in a list/grid view, filterable by type, agent, and status
-- [ ] **DLVR-05**: User can iterate on an open deliverable by talking in chat ("make the timeline more aggressive", "add a risks section") and the Hatch updates the document in-place with section-level targeting
-
-### Cross-Agent Chains
-
-- [ ] **CHAIN-01**: When a deliverable is produced, downstream agents can be triggered to produce linked deliverables that reference the upstream document (PM→PRD→Engineer→TechSpec that references the PRD)
-- [ ] **CHAIN-02**: Downstream agents receive full upstream deliverable content (not chat summary) injected into their generation prompt with intelligent truncation for token budget
-- [ ] **CHAIN-03**: When an upstream deliverable is revised, downstream deliverables show a "may be outdated" warning with a one-click "Update" action to regenerate
-- [ ] **CHAIN-04**: User sees a visual chain diagram showing the relationship between linked deliverables (PRD→TechSpec→DesignBrief→GTM) with status per step
-
-### Project Packages
-
-- [ ] **PKG-01**: User can trigger a project package ("Launch Package", "Content Sprint", "Research Package") that coordinates a chain of deliverables across multiple agents
-- [ ] **PKG-02**: User sees package progress ("Launch Package 3/5 complete — Designer is working on the Design Brief") with per-deliverable status
-- [ ] **PKG-03**: If a required agent is missing from the project, package creation surfaces an "agent missing" status with a recovery action (link to add agent) instead of silently failing
-
-### Organic Detection
-
-- [ ] **DTCT-01**: Hatch recognizes deliverable-worthy moments from conversation and proposes creating a deliverable via a confirmation card ("Ready to write this up as a PRD?") — never auto-creates
-- [ ] **DTCT-02**: Organic detection uses conservative thresholds with two-stage classification (intent detection → proposal) to minimize false positives
-
-### Export
-
-- [ ] **XPRT-01**: User can export any deliverable as a branded PDF with cover page, table of contents, agent attribution, page numbers, and Hatchin branding
-- [ ] **XPRT-02**: User can export an entire package as a combined PDF with all linked deliverables
-
-### Onboarding
-
-- [ ] **ONBD-01**: New user receives their first deliverable offer within 3 minutes of signup — project type classifier (product launch / content sprint / planning) determines which deliverable to generate first
-- [ ] **ONBD-02**: First deliverable is framed as a starting point ("Here's a first draft — tell me what to adjust") to encourage iteration and demonstrate the value loop
-
-### Coordination Visibility
-
-- [ ] **COORD-01**: Deliverables show visible team coordination — attribution ("Written by Alex (PM)"), handoff notes ("Based on Alex's PRD — I diverged on timeline because..."), and cross-agent references
-- [ ] **COORD-02**: Async background deliverable production notifies user on completion ("Your team produced 4 documents overnight. Review when ready.") using existing Maya return briefing pattern
+**Milestone goal:** Harden the autonomous execution loop so users can trust it. Close the check-then-act budget race, and let Hatches do recurring work on a natural-language schedule.
 
 ---
 
-## v1.3 Requirements — Autonomy Visibility & Right Sidebar Revamp
+## v3.0 Requirements
 
-Requirements for the autonomy visibility milestone. Each maps to roadmap phases.
+### Budget (BUDG)
 
-### Sidebar Structure
+- [ ] **BUDG-01**: System enforces per-project daily autonomy budget atomically — concurrent background tasks cannot bypass the cap
+- [ ] **BUDG-02**: Failed or cancelled autonomous tasks release their reserved budget slot (no permanent leaks)
+- [ ] **BUDG-03**: Daily reconciliation job detects drift between reserved counter and `autonomy_events` count of truth
+- [ ] **BUDG-04**: User sees autonomy budget consumption in UsageBar alongside existing message budget
+- [ ] **BUDG-05**: User receives soft warning at 80% autonomy budget consumption
+- [ ] **BUDG-06**: User sees in-character Maya message when autonomy budget is exhausted (hard stop at 100%)
+- [ ] **BUDG-07**: `budget_blocked` events surface in the Activity feed with timestamp and blocked task context
+- [ ] **BUDG-08**: Free-tier users hitting autonomy budget see UpgradeModal prompt
 
-- [x] **SIDE-01**: User sees a tabbed right sidebar with Activity, Brain & Docs, and Approvals tabs
-- [x] **SIDE-02**: Tab selection persists across navigation (inactive tabs retain scroll position and draft state via CSS-hide)
-- [x] **SIDE-03**: Activity tab shows unread event count badge; Approvals tab shows pending approval count badge
-- [x] **SIDE-04**: Sidebar tabs work on mobile via Sheet drawer with tap-based tab switching (swipe gesture deferred — tap-only accepted as sufficient for v1.3)
+### Scheduling Backend (SCHED)
 
-### Activity Feed
+- [ ] **SCHED-01**: User can create a scheduled routine via API (`POST /api/routines`) with agent, cron, timezone, instruction
+- [ ] **SCHED-02**: Scheduled routines fire on cron using pg-boss's distributed scheduler (single-fire across nodes)
+- [ ] **SCHED-03**: Scheduled fire creates a task and enqueues it through existing autonomous execution pipeline (no parallel path)
+- [ ] **SCHED-04**: Routine execution results (success/failure/blocked) are recorded in `last_run_status` + `last_run_task_id`
+- [ ] **SCHED-05**: Routine auto-pauses after 3 consecutive failures with `paused_reason` set
+- [ ] **SCHED-06**: Deleting an agent or project cascades to remove dangling scheduled routines
+- [ ] **SCHED-07**: Routines are gated to Pro tier via existing `tierGate` middleware
+- [ ] **SCHED-08**: Each project has a maximum of 10 active routines (abuse prevention)
+- [ ] **SCHED-09**: System re-registers routines with pg-boss on server boot (survives restarts)
 
-- [x] **FEED-01**: User sees a real-time feed of autonomy events (task started, completed, handoff, peer review) with agent avatars and timestamps
-- [x] **FEED-02**: User sees a stats summary card at top of Activity tab showing tasks completed, handoffs, and cost spent
-- [x] **FEED-03**: User can filter feed by event type (handoffs, tasks, reviews), by agent, or by time range via filter chips
-- [x] **FEED-04**: Rapid events are aggregated ("5 tasks assigned" instead of 5 separate items) to prevent flooding
-- [x] **FEED-05**: User sees a compelling empty state explaining what the Activity feed shows before any autonomous work happens
+### Chat-Native Creation (CHAT)
 
-### Handoff Visualization
+- [ ] **CHAT-01**: User can create a routine by typing natural language to an agent ("Kai, draft the growth update every Monday at 9am")
+- [ ] **CHAT-02**: `intentClassifier` detects SCHEDULE_REQUEST before EXPLICIT_TASK_REQUEST (schedule wins on ambiguity)
+- [ ] **CHAT-03**: `schedulePhraseParser` converts natural language to cron expression + IANA timezone
+- [ ] **CHAT-04**: Agent responds with in-character confirmation card showing parsed schedule and task template
+- [ ] **CHAT-05**: User can cancel the confirmation card inline without creating the routine
+- [ ] **CHAT-06**: Prompt-injection defense — NL instruction capped at 500 chars, delimited framing when injected into LLM prompts
 
-- [x] **HAND-01**: Handoff messages in chat render as visual cards with from-agent avatar, arrow, to-agent avatar, and task title
-- [x] **HAND-02**: Activity tab shows a vertical handoff chain timeline with animated connectors between agents
-- [x] **HAND-03**: User can manually hand off a task to another agent via "Hand off to..." dropdown button in chat input
-- [x] **HAND-04**: User sees a deliberation indicator card when multiple agents are coordinating, expandable to show details
+### Routines Management (MGMT)
 
-### Agent Status
+- [ ] **MGMT-01**: User sees a Routines tab in the right sidebar listing all project routines
+- [ ] **MGMT-02**: Each routine card shows: agent avatar, schedule in human-readable form, next run time, last run status
+- [ ] **MGMT-03**: User can pause/resume a routine inline
+- [ ] **MGMT-04**: User can manually trigger a routine ("Run now") outside its schedule
+- [ ] **MGMT-05**: User can delete a routine (unschedules pg-boss entry)
+- [ ] **MGMT-06**: Routine card shows last 30 past runs with status and cost
+- [ ] **MGMT-07**: Failed routine runs appear in Maya's return briefing when user re-opens the app
+- [ ] **MGMT-08**: Tab badge indicates unread routine completions when user is away
 
-- [x] **AGNT-01**: Agent avatars show a pulsing/rotating "working" animation when executing tasks in background
+### Verification (VER)
 
-### Approvals & Tasks
-
-- [x] **APPR-01**: User can view and act on pending approvals via the Activity tab (approve/reject inline via ApprovalItem cards). Sidebar restructured post-Phase-13 from Activity/Brain&Docs/Approvals → Activity/Tasks/Brain — dedicated tab removed, functionality preserved. ApprovalsTab component exists but is unmounted pending sidebar IA redesign (handed to antigravity).
-- [x] **APPR-02**: User sees a task pipeline view showing tasks in stages: Queued → Assigned → In Progress → Review → Done
-- [x] **APPR-03**: Stale approvals expire gracefully with clear "expired" messaging instead of silently failing
-- [x] **APPR-04**: Approvals empty state component exists (ApprovalsEmptyState.tsx) but is not rendered since ApprovalsTab is unmounted. Pending sidebar IA redesign.
-
-### Brain & Documents
-
-- [x] **BRAIN-01**: User can upload PDF, DOCX, TXT, and MD files to the project brain via drag-and-drop (10MB max)
-- [x] **BRAIN-02**: User sees uploaded documents in a clean card-based knowledge base with title, type badge, date, preview, and delete
-- [x] **BRAIN-03**: User can configure autonomy via settings panel: enabled toggle, inactivity trigger, 4-level autonomy dial (Observe/Propose/Confirm/Autonomous)
-- [x] **BRAIN-04**: User can browse deliverables produced by background agents with expandable preview cards
-
-### Polish
-
-- [x] **PLSH-01**: All new sidebar components use premium designs matching Hatchin's visual style (premium-card glass treatment, 44px mobile touch targets, Framer Motion animations, CSS variable design tokens, frosted glass Sheet drawers, avatar working animation)
+- [ ] **VER-01**: Concurrent-execution test proves exactly N tasks pass budget gate when limit is N (10 concurrent, limit=5 → 5 pass, 5 blocked)
+- [ ] **VER-02**: DST transition test (fixed-date) proves routines fire at correct wall-clock time across spring-forward / fall-back
+- [ ] **VER-03**: Multi-replica test proves pg-boss fires each schedule exactly once (no double execution)
+- [ ] **VER-04**: Red-team prompt-injection suite (≥15 adversarial NL schedule phrases) — none escape delimited framing
 
 ---
 
-## Future Requirements
+## v3.1+ Deferred
 
-Deferred to v2.1+. Tracked but not in current roadmap.
+### Audit Timeline (AUDIT)
+- **AUDIT-01**: Per-task replayable timeline UX surfacing `autonomy_events`
+- **AUDIT-02**: Decision explanations (why this agent, why this risk score)
 
-### Trust & Analytics
-- **TRST-01**: User sees each agent's trust level (new → established → trusted) with visual indicator
-- **TRST-02**: User sees autonomy analytics dashboard (cost per agent, success rate, approval rate over time)
+### Templates (TMPL)
+- **TMPL-01**: Export project org + agents + brain docs as JSON with secret scrubbing
+- **TMPL-02**: Import JSON to create a new project from template
 
-### Advanced Interactions
-- **ADVN-01**: User can configure notification preferences for autonomy events
-- **ADVN-02**: User can search through historical autonomy events
-- **ADVN-03**: Keyboard shortcuts for quick approve/reject from Approvals hub
+### Config Rollback (ROLL)
+- **ROLL-01**: Version agent personality / brain config edits
+- **ROLL-02**: Undo changes from UI
 
-### Advanced Deliverables (v2.1+)
-- **ADLV-01**: Rich text WYSIWYG editor for deliverables (Tiptap/Slate.js)
-- **ADLV-02**: Real-time multi-user collaborative editing on deliverables
-- **ADLV-03**: Public sharing links for deliverables
-- **ADLV-04**: Full git-style revision history with diff view
-- **ADLV-05**: Custom package templates (B2B feature)
+### Mobile Digest (MOB)
+- **MOB-01**: Mobile-first "what did my team do today" summary page
+- **MOB-02**: Push notification for completed background work
+
+### Per-Agent Budget (PAB)
+- **PAB-01**: User can set monthly budget per individual agent
+- **PAB-02**: System enforces per-agent cap atomically (extends v3.0 ledger)
+
+### Conversational Schedule Edit
+- **CHAT-07**: `SCHEDULE_UPDATE` intent — change existing routine via chat
+- **CHAT-08**: `SCHEDULE_CANCEL` intent — delete routine via chat
+- **MGMT-09**: Skip-next-run option on routine card
+
+---
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Visual deliverables (wireframes, moodboards) | LLMs can't produce these well — future via MCP integrations |
-| Code generation/execution | Future via sandbox integration |
-| Full LangGraph graph visualization | Developer tool, not consumer UI |
-| Per-message token counters | Breaks colleague metaphor |
-| Raw JSON event viewer | Developer debug tool |
-| S3/cloud file storage | Overkill for MVP; DB storage is sufficient at current scale |
-| WYSIWYG document editing | Contradicts "team produces work for you" brand; v2.1+ |
-| Auto-creating deliverables without confirmation | Trust-destroying — organic detection must always propose first |
+| Visual cron editor | Off-brand — Zapier lane; Hatchin is chat-native |
+| Sub-hourly cadence | Cost abuse vector; minimum cadence is hourly |
+| Cross-routine dependency chains | Complexity trap; solvable via agent handoff in a single routine |
+| Shared / team routines | Deferred to multi-user collaboration milestone |
+| User-editable per-agent budgets | Defer to v3.1 PAB requirements |
+| Manual budget override | Erodes the safety net v3.0 creates |
+| Budget projection at creation time | Speculative; model unproven |
+| Deferred-run queue (catch up missed runs) | Opt-in only, defer to v3.1 |
+
+---
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ARTF-01 | Phase 16 | Pending |
-| ARTF-02 | Phase 16 | Pending |
-| ARTF-03 | Phase 16 | Pending |
-| ARTF-04 | Phase 16 | Pending |
-| DLVR-01 | Phase 17 | Pending |
-| DLVR-02 | Phase 17 | Pending |
-| DLVR-03 | Phase 17 | Pending |
-| DLVR-04 | Phase 17 | Pending |
-| DLVR-05 | Phase 17 | Pending |
-| CHAIN-01 | Phase 18 | Pending |
-| CHAIN-02 | Phase 18 | Pending |
-| CHAIN-03 | Phase 18 | Pending |
-| CHAIN-04 | Phase 18 | Pending |
-| PKG-01 | Phase 20 | Pending |
-| PKG-02 | Phase 20 | Pending |
-| PKG-03 | Phase 20 | Pending |
-| DTCT-01 | Phase 19 | Pending |
-| DTCT-02 | Phase 19 | Pending |
-| XPRT-01 | Phase 21 | Pending |
-| XPRT-02 | Phase 21 | Pending |
-| ONBD-01 | Phase 21 | Pending |
-| ONBD-02 | Phase 21 | Pending |
-| COORD-01 | Phase 16 | Pending |
-| COORD-02 | Phase 18 | Pending |
-| SIDE-01 | Phase 11 | Complete |
-| SIDE-02 | Phase 11 | Complete |
-| SIDE-03 | Phase 11 | Complete |
-| SIDE-04 | Phase 11 | Complete |
-| FEED-01 | Phase 11 | Complete |
-| FEED-02 | Phase 11 | Complete |
-| FEED-03 | Phase 11 | Complete |
-| FEED-04 | Phase 11 | Complete |
-| FEED-05 | Phase 11 | Complete |
-| AGNT-01 | Phase 11 | Complete |
-| HAND-01 | Phase 12 | Complete |
-| HAND-02 | Phase 12 | Complete |
-| HAND-03 | Phase 12 | Complete |
-| HAND-04 | Phase 12 | Complete |
-| APPR-01 | Phase 13 | Complete |
-| APPR-02 | Phase 13 | Complete |
-| APPR-03 | Phase 13 | Complete |
-| APPR-04 | Phase 13 | Complete |
-| BRAIN-01 | Phase 14 | Complete |
-| BRAIN-02 | Phase 14 | Complete |
-| BRAIN-03 | Phase 14 | Complete |
-| BRAIN-04 | Phase 14 | Complete |
-| PLSH-01 | Phase 15 | Complete |
+| BUDG-01 | Phase 22 | Pending |
+| BUDG-02 | Phase 22 | Pending |
+| BUDG-03 | Phase 22 | Pending |
+| BUDG-04 | Phase 23 | Pending |
+| BUDG-05 | Phase 23 | Pending |
+| BUDG-06 | Phase 23 | Pending |
+| BUDG-07 | Phase 23 | Pending |
+| BUDG-08 | Phase 23 | Pending |
+| SCHED-01 | Phase 24 | Pending |
+| SCHED-02 | Phase 24 | Pending |
+| SCHED-03 | Phase 24 | Pending |
+| SCHED-04 | Phase 24 | Pending |
+| SCHED-05 | Phase 24 | Pending |
+| SCHED-06 | Phase 24 | Pending |
+| SCHED-07 | Phase 24 | Pending |
+| SCHED-08 | Phase 24 | Pending |
+| SCHED-09 | Phase 24 | Pending |
+| CHAT-01 | Phase 25 | Pending |
+| CHAT-02 | Phase 25 | Pending |
+| CHAT-03 | Phase 25 | Pending |
+| CHAT-04 | Phase 25 | Pending |
+| CHAT-05 | Phase 25 | Pending |
+| CHAT-06 | Phase 25 | Pending |
+| MGMT-01 | Phase 26 | Pending |
+| MGMT-02 | Phase 26 | Pending |
+| MGMT-03 | Phase 26 | Pending |
+| MGMT-04 | Phase 26 | Pending |
+| MGMT-05 | Phase 26 | Pending |
+| MGMT-06 | Phase 26 | Pending |
+| MGMT-07 | Phase 26 | Pending |
+| MGMT-08 | Phase 26 | Pending |
+| VER-01 | Phase 27 | Pending |
+| VER-02 | Phase 27 | Pending |
+| VER-03 | Phase 27 | Pending |
+| VER-04 | Phase 27 | Pending |
 
 **Coverage:**
-- v2.0 requirements: 24 total — 24/24 mapped ✓
-- v1.3 requirements: 23 total — 23/23 mapped ✓
-- Total: 47 — 47/47 mapped ✓
+- v3.0 requirements: 32 total
+- Mapped to phases: 32
+- Unmapped: 0 ✓
 
 ---
-*Requirements defined: 2026-03-24 (v1.3), 2026-03-25 (v2.0)*
-*Last updated: 2026-03-25 — v2.0 traceability complete (24/24 mapped to Phases 16-21)*
+
+*Requirements defined: 2026-04-13*
+*Last updated: 2026-04-13 after v3.0 milestone requirements definition*
