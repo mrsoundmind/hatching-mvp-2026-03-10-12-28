@@ -10,7 +10,19 @@ Hatchin solves the prompting problem. Most people can't use AI effectively becau
 
 No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
 
-## Current Milestone: v2.0 Hatches That Deliver
+## Current Milestone: v3.0 Reliable Autonomy
+
+**Goal:** Harden the autonomous execution loop so users can trust it. Eliminate runaway-spend risk via atomic budget enforcement, and let Hatches do recurring work on a schedule — chat-native ("Kai, draft the growth update every Monday"), not cron UIs.
+
+**Target features:**
+- Atomic budget enforcement — task checkout + budget check in a single DB transaction, closes the race condition where concurrent background tasks bypass the daily cap
+- Scheduled routines — recurring autonomous work triggered by natural-language schedule ("every Monday", "daily at 9am"), integrated into the chat interface, using existing agent execution pipeline
+
+**Scope philosophy:** Start narrow. Ship these two, validate, then revisit the other 5 Paperclip-inspired ideas (audit timeline UX, exportable templates, config rollback, mobile digest, per-agent budgets).
+
+---
+
+## Previous Milestone: v2.0 Hatches That Deliver
 
 **Goal:** Transform Hatchin from "AI chatroom" to "AI team that ships coordinated work" — linked deliverable packages, visible team coordination, async production, professional export.
 

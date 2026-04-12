@@ -1,105 +1,73 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Hatches That Deliver
-status: complete
-stopped_at: v2.0 all features shipped
-last_updated: "2026-03-30"
-last_activity: 2026-03-30 — PDF export + zero-friction onboarding shipped, v2.0 milestone complete
+milestone: v3.0
+milestone_name: Reliable Autonomy
+status: defining_requirements
+stopped_at: requirements phase
+last_updated: "2026-04-13"
+last_activity: 2026-04-13 — Milestone v3.0 started
 progress:
-  total_phases: 6
-  completed_phases: 6
+  total_phases: 0
+  completed_phases: 0
   total_plans: 0
   completed_plans: 0
-  percent: 100
+  percent: 0
 ---
 
 # State: Hatchin
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-30)
+See: .planning/PROJECT.md (updated 2026-04-13)
 
 **Core value:** No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
-**Current focus:** v2.0 — Hatches That Deliver (COMPLETE)
+**Current focus:** v3.0 — Reliable Autonomy (defining requirements)
 
 ---
 
 ## Current Position
 
-Phase: v2.0 complete
-Status: All v2.0 features shipped. v1.3 Phase 15 polish complete. Ready for production.
-Last activity: 2026-03-30 — PDF export (pdfkit branded template), zero-friction onboarding (PackageSuggestionCard with role-based template matching)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-13 — Milestone v3.0 started
 
-Progress: [██████████] 100%
-
----
-
-## v2.0 Implementation Status
-
-| Feature | Status | Key Files |
-|---------|--------|-----------|
-| Database schema (3 tables) | **SHIPPED** | migrations/0003, shared/schema.ts |
-| API endpoints (12 routes) | **SHIPPED** | server/routes/deliverables.ts |
-| LLM generation + iteration | **SHIPPED** | server/ai/deliverableGenerator.ts |
-| Cross-agent chains (3 templates) | **SHIPPED** | server/ai/deliverableChainOrchestrator.ts |
-| Organic detection (patterns) | **SHIPPED** | server/ai/deliverableDetector.ts |
-| Detection wired into chat | **SHIPPED** | server/routes/chat.ts (line ~2735) |
-| ArtifactPanel (viewer + version nav) | **SHIPPED** | client/src/components/ArtifactPanel.tsx |
-| Refine/iterate UI | **SHIPPED** | ArtifactPanel.tsx (footer) |
-| DeliverableChatCard + ProposalCard | **SHIPPED** | client/src/components/DeliverableChatCard.tsx |
-| PackageProgress UI | **SHIPPED** | client/src/components/PackageProgress.tsx |
-| Package streaming (WS progress) | **SHIPPED** | deliverableChainOrchestrator.ts, deliverables.ts |
-| Type registry (15 types) | **SHIPPED** | shared/deliverableTypes.ts |
-| WS event schemas (4 events) | **SHIPPED** | shared/dto/wsSchemas.ts |
-| PDF export (branded with TOC) | **SHIPPED** | server/ai/pdfExport.ts, server/routes/deliverables.ts |
-| Zero-friction onboarding | **SHIPPED** | client/src/components/PackageSuggestionCard.tsx, CenterPanel.tsx |
-
-## v1.3 Completion Status
-
-| Phase | Status |
-|-------|--------|
-| 11 - Sidebar Shell + Activity Feed | **SHIPPED** |
-| 12 - Handoff Visualization | **SHIPPED** |
-| 13 - Approvals Hub | **SHIPPED** |
-| 14 - Brain Redesign | **SHIPPED** |
-| 15 - Polish | **SHIPPED** |
+Progress: [░░░░░░░░░░] 0%
 
 ---
 
 ## Accumulated Context
 
-### Decisions
+### Decisions (preserved from v2.0)
 
-Key decisions for v2.0:
-- **Use-case-driven development**: Organize around user goals (Product Launch, Marketing Content, Planning & Research), not features
-- **Deliverable chains as core differentiator**: Single deliverables = ChatGPT. Coordinated team output across agents = unique value
+- **Use-case-driven development**: Organize around user goals, not features
+- **Deliverable chains as core differentiator**: Coordinated team output across agents = unique value
 - **Artifact panel (Claude desktop pattern)**: Non-blocking absolute-position overlay on RightSidebar
-- **Text-first deliverables**: Focus on what LLMs produce well (PRDs, specs, plans, copy)
-- **Both trigger paths**: Explicit request + organic detection (pattern-based, conservative, never auto-creates)
+- **Text-first deliverables**: Focus on what LLMs produce well
+- **Both trigger paths**: Explicit request + organic detection (pattern-based, conservative)
 - **Project packages as unit of value**: "Launch Package" not 12 loose docs
-- **Refine via instruction**: ArtifactPanel has inline refine input, calls /api/deliverables/:id/iterate
-- **Chain progress streaming**: executeDeliverableChain accepts onProgress callback, broadcasts per-step WS events
-- **deliverable_versions as separate table**: Keeps base row small; supports pagination
-- **Groq LLM verified**: All deliverable generation works with Groq llama-3.3-70b via OpenAI SDK
+- **Groq LLM verified**: All deliverable generation works with Groq llama-3.3-70b
 
-### v1.3 Decisions (preserved)
+### v3.0 Context
 
-- CSS-hide pattern for tab panels to preserve scroll/draft state
-- Separate layoutId namespaces for Framer Motion
-- HandoffCard renders in message loop when metadata.isHandoffAnnouncement===true
-- Frontend-only expiry derivation for approval state
-- Optimistic document deletion with rollback
-- BrainDocsTab replaces old brain tab for all contexts
+Milestone inspired by competitive analysis of Paperclip (paperclipai/paperclip) — identified 2 high-value borrowable patterns:
+1. **Atomic budget enforcement** — correctness fix for concurrent autonomous task spend
+2. **Scheduled routines** — recurring autonomous work, chat-native trigger
 
-### Remaining Work
+5 additional Paperclip-inspired ideas deferred pending v3.0 validation: audit timeline UX, exportable templates, config rollback, mobile digest, per-agent budgets.
 
-- **Chat inline deliverable cards**: Render DeliverableChatCard when deliverable_created events arrive (component exists, not yet wired to message rendering)
+### Shipped Milestones
+
+- v1.0 Text-Perfect, Human-First (2026-03-19) — Phases 1-5
+- v1.1 Autonomous Execution Loop (2026-03-23) — Phases 6-9
+- v1.2 Billing + LLM Intelligence (2026-03-23) — Phase 10
+- v1.3 Autonomy Visibility & Right Sidebar Revamp (2026-03-29) — Phases 11-15
+- v2.0 Hatches That Deliver (2026-03-30) — Phases 16-21
 
 ---
 
 ## Session Continuity
 
-Last session: 2026-03-30
-Stopped at: v2.0 milestone complete, all features shipped
-Next action: Push reconcile-codex to main, visual audit, launch preparation
+Last session: 2026-04-13
+Stopped at: v3.0 milestone started, research next
+Next action: Run research agents → define requirements → roadmap
