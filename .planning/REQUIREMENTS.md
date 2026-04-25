@@ -1,13 +1,13 @@
-# Requirements: Hatchin v3.0 Reliable Autonomy
+# Requirements: Hatchin v3.0 Hatchin That Works
 
-**Defined:** 2026-04-13
+**Defined:** 2026-04-13 (Pillar A) / Extended 2026-04-25 (Pillar B)
 **Core Value:** No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
 
-**Milestone goal:** Harden the autonomous execution loop so users can trust it. Close the check-then-act budget race, and let Hatches do recurring work on a natural-language schedule.
+**Milestone goal:** Make Hatchin trustworthy in two dimensions at once — autonomy backend reliability (no runaway spend, scheduled routines work) AND conversation experience reliability (Maya knows when to start, deliverables ship, agents act like a real team).
 
 ---
 
-## v3.0 Requirements
+## Pillar A — Reliable Autonomy (32 requirements)
 
 ### Budget (BUDG)
 
@@ -61,32 +61,122 @@
 
 ---
 
+## Pillar B — Reliable Maya & Teamness (42 requirements)
+
+### Maya Bug Fix + SDK Migration (BUG) — URGENT, ships first
+
+- [ ] **BUG-01**: Migrate from archived `@google/generative-ai` SDK to current `@google/genai` SDK (LangChain `@langchain/google-genai` upgraded in lockstep)
+- [ ] **BUG-02**: All LLM streaming requests propagate `AbortSignal.timeout(30_000)` end-to-end (chat → providerResolver → provider SDK)
+- [ ] **BUG-03**: When LLM request aborts or times out, "thinking" UI state clears within 1 second and `streaming_cancelled` WS event fires
+- [ ] **BUG-04**: "Out for lunch" / "resting circuits" fallback messages only display on confirmed error (never during valid latency under 30s) — wrong code path identified and removed
+- [ ] **BUG-05**: AbortController cleanup verified — no dangling references after abort (no heap leak under load test)
+
+### Discovery Redesign (DISC)
+
+- [ ] **DISC-01**: Maya asks at most 3 questions in any single message (hard cap, prompt-enforced + turn-counter safety net)
+- [ ] **DISC-02**: Discovery questions are grouped by category (Features / Visuals / Tech) when more than one is asked
+- [ ] **DISC-03**: Maya does not re-ask a question already answered in the conversation history (deduplication via context check)
+
+### Minimum-Viable-Brain Gate (MVB)
+
+- [ ] **MVB-01**: System defines minimum brain schema (`whatBuilding`, `whoFor`, `whyMatters` all non-empty in `projects.coreDirection`)
+- [ ] **MVB-02**: Background extractor populates brain fields from every Maya discovery turn (mirrors `organicExtractor.ts` pattern, runs in parallel to gate check)
+- [ ] **MVB-03**: When MVB threshold is satisfied, system emits a phase-advance signal — Maya is prompted to draft the blueprint instead of asking more questions
+
+### Conversation Phase Machine (PHASE)
+
+- [ ] **PHASE-01**: Each conversation persists a `phase` value (discovery / blueprint / executing) in DB — survives WebSocket reconnects
+- [ ] **PHASE-02**: `[[PHASE: <new-phase>]]` action block in Maya's response transitions the conversation phase
+- [ ] **PHASE-03**: Phase regression (user resets mid-execution) cancels in-flight pg-boss jobs for that project to prevent stale-blueprint execution
+- [ ] **PHASE-04**: User sees a phase indicator in the chat header ("Discovery → Draft → Building") that updates live
+
+### Blueprint Draft + Handoff (BLPR)
+
+- [ ] **BLPR-01**: After MVB gate is met, Maya synthesizes answers into a structured `BlueprintCard` (project name, one-paragraph summary, 3 suggested first tasks, 3-4 recommended roles)
+- [ ] **BLPR-02**: BlueprintCard renders inline in chat as a confirmable component
+- [ ] **BLPR-03**: User clicks "Looks good — start building" button on the card to confirm and advance phase (button-only handoff signal, no LLM intent classifier on plain "go")
+- [ ] **BLPR-04**: User can type freeform revisions inline ("change the color palette to pastels") and Maya regenerates the blueprint
+- [ ] **BLPR-05**: On confirmation, Maya releases primary speaking authority; PM Alex becomes the default project speaker
+- [ ] **BLPR-06**: Task generation on confirm is idempotent — double-click does not create duplicate tasks (idempotency key on confirm action)
+
+### Skip-Maya Escape Hatch (SKIP)
+
+- [ ] **SKIP-01**: Onboarding and project creation surface a visible "Skip to my team" path
+- [ ] **SKIP-02**: Skip path shows 3 labeled fields (`What you're building` / `Who it's for` / `Why it matters`) which map directly to MVB schema
+- [ ] **SKIP-03**: On submit, project advances directly to `executing` phase — no Maya discovery turn, blueprint auto-generated from the 3 fields
+- [ ] **SKIP-04**: User preference to skip Maya is remembered (`users.preferences.skipMayaOnboarding` flag) for future projects
+
+### Deliverable Feedback Loop (FBK)
+
+- [ ] **FBK-01**: Deliverables table gains `userAccepted` timestamp, `editsCount` int, `dismissedAt` timestamp, and `impressionCount` int columns
+- [ ] **FBK-02**: User can Accept or Dismiss a deliverable from the artifact panel — actions populate the corresponding columns
+- [ ] **FBK-03**: System auto-increments `impressionCount` when a deliverable is opened in the artifact panel
+- [ ] **FBK-04**: Agent prompts include recent feedback signal for that role ("your last 3 PRDs were accepted, 1 dismissed for being too long") so quality compounds
+
+### Graceful LLM Degradation (LLMUX)
+
+- [ ] **LLMUX-01**: `providerResolver.ts` classifies failures into typed codes (`RATE_LIMIT_429`, `PROVIDER_DOWN_5XX`, `ALL_PROVIDERS_EXHAUSTED`)
+- [ ] **LLMUX-02**: When all providers fail, server emits `PROVIDER_DEGRADED` WS event with a typed reason (no raw HTTP 500)
+- [ ] **LLMUX-03**: Client shows a non-blocking banner ("Agents are slow right now, hang tight") on `PROVIDER_DEGRADED` — never a blocking modal
+- [ ] **LLMUX-04**: Banner auto-dismisses after 60 seconds of recovery (next successful response clears state)
+
+### Cross-Project User Preferences (PREF)
+
+- [ ] **PREF-01**: `users` table gains a `preferences` JSONB column (project-type-scoped: `{ formal: {...}, casual: {...} }`)
+- [ ] **PREF-02**: System infers user preferences (tone, verbosity, technicalDepth) from message patterns after a conversation reaches 10+ user turns
+- [ ] **PREF-03**: Inferred preferences are sanitized on write — instruction-format text is stripped (OWASP LLM01 defense against stored prompt injection)
+- [ ] **PREF-04**: Preferences inject into agent prompts as a user-context block (not system role) — adversarial preference text cannot escape the data boundary
+- [ ] **PREF-05**: New project inherits the user's existing preferences automatically — no cold-start
+
+### Dynamic Team Formation (FORM)
+
+- [ ] **FORM-01**: When a user creates a freeform project (not a starter pack), system recommends 3-4 agents matched to the project description via Gemini text-embedding cosine similarity
+- [ ] **FORM-02**: Role embeddings are pre-computed at server startup and cached in memory; embeddings invalidate via hash-check when role definitions change
+- [ ] **FORM-03**: Recommendation includes one "exploration" role (random sample from below the top-3 threshold) so identical descriptions don't always produce identical teams
+- [ ] **FORM-04**: Other 27 agents remain accessible via existing "Add Hatch" modal — recommendation augments, does not replace, the full roster
+
+### Per-Run Cost Visibility (COST)
+
+- [ ] **COST-01**: `autonomy_events` table gains a nullable `cost_cents` column populated at run completion
+- [ ] **COST-02**: User sees quota framing ("47 of 50 autonomy runs remaining today") in UsageBar — never raw dollar amounts in primary UI
+- [ ] **COST-03**: Activity feed shows per-run cost as a quota delta ("Kai drafted growth update · 1 run") — not "$0.03"
+- [ ] **COST-04**: Free-tier user hitting the autonomy cap sees an in-character upgrade prompt (not "quota exceeded" raw error)
+
+---
+
 ## v3.1+ Deferred
 
-### Audit Timeline (AUDIT)
+### From original v3.0 plan (Pillar A deferrals)
+
 - **AUDIT-01**: Per-task replayable timeline UX surfacing `autonomy_events`
 - **AUDIT-02**: Decision explanations (why this agent, why this risk score)
-
-### Templates (TMPL)
 - **TMPL-01**: Export project org + agents + brain docs as JSON with secret scrubbing
 - **TMPL-02**: Import JSON to create a new project from template
-
-### Config Rollback (ROLL)
 - **ROLL-01**: Version agent personality / brain config edits
 - **ROLL-02**: Undo changes from UI
-
-### Mobile Digest (MOB)
 - **MOB-01**: Mobile-first "what did my team do today" summary page
 - **MOB-02**: Push notification for completed background work
-
-### Per-Agent Budget (PAB)
 - **PAB-01**: User can set monthly budget per individual agent
 - **PAB-02**: System enforces per-agent cap atomically (extends v3.0 ledger)
-
-### Conversational Schedule Edit
 - **CHAT-07**: `SCHEDULE_UPDATE` intent — change existing routine via chat
 - **CHAT-08**: `SCHEDULE_CANCEL` intent — delete routine via chat
 - **MGMT-09**: Skip-next-run option on routine card
+
+### Pillar B deferrals — moved to v3.2
+
+#### Disagreement Orchestration (DISG)
+- **DISG-01**: Conductor detects when two agents hold opposing positions on a question
+- **DISG-02**: System surfaces qualified disagreement to user as a decision card (gated on confidence delta ≥ 0.30 AND risk score ≥ 0.45)
+- **DISG-03**: User decision is recorded and feeds into agent trust calibration
+
+> **Why deferred:** Highest-risk feature in Pillar B. Manufactured disagreement destroys trust faster than no disagreement detection. Needs its own research phase before building. Threshold gating must be calibrated on real conversation data.
+
+#### Project Milestones / Definition of Done (GOAL)
+- **GOAL-01**: User can define project milestones (above the task layer)
+- **GOAL-02**: System tracks milestone completion as percentage of contained tasks
+- **GOAL-03**: Maya's return briefing summarizes milestone progress
+
+> **Why deferred:** Lower priority than the trust + reliability fixes. Standard PM tooling pattern, can ship anytime once the blueprint phase is stable.
 
 ---
 
@@ -102,10 +192,19 @@
 | Manual budget override | Erodes the safety net v3.0 creates |
 | Budget projection at creation time | Speculative; model unproven |
 | Deferred-run queue (catch up missed runs) | Opt-in only, defer to v3.1 |
+| Replace agents entirely on freeform projects | Power users may need full roster — recommend, don't replace |
+| Dollar amounts in primary cost UI | Loss-aversion research backed; quota framing only |
+| LLM-based "looks good" intent classifier on plain affirmations | Substring matching fires on sarcasm; button-only handoff is reliable |
+| Auto-advance to execution after inactivity | Surprising behavior — may execute unwanted plans |
+| Agent disagreement orchestration in v3.0 | Highest-risk feature; needs separate research phase; deferred to v3.2 |
+| Project milestones layer in v3.0 | Lower priority than trust fixes; deferred to v3.2 |
+| Explicit user preference UI | Inferred preferences only — friction-free, on-brand |
 
 ---
 
 ## Traceability
+
+(Phase mapping populated by roadmapper)
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
@@ -117,40 +216,30 @@
 | BUDG-06 | Phase 23 | Pending |
 | BUDG-07 | Phase 23 | Pending |
 | BUDG-08 | Phase 23 | Pending |
-| SCHED-01 | Phase 24 | Pending |
-| SCHED-02 | Phase 24 | Pending |
-| SCHED-03 | Phase 24 | Pending |
-| SCHED-04 | Phase 24 | Pending |
-| SCHED-05 | Phase 24 | Pending |
-| SCHED-06 | Phase 24 | Pending |
-| SCHED-07 | Phase 24 | Pending |
-| SCHED-08 | Phase 24 | Pending |
-| SCHED-09 | Phase 24 | Pending |
-| CHAT-01 | Phase 25 | Pending |
-| CHAT-02 | Phase 25 | Pending |
-| CHAT-03 | Phase 25 | Pending |
-| CHAT-04 | Phase 25 | Pending |
-| CHAT-05 | Phase 25 | Pending |
-| CHAT-06 | Phase 25 | Pending |
-| MGMT-01 | Phase 26 | Pending |
-| MGMT-02 | Phase 26 | Pending |
-| MGMT-03 | Phase 26 | Pending |
-| MGMT-04 | Phase 26 | Pending |
-| MGMT-05 | Phase 26 | Pending |
-| MGMT-06 | Phase 26 | Pending |
-| MGMT-07 | Phase 26 | Pending |
-| MGMT-08 | Phase 26 | Pending |
-| VER-01 | Phase 27 | Pending |
-| VER-02 | Phase 27 | Pending |
-| VER-03 | Phase 27 | Pending |
-| VER-04 | Phase 27 | Pending |
+| SCHED-01..09 | Phase 24 | Pending |
+| CHAT-01..06 | Phase 25 | Pending |
+| MGMT-01..08 | Phase 26 | Pending |
+| VER-01..04 | Phase 27 | Pending |
+| BUG-01..05 | Phase 28 | Pending |
+| DISC-01..03 | Phase 29 | Pending |
+| MVB-01..03 | Phase 29 | Pending |
+| PHASE-01..04 | Phase 30 | Pending |
+| BLPR-01..06 | Phase 30 | Pending |
+| SKIP-01..04 | Phase 30 | Pending |
+| FBK-01..04 | Phase 31 | Pending |
+| LLMUX-01..04 | Phase 31 | Pending |
+| PREF-01..05 | Phase 32 | Pending |
+| FORM-01..04 | Phase 33 | Pending |
+| COST-01..04 | Phase 34 | Pending |
 
 **Coverage:**
-- v3.0 requirements: 32 total
-- Mapped to phases: 32
+- Pillar A requirements: 32 total (BUDG, SCHED, CHAT, MGMT, VER)
+- Pillar B requirements: 42 total (BUG, DISC, MVB, PHASE, BLPR, SKIP, FBK, LLMUX, PREF, FORM, COST)
+- v3.0 total: 74 requirements
+- Mapped to phases: 74
 - Unmapped: 0 ✓
 
 ---
 
-*Requirements defined: 2026-04-13*
-*Last updated: 2026-04-13 after v3.0 milestone requirements definition*
+*Pillar A defined: 2026-04-13*
+*Pillar B added: 2026-04-25 — bundled into v3.0 after user testing exposed Maya reliability gaps + 9 verified gaps from codebase audit*
