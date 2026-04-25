@@ -10,15 +10,29 @@ Hatchin solves the prompting problem. Most people can't use AI effectively becau
 
 No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
 
-## Current Milestone: v3.0 Reliable Autonomy
+## Current Milestone: v3.0 Hatchin That Works
 
-**Goal:** Harden the autonomous execution loop so users can trust it. Eliminate runaway-spend risk via atomic budget enforcement, and let Hatches do recurring work on a schedule — chat-native ("Kai, draft the growth update every Monday"), not cron UIs.
+**Goal:** Make Hatchin trustworthy in two dimensions at once — the autonomy backend (no runaway spend, scheduled routines) AND the conversation experience (Maya knows when to start, agents act like a real team, deliverables ship). Bundling because user testing exposed both reliability gaps simultaneously.
 
-**Target features:**
-- Atomic budget enforcement — task checkout + budget check in a single DB transaction, closes the race condition where concurrent background tasks bypass the daily cap
-- Scheduled routines — recurring autonomous work triggered by natural-language schedule ("every Monday", "daily at 9am"), integrated into the chat interface, using existing agent execution pipeline
+**Pillar A — Reliable Autonomy:**
+- Atomic budget enforcement — close the check-then-act race in `taskExecutionPipeline.ts:543-560` via transactional reserve/release ledger
+- Scheduled routines — recurring autonomous work via natural-language schedule ("every Monday at 9am, Kai drafts the growth update"), chat-native creation
+- Budget UX — UsageBar autonomy extension, 80% warn, in-character hard-stop, Free-tier upgrade path
 
-**Scope philosophy:** Start narrow. Ship these two, validate, then revisit the other 5 Paperclip-inspired ideas (audit timeline UX, exportable templates, config rollback, mobile digest, per-agent budgets).
+**Pillar B — Reliable Maya & Teamness:**
+- Maya phase machine — discovery → blueprint draft → handoff to specialists; bounded discovery (≤3 questions per topic) so users get to action fast
+- Maya bug fix — eliminate infinite "thinking" state, add LLM request timeout, kill spurious "out for lunch" fallback during valid streams
+- Minimum-viable-brain gate — agents stop interrogating once a small required schema is satisfied
+- Cross-project user preferences — working style, tone, role learned once, applied everywhere
+- Dynamic team formation — freeform projects get a 3-4 agent recommendation, not all 30 at once
+- Disagreement orchestration — surface conflicting agent views as user decisions instead of papering over them
+- Project milestones / definition-of-done — goal layer above tasks
+- Deliverable feedback loop — track accept/edit/dismiss so quality improves with use
+- Per-run cost visibility — users see what each autonomy run cost
+- Graceful LLM degradation UX — no more raw 500 errors when providers fail
+- Skip-Maya escape hatch — power users bypass discovery entirely
+
+**Scope philosophy:** Bundle reliability work into one milestone because the user-facing trust signal is the same — "does this thing actually work?" Ship Pillar A's foundation (atomic budget) first, ship the urgent Maya bug fix in parallel, then layer the rest.
 
 ---
 
@@ -228,4 +242,4 @@ Hatchin: user just talks. The Hatches:
 | Trust scoring via successRate * maturityFactor (bounded 0–1) | Simple, predictable, needs 10+ completions to reach full trust | ✓ Good |
 
 ---
-*Last updated: 2026-03-30 — v1.3 shipping, v2.0 core infrastructure complete*
+*Last updated: 2026-04-25 — v3.0 expanded to "Hatchin That Works" (autonomy reliability + Maya reliability + teamness bundled)*

@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
 milestone: v3.0
-milestone_name: Reliable Autonomy
-status: roadmap_complete
-stopped_at: Phase 22 pending plan
-last_updated: "2026-04-13"
-last_activity: 2026-04-13 — v3.0 roadmap created, 6 phases (22-27), 32 requirements mapped
+milestone_name: Hatchin That Works
+status: research_in_progress
+stopped_at: Researching new pillar (Maya + Teamness)
+last_updated: "2026-04-25"
+last_activity: 2026-04-25 — v3.0 expanded to "Hatchin That Works"; new pillar research dispatched
 progress:
   total_phases: 6
   completed_phases: 0
@@ -18,21 +18,21 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-13)
+See: .planning/PROJECT.md (updated 2026-04-25)
 
 **Core value:** No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
-**Current focus:** v3.0 — Reliable Autonomy (Phase 22 pending)
+**Current focus:** v3.0 — Hatchin That Works (research in progress for Pillar B)
 
 ---
 
 ## Current Position
 
-Phase: 22 — Atomic Budget Enforcement
+Phase: — (defining requirements for expanded v3.0)
 Plan: — (not yet planned)
-Status: Pending — awaiting `/gsd:plan-phase 22`
-Last activity: 2026-04-13 — v3.0 roadmap written, 32/32 requirements mapped to Phases 22-27
+Status: Research in progress for Pillar B (Maya + Teamness)
+Last activity: 2026-04-25 — v3.0 renamed to "Hatchin That Works", existing Phases 22-27 preserved, new phases (28+) being scoped
 
-Progress: [░░░░░░░░░░] 0% (0/6 phases)
+Progress: [░░░░░░░░░░] 0% (0/6 existing phases; new phases TBD)
 
 ---
 
@@ -44,15 +44,26 @@ Progress: [░░░░░░░░░░] 0% (0/6 phases)
 - **Text-first deliverables**: Focus on what LLMs produce well
 - **Groq LLM verified**: All deliverable generation works with Groq llama-3.3-70b
 
-### v3.0 Decisions
+### v3.0 Decisions (Pillar A — Reliable Autonomy)
 
-- **Budget correctness precedes scheduling (hard constraint):** Phase 22 must ship before Phase 24 — scheduling on a racy budget is the runaway-spend scenario v3.0 exists to prevent
-- **Pattern A atomic ledger:** new `autonomy_daily_counters` table with `INSERT...ON CONFLICT...WHERE reserved_count < limit RETURNING` — 1 new table, 2 storage methods, ~12 LOC change at `taskExecutionPipeline.ts:543-560`
-- **Reuse existing pipeline for scheduling:** scheduled fires enqueue a `tasks` row + `boss.send('autonomous_task_execution', ...)` — no parallel execution path
-- **pg-boss native scheduler:** use `boss.schedule()` (distributed-safe, IANA tz, single-fire) — no Redis, no node-cron
-- **Extend intentClassifier:** add `SCHEDULE_REQUEST` variant (fires before `EXPLICIT_TASK_REQUEST`) — single source of truth for chat intent
-- **New deps:** `chrono-node` (NL datetime) + `cronstrue` (reverse cron → human-readable); remove unused `node-cron`
-- **Anti-features:** no visual cron editor, no sub-hourly cadence, no shared routines, no manual budget override, no budget projection UX
+- **Budget correctness precedes scheduling (hard constraint):** Phase 22 must ship before Phase 24
+- **Pattern A atomic ledger:** new `autonomy_daily_counters` table with `INSERT...ON CONFLICT...WHERE reserved_count < limit RETURNING`
+- **Reuse existing pipeline for scheduling:** scheduled fires enqueue a `tasks` row + `boss.send('autonomous_task_execution', ...)`
+- **pg-boss native scheduler:** use `boss.schedule()` (distributed-safe, IANA tz, single-fire)
+- **Extend intentClassifier:** add `SCHEDULE_REQUEST` variant
+- **New deps:** `chrono-node` (NL datetime) + `cronstrue` (reverse cron → human-readable)
+
+### v3.0 Decisions (Pillar B — Maya + Teamness, NEW 2026-04-25)
+
+- **Bundle Pillar A + Pillar B into v3.0**: User testing exposed both reliability gaps; same trust signal
+- **Maya bug fix is urgent**: Infinite "thinking" state blocks user testing today — should ship as Phase 28 first
+- **Codebase audit completed**: 9 gaps verified — see audit results in this conversation thread
+- **Existing evolution mechanics confirmed working**: personalityEvolution.ts (per-agent traits), trustScoring (success_rate × maturity_factor), brain [[UPDATE]] action blocks
+- **Phase 23 (Budget UX) overlaps with COST-* (per-run cost visibility)**: merge during requirements definition
+
+### Anti-features (preserved)
+
+- no visual cron editor, no sub-hourly cadence, no shared routines, no manual budget override, no budget projection UX
 
 ### Shipped Milestones
 
@@ -75,6 +86,6 @@ Progress: [░░░░░░░░░░] 0% (0/6 phases)
 
 ## Session Continuity
 
-Last session: 2026-04-13
-Stopped at: v3.0 roadmap complete
-Next action: `/gsd:plan-phase 22` — decompose atomic budget enforcement into executable plans
+Last session: 2026-04-25
+Stopped at: v3.0 expanded scope — research dispatched for Pillar B
+Next action: Synthesize research → define new requirements (MAYA-*, USER-*, TEAM-*, CONFL-*, GOAL-*, FBK-*, COST-*, LLM-*, KILL-*) → spawn roadmapper for Phases 28+
