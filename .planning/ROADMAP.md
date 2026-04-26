@@ -319,16 +319,18 @@ Plans:
   5. The onboarding and project creation flow surfaces a visible "Skip to my team" path that shows 3 labeled fields — user fills them in, project jumps directly to executing phase, and that preference is remembered for future projects
 **Plans**: TBD
 
-### Phase 31: Deliverable Feedback + Graceful LLM Degradation
-**Goal**: Users can signal whether deliverables are good or not (so quality compounds), and when LLM providers fail they see a clear inline message — not a raw 500 error or a silent freeze
-**Depends on**: Nothing new (deliverable columns are schema additions; degradation extends existing providerResolver.ts)
-**Requirements**: FBK-01, FBK-02, FBK-03, FBK-04, LLMUX-01, LLMUX-02, LLMUX-03, LLMUX-04
+### Phase 31: Deliverable Feedback + Graceful LLM Degradation + Production Polish
+**Goal**: Users can signal whether deliverables are good or not (so quality compounds), LLM provider failures show inline banners (not raw 500s), and the production landing page closes two compliance/UX gaps surfaced by the Playwright audit
+**Depends on**: Nothing new (deliverable columns are schema additions; degradation extends existing providerResolver.ts; legal/auth-gate are SPA additions)
+**Requirements**: FBK-01, FBK-02, FBK-03, FBK-04, LLMUX-01, LLMUX-02, LLMUX-03, LLMUX-04, LEGAL-01, AUTH-GATE-01
 **Success Criteria** (what must be TRUE):
   1. User can click Accept or Dismiss on any deliverable in the artifact panel — Accept sets `userAcceptedAt`, Dismiss sets `dismissedAt`, and both actions persist across page refreshes
   2. Every time a user opens a deliverable in the artifact panel, `impressionCount` increments — the funnel data is interpretable because opened-but-never-accepted deliverables are visible in the record
   3. An agent's system prompt includes a feedback signal for its role ("your last 3 PRDs were accepted, 1 was dismissed for being too long") after the feedback data accumulates — quality compounds with use
   4. When all LLM providers fail, the chat panel shows a non-blocking banner ("Agents are slow right now, hang tight") and the banner auto-dismisses after the next successful response — users never see a raw HTTP 500 error
   5. A Gemini 429 rate-limit error routes directly to the Groq fallback without triggering the degradation banner — only true provider outages surface the banner (rate limits do not count as degradation)
+  6. Production landing page footer renders visible Privacy and Terms links pointing to `/legal/privacy` and `/legal/terms` — the public Playwright spec for landing legal links passes
+  7. Unauthenticated visits to `/account` and `/maya/:id` redirect to `/login` instead of loading a blank SPA shell — verified by Playwright public-flow test
 **Plans**: TBD
 
 ### Phase 32: Cross-Project User Preferences

@@ -44,6 +44,8 @@ export default defineConfig({
         /accessibility-visual\.spec\.ts/,
         /deliverables\.spec\.ts/,
         /modals-onboarding\.spec\.ts/,
+        /chat-redesign\.spec\.ts/,
+        /v3-local-gap-audit\.spec\.ts/,
       ],
     },
     // AI-heavy authenticated tests — send messages, wait for LLM responses

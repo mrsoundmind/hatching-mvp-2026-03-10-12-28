@@ -5,7 +5,7 @@ milestone_name: Hatchin That Works
 status: roadmap_complete
 stopped_at: Roadmap approved — Phase 22 (Atomic Budget Enforcement) is next to plan
 last_updated: "2026-04-26"
-last_activity: 2026-04-26 — v3.0 roadmap approved (13 phases, 74 requirements); user opted for numerical order — Phase 22 ships first
+last_activity: 2026-04-26 — Playwright gap audit empirically confirmed 6/10 gaps; LEGAL-01 + AUTH-GATE-01 added to Phase 31 (76 requirements total)
 progress:
   total_phases: 13
   completed_phases: 0

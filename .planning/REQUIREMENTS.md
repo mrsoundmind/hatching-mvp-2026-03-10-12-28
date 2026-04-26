@@ -142,6 +142,11 @@
 - [ ] **COST-03**: Activity feed shows per-run cost as a quota delta ("Kai drafted growth update · 1 run") — not "$0.03"
 - [ ] **COST-04**: Free-tier user hitting the autonomy cap sees an in-character upgrade prompt (not "quota exceeded" raw error)
 
+### Production Surface Polish (LEGAL, AUTH-GATE) — added 2026-04-26 from Playwright audit
+
+- [ ] **LEGAL-01**: Landing page footer shows visible Privacy and Terms links pointing to `/legal/privacy` and `/legal/terms` — both pages exist on production but are unlinked (compliance regression flagged by Playwright audit)
+- [ ] **AUTH-GATE-01**: Unauthenticated visits to `/account` and `/maya/:id` redirect to `/login` (or render an inline sign-in prompt) — currently the SPA shell loads to a blank/loading state, no redirect, no prompt
+
 ---
 
 ## v3.1+ Deferred
@@ -287,12 +292,14 @@
 | COST-02 | Phase 34 | Pending |
 | COST-03 | Phase 34 | Pending |
 | COST-04 | Phase 34 | Pending |
+| LEGAL-01 | Phase 31 | Pending |
+| AUTH-GATE-01 | Phase 31 | Pending |
 
 **Coverage:**
 - Pillar A requirements: 32 total (BUDG, SCHED, CHAT, MGMT, VER) — mapped to Phases 22-27 ✓
-- Pillar B requirements: 42 total (BUG, DISC, MVB, PHASE, BLPR, SKIP, FBK, LLMUX, PREF, FORM, COST) — mapped to Phases 28-34 ✓
-- v3.0 total: 74 requirements
-- Mapped to phases: 74
+- Pillar B requirements: 44 total (BUG, DISC, MVB, PHASE, BLPR, SKIP, FBK, LLMUX, PREF, FORM, COST, LEGAL, AUTH-GATE) — mapped to Phases 28-34 ✓
+- v3.0 total: 76 requirements (+2 from Playwright audit 2026-04-26)
+- Mapped to phases: 76
 - Unmapped: 0 ✓
 
 ---
