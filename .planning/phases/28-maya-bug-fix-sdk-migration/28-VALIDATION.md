@@ -39,8 +39,8 @@ created: 2026-04-26
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
 | 28-01-01 | 01 | 0 | infra | Wave 0 | `npm install` (no new deps for Playwright/scripts) | ✅ existing | ⬜ pending |
-| 28-01-02 | 01 | 1 | BUG-01 | unit (import check) | `node -e "require('@google/genai'); try { require('@google/generative-ai'); process.exit(1); } catch {}; console.log('ok')"` | ❌ W0 (script) | ⬜ pending |
-| 28-01-03 | 01 | 1 | BUG-01 | typecheck | `npm run typecheck` | ✅ existing | ⬜ pending |
+| 28-01-02 | 01 | 1 | infra/W0 | unit (import check, gates BUG-01) | `node -e "require('@google/genai'); try { require('@google/generative-ai'); process.exit(1); } catch {}; console.log('ok')"` | ❌ W0 (script) | ⬜ pending |
+| 28-01-03 | 01 | 1 | infra/W0 | typecheck (gates BUG-01) | `npm run typecheck` | ✅ existing | ⬜ pending |
 | 28-02-01 | 02 | 1 | BUG-02 | unit (signal propagation) | `tsx scripts/test-abort-signal-propagation.ts` | ❌ W0 | ⬜ pending |
 | 28-02-02 | 02 | 1 | BUG-02 | integration (mock hang) | `tsx scripts/test-gemini-abort.ts` | ❌ W0 | ⬜ pending |
 | 28-03-01 | 03 | 2 | BUG-03 | integration (WS) | `tsx scripts/test-streaming-timeout-cleanup.ts` | ❌ W0 | ⬜ pending |
@@ -49,9 +49,9 @@ created: 2026-04-26
 | 28-04-02 | 04 | 2 | BUG-04 | E2E (negative case) | Same spec, timeout scenario | ❌ W0 | ⬜ pending |
 | 28-05-01 | 05 | 2 | BUG-05 | unit (cleanup) | `tsx scripts/test-abort-cleanup.ts` | ❌ W0 | ⬜ pending |
 | 28-05-02 | 05 | 2 | BUG-05 | load test (heap) | `tsx scripts/test-abort-heap.ts` | ❌ W0 | ⬜ pending |
-| 28-06-01 | 06 | 1 | BUG-06 | E2E (Playwright) — success path | `npx playwright test tests/e2e/stop-button.spec.ts -g "success"` | ❌ W0 | ⬜ pending |
-| 28-06-02 | 06 | 1 | BUG-06 | E2E (Playwright) — cancel path | `npx playwright test tests/e2e/stop-button.spec.ts -g "cancel"` | ❌ W0 | ⬜ pending |
-| 28-06-03 | 06 | 1 | BUG-06 | E2E (Playwright) — error path | `npx playwright test tests/e2e/stop-button.spec.ts -g "error"` | ❌ W0 | ⬜ pending |
+| 28-03-01 | 03 | 1 | BUG-06 | E2E (Playwright) — success path | `npx playwright test tests/e2e/stop-button.spec.ts -g "success"` | ❌ W0 | ⬜ pending |
+| 28-03-02 | 03 | 1 | BUG-06 | E2E (Playwright) — cancel path | `npx playwright test tests/e2e/stop-button.spec.ts -g "cancel"` | ❌ W0 | ⬜ pending |
+| 28-03-03 | 03 | 1 | BUG-06 | E2E (Playwright) — error path | `npx playwright test tests/e2e/stop-button.spec.ts -g "error"` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 

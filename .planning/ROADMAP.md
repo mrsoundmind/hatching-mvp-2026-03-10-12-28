@@ -298,7 +298,13 @@ Plans:
   4. A load test confirming 50 concurrent aborted requests shows no dangling AbortController references in heap snapshots (no memory leak)
   5. The "out for lunch" / "resting circuits" fallback message is absent from all browser sessions that complete streaming within 30 seconds, verified by the E2E test suite
   6. After a Hatch finishes responding via either `streaming_completed` or plain `chat_message`, the chat input stop button reverts to "send" within 1 second — verified by Playwright spec asserting the button switches from `stop` to `send` within 1s of the last assistant message landing in the DOM
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [ ] 28-01-PLAN.md — Wave 0 test infrastructure (5 tsx scripts + 2 Playwright specs gating BUG-01..06)
+- [ ] 28-02-PLAN.md — SDK migration (@google/genai) + AbortSignal end-to-end propagation (BUG-01, BUG-02)
+- [ ] 28-03-PLAN.md — Stop button fix: 0ms truth-enforcer + force metadata.isStreaming=false (BUG-06)
+- [ ] 28-04-PLAN.md — typing_stopped before streaming_error + abort-aware fallback skip (BUG-03, BUG-04)
+- [ ] 28-05-PLAN.md — AbortController reference cleanup in finally block (BUG-05)
 
 ### Phase 29: Discovery Redesign + MVB Gate
 **Goal**: Maya asks focused questions in batches and stops interrogating once the project brain has the minimum viable context — the discovery phase ends, it does not loop forever
