@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Hatchin That Works
-status: verifying
-stopped_at: Completed 22-01-PLAN.md — autonomyDailyCounters schema, budgetLedger.ts, Wave 0 tests
-last_updated: "2026-04-26T06:02:30.163Z"
-last_activity: 2026-04-26 — Phase 22 research + plans + verification complete (8/8 PASS)
+status: "22-01 shipped — autonomyDailyCounters schema, budgetLedger.ts, Wave 0 tests passing. Next: 22-02 pipeline rewire."
+stopped_at: Completed 22-03-PLAN.md — budgetReconciliation.ts, backgroundRunner cron, Wave 0 reconciliation tests
+last_updated: "2026-04-26T06:09:25.599Z"
+last_activity: 2026-04-26 — Phase 22-01 complete (schema+helpers+tests; BUDG-01+BUDG-02 empirically verified)
 progress:
   total_phases: 24
   completed_phases: 4
   total_plans: 18
-  completed_plans: 14
+  completed_plans: 15
   percent: 0
 ---
 
@@ -99,8 +99,8 @@ Progress: [░░░░░░░░░░] 0% (0/13 phases; Pillar A Phases 22-2
 
 ## Session Continuity
 
-Last session: 2026-04-26T06:02:30.158Z
-Stopped at: Completed 22-01-PLAN.md — autonomyDailyCounters schema, budgetLedger.ts, Wave 0 tests
+Last session: 2026-04-26T06:09:25.594Z
+Stopped at: Completed 22-03-PLAN.md — budgetReconciliation.ts, backgroundRunner cron, Wave 0 reconciliation tests
 Next action: `/gsd:plan-phase 22` — Atomic Budget Enforcement (Pillar A foundation; closes the check-then-act budget race)
 
 ### Phase 28 Planning Notes (pre-loaded context)
