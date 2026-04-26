@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Hatchin That Works
-status: "22-01 shipped — autonomyDailyCounters schema, budgetLedger.ts, Wave 0 tests passing. Next: 22-02 pipeline rewire."
+status: "22-02 shipped — handleTaskJob uses atomic reserveBudgetSlot; chat.ts racy pre-check removed. Next: 22-03 reconciliation job."
 stopped_at: Completed 22-02-PLAN.md — pipeline rewire + chat.ts pre-check removal
-last_updated: "2026-04-26T06:12:11.493Z"
-last_activity: 2026-04-26 — Phase 22-01 complete (schema+helpers+tests; BUDG-01+BUDG-02 empirically verified)
+last_updated: "2026-04-26T06:17:24.841Z"
+last_activity: 2026-04-26 — Phase 22-02 complete (pipeline rewire + chat.ts removal; BUDG-01+BUDG-02 enforced at pipeline level)
 progress:
   total_phases: 24
   completed_phases: 5
   total_plans: 18
   completed_plans: 16
-  percent: 0
+  percent: 89
 ---
 
 # State: Hatchin
