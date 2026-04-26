@@ -397,7 +397,7 @@ Plans:
 | 19. Organic Detection + Iteration UX | v2.0 | — | Complete | 2026-03-30 |
 | 20. Project Packages + Background Production | v2.0 | — | Complete | 2026-03-30 |
 | 21. Zero-Friction Onboarding + PDF Export | v2.0 | — | Complete | 2026-03-30 |
-| 22. Atomic Budget Enforcement | v3.0 | 0/3 | Not started | - |
+| 22. Atomic Budget Enforcement | 1/3 | In Progress|  | - |
 | 23. Budget UX Surfaces | v3.0 | 0/? | Not started | - |
 | 24. Scheduler Foundation | v3.0 | 0/? | Not started | - |
 | 25. Chat-Native Routine Creation | v3.0 | 0/? | Not started | - |

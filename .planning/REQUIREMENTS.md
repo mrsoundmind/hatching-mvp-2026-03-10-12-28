@@ -11,8 +11,8 @@
 
 ### Budget (BUDG)
 
-- [ ] **BUDG-01**: System enforces per-project daily autonomy budget atomically — concurrent background tasks cannot bypass the cap
-- [ ] **BUDG-02**: Failed or cancelled autonomous tasks release their reserved budget slot (no permanent leaks)
+- [x] **BUDG-01**: System enforces per-project daily autonomy budget atomically — concurrent background tasks cannot bypass the cap
+- [x] **BUDG-02**: Failed or cancelled autonomous tasks release their reserved budget slot (no permanent leaks)
 - [ ] **BUDG-03**: Daily reconciliation job detects drift between reserved counter and `autonomy_events` count of truth
 - [ ] **BUDG-04**: User sees autonomy budget consumption in UsageBar alongside existing message budget
 - [ ] **BUDG-05**: User receives soft warning at 80% autonomy budget consumption
@@ -211,8 +211,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUDG-01 | Phase 22 | Pending |
-| BUDG-02 | Phase 22 | Pending |
+| BUDG-01 | Phase 22 | Complete |
+| BUDG-02 | Phase 22 | Complete |
 | BUDG-03 | Phase 22 | Pending |
 | BUDG-04 | Phase 23 | Pending |
 | BUDG-05 | Phase 23 | Pending |

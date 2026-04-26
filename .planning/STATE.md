@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Hatchin That Works
-status: roadmap_complete
-stopped_at: Roadmap approved — Phase 22 (Atomic Budget Enforcement) is next to plan
-last_updated: "2026-04-26"
-last_activity: 2026-04-26 — Playwright gap audit empirically confirmed 6/10 gaps; LEGAL-01 + AUTH-GATE-01 added to Phase 31 (76 requirements total)
+status: verifying
+stopped_at: Completed 22-01-PLAN.md — autonomyDailyCounters schema, budgetLedger.ts, Wave 0 tests
+last_updated: "2026-04-26T06:02:30.163Z"
+last_activity: 2026-04-26 — Phase 22 research + plans + verification complete (8/8 PASS)
 progress:
-  total_phases: 13
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_phases: 24
+  completed_phases: 4
+  total_plans: 18
+  completed_plans: 14
   percent: 0
 ---
 
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-04-25)
 
 ## Current Position
 
-Phase: 22 — Atomic Budget Enforcement (planned, ready to execute)
-Plan: 3 plans in 2 waves (22-01 schema+helpers+tests · 22-02 pipeline rewire · 22-03 reconciliation job)
-Status: Plans verified — all 8 Nyquist dimensions PASS on first iteration. Ready for `/gsd:execute-phase 22`.
-Last activity: 2026-04-26 — Phase 22 research + plans + verification complete (8/8 PASS)
+Phase: 22 — Atomic Budget Enforcement (in progress — 1/3 plans complete)
+Plan: 3 plans in 2 waves (22-01 DONE · 22-02 pipeline rewire · 22-03 reconciliation job)
+Status: 22-01 shipped — autonomyDailyCounters schema, budgetLedger.ts, Wave 0 tests passing. Next: 22-02 pipeline rewire.
+Last activity: 2026-04-26 — Phase 22-01 complete (schema+helpers+tests; BUDG-01+BUDG-02 empirically verified)
 
 Progress: [░░░░░░░░░░] 0% (0/13 phases; Pillar A Phases 22-27 + Pillar B Phases 28-34)
 
@@ -48,6 +48,8 @@ Progress: [░░░░░░░░░░] 0% (0/13 phases; Pillar A Phases 22-2
 
 - **Budget correctness precedes scheduling (hard constraint):** Phase 22 must ship before Phase 24
 - **Pattern A atomic ledger:** new `autonomy_daily_counters` table with `INSERT...ON CONFLICT...WHERE reserved_count < limit RETURNING`
+- **Phase 22-01 shipped:** autonomyDailyCounters schema, budgetLedger.ts (reserveBudgetSlot + releaseBudgetSlot), Wave 0 tests. BUDG-01 empirically proven: 5/10 concurrent reservations succeed at limit=5.
+- **budgetLedger.ts is standalone (not IStorage):** follows upsertDailyUsage precedent; raw pool.query used because Drizzle 0.39.1 cannot express WHERE on DO UPDATE clause
 - **Reuse existing pipeline for scheduling:** scheduled fires enqueue a `tasks` row + `boss.send('autonomous_task_execution', ...)`
 - **pg-boss native scheduler:** use `boss.schedule()` (distributed-safe, IANA tz, single-fire)
 - **Extend intentClassifier:** add `SCHEDULE_REQUEST` variant
@@ -97,8 +99,8 @@ Progress: [░░░░░░░░░░] 0% (0/13 phases; Pillar A Phases 22-2
 
 ## Session Continuity
 
-Last session: 2026-04-26
-Stopped at: v3.0 roadmap approved — 13 phases, 74 requirements, 100% coverage. User chose numerical order.
+Last session: 2026-04-26T06:02:30.158Z
+Stopped at: Completed 22-01-PLAN.md — autonomyDailyCounters schema, budgetLedger.ts, Wave 0 tests
 Next action: `/gsd:plan-phase 22` — Atomic Budget Enforcement (Pillar A foundation; closes the check-then-act budget race)
 
 ### Phase 28 Planning Notes (pre-loaded context)
