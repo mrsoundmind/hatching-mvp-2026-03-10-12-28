@@ -94,9 +94,10 @@ async function checkForAutonomyTrigger(
       if (!canAutomate) return;
     }
 
-    const today = new Date().toISOString().slice(0, 10);
-    const todayCount = await stor.countAutonomyEventsForProjectToday(projectId, today);
-    if (todayCount >= BUDGETS.maxBackgroundLlmCallsPerProjectPerDay) return;
+    // Phase 22: Removed pre-queue budget check. The atomic ledger inside
+    // handleTaskJob (taskExecutionPipeline.ts) is now the only budget authority.
+    // The previous check-then-act pattern here was racy and redundant — see
+    // .planning/phases/22-atomic-budget-enforcement/22-RESEARCH.md Pattern 5.
 
     const tasks = await stor.getTasksByProject(projectId);
     const trigger = resolveAutonomyTrigger({

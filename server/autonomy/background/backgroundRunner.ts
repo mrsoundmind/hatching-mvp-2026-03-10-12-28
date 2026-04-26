@@ -218,6 +218,11 @@ async function runAutonomousExecutionCycle(): Promise<void> {
     const today = new Date().toISOString().slice(0, 10);
     for (const project of activeProjects) {
       try {
+        // Phase 22: Non-authoritative pre-queue fast-path — saves pg-boss enqueue overhead
+        // when a project is clearly over-budget. The authoritative atomic check lives in
+        // handleTaskJob (taskExecutionPipeline.ts) via reserveBudgetSlot. This count-based
+        // check is racy and may allow a few extra jobs to enqueue, but the ledger gate
+        // catches and blocks them at execution time. Do NOT rely on this for correctness.
         const todayCount = await _storage.countAutonomyEventsForProjectToday(project.id, today);
         if (todayCount >= BUDGETS.maxBackgroundLlmCallsPerProjectPerDay) {
           devLog(`[BackgroundRunner] Project ${project.id} hit daily cap (${todayCount}/${BUDGETS.maxBackgroundLlmCallsPerProjectPerDay})`);
