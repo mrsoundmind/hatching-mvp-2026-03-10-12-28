@@ -254,6 +254,29 @@ export const autonomyEvents = pgTable("autonomy_events", {
   projectEventTimeIdx: index("autonomy_events_project_event_time_idx").on(table.projectId, table.eventType, table.timestamp),
 }));
 
+// Phase 22: Atomic budget ledger — single source of truth for per-project daily autonomy budget
+// Atomic INSERT...ON CONFLICT...WHERE reserved_count < limit_count RETURNING closes the
+// check-then-act race in taskExecutionPipeline. See .planning/phases/22-atomic-budget-enforcement/22-RESEARCH.md
+export const autonomyDailyCounters = pgTable("autonomy_daily_counters", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: varchar("project_id")
+    .references(() => projects.id, { onDelete: 'cascade' })
+    .notNull(),
+  date: text("date").notNull(),        // 'YYYY-MM-DD' ISO string — matches existing dateStr convention
+  reservedCount: integer("reserved_count").notNull().default(0),
+  limitCount: integer("limit_count").notNull().default(50),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  projectDateUidx: uniqueIndex("adc_project_date_uidx").on(table.projectId, table.date),
+}));
+
+export const insertAutonomyDailyCounterSchema = createInsertSchema(autonomyDailyCounters).omit({
+  id: true,
+  updatedAt: true,
+});
+export type AutonomyDailyCounter = typeof autonomyDailyCounters.$inferSelect;
+export type InsertAutonomyDailyCounter = z.infer<typeof insertAutonomyDailyCounterSchema>;
+
 export const deliberationTraces = pgTable("deliberation_traces", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   traceId: text("trace_id").notNull().unique(),
