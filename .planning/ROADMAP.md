@@ -290,13 +290,14 @@ Plans:
 ### Phase 28: Maya Bug Fix + SDK Migration
 **Goal**: Maya responds reliably — infinite "thinking" state is eliminated, the @google/generative-ai SDK is migrated to @google/genai, every LLM request has a 30-second hard timeout, and the "out for lunch" fallback only fires on confirmed errors — unblocking user testing today
 **Depends on**: Nothing (independent of Pillar A; ships in parallel)
-**Requirements**: BUG-01, BUG-02, BUG-03, BUG-04, BUG-05
+**Requirements**: BUG-01, BUG-02, BUG-03, BUG-04, BUG-05, BUG-06
 **Success Criteria** (what must be TRUE):
   1. When a Gemini request legitimately takes 4-8 seconds (normal for complex prompts), Maya's thinking indicator stays visible and no fallback "out for lunch" message appears
   2. When any LLM request exceeds 30 seconds with no response, the thinking indicator clears within 1 second and the user sees an inline error message — never a frozen UI
   3. The `@google/generative-ai` package is replaced by `@google/genai` in package.json and all import sites — the old package is fully removed from the dependency tree
   4. A load test confirming 50 concurrent aborted requests shows no dangling AbortController references in heap snapshots (no memory leak)
   5. The "out for lunch" / "resting circuits" fallback message is absent from all browser sessions that complete streaming within 30 seconds, verified by the E2E test suite
+  6. After a Hatch finishes responding via either `streaming_completed` or plain `chat_message`, the chat input stop button reverts to "send" within 1 second — verified by Playwright spec asserting the button switches from `stop` to `send` within 1s of the last assistant message landing in the DOM
 **Plans**: TBD
 
 ### Phase 29: Discovery Redesign + MVB Gate

@@ -70,6 +70,7 @@
 - [ ] **BUG-03**: When LLM request aborts or times out, "thinking" UI state clears within 1 second and `streaming_cancelled` WS event fires
 - [ ] **BUG-04**: "Out for lunch" / "resting circuits" fallback messages only display on confirmed error (never during valid latency under 30s) — wrong code path identified and removed
 - [ ] **BUG-05**: AbortController cleanup verified — no dangling references after abort (no heap leak under load test)
+- [ ] **BUG-06**: Stop button in chat input clears within 1 second of any terminal stream event (success completion, abort, timeout, error) — currently sticks in "stop" state after Hatch finishes responding via `chat_message` path because `streaming.isStreaming` and message `metadata.isStreaming` are not deterministically reset on the success-completion path (`CenterPanel.tsx` derived `isStreaming` prop at ~line 1937 stays truthy)
 
 ### Discovery Redesign (DISC)
 
@@ -251,6 +252,7 @@
 | BUG-03 | Phase 28 | Pending |
 | BUG-04 | Phase 28 | Pending |
 | BUG-05 | Phase 28 | Pending |
+| BUG-06 | Phase 28 | Pending |
 | DISC-01 | Phase 29 | Pending |
 | DISC-02 | Phase 29 | Pending |
 | DISC-03 | Phase 29 | Pending |
@@ -297,9 +299,9 @@
 
 **Coverage:**
 - Pillar A requirements: 32 total (BUDG, SCHED, CHAT, MGMT, VER) — mapped to Phases 22-27 ✓
-- Pillar B requirements: 44 total (BUG, DISC, MVB, PHASE, BLPR, SKIP, FBK, LLMUX, PREF, FORM, COST, LEGAL, AUTH-GATE) — mapped to Phases 28-34 ✓
-- v3.0 total: 76 requirements (+2 from Playwright audit 2026-04-26)
-- Mapped to phases: 76
+- Pillar B requirements: 45 total (BUG, DISC, MVB, PHASE, BLPR, SKIP, FBK, LLMUX, PREF, FORM, COST, LEGAL, AUTH-GATE) — mapped to Phases 28-34 ✓
+- v3.0 total: 77 requirements (+2 from Playwright audit 2026-04-26, +1 BUG-06 stop-button stuck 2026-04-26)
+- Mapped to phases: 77
 - Unmapped: 0 ✓
 
 ---
