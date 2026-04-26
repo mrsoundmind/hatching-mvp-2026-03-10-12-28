@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Hatchin That Works
-status: research_in_progress
-stopped_at: Researching new pillar (Maya + Teamness)
-last_updated: "2026-04-25"
-last_activity: 2026-04-25 — v3.0 expanded to "Hatchin That Works"; new pillar research dispatched
+status: roadmap_complete
+stopped_at: Roadmap approved — Phase 22 (Atomic Budget Enforcement) is next to plan
+last_updated: "2026-04-26"
+last_activity: 2026-04-26 — v3.0 roadmap approved (13 phases, 74 requirements); user opted for numerical order — Phase 22 ships first
 progress:
-  total_phases: 6
+  total_phases: 13
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-25)
 
 **Core value:** No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
-**Current focus:** v3.0 — Hatchin That Works (research in progress for Pillar B)
+**Current focus:** v3.0 — Hatchin That Works (roadmap complete, Phase 28 next)
 
 ---
 
 ## Current Position
 
-Phase: — (defining requirements for expanded v3.0)
+Phase: 22 — Atomic Budget Enforcement (next to plan)
 Plan: — (not yet planned)
-Status: Research in progress for Pillar B (Maya + Teamness)
-Last activity: 2026-04-25 — v3.0 renamed to "Hatchin That Works", existing Phases 22-27 preserved, new phases (28+) being scoped
+Status: Roadmap complete — user opted for numerical order; Pillar A foundation (atomic budget) ships before Pillar B Maya reliability work
+Last activity: 2026-04-26 — Pillar B Phases 28-34 roadmapped and approved; 42 requirements mapped with 100% coverage
 
-Progress: [░░░░░░░░░░] 0% (0/6 existing phases; new phases TBD)
+Progress: [░░░░░░░░░░] 0% (0/13 phases; Pillar A Phases 22-27 + Pillar B Phases 28-34)
 
 ---
 
@@ -53,25 +53,23 @@ Progress: [░░░░░░░░░░] 0% (0/6 existing phases; new phases T
 - **Extend intentClassifier:** add `SCHEDULE_REQUEST` variant
 - **New deps:** `chrono-node` (NL datetime) + `cronstrue` (reverse cron → human-readable)
 
-### v3.0 Decisions (Pillar B — Maya + Teamness, NEW 2026-04-25)
+### v3.0 Decisions (Pillar B — Maya + Teamness, confirmed 2026-04-25)
 
 - **Bundle Pillar A + Pillar B into v3.0**: User testing exposed both reliability gaps; same trust signal
-- **Maya bug fix is urgent**: Infinite "thinking" state blocks user testing today — should ship as Phase 28 first
-- **Codebase audit completed**: 9 gaps verified — see audit results in this conversation thread
-- **Existing evolution mechanics confirmed working**: personalityEvolution.ts (per-agent traits), trustScoring (success_rate × maturity_factor), brain [[UPDATE]] action blocks
-- **Phase 23 (Budget UX) overlaps with COST-* (per-run cost visibility)**: merge during requirements definition
+- **Maya bug fix (Phase 28) is urgent and independent**: Ships in parallel with Pillar A; does not block or depend on any Pillar A phase
+- **@google/generative-ai → @google/genai migration is mandatory prerequisite**: The deprecated SDK has an unresolved AbortController bug (Issue #303); migration is not optional and must complete before any other Pillar B LLM work
+- **Phase state lives in DB (conversations.mayaPhase), not React state**: Survives WS reconnects; DEFAULT 'discovery' on new column
+- **Background brain extraction is mandatory alongside MVB gate**: Gate checks DB fields that only populate via extraction or action blocks — if extraction is skipped, the gate never passes (MVB false negative pitfall)
+- **Button-only handoff trigger for blueprint confirmation**: LLM intent classifier for "looks good but..." risks false positives; per user decision Q2, button is primary handoff signal
+- **All Pillar B schema changes batch into one Drizzle migration**: conversations.mayaPhase, users.preferences JSONB, deliverables feedback columns (userAcceptedAt/dismissedAt/editsCount/impressionCount), autonomy_events.cost_cents — deployed as one migration for safety
+- **Dollar amounts never in primary UI**: Quota framing only ("47 of 50 runs remaining") — loss aversion research backed
+- **Gemini embedding cosine similarity for team formation**: Pre-computed at server startup, hash-invalidated when roleRegistry.ts changes; ~720KB in memory
+- **OWASP LLM01 sanitization mandatory on preference write**: Enum allowlists + 200-char cap on free-text fields; injected as user-context block, never system role
 
 ### Anti-features (preserved)
 
 - no visual cron editor, no sub-hourly cadence, no shared routines, no manual budget override, no budget projection UX
-
-### Shipped Milestones
-
-- v1.0 Text-Perfect, Human-First (2026-03-19) — Phases 1-5
-- v1.1 Autonomous Execution Loop (2026-03-23) — Phases 6-9
-- v1.2 Billing + LLM Intelligence (2026-03-23) — Phase 10
-- v1.3 Autonomy Visibility & Right Sidebar Revamp (2026-03-29) — Phases 11-15
-- v2.0 Hatches That Deliver (2026-03-30) — Phases 16-21
+- no dollar amounts in primary cost UI, no auto-advance to execution after inactivity, no LLM-based "looks good" intent classifier for plain affirmations, no hard MVB gate blocking all agent responses (gate controls phase transition only)
 
 ### Deferred to v3.1+
 
@@ -82,10 +80,33 @@ Progress: [░░░░░░░░░░] 0% (0/6 existing phases; new phases T
 - PAB-01/02 — per-agent budgets
 - CHAT-07/08, MGMT-09 — conversational schedule edit/cancel + skip-next-run
 
+### Deferred to v3.2
+
+- DISG-01/02/03 — Agent disagreement orchestration (highest-risk; needs production data for confidence calibration)
+- GOAL-01/02/03 — Project milestones / definition-of-done (lower priority; depends on blueprint + feedback both stable)
+
+### Shipped Milestones
+
+- v1.0 Text-Perfect, Human-First (2026-03-19) — Phases 1-5
+- v1.1 Autonomous Execution Loop (2026-03-23) — Phases 6-9
+- v1.2 Billing + LLM Intelligence (2026-03-23) — Phase 10
+- v1.3 Autonomy Visibility & Right Sidebar Revamp (2026-03-29) — Phases 11-15
+- v2.0 Hatches That Deliver (2026-03-30) — Phases 16-21
+
 ---
 
 ## Session Continuity
 
-Last session: 2026-04-25
-Stopped at: v3.0 expanded scope — research dispatched for Pillar B
-Next action: Synthesize research → define new requirements (MAYA-*, USER-*, TEAM-*, CONFL-*, GOAL-*, FBK-*, COST-*, LLM-*, KILL-*) → spawn roadmapper for Phases 28+
+Last session: 2026-04-26
+Stopped at: v3.0 roadmap approved — 13 phases, 74 requirements, 100% coverage. User chose numerical order.
+Next action: `/gsd:plan-phase 22` — Atomic Budget Enforcement (Pillar A foundation; closes the check-then-act budget race)
+
+### Phase 28 Planning Notes (pre-loaded context)
+
+- Migrate `@google/generative-ai` to `@google/genai ^1.3.0` — breaking API change: new unified `GoogleGenAI` client, `ai.models.generateContentStream()` replaces `chat.sendMessageStream()`, `requestOptions.signal` replaces prior pattern
+- Add `AbortSignal.timeout(30_000)` in `geminiProvider.ts` via `requestOptions.signal`
+- Fix `finally` block in `chat.ts` streaming path: always emit `typing_stopped` on abort/timeout
+- Fix TTFT fallback threshold: current 3s fires on valid slow Gemini Pro responses (p95 4-6s); correct threshold is 30s total OR 15s post-first-token
+- Wire AbortController to WS `close` event for unexpected disconnects
+- Verify `@langchain/google-genai` compatibility with new SDK post-migration (potential version conflict)
+- Key files: `server/llm/providers/geminiProvider.ts`, `server/routes/chat.ts`, `server/llm/providerResolver.ts`

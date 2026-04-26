@@ -204,8 +204,6 @@
 
 ## Traceability
 
-(Phase mapping populated by roadmapper)
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | BUDG-01 | Phase 22 | Pending |
@@ -216,25 +214,83 @@
 | BUDG-06 | Phase 23 | Pending |
 | BUDG-07 | Phase 23 | Pending |
 | BUDG-08 | Phase 23 | Pending |
-| SCHED-01..09 | Phase 24 | Pending |
-| CHAT-01..06 | Phase 25 | Pending |
-| MGMT-01..08 | Phase 26 | Pending |
-| VER-01..04 | Phase 27 | Pending |
-| BUG-01..05 | Phase 28 | Pending |
-| DISC-01..03 | Phase 29 | Pending |
-| MVB-01..03 | Phase 29 | Pending |
-| PHASE-01..04 | Phase 30 | Pending |
-| BLPR-01..06 | Phase 30 | Pending |
-| SKIP-01..04 | Phase 30 | Pending |
-| FBK-01..04 | Phase 31 | Pending |
-| LLMUX-01..04 | Phase 31 | Pending |
-| PREF-01..05 | Phase 32 | Pending |
-| FORM-01..04 | Phase 33 | Pending |
-| COST-01..04 | Phase 34 | Pending |
+| SCHED-01 | Phase 24 | Pending |
+| SCHED-02 | Phase 24 | Pending |
+| SCHED-03 | Phase 24 | Pending |
+| SCHED-04 | Phase 24 | Pending |
+| SCHED-05 | Phase 24 | Pending |
+| SCHED-06 | Phase 24 | Pending |
+| SCHED-07 | Phase 24 | Pending |
+| SCHED-08 | Phase 24 | Pending |
+| SCHED-09 | Phase 24 | Pending |
+| CHAT-01 | Phase 25 | Pending |
+| CHAT-02 | Phase 25 | Pending |
+| CHAT-03 | Phase 25 | Pending |
+| CHAT-04 | Phase 25 | Pending |
+| CHAT-05 | Phase 25 | Pending |
+| CHAT-06 | Phase 25 | Pending |
+| MGMT-01 | Phase 26 | Pending |
+| MGMT-02 | Phase 26 | Pending |
+| MGMT-03 | Phase 26 | Pending |
+| MGMT-04 | Phase 26 | Pending |
+| MGMT-05 | Phase 26 | Pending |
+| MGMT-06 | Phase 26 | Pending |
+| MGMT-07 | Phase 26 | Pending |
+| MGMT-08 | Phase 26 | Pending |
+| VER-01 | Phase 27 | Pending |
+| VER-02 | Phase 27 | Pending |
+| VER-03 | Phase 27 | Pending |
+| VER-04 | Phase 27 | Pending |
+| BUG-01 | Phase 28 | Pending |
+| BUG-02 | Phase 28 | Pending |
+| BUG-03 | Phase 28 | Pending |
+| BUG-04 | Phase 28 | Pending |
+| BUG-05 | Phase 28 | Pending |
+| DISC-01 | Phase 29 | Pending |
+| DISC-02 | Phase 29 | Pending |
+| DISC-03 | Phase 29 | Pending |
+| MVB-01 | Phase 29 | Pending |
+| MVB-02 | Phase 29 | Pending |
+| MVB-03 | Phase 29 | Pending |
+| PHASE-01 | Phase 30 | Pending |
+| PHASE-02 | Phase 30 | Pending |
+| PHASE-03 | Phase 30 | Pending |
+| PHASE-04 | Phase 30 | Pending |
+| BLPR-01 | Phase 30 | Pending |
+| BLPR-02 | Phase 30 | Pending |
+| BLPR-03 | Phase 30 | Pending |
+| BLPR-04 | Phase 30 | Pending |
+| BLPR-05 | Phase 30 | Pending |
+| BLPR-06 | Phase 30 | Pending |
+| SKIP-01 | Phase 30 | Pending |
+| SKIP-02 | Phase 30 | Pending |
+| SKIP-03 | Phase 30 | Pending |
+| SKIP-04 | Phase 30 | Pending |
+| FBK-01 | Phase 31 | Pending |
+| FBK-02 | Phase 31 | Pending |
+| FBK-03 | Phase 31 | Pending |
+| FBK-04 | Phase 31 | Pending |
+| LLMUX-01 | Phase 31 | Pending |
+| LLMUX-02 | Phase 31 | Pending |
+| LLMUX-03 | Phase 31 | Pending |
+| LLMUX-04 | Phase 31 | Pending |
+| PREF-01 | Phase 32 | Pending |
+| PREF-02 | Phase 32 | Pending |
+| PREF-03 | Phase 32 | Pending |
+| PREF-04 | Phase 32 | Pending |
+| PREF-05 | Phase 32 | Pending |
+| FORM-01 | Phase 33 | Pending |
+| FORM-02 | Phase 33 | Pending |
+| FORM-03 | Phase 33 | Pending |
+| FORM-04 | Phase 33 | Pending |
+| COST-01 | Phase 34 | Pending |
+| COST-02 | Phase 34 | Pending |
+| COST-03 | Phase 34 | Pending |
+| COST-04 | Phase 34 | Pending |
 
 **Coverage:**
-- Pillar A requirements: 32 total (BUDG, SCHED, CHAT, MGMT, VER)
-- Pillar B requirements: 42 total (BUG, DISC, MVB, PHASE, BLPR, SKIP, FBK, LLMUX, PREF, FORM, COST)
+- Pillar A requirements: 32 total (BUDG, SCHED, CHAT, MGMT, VER) — mapped to Phases 22-27 ✓
+- Pillar B requirements: 42 total (BUG, DISC, MVB, PHASE, BLPR, SKIP, FBK, LLMUX, PREF, FORM, COST) — mapped to Phases 28-34 ✓
 - v3.0 total: 74 requirements
 - Mapped to phases: 74
 - Unmapped: 0 ✓
@@ -243,3 +299,4 @@
 
 *Pillar A defined: 2026-04-13*
 *Pillar B added: 2026-04-25 — bundled into v3.0 after user testing exposed Maya reliability gaps + 9 verified gaps from codebase audit*
+*Traceability expanded: 2026-04-25 — all 74 requirements mapped to explicit phases*

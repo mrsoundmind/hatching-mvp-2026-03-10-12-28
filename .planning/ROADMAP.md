@@ -7,7 +7,7 @@
 - ✅ **v1.2 Billing + LLM Intelligence** — Phase 10 (shipped 2026-03-23) — [archive](milestones/v1.2-ROADMAP.md)
 - ✅ **v1.3 Autonomy Visibility & Right Sidebar Revamp** — Phases 11-15 (shipped 2026-03-29)
 - ✅ **v2.0 Hatches That Deliver** — Phases 16-21 (shipped 2026-03-30)
-- 🚧 **v3.0 Reliable Autonomy** — Phases 22-27 (in progress)
+- 🚧 **v3.0 Hatchin That Works** — Phases 22-34 (in progress)
 
 ---
 
@@ -80,20 +80,34 @@ See archived roadmap: [milestones/v1.2-ROADMAP.md](milestones/v1.2-ROADMAP.md)
 
 ---
 
-## 🚧 v3.0 Reliable Autonomy (In Progress)
+## 🚧 v3.0 Hatchin That Works (In Progress)
 
-**Milestone Goal:** Harden the autonomous execution loop so users can trust it. Close the check-then-act budget race via atomic enforcement, then layer scheduled routines ("every Monday 9am, Kai drafts the growth update") on top of a now-correct budget ledger — chat-native creation, never a cron UI.
+**Milestone Goal:** Make Hatchin trustworthy in two dimensions at once — the autonomy backend (no runaway spend, scheduled routines) AND the conversation experience (Maya knows when to start, agents act like a real team, deliverables ship).
 
-**Ordering constraint (hard):** Phase 22 (atomic budget) must land before Phase 24 (scheduler). Scheduling multiplies concurrency pressure; a racy budget under a scheduler is the exact runaway-spend scenario this milestone exists to prevent.
+**Pillar A — Reliable Autonomy (Phases 22-27):** Atomic budget enforcement, scheduled routines via chat, routines management panel, integration hardening.
+
+**Pillar B — Reliable Maya & Teamness (Phases 28-34):** Maya infinite-thinking bug fix + SDK migration (URGENT), discovery redesign + MVB gate, phase machine + blueprint draft + skip-Maya, deliverable feedback loop + graceful LLM degradation, cross-project user preferences, dynamic team formation, per-run cost visibility.
+
+**Ordering constraint (hard):** Phase 22 (atomic budget) must land before Phase 24 (scheduler). Phase 28 (Maya bug fix) can ship in parallel with Pillar A — it is independent. Phase 30 (phase machine) requires Phase 29 (MVB gate). Phase 34 (cost visibility) requires Phase 22 (autonomy_events) and Phase 23 (UsageBar).
 
 ### Phases
 
+**Pillar A — Reliable Autonomy:**
 - [ ] **Phase 22: Atomic Budget Enforcement** — Ledger table + reserve/release + pipeline rewire + daily reconciliation
 - [ ] **Phase 23: Budget UX Surfaces** — UsageBar autonomy extension, 80% warn, in-character hard-stop, blocked events in feed, Free-tier upgrade path
 - [ ] **Phase 24: Scheduler Foundation** — scheduled_routines table, pg-boss cron wrapper, pipeline hook, auto-pause, REST API, tier gating
 - [ ] **Phase 25: Chat-Native Routine Creation** — SCHEDULE_REQUEST intent, NL → cron parser, in-character confirmation card, injection defense
 - [ ] **Phase 26: Routines Management Panel** — Sidebar tab, routine cards, pause/resume/run-now/delete, past-run history, return-briefing + tab-badge integration
 - [ ] **Phase 27: Polish + Integration Hardening** — Concurrency verify, DST tests, multi-replica single-fire, red-team injection suite
+
+**Pillar B — Reliable Maya & Teamness:**
+- [ ] **Phase 28: Maya Bug Fix + SDK Migration** — URGENT: @google/genai migration, AbortSignal.timeout(30s), thinking state cleanup, fallback threshold fix
+- [ ] **Phase 29: Discovery Redesign + MVB Gate** — Bounded discovery (max 3 questions), background brain extraction, brain-satisfied prompt injection
+- [ ] **Phase 30: Phase Machine + Blueprint + Skip-Maya** — conversations.mayaPhase column, [[PHASE:]] action block, BlueprintCard, skip-to-team escape hatch, phase regression guard
+- [ ] **Phase 31: Deliverable Feedback + Graceful Degradation** — Accept/Dismiss deliverables, impression tracking, typed LLM error codes, non-blocking degradation banner
+- [ ] **Phase 32: Cross-Project User Preferences** — users.preferences JSONB, inferred tone/verbosity, OWASP LLM01 sanitization, new-project inheritance
+- [ ] **Phase 33: Dynamic Team Formation** — Gemini embedding cosine similarity, pre-cached role embeddings, TeamRecommendationCard, exploration role jitter
+- [ ] **Phase 34: Per-Run Cost Visibility** — autonomy_events.cost_cents population, quota framing in UsageBar, per-run cost in Activity feed, in-character upgrade prompt
 
 ---
 
@@ -269,6 +283,89 @@ Plans:
 
 ---
 
+### Phase 28: Maya Bug Fix + SDK Migration
+**Goal**: Maya responds reliably — infinite "thinking" state is eliminated, the @google/generative-ai SDK is migrated to @google/genai, every LLM request has a 30-second hard timeout, and the "out for lunch" fallback only fires on confirmed errors — unblocking user testing today
+**Depends on**: Nothing (independent of Pillar A; ships in parallel)
+**Requirements**: BUG-01, BUG-02, BUG-03, BUG-04, BUG-05
+**Success Criteria** (what must be TRUE):
+  1. When a Gemini request legitimately takes 4-8 seconds (normal for complex prompts), Maya's thinking indicator stays visible and no fallback "out for lunch" message appears
+  2. When any LLM request exceeds 30 seconds with no response, the thinking indicator clears within 1 second and the user sees an inline error message — never a frozen UI
+  3. The `@google/generative-ai` package is replaced by `@google/genai` in package.json and all import sites — the old package is fully removed from the dependency tree
+  4. A load test confirming 50 concurrent aborted requests shows no dangling AbortController references in heap snapshots (no memory leak)
+  5. The "out for lunch" / "resting circuits" fallback message is absent from all browser sessions that complete streaming within 30 seconds, verified by the E2E test suite
+**Plans**: TBD
+
+### Phase 29: Discovery Redesign + MVB Gate
+**Goal**: Maya asks focused questions in batches and stops interrogating once the project brain has the minimum viable context — the discovery phase ends, it does not loop forever
+**Depends on**: Phase 28 (SDK migration must be stable before new LLM prompt logic is layered on top)
+**Requirements**: DISC-01, DISC-02, DISC-03, MVB-01, MVB-02, MVB-03
+**Success Criteria** (what must be TRUE):
+  1. Maya never sends more than 3 questions in a single message — verified by the discovery prompt test suite and a turn-counter safety net in the response post-processing step
+  2. When Maya asks multiple questions, they appear grouped by category (Features / Visuals / Tech) so the user can read and answer them together without visual noise
+  3. Maya does not re-ask a question the user already answered — deduplication runs a context check against the conversation history before generating each question batch
+  4. After the user provides their project description and answers, background extraction silently populates `projects.coreDirection` fields (`whatBuilding`, `whoFor`, `whyMatters`) without requiring action blocks from Maya
+  5. Once all three MVB fields are non-empty, Maya receives a `BRAIN_SATISFIED` prompt injection and stops asking discovery questions — the next Maya turn advances toward blueprint draft
+**Plans**: TBD
+
+### Phase 30: Phase Machine + Blueprint + Skip-Maya
+**Goal**: Conversations have an intentional flow — discovery, blueprint, then specialists — Maya hands off at the right moment, users can confirm the blueprint before work starts, and power users can bypass discovery entirely with a simple form
+**Depends on**: Phase 29 (MVB gate must be active so blueprint fires at the right threshold)
+**Requirements**: PHASE-01, PHASE-02, PHASE-03, PHASE-04, BLPR-01, BLPR-02, BLPR-03, BLPR-04, BLPR-05, BLPR-06, SKIP-01, SKIP-02, SKIP-03, SKIP-04
+**Success Criteria** (what must be TRUE):
+  1. After closing and reopening the browser mid-discovery, the conversation resumes at the same phase (discovery/blueprint/executing) — the phase indicator in the chat header shows the correct state without a page refresh
+  2. When the MVB threshold is satisfied, Maya presents an inline BlueprintCard showing project name, a one-paragraph summary, 3 suggested first tasks, and 3-4 recommended roles — no further discovery questions appear
+  3. User can click "Looks good — start building" on the BlueprintCard and tasks are created exactly once (double-clicking the button does not produce duplicate tasks due to idempotency key)
+  4. User can type inline revisions on the BlueprintCard ("change the target audience to enterprise") and Maya regenerates the blueprint incorporating the revision without restarting discovery
+  5. The onboarding and project creation flow surfaces a visible "Skip to my team" path that shows 3 labeled fields — user fills them in, project jumps directly to executing phase, and that preference is remembered for future projects
+**Plans**: TBD
+
+### Phase 31: Deliverable Feedback + Graceful LLM Degradation
+**Goal**: Users can signal whether deliverables are good or not (so quality compounds), and when LLM providers fail they see a clear inline message — not a raw 500 error or a silent freeze
+**Depends on**: Nothing new (deliverable columns are schema additions; degradation extends existing providerResolver.ts)
+**Requirements**: FBK-01, FBK-02, FBK-03, FBK-04, LLMUX-01, LLMUX-02, LLMUX-03, LLMUX-04
+**Success Criteria** (what must be TRUE):
+  1. User can click Accept or Dismiss on any deliverable in the artifact panel — Accept sets `userAcceptedAt`, Dismiss sets `dismissedAt`, and both actions persist across page refreshes
+  2. Every time a user opens a deliverable in the artifact panel, `impressionCount` increments — the funnel data is interpretable because opened-but-never-accepted deliverables are visible in the record
+  3. An agent's system prompt includes a feedback signal for its role ("your last 3 PRDs were accepted, 1 was dismissed for being too long") after the feedback data accumulates — quality compounds with use
+  4. When all LLM providers fail, the chat panel shows a non-blocking banner ("Agents are slow right now, hang tight") and the banner auto-dismisses after the next successful response — users never see a raw HTTP 500 error
+  5. A Gemini 429 rate-limit error routes directly to the Groq fallback without triggering the degradation banner — only true provider outages surface the banner (rate limits do not count as degradation)
+**Plans**: TBD
+
+### Phase 32: Cross-Project User Preferences
+**Goal**: Hatchin learns how each user works — tone, verbosity, technical depth — from the first project and applies that context to every subsequent project automatically, with no friction and no prompt injection surface
+**Depends on**: Phase 30 (phase machine provides a stable project-completion signal for preference inference timing)
+**Requirements**: PREF-01, PREF-02, PREF-03, PREF-04, PREF-05
+**Success Criteria** (what must be TRUE):
+  1. After a conversation reaches 10+ user turns, Groq extraction runs and populates `users.preferences` JSONB with inferred tone, verbosity, and technicalDepth — no explicit preference form appears and no user action is required
+  2. A new project created after preferences are inferred receives them automatically — the first agent response in the new project reflects the user's established style without the user re-explaining it
+  3. Preferences are injected as a user-context block (not system role) — a test adversarial preference value containing prompt-injection text does not alter system-level instructions in the LLM output
+  4. Enum preference fields (tone: direct/friendly/formal) are validated against an allowlist on write — arbitrary instruction-format strings are rejected and do not reach the database
+**Plans**: TBD
+
+### Phase 33: Dynamic Team Formation
+**Goal**: Users starting a freeform project get a focused 3-4 agent recommendation matched to their project description — not all 30 agents at once — with a rationale for each pick and one exploratory suggestion to encourage discovery
+**Depends on**: Phase 28 (requires @google/genai SDK for Gemini Embedding API), Phase 30 (blueprint's whatBuilding text is the primary input to the recommender)
+**Requirements**: FORM-01, FORM-02, FORM-03, FORM-04
+**Success Criteria** (what must be TRUE):
+  1. When a user creates a freeform project (not a starter pack), the system presents a TeamRecommendationCard showing 3-4 agents with a one-sentence rationale per role — no recommendation is shown for starter pack projects
+  2. Sending the same project description twice does not always return identical teams — the exploration role (one role sampled from below the top-3 cosine similarity threshold) and small score jitter produce varied recommendations
+  3. Role embeddings are pre-computed at server startup and served from memory — team recommendation adds less than 200ms to project creation latency (no per-request Gemini embedding API call)
+  4. All 30 agents remain accessible via the "Add Hatch" modal regardless of the recommendation — the recommendation augments the default, it does not replace the full roster
+**Plans**: TBD
+
+### Phase 34: Per-Run Cost Visibility
+**Goal**: Pro users see how many autonomy runs they have used today in quota terms, can trace each run's cost in the Activity feed, and hit an in-character upgrade prompt when the cap is reached — dollar amounts never appear in the primary UI
+**Depends on**: Phase 22 (autonomy_events table is the source of truth), Phase 23 (UsageBar is the display surface)
+**Requirements**: COST-01, COST-02, COST-03, COST-04
+**Success Criteria** (what must be TRUE):
+  1. After an autonomous task completes, its `autonomy_events` row has a non-null `cost_cents` value populated from `usageTracker.estimateCostCents()` — visible in the DB record and verified by integration test
+  2. The UsageBar shows autonomy run quota in the form "47 of 50 runs remaining today" — raw dollar amounts do not appear anywhere in the primary UI (Activity feed, UsageBar, or chat messages)
+  3. Each completed autonomy run in the Activity feed shows a quota delta label ("Kai drafted growth update · 1 run") — cost is framed as run consumption, not money spent
+  4. A Free-tier user who reaches the autonomy cap sees Maya deliver an in-character message explaining the pause and offering an upgrade path — the raw "quota exceeded" string never appears in the UI
+**Plans**: TBD
+
+---
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -300,6 +397,13 @@ Plans:
 | 25. Chat-Native Routine Creation | v3.0 | 0/? | Not started | - |
 | 26. Routines Management Panel | v3.0 | 0/? | Not started | - |
 | 27. Polish + Integration Hardening | v3.0 | 0/? | Not started | - |
+| 28. Maya Bug Fix + SDK Migration | v3.0 | 0/? | Not started | - |
+| 29. Discovery Redesign + MVB Gate | v3.0 | 0/? | Not started | - |
+| 30. Phase Machine + Blueprint + Skip-Maya | v3.0 | 0/? | Not started | - |
+| 31. Deliverable Feedback + Graceful Degradation | v3.0 | 0/? | Not started | - |
+| 32. Cross-Project User Preferences | v3.0 | 0/? | Not started | - |
+| 33. Dynamic Team Formation | v3.0 | 0/? | Not started | - |
+| 34. Per-Run Cost Visibility | v3.0 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-03-17*
@@ -308,4 +412,5 @@ Plans:
 *v1.2 shipped: 2026-03-23*
 *v1.3 shipped: 2026-03-29*
 *v2.0 shipped: 2026-03-30*
-*v3.0 roadmap added: 2026-04-13*
+*v3.0 roadmap (Pillar A) added: 2026-04-13*
+*v3.0 roadmap (Pillar B) added: 2026-04-25*
