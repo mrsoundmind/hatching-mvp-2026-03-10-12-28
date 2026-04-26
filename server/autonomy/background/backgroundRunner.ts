@@ -9,6 +9,7 @@ import { selectFrictionAction } from "./frictionMap.js";
 import { sendProactiveMessage } from "./proactiveOutreach.js";
 import { runWorldSensorForProject } from "./worldSensor.js";
 import { logAutonomyEvent } from "../events/eventLogger.js";
+import { runDailyReconciliation } from "./budgetReconciliation.js";
 import { resolveAutonomyTrigger } from "../triggers/autonomyTriggerResolver.js";
 import { queueTaskExecution } from "../execution/jobQueue.js";
 import { FEATURE_FLAGS, BUDGETS } from "../config/policies.js";
@@ -303,9 +304,23 @@ export const backgroundRunner = {
       cronJobs.push(executionJob);
     }
 
+    // Phase 22 / BUDG-03: Daily budget ledger reconciliation at 00:05 UTC.
+    // Detects and self-corrects drift between autonomy_daily_counters and
+    // authoritative autonomy_events count. Always registered (no feature flag) —
+    // safe no-op when ledger has no rows.
+    const reconciliationJob = cronSchedule('5 0 * * *', async () => {
+      if (!_storage) return;
+      try {
+        await runDailyReconciliation(_storage);
+      } catch (err) {
+        console.error('[BackgroundRunner] Reconciliation cycle error:', (err as Error).message);
+      }
+    }, { timezone: 'UTC' });
+    cronJobs.push(reconciliationJob);
+
     if (!wasRunning) {
       console.log(
-        "[BackgroundRunner] Started — health checks every 2h, world sensing every 6h"
+        "[BackgroundRunner] Started — health checks every 2h, world sensing every 6h, budget reconciliation at 00:05 UTC daily"
       );
     }
   },
@@ -330,5 +345,11 @@ export const backgroundRunner = {
   // For testing: manually trigger an execution cycle
   async runExecutionCycleNow(): Promise<void> {
     await runAutonomousExecutionCycle();
+  },
+
+  // For testing: manually trigger reconciliation
+  async runReconciliationNow(): Promise<void> {
+    if (!_storage) throw new Error("BackgroundRunner not started");
+    await runDailyReconciliation(_storage);
   },
 };
