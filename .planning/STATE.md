@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Hatchin That Works
 status: "22-01 shipped — autonomyDailyCounters schema, budgetLedger.ts, Wave 0 tests passing. Next: 22-02 pipeline rewire."
-stopped_at: Completed 22-03-PLAN.md — budgetReconciliation.ts, backgroundRunner cron, Wave 0 reconciliation tests
-last_updated: "2026-04-26T06:09:25.599Z"
+stopped_at: Completed 22-02-PLAN.md — pipeline rewire + chat.ts pre-check removal
+last_updated: "2026-04-26T06:12:11.493Z"
 last_activity: 2026-04-26 — Phase 22-01 complete (schema+helpers+tests; BUDG-01+BUDG-02 empirically verified)
 progress:
   total_phases: 24
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 18
-  completed_plans: 15
+  completed_plans: 16
   percent: 0
 ---
 
@@ -27,12 +27,12 @@ See: .planning/PROJECT.md (updated 2026-04-25)
 
 ## Current Position
 
-Phase: 22 — Atomic Budget Enforcement (in progress — 1/3 plans complete)
-Plan: 3 plans in 2 waves (22-01 DONE · 22-02 pipeline rewire · 22-03 reconciliation job)
-Status: 22-01 shipped — autonomyDailyCounters schema, budgetLedger.ts, Wave 0 tests passing. Next: 22-02 pipeline rewire.
-Last activity: 2026-04-26 — Phase 22-01 complete (schema+helpers+tests; BUDG-01+BUDG-02 empirically verified)
+Phase: 22 — Atomic Budget Enforcement (in progress — 2/3 plans complete)
+Plan: 3 plans in 2 waves (22-01 DONE · 22-02 DONE · 22-03 reconciliation job)
+Status: 22-02 shipped — handleTaskJob uses atomic reserveBudgetSlot; chat.ts racy pre-check removed. Next: 22-03 reconciliation job.
+Last activity: 2026-04-26 — Phase 22-02 complete (pipeline rewire + chat.ts removal; BUDG-01+BUDG-02 enforced at pipeline level)
 
-Progress: [░░░░░░░░░░] 0% (0/13 phases; Pillar A Phases 22-27 + Pillar B Phases 28-34)
+Progress: [█████████░] 89% (16/18 plans complete)
 
 ---
 
@@ -49,6 +49,7 @@ Progress: [░░░░░░░░░░] 0% (0/13 phases; Pillar A Phases 22-2
 - **Budget correctness precedes scheduling (hard constraint):** Phase 22 must ship before Phase 24
 - **Pattern A atomic ledger:** new `autonomy_daily_counters` table with `INSERT...ON CONFLICT...WHERE reserved_count < limit RETURNING`
 - **Phase 22-01 shipped:** autonomyDailyCounters schema, budgetLedger.ts (reserveBudgetSlot + releaseBudgetSlot), Wave 0 tests. BUDG-01 empirically proven: 5/10 concurrent reservations succeed at limit=5.
+- **Phase 22-02 shipped:** handleTaskJob rewired to use reserveBudgetSlot atomically; releaseBudgetSlot in catch path only (failure releases slot; success keeps it consumed for the day); chat.ts pre-check removed (BUDG-01+BUDG-02 now enforced at pipeline level only).
 - **budgetLedger.ts is standalone (not IStorage):** follows upsertDailyUsage precedent; raw pool.query used because Drizzle 0.39.1 cannot express WHERE on DO UPDATE clause
 - **Reuse existing pipeline for scheduling:** scheduled fires enqueue a `tasks` row + `boss.send('autonomous_task_execution', ...)`
 - **pg-boss native scheduler:** use `boss.schedule()` (distributed-safe, IANA tz, single-fire)
@@ -99,8 +100,8 @@ Progress: [░░░░░░░░░░] 0% (0/13 phases; Pillar A Phases 22-2
 
 ## Session Continuity
 
-Last session: 2026-04-26T06:09:25.594Z
-Stopped at: Completed 22-03-PLAN.md — budgetReconciliation.ts, backgroundRunner cron, Wave 0 reconciliation tests
+Last session: 2026-04-26T06:12:11.488Z
+Stopped at: Completed 22-02-PLAN.md — pipeline rewire + chat.ts pre-check removal
 Next action: `/gsd:plan-phase 22` — Atomic Budget Enforcement (Pillar A foundation; closes the check-then-act budget race)
 
 ### Phase 28 Planning Notes (pre-loaded context)

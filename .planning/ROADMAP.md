@@ -93,7 +93,7 @@ See archived roadmap: [milestones/v1.2-ROADMAP.md](milestones/v1.2-ROADMAP.md)
 ### Phases
 
 **Pillar A — Reliable Autonomy:**
-- [ ] **Phase 22: Atomic Budget Enforcement** — Ledger table + reserve/release + pipeline rewire + daily reconciliation
+- [x] **Phase 22: Atomic Budget Enforcement** — Ledger table + reserve/release + pipeline rewire + daily reconciliation (completed 2026-04-26)
 - [ ] **Phase 23: Budget UX Surfaces** — UsageBar autonomy extension, 80% warn, in-character hard-stop, blocked events in feed, Free-tier upgrade path
 - [ ] **Phase 24: Scheduler Foundation** — scheduled_routines table, pg-boss cron wrapper, pipeline hook, auto-pause, REST API, tier gating
 - [ ] **Phase 25: Chat-Native Routine Creation** — SCHEDULE_REQUEST intent, NL → cron parser, in-character confirmation card, injection defense
@@ -397,7 +397,7 @@ Plans:
 | 19. Organic Detection + Iteration UX | v2.0 | — | Complete | 2026-03-30 |
 | 20. Project Packages + Background Production | v2.0 | — | Complete | 2026-03-30 |
 | 21. Zero-Friction Onboarding + PDF Export | v2.0 | — | Complete | 2026-03-30 |
-| 22. Atomic Budget Enforcement | 2/3 | In Progress|  | - |
+| 22. Atomic Budget Enforcement | 3/3 | Complete   | 2026-04-26 | - |
 | 23. Budget UX Surfaces | v3.0 | 0/? | Not started | - |
 | 24. Scheduler Foundation | v3.0 | 0/? | Not started | - |
 | 25. Chat-Native Routine Creation | v3.0 | 0/? | Not started | - |
