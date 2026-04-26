@@ -221,7 +221,11 @@ Plans:
   2. When an autonomous task fails, is cancelled, or throws mid-execution, its reserved budget slot is released (idempotent by task_id) so no project can be permanently locked out by crashed jobs
   3. A daily reconciliation job runs and logs any drift between `autonomy_daily_counters.reserved_count` and the authoritative count from `autonomy_events` for that project+date
   4. The duplicate budget check in `chat.ts` inactivity trigger is removed — the pipeline helper is the only budget authority in the codebase
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 22-01-PLAN.md — Schema + budgetLedger helpers (reserve/release) + Wave 0 unit & concurrency tests
+- [ ] 22-02-PLAN.md — Pipeline rewire (atomic reserve, finally-block release) + remove duplicate chat.ts check
+- [ ] 22-03-PLAN.md — Daily reconciliation job + cron wiring + Wave 0 drift-correction test
 
 ### Phase 23: Budget UX Surfaces
 **Goal**: Users see their autonomy budget in real time, receive a soft warning before exhaustion, and get an in-character hard-stop (not a silent failure) when the cap hits — with the Free-tier upgrade path surfaced at the moment of friction
@@ -393,7 +397,7 @@ Plans:
 | 19. Organic Detection + Iteration UX | v2.0 | — | Complete | 2026-03-30 |
 | 20. Project Packages + Background Production | v2.0 | — | Complete | 2026-03-30 |
 | 21. Zero-Friction Onboarding + PDF Export | v2.0 | — | Complete | 2026-03-30 |
-| 22. Atomic Budget Enforcement | v3.0 | 0/? | Not started | - |
+| 22. Atomic Budget Enforcement | v3.0 | 0/3 | Not started | - |
 | 23. Budget UX Surfaces | v3.0 | 0/? | Not started | - |
 | 24. Scheduler Foundation | v3.0 | 0/? | Not started | - |
 | 25. Chat-Native Routine Creation | v3.0 | 0/? | Not started | - |
