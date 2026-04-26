@@ -1,12 +1,45 @@
 /**
  * Integration test suite for TaskExecutionPipeline (Plan 06-03).
  * Run: npx tsx scripts/test-execution-pipeline.ts
+ *
+ * Note (Phase 22): handleTaskJob tests (4, 5, 7) now need a real DB project
+ * because reserveBudgetSlot uses pool.query with an FK constraint. These tests
+ * create and tear down a test project via pool.query directly.
  */
 
 import type { IStorage } from '../server/storage.js';
 import type { Task, Message, Agent, Project } from '../shared/schema.js';
 import { executeTask, handleTaskJob, startTaskWorker } from '../server/autonomy/execution/taskExecutionPipeline.js';
 import { BUDGETS } from '../server/autonomy/config/policies.js';
+
+// ─── Test project lifecycle (for handleTaskJob tests requiring real DB FK) ────
+const TEST_PROJECT_ID = `test-pipeline-${Date.now()}`;
+const TEST_USER_ID = `test-user-${Date.now()}`;
+
+async function setupTestProject(): Promise<void> {
+  const { pool } = await import('../server/db.js');
+  const uniqueSuffix = Date.now();
+  // Insert a minimal user + project so the FK constraint is satisfied.
+  // provider_sub is NOT NULL UNIQUE — use a unique test value.
+  await pool.query(
+    `INSERT INTO users (id, email, name, tier, provider_sub)
+     VALUES ($1, $2, $3, 'free', $4)
+     ON CONFLICT (id) DO NOTHING`,
+    [TEST_USER_ID, `test-pipeline-${uniqueSuffix}@test.example`, 'Test User', `test-pipeline-sub-${uniqueSuffix}`],
+  );
+  await pool.query(
+    `INSERT INTO projects (id, user_id, name, emoji) VALUES ($1, $2, 'TestPipelineProject', '🧪')
+     ON CONFLICT (id) DO NOTHING`,
+    [TEST_PROJECT_ID, TEST_USER_ID],
+  );
+}
+
+async function teardownTestProject(): Promise<void> {
+  const { pool } = await import('../server/db.js');
+  await pool.query(`DELETE FROM autonomy_daily_counters WHERE project_id = $1`, [TEST_PROJECT_ID]);
+  await pool.query(`DELETE FROM projects WHERE id = $1`, [TEST_PROJECT_ID]);
+  await pool.query(`DELETE FROM users WHERE id = $1`, [TEST_USER_ID]);
+}
 
 let testsPassed = 0;
 let testsFailed = 0;
@@ -70,6 +103,11 @@ function makeProject(overrides: Partial<Project> = {}): Project {
     brain: { documents: [], sharedMemory: '' },
     ...overrides,
   };
+}
+
+/** Make a project that references the real DB project (for handleTaskJob tests) */
+function makeRealProject(overrides: Partial<Project> = {}): Project {
+  return makeProject({ id: TEST_PROJECT_ID, userId: TEST_USER_ID, ...overrides });
 }
 
 interface MockStorageState {
@@ -270,13 +308,26 @@ async function testHighRiskBlock(): Promise<void> {
 // ─── Test 4: Cost cap enforcement ────────────────────────────────────────────
 async function testCostCapEnforcement(): Promise<void> {
   console.log('\nTest 4: Cost cap enforcement — handleTaskJob skips when daily cap reached');
-  const task = makeTask();
-  const agent = makeAgent();
-  const project = makeProject();
+  // Use real DB project so reserveBudgetSlot FK constraint is satisfied.
+  // Pre-fill the ledger to limit=0 (free tier with no slots) by using tierLimit=0.
+  // The reservation will immediately fail (reserved_count >= limit_count when limit=0).
+  const { pool } = await import('../server/db.js');
+  const today = new Date().toISOString().slice(0, 10);
+  // Ensure the ledger row exists at limit=0 (free tier — no autonomy allowed)
+  await pool.query(
+    `INSERT INTO autonomy_daily_counters (project_id, date, reserved_count, limit_count)
+     VALUES ($1, $2, 0, 0)
+     ON CONFLICT (project_id, date) DO UPDATE SET limit_count = 0, reserved_count = 0`,
+    [TEST_PROJECT_ID, today],
+  );
+
+  const task = makeTask({ projectId: TEST_PROJECT_ID });
+  const agent = makeAgent({ projectId: TEST_PROJECT_ID });
+  const project = makeRealProject();
   let generateTextCalled = false;
   const state: MockStorageState = {
     tasks: new Map([[task.id, task]]), messages: [], agents: [agent], project,
-    autonomyEventCount: BUDGETS.maxBackgroundLlmCallsPerProjectPerDay,
+    autonomyEventCount: 0,
   };
   const storage = makeMockStorage(state);
   const generateText = async () => { generateTextCalled = true; return 'should not run'; };
@@ -285,6 +336,9 @@ async function testCostCapEnforcement(): Promise<void> {
     { data: { taskId: task.id, projectId: project.id, agentId: agent.id } },
     { storage, broadcastToConversation: () => {}, generateText },
   );
+
+  // Clean up ledger row
+  await pool.query(`DELETE FROM autonomy_daily_counters WHERE project_id = $1 AND date = $2`, [TEST_PROJECT_ID, today]);
 
   if (generateTextCalled) {
     console.error('  FAIL: generateText must NOT be called when daily cap is reached');
@@ -298,9 +352,10 @@ async function testCostCapEnforcement(): Promise<void> {
 // ─── Test 5: WS event — background_execution_started ─────────────────────────
 async function testBackgroundExecutionStartedEvent(): Promise<void> {
   console.log('\nTest 5: WS event — background_execution_started broadcast before executeTask');
-  const task = makeTask();
-  const agent = makeAgent();
-  const project = makeProject();
+  // Use real DB project so reserveBudgetSlot FK constraint is satisfied.
+  const task = makeTask({ projectId: TEST_PROJECT_ID });
+  const agent = makeAgent({ projectId: TEST_PROJECT_ID });
+  const project = makeRealProject();
   const state: MockStorageState = {
     tasks: new Map([[task.id, task]]), messages: [], agents: [agent], project,
     autonomyEventCount: 0,
@@ -369,9 +424,10 @@ async function testTaskExecutionCompletedEvent(): Promise<void> {
 // ─── Test 7: handleTaskJob calls executeTask when cap not reached ─────────────
 async function testHandleTaskJobCallsExecuteTask(): Promise<void> {
   console.log('\nTest 7: handleTaskJob calls executeTask (task completes) when cap not reached');
-  const task = makeTask();
-  const agent = makeAgent();
-  const project = makeProject();
+  // Use real DB project so reserveBudgetSlot FK constraint is satisfied.
+  const task = makeTask({ projectId: TEST_PROJECT_ID });
+  const agent = makeAgent({ projectId: TEST_PROJECT_ID });
+  const project = makeRealProject();
   const state: MockStorageState = {
     tasks: new Map([[task.id, task]]), messages: [], agents: [agent], project,
     autonomyEventCount: 0,
@@ -427,6 +483,9 @@ async function testStartTaskWorkerRegistersWork(): Promise<void> {
 async function main(): Promise<void> {
   console.log('=== TaskExecutionPipeline Tests ===');
 
+  // Create real DB project for handleTaskJob tests (Phase 22: reserveBudgetSlot needs real FK)
+  await setupTestProject();
+
   try { await testLowRiskAutoExecute(); } catch (e) { console.error('  ERROR in Test 1:', e); testsFailed++; }
   try { await testHighRiskBlock(); } catch (e) { console.error('  ERROR in Test 2:', e); testsFailed++; }
   try { await testNoRunTurnOrGraphInvoke(); } catch (e) { console.error('  ERROR in Test 3:', e); testsFailed++; }
@@ -436,6 +495,9 @@ async function main(): Promise<void> {
   try { await testHandleTaskJobCallsExecuteTask(); } catch (e) { console.error('  ERROR in Test 7:', e); testsFailed++; }
   try { testStartTaskWorkerExported(); } catch (e) { console.error('  ERROR in Test 8:', e); testsFailed++; }
   try { await testStartTaskWorkerRegistersWork(); } catch (e) { console.error('  ERROR in Test 9:', e); testsFailed++; }
+
+  // Clean up real DB project
+  await teardownTestProject().catch((e) => console.error('  WARN: teardown failed (non-fatal):', e));
 
   console.log(`\n=== Results: ${testsPassed} passed, ${testsFailed} failed ===`);
   process.exit(testsFailed > 0 ? 1 : 0);
