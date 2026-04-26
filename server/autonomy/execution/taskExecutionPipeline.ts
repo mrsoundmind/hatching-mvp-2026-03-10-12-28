@@ -1,6 +1,7 @@
 import { evaluateSafetyScore, AUTONOMOUS_SAFETY_THRESHOLDS } from '../../ai/safety.js';
 import { getJobQueue } from './jobQueue.js';
-import { BUDGETS } from '../config/policies.js';
+import { BUDGETS, getTierBudgets } from '../config/policies.js';
+import { reserveBudgetSlot, releaseBudgetSlot } from './budgetLedger.js';
 import { logAutonomyEvent } from '../events/eventLogger.js';
 import { orchestrateHandoff } from '../handoff/handoffOrchestrator.js';
 import { emitHandoffAnnouncement } from '../handoff/handoffAnnouncement.js';
@@ -540,26 +541,10 @@ export async function handleTaskJob(
     generateText: (prompt: string, system: string, maxTokens?: number) => Promise<string>;
   },
 ): Promise<void> {
-  // Cost cap check first
   const today = new Date().toISOString().slice(0, 10);
-  const todayCount = await deps.storage.countAutonomyEventsForProjectToday(job.data.projectId, today);
-  if (todayCount >= BUDGETS.maxBackgroundLlmCallsPerProjectPerDay) {
-    // Block the task and notify the user instead of silently dropping
-    await deps.storage.updateTask(job.data.taskId, {
-      status: 'blocked',
-      metadata: { costCapReached: true, dailyLimit: BUDGETS.maxBackgroundLlmCallsPerProjectPerDay } as any,
-    });
-    const conversationId = `project:${job.data.projectId}`;
-    deps.broadcastToConversation(conversationId, {
-      type: 'task_requires_approval',
-      taskId: job.data.taskId,
-      agentName: 'System',
-      riskReasons: ['Daily autonomous execution limit reached. This task will resume tomorrow or can be manually approved.'],
-    });
-    return;
-  }
 
-  // Pause check: skip if project autonomy is paused (UX-04)
+  // Pause check + tier resolution must happen BEFORE budget reservation so we
+  // know the correct limit and don't consume a slot for a paused project.
   const project = await deps.storage.getProject(job.data.projectId);
   if (!project) return;
   if ((project.executionRules as any)?.autonomyPaused === true) {
@@ -569,6 +554,34 @@ export async function handleTaskJob(
       metadata: { pausedAt: new Date().toISOString(), willRetryOnResume: true } as any,
     });
     console.log(`[Pipeline] Project ${job.data.projectId} is paused — task ${job.data.taskId} reset to 'todo'`);
+    return;
+  }
+
+  // Resolve tier limit. Free tier = 0 (autonomy disabled); Pro tier = 50/day.
+  // Falls back to BUDGETS.maxBackgroundLlmCallsPerProjectPerDay if user lookup fails.
+  let tierLimit = BUDGETS.maxBackgroundLlmCallsPerProjectPerDay;
+  if (project.userId) {
+    const user = await deps.storage.getUser(project.userId);
+    if (user) {
+      tierLimit = getTierBudgets(user.tier as 'free' | 'pro').maxBackgroundLlmCallsPerProjectPerDay;
+    }
+  }
+
+  // Atomic budget reservation — single SQL statement; concurrent races are safe.
+  // Returns false if the daily limit is already reached.
+  const reserved = await reserveBudgetSlot(job.data.projectId, today, tierLimit);
+  if (!reserved) {
+    await deps.storage.updateTask(job.data.taskId, {
+      status: 'blocked',
+      metadata: { costCapReached: true, dailyLimit: tierLimit } as any,
+    });
+    const conversationId = `project:${job.data.projectId}`;
+    deps.broadcastToConversation(conversationId, {
+      type: 'task_requires_approval',
+      taskId: job.data.taskId,
+      agentName: 'System',
+      riskReasons: ['Daily autonomous execution limit reached. This task will resume tomorrow or can be manually approved.'],
+    });
     return;
   }
 
@@ -601,6 +614,13 @@ export async function handleTaskJob(
       generateText: deps.generateText,
     });
   } catch (err) {
+    // Release the reserved slot — task failed mid-execution. BUDG-02 idempotent release.
+    // Use try/catch so a release failure does not mask the original error.
+    try {
+      await releaseBudgetSlot(job.data.projectId, today);
+    } catch (releaseErr) {
+      console.error('[Pipeline] releaseBudgetSlot failed (non-fatal):', (releaseErr as Error).message);
+    }
     // Only mark as blocked if the task wasn't already completed (avoids corrupting status
     // when broadcastToConversation throws after successful task execution)
     const currentTask = await deps.storage.getTask(job.data.taskId);
