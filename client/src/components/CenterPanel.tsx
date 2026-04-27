@@ -297,12 +297,12 @@ export function CenterPanel({
       (m.metadata && (m.metadata as any).isStreaming === true)
     );
     if (hasLiveStream) return;
-    // Give React a tick to settle — streaming_started sets isStreaming(true) and
-    // adds the placeholder in the same pass; the effect then sees both.
+    // 0ms timeout = microtask tick, lets React commit the messages.allMessages
+    // update first so we observe the final state, then clear isStreaming.
     const t = window.setTimeout(() => {
       streaming.setIsStreaming(false);
       streaming.streamingMessageId.current = null;
-    }, 300);
+    }, 0);
     return () => window.clearTimeout(t);
   }, [messages.allMessages, currentChatContext?.conversationId, streaming.isStreaming]);
 
@@ -365,7 +365,10 @@ export function CenterPanel({
         parentMessageId: message.message.parentMessageId || undefined,
         threadRootId: message.message.threadRootId || undefined,
         threadDepth: message.message.threadDepth || 0,
-        metadata: message.message.metadata
+        metadata: {
+          ...((message.message.metadata as any) || {}),
+          isStreaming: false,  // BUG-06: force-clear regardless of server payload — this is a delivered message
+        }
       };
 
       // Dispatch handoff event to sidebar activity feed
