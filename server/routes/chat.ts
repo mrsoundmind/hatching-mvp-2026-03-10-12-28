@@ -1447,6 +1447,9 @@ export function registerChatRoutes(
     let _lastAccumulatedContent = '';
     let _responsePersisted = false;
     let _respondingAgentForRescue: any = null;
+    // BUG-04: hoisted so the catch handler can check abortController.signal.aborted
+    // before sending a late "out for lunch" fallback message.
+    let abortController: AbortController | null = null;
     try {
       // Parse conversation ID using shared utility (replaces brittle split logic)
       // Validate conversationId is present and is a string
@@ -1904,7 +1907,7 @@ export function registerChatRoutes(
       };
 
       // Create AbortController for cancellation + WS disconnect
-      const abortController = new AbortController();
+      abortController = new AbortController();
       (ws as any).__currentAbortController = abortController;
 
       // Handle cancellation messages
@@ -1913,7 +1916,7 @@ export function registerChatRoutes(
           const data = JSON.parse(message.toString());
           if (data.type === 'cancel_streaming' && (data.messageId === responseMessageId || !data.messageId)) {
             devLog('🛑 Streaming cancelled by user');
-            abortController.abort();
+            abortController?.abort();
           }
         } catch {
           // Ignore malformed WS frames — don't crash the streaming handler
@@ -3069,6 +3072,17 @@ export function registerChatRoutes(
             messageId: responseMessageId,
             code: payload.code,
             error: payload.error
+          }));
+        } else if (abortController?.signal.aborted) {
+          // BUG-04: outer 60s timeout already fired and sent streaming_error to the client.
+          // Do NOT send a late "out for lunch" fallback — the user already saw the error,
+          // and a delayed second message would arrive AFTER the error and pollute the chat.
+          devLog('⚠️ Skipping fallback message — abortController already aborted (outer timeout fired)');
+          ws.send(JSON.stringify({
+            type: 'streaming_error',
+            messageId: responseMessageId,
+            code: payload.code,
+            error: payload.error,
           }));
         } else {
           // No content was streamed — send a fallback message from PM/Maya
