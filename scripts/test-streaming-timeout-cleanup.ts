@@ -31,13 +31,21 @@ interface CapturedEvent {
  * the production code inline (chat.ts lines 968-981).
  */
 function simulateProductionTimeoutCatch(ws: WebSocket, conversationId: string, messageId: string): void {
-  // EXACT MIRROR of chat.ts lines 968-981 today.
-  // After plan 28-04, this should ALSO emit `typing_stopped` BEFORE the streaming_error.
-  // The test asserts that contract — so today, missing typing_stopped fails.
+  // EXACT MIRROR of chat.ts outer catch (post plan 28-04).
+  // The fix emits `typing_stopped` BEFORE `streaming_error` so the client's
+  // thinking indicator clears before the error toast renders.
   const errorPayload = {
     code: 'STREAMING_HARD_TIMEOUT',
     error: 'The response took too long. Please try again.',
   };
+  // BUG-03: clear client thinking indicator before sending error
+  ws.send(
+    JSON.stringify({
+      type: 'typing_stopped',
+      agentId: null,
+      conversationId,
+    }),
+  );
   ws.send(
     JSON.stringify({
       type: 'streaming_error',

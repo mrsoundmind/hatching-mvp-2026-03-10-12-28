@@ -972,6 +972,11 @@ export function registerChatRoutes(
               if (abortCtrl && !abortCtrl.signal.aborted) {
                 abortCtrl.abort();
               }
+              // BUG-03: clear client thinking indicator before sending error
+              broadcastToConversation(envelope.conversationId, {
+                type: 'typing_stopped',
+                agentId: addressedAgentId || null,
+              });
               const payload = getStreamingErrorPayload(error);
               ws.send(JSON.stringify({
                 type: 'streaming_error',
