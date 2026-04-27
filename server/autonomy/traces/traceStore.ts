@@ -13,6 +13,12 @@ type DbPool = {
   query: (text: string, values?: unknown[]) => Promise<{ rows: any[] }>;
 };
 
+// Queryable is satisfied by both Pool and PoolClient — used to route queries
+// to a specific client inside a transaction without acquiring a new connection.
+type Queryable = {
+  query: (text: string, values?: unknown[]) => Promise<{ rows: any[] }>;
+};
+
 let cachedPool: DbPool | null = null;
 
 async function getDbPool(): Promise<DbPool | null> {
@@ -69,8 +75,8 @@ function mapDbRowToTrace(row: any): DeliberationTrace {
   };
 }
 
-async function createTraceInDb(trace: DeliberationTrace): Promise<boolean> {
-  const pool = await getDbPool();
+async function createTraceInDb(trace: DeliberationTrace, executor?: Queryable): Promise<boolean> {
+  const pool = executor ?? (await getDbPool());
   if (!pool) return false;
 
   try {
@@ -121,8 +127,8 @@ async function createTraceInDb(trace: DeliberationTrace): Promise<boolean> {
   }
 }
 
-async function readTraceFromDb(traceId: string): Promise<DeliberationTrace | null> {
-  const pool = await getDbPool();
+async function readTraceFromDb(traceId: string, executor?: Queryable): Promise<DeliberationTrace | null> {
+  const pool = executor ?? (await getDbPool());
   if (!pool) return null;
 
   try {
@@ -206,21 +212,21 @@ async function upsertTraceDbMutation(
         await client.query('ROLLBACK');
         return null;
       }
-      const current = await readTraceFromDb(traceId);
+      const current = await readTraceFromDb(traceId, client);
       if (!current) {
         await client.query('ROLLBACK');
         return null;
       }
       const next = mutator(current);
-      const wrote = await createTraceInDb(next);
+      const wrote = await createTraceInDb(next, client);
       await client.query('COMMIT');
       return wrote ? next : null;
     } catch (err) {
-      await client.query('ROLLBACK');
+      try { await client.query('ROLLBACK'); } catch { /* connection may be dead */ }
       console.error('[TraceStore] upsert transaction failed:', err);
       return null;
     } finally {
-      client.release();
+      try { client.release(); } catch { /* already released or dead */ }
     }
   } catch {
     // Fallback to non-transactional if pool unavailable
