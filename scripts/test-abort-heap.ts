@@ -1,7 +1,9 @@
 #!/usr/bin/env tsx
 /**
  * Wave 0 test for BUG-05. RED until plan 28-02 + 28-05 land (signal handling + finally cleanup).
- * Run with: node --expose-gc $(which tsx) scripts/test-abort-heap.ts
+ * Run with: node --expose-gc --import tsx/esm scripts/test-abort-heap.ts
+ * (The --import form propagates --expose-gc into the script's runtime context;
+ *  `$(which tsx)` runs the script in a tsx worker where global.gc is undefined.)
  *
  * Strategy: replicate the production accumulation pattern. The real bug is that
  * chat.ts:1903 attaches an AbortController to (ws as any).__currentAbortController
@@ -53,17 +55,20 @@ const PER_REQUEST_PAYLOAD_CHARS = 1_500_000;
 const activeStreamingResponses = new Map<string, { stream: LLMStreamResult; controller: AbortController }>();
 
 /**
- * HangingProvider that ignores signal — mirrors today's broken @google/generative-ai
- * (no AbortController support). The generator stays suspended even after abort.
+ * SignalHonoringProvider — mirrors the post-28-02 @google/genai SDK that honors
+ * AbortSignal. When abort fires, the generator throws and the ballast is dropped.
  */
-class IgnoreSignalHangingProvider implements LLMProvider {
+class SignalHonoringProvider implements LLMProvider {
   readonly id = 'mock' as const;
 
   async generateChat(_request: LLMRequest, _mode: RuntimeMode): Promise<LLMGenerationResult> {
     throw new Error('not implemented for this test');
   }
 
-  async streamChat(_request: LLMRequest, mode: RuntimeMode): Promise<LLMStreamResult> {
+  async streamChat(request: LLMRequest, mode: RuntimeMode): Promise<LLMStreamResult> {
+    // Read signal from the request (passed in by runOneTurnOnSharedWs below).
+    const signal = (request as any).signal as AbortSignal | undefined;
+
     // Allocate V8-heap-resident ballast (string is in V8 heap, unlike Buffer).
     // Owned by the generator closure for the lifetime of suspension — mimics
     // a held HTTP response body / accumulated chunks.
@@ -71,9 +76,22 @@ class IgnoreSignalHangingProvider implements LLMProvider {
 
     const stream = (async function* () {
       yield ballast.slice(0, 1);
-      // Hang forever (signal is ignored). In real terms: SDK without abort support
-      // keeps the response stream open until the server closes the socket.
-      await new Promise<void>((resolve) => setTimeout(resolve, 60_000));
+      // Race the long wait against signal abort. When abort fires, the rejection
+      // wins and the generator throws — releasing the ballast closure for GC.
+      await new Promise<void>((resolve, reject) => {
+        const t = setTimeout(resolve, 60_000);
+        if (signal) {
+          if (signal.aborted) {
+            clearTimeout(t);
+            reject(new Error('aborted'));
+            return;
+          }
+          signal.addEventListener('abort', () => {
+            clearTimeout(t);
+            reject(new Error('aborted'));
+          }, { once: true });
+        }
+      });
       yield ballast.slice(-1);
     })();
 
@@ -82,7 +100,7 @@ class IgnoreSignalHangingProvider implements LLMProvider {
       metadata: {
         provider: this.id,
         mode,
-        model: 'hanging-v1',
+        model: 'signal-honoring-v1',
         latencyMs: 0,
       },
     };
@@ -90,12 +108,17 @@ class IgnoreSignalHangingProvider implements LLMProvider {
 }
 
 /**
- * Mirrors today's broken cleanup at chat.ts:3022 — does NOT delete the
- * __currentAbortController reference, and does NOT remove the entry from
- * activeStreamingResponses for aborted streams. Plan 28-05 fixes this.
+ * Mirrors the post-28-05 cleanup at chat.ts:3029-3033 — deletes the
+ * __currentAbortController reference AND removes the entry from
+ * activeStreamingResponses. Updated in plan 28-05 alongside production code.
  */
-function todayBrokenFinallyCleanup(_ws: any, _conversationId: string): void {
-  // Empty — mirroring chat.ts:3022 which only does ws.off (we already removed the listener).
+function runProductionFinallyCleanup(ws: any, conversationId: string): void {
+  // BUG-05 fix: clear the AbortController reference (chat.ts:3032).
+  delete (ws as any).__currentAbortController;
+  // Drop the in-flight stream entry — its closure (and therefore its ballast) is
+  // now unreachable from the active map. The outer try/finally already handled
+  // the listener removal (ws.off).
+  activeStreamingResponses.delete(conversationId);
 }
 
 async function runOneTurnOnSharedWs(
@@ -135,15 +158,15 @@ async function runOneTurnOnSharedWs(
     new Promise<void>((resolve) => setTimeout(resolve, 200)),
   ]);
 
-  // Run "today's broken" finally cleanup. After plan 28-05 this helper is replaced
-  // with the fixed version that:
-  //   1. Deletes ws.__currentAbortController
-  //   2. Deletes activeStreamingResponses.get(conversationId)
-  todayBrokenFinallyCleanup(ws, conversationId);
+  // Run the post-28-05 finally cleanup which:
+  //   1. Deletes ws.__currentAbortController (BUG-05 fix in chat.ts:3032)
+  //   2. Deletes activeStreamingResponses.get(conversationId) (mirrors the
+  //      outer cleanup at chat.ts after plan 28-05)
+  runProductionFinallyCleanup(ws, conversationId);
 }
 
 async function main(): Promise<void> {
-  const provider = new IgnoreSignalHangingProvider();
+  const provider = new SignalHonoringProvider();
 
   // ONE shared ws across all CONCURRENT_REQUESTS turns — mirrors the real production
   // scenario where a single user's WS connection sends N messages.

@@ -3028,6 +3028,8 @@ export function registerChatRoutes(
         }
       } finally {
         ws.off('message', cancelHandler);
+        // BUG-05: clear the AbortController reference so it does not accumulate on the WS object.
+        delete (ws as any).__currentAbortController;
       }
 
     } catch (error) {

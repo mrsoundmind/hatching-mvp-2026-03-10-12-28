@@ -18,17 +18,17 @@ import { EventEmitter } from 'node:events';
 /**
  * Mirror of the production finally-block cleanup. We re-implement here because the
  * real handleStreamingColleagueResponse is too tightly coupled to the rest of chat.ts
- * to import in isolation. Plan 28-05 will update the production code; we update this
- * stub at the same time and the test turns green.
+ * to import in isolation. Plan 28-05 updated the production code; this stub was
+ * updated in the same commit and the test now turns green.
  *
- * TODAY (red): only ws.off — does not delete __currentAbortController.
+ * BEFORE 28-05 (red): only ws.off — did not delete __currentAbortController.
  * AFTER 28-05 (green): also calls `delete (ws as any).__currentAbortController`.
  */
 function runProductionFinallyCleanup(ws: any, cancelHandler: (msg: Buffer) => void): void {
-  // Lifted exactly from chat.ts:3022:
+  // Lifted exactly from chat.ts:3030-3032 (post-28-05):
   ws.off('message', cancelHandler);
-  // ↑ Plan 28-05 must add this line to make the test go green:
-  // delete (ws as any).__currentAbortController;
+  // BUG-05: clear the AbortController reference so it does not accumulate on the WS object.
+  delete (ws as any).__currentAbortController;
 }
 
 async function main(): Promise<void> {
