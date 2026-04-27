@@ -21,7 +21,7 @@ const groqProvider = new GroqProvider();
 const ollamaProvider = new OllamaTestProvider();
 const mockProvider = new MockProvider();
 
-const providerRegistry: Record<ProviderId, LLMProvider> = {
+export const providerRegistry: Record<ProviderId, LLMProvider> = {
   openai: openaiProvider,
   gemini: geminiProvider,
   groq: groqProvider,
