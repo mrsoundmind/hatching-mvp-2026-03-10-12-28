@@ -418,6 +418,7 @@ Respond as this specific role with appropriate expertise and personality. Keep r
         : resolveMaxTokens(messageComplexity, isFirstMsg),
       timeoutMs: Number(process.env.HARD_RESPONSE_TIMEOUT_MS || 45000),
       seed: process.env.LLM_MODE === "test" ? 42 : undefined,
+      signal: abortSignal,
     };
 
     // Route simple messages through Groq (free) — saves Pro model costs for greetings/acks.
