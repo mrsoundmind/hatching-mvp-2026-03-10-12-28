@@ -46,6 +46,7 @@ export default defineConfig({
         /modals-onboarding\.spec\.ts/,
         /chat-redesign\.spec\.ts/,
         /v3-local-gap-audit\.spec\.ts/,
+        /stop-button\.spec\.ts/,
       ],
     },
     // AI-heavy authenticated tests — send messages, wait for LLM responses
@@ -60,6 +61,7 @@ export default defineConfig({
         /chat-system\.spec\.ts/,
         /persona-.+\.spec\.ts/,
         /goal-runner\.spec\.ts/,
+        /maya-fallback\.spec\.ts/,
       ],
       timeout: 120000, // 2 min per test for AI-heavy tests
     },
