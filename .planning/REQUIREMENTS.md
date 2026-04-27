@@ -63,14 +63,14 @@
 
 ## Pillar B — Reliable Maya & Teamness (42 requirements)
 
-### Maya Bug Fix + SDK Migration (BUG) — URGENT, ships first
+### Maya Bug Fix + SDK Migration (BUG) — SHIPPED 2026-04-27
 
-- [ ] **BUG-01**: Migrate from archived `@google/generative-ai` SDK to current `@google/genai` SDK (LangChain `@langchain/google-genai` upgraded in lockstep)
-- [ ] **BUG-02**: All LLM streaming requests propagate `AbortSignal.timeout(30_000)` end-to-end (chat → providerResolver → provider SDK)
-- [ ] **BUG-03**: When LLM request aborts or times out, "thinking" UI state clears within 1 second and `streaming_cancelled` WS event fires
-- [ ] **BUG-04**: "Out for lunch" / "resting circuits" fallback messages only display on confirmed error (never during valid latency under 30s) — wrong code path identified and removed
-- [ ] **BUG-05**: AbortController cleanup verified — no dangling references after abort (no heap leak under load test)
-- [ ] **BUG-06**: Stop button in chat input clears within 1 second of any terminal stream event (success completion, abort, timeout, error) — currently sticks in "stop" state after Hatch finishes responding via `chat_message` path because `streaming.isStreaming` and message `metadata.isStreaming` are not deterministically reset on the success-completion path (`CenterPanel.tsx` derived `isStreaming` prop at ~line 1937 stays truthy)
+- [x] **BUG-01**: Migrate from archived `@google/generative-ai` SDK to current `@google/genai` SDK (LangChain `@langchain/google-genai` upgraded in lockstep) — DONE in 28-02
+- [x] **BUG-02**: All LLM streaming requests propagate `AbortSignal.timeout(30_000)` end-to-end (chat → providerResolver → provider SDK) — DONE in 28-02
+- [x] **BUG-03**: When LLM request aborts or times out, "thinking" UI state clears within 1 second and `streaming_cancelled` WS event fires — DONE in 28-04 (typing_stopped emitted before streaming_error)
+- [x] **BUG-04**: "Out for lunch" / "resting circuits" fallback messages only display on confirmed error (never during valid latency under 30s) — wrong code path identified and removed — DONE in 28-04 (abort-aware fallback skip)
+- [x] **BUG-05**: AbortController cleanup verified — no dangling references after abort (no heap leak under load test) — DONE in 28-05 (heap delta 70.58MB → 0.11MB)
+- [x] **BUG-06**: Stop button in chat input clears within 1 second of any terminal stream event (success completion, abort, timeout, error) — DONE in 28-03 (300ms→0ms debounce + force metadata.isStreaming=false)
 
 ### Discovery Redesign (DISC)
 
@@ -247,12 +247,12 @@
 | VER-02 | Phase 27 | Pending |
 | VER-03 | Phase 27 | Pending |
 | VER-04 | Phase 27 | Pending |
-| BUG-01 | Phase 28 | Pending |
-| BUG-02 | Phase 28 | Pending |
-| BUG-03 | Phase 28 | Pending |
-| BUG-04 | Phase 28 | Pending |
-| BUG-05 | Phase 28 | Pending |
-| BUG-06 | Phase 28 | Pending |
+| BUG-01 | Phase 28 | Complete (2026-04-27) |
+| BUG-02 | Phase 28 | Complete (2026-04-27) |
+| BUG-03 | Phase 28 | Complete (2026-04-27) |
+| BUG-04 | Phase 28 | Complete (2026-04-27) |
+| BUG-05 | Phase 28 | Complete (2026-04-27) |
+| BUG-06 | Phase 28 | Complete (2026-04-27) |
 | DISC-01 | Phase 29 | Pending |
 | DISC-02 | Phase 29 | Pending |
 | DISC-03 | Phase 29 | Pending |

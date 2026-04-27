@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Hatchin That Works
-status: "22-02 shipped — handleTaskJob uses atomic reserveBudgetSlot; chat.ts racy pre-check removed. Next: 22-03 reconciliation job."
-stopped_at: Completed 22-02-PLAN.md — pipeline rewire + chat.ts pre-check removal
-last_updated: "2026-04-26T06:17:24.841Z"
-last_activity: 2026-04-26 — Phase 22-02 complete (pipeline rewire + chat.ts removal; BUDG-01+BUDG-02 enforced at pipeline level)
+status: "Phase 28 SHIPPED — all 6 BUG-XX closed (Maya infinite-thinking + SDK migration + stop button + AbortController hygiene). Phase 22 still in progress (22-03 reconciliation job pending)."
+stopped_at: Phase 28 complete (5/5 plans). Phase 22 mid-flight (2/3 plans).
+last_updated: "2026-04-27T11:30:00.000Z"
+last_activity: 2026-04-27 — Phase 28 (Maya Bug Fix + SDK Migration) shipped — BUG-01..06 closed, 18 commits, 5 SUMMARY.md files
 progress:
   total_phases: 24
-  completed_phases: 5
-  total_plans: 18
-  completed_plans: 16
-  percent: 89
+  completed_phases: 6
+  total_plans: 23
+  completed_plans: 21
+  percent: 91
 ---
 
 # State: Hatchin
@@ -21,18 +21,19 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-25)
 
 **Core value:** No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
-**Current focus:** v3.0 — Hatchin That Works (roadmap complete, Phase 28 next)
+**Current focus:** v3.0 — Hatchin That Works (Phase 28 SHIPPED 2026-04-27; Phase 22 in progress; rest of Pillar B awaiting)
 
 ---
 
 ## Current Position
 
-Phase: 22 — Atomic Budget Enforcement (in progress — 2/3 plans complete)
-Plan: 3 plans in 2 waves (22-01 DONE · 22-02 DONE · 22-03 reconciliation job)
-Status: 22-02 shipped — handleTaskJob uses atomic reserveBudgetSlot; chat.ts racy pre-check removed. Next: 22-03 reconciliation job.
-Last activity: 2026-04-26 — Phase 22-02 complete (pipeline rewire + chat.ts removal; BUDG-01+BUDG-02 enforced at pipeline level)
+Phase 28 (Pillar B / Maya Bug Fix + SDK Migration): COMPLETE — 5/5 plans, BUG-01..06 closed
+Phase 22 (Pillar A / Atomic Budget Enforcement): IN PROGRESS — 2/3 plans (22-01 ✓ · 22-02 ✓ · 22-03 reconciliation job pending)
 
-Progress: [█████████░] 89% (16/18 plans complete)
+Status: Phase 28 shipped. Maya now has end-to-end AbortSignal handling (30s timeout), the deprecated SDK is removed, the stop button resets within 1s, and the heap leak is closed (70.58MB → 0.11MB delta).
+Last activity: 2026-04-27 — Phase 28 final commit `01d93b1` (5/5 plans, 18 commits, 5 SUMMARY.md files); merged worktrees for 28-01..05 to main.
+
+Progress: [█████████░] 91% (21/23 plans complete in v3.0; pending: Phase 22-03 + all of Phases 23-27 + 29-34)
 
 ---
 
@@ -100,16 +101,30 @@ Progress: [█████████░] 89% (16/18 plans complete)
 
 ## Session Continuity
 
-Last session: 2026-04-26T06:12:11.488Z
-Stopped at: Completed 22-02-PLAN.md — pipeline rewire + chat.ts pre-check removal
-Next action: `/gsd:plan-phase 22` — Atomic Budget Enforcement (Pillar A foundation; closes the check-then-act budget race)
+Last session: 2026-04-27 — Phase 28 (Maya Bug Fix + SDK Migration) executed end-to-end via wave-based parallel orchestration.
+Stopped at: Phase 28 SHIPPED — all 5 plans landed, 6 BUG-XX requirements closed, regression scaffold green.
 
-### Phase 28 Planning Notes (pre-loaded context)
+Next action options (pick one):
+- `/gsd-plan-phase 22 --wave 2` or `/gsd-execute-phase 22 --wave 2` — close out Phase 22-03 reconciliation job (last Pillar A plan before scheduling work begins)
+- `/gsd-discuss-phase 29` — start Pillar B Phase 29 (Discovery Redesign + MVB Gate)
+- `/gsd-discuss-phase 23` — start Pillar A Phase 23 (Budget UX Surfaces)
 
-- Migrate `@google/generative-ai` to `@google/genai ^1.3.0` — breaking API change: new unified `GoogleGenAI` client, `ai.models.generateContentStream()` replaces `chat.sendMessageStream()`, `requestOptions.signal` replaces prior pattern
-- Add `AbortSignal.timeout(30_000)` in `geminiProvider.ts` via `requestOptions.signal`
-- Fix `finally` block in `chat.ts` streaming path: always emit `typing_stopped` on abort/timeout
-- Fix TTFT fallback threshold: current 3s fires on valid slow Gemini Pro responses (p95 4-6s); correct threshold is 30s total OR 15s post-first-token
-- Wire AbortController to WS `close` event for unexpected disconnects
-- Verify `@langchain/google-genai` compatibility with new SDK post-migration (potential version conflict)
+### Phase 28 — Outcomes (ARCHIVED)
+
+**All 6 BUG-XX requirements closed:**
+- BUG-01 (SDK migration `@google/generative-ai` → `@google/genai`) — 28-02
+- BUG-02 (AbortSignal end-to-end propagation) — 28-02
+- BUG-03 (`typing_stopped` before `streaming_error`) — 28-04
+- BUG-04 (zombie fallback message guarded by abort check) — 28-04
+- BUG-05 (AbortController reference cleanup; heap delta 70.58MB → 0.11MB) — 28-05
+- BUG-06 (stop button resets within 1s on terminal stream events) — 28-03
+
+**Notable execution decisions / deviations:**
+- Plan 28-01 used `general-purpose` agent (gsd-executor sandbox initially blocked `git merge --ff-only`)
+- 28-02 exported `providerRegistry` from `providerResolver.ts` (1-char change) so the propagation test can spy on it
+- 28-04 hoisted `abortController` from block-scope `const` to function-scope `let` because the catch handler couldn't see it otherwise — also flipped `const` → assignment at the original site, added `?.` in cancelHandler closure
+- `@google/genai` 1.50.x API differs from plan: `generateContentStream` is single-arg (signal lives in `params.config.abortSignal`), `chunk.text` is a getter not a method
+- Worktree-based execution worked but worktrees started from old commit `4533283c` (not main HEAD) — required explicit `git merge main --ff-only` in each worktree
+
+**Wave 0 regression scaffold (always-on):** `npx playwright test tests/e2e/v3-local-gap-audit.spec.ts` + `npx tsx scripts/test-abort-{cleanup,heap}.ts` should all be green now.
 - Key files: `server/llm/providers/geminiProvider.ts`, `server/routes/chat.ts`, `server/llm/providerResolver.ts`

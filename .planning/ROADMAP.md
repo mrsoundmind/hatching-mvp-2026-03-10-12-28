@@ -101,7 +101,7 @@ See archived roadmap: [milestones/v1.2-ROADMAP.md](milestones/v1.2-ROADMAP.md)
 - [ ] **Phase 27: Polish + Integration Hardening** — Concurrency verify, DST tests, multi-replica single-fire, red-team injection suite
 
 **Pillar B — Reliable Maya & Teamness:**
-- [ ] **Phase 28: Maya Bug Fix + SDK Migration** — URGENT: @google/genai migration, AbortSignal.timeout(30s), thinking state cleanup, fallback threshold fix
+- [x] **Phase 28: Maya Bug Fix + SDK Migration** — SHIPPED 2026-04-27: @google/genai migration, AbortSignal.timeout(30s) end-to-end, typing_stopped emit, abort-aware fallback skip, AbortController cleanup (heap 70.58MB → 0.11MB), stop button reset (300ms → 0ms debounce + force isStreaming false). 5/5 plans, 18 commits, BUG-01..06 closed.
 - [ ] **Phase 29: Discovery Redesign + MVB Gate** — Bounded discovery (max 3 questions), background brain extraction, brain-satisfied prompt injection
 - [ ] **Phase 30: Phase Machine + Blueprint + Skip-Maya** — conversations.mayaPhase column, [[PHASE:]] action block, BlueprintCard, skip-to-team escape hatch, phase regression guard
 - [ ] **Phase 31: Deliverable Feedback + Graceful Degradation** — Accept/Dismiss deliverables, impression tracking, typed LLM error codes, non-blocking degradation banner
@@ -298,13 +298,13 @@ Plans:
   4. A load test confirming 50 concurrent aborted requests shows no dangling AbortController references in heap snapshots (no memory leak)
   5. The "out for lunch" / "resting circuits" fallback message is absent from all browser sessions that complete streaming within 30 seconds, verified by the E2E test suite
   6. After a Hatch finishes responding via either `streaming_completed` or plain `chat_message`, the chat input stop button reverts to "send" within 1 second — verified by Playwright spec asserting the button switches from `stop` to `send` within 1s of the last assistant message landing in the DOM
-**Plans**: 5 plans
+**Plans**: 5 plans (5/5 complete — SHIPPED 2026-04-27)
 Plans:
-- [ ] 28-01-PLAN.md — Wave 0 test infrastructure (5 tsx scripts + 2 Playwright specs gating BUG-01..06)
-- [ ] 28-02-PLAN.md — SDK migration (@google/genai) + AbortSignal end-to-end propagation (BUG-01, BUG-02)
-- [ ] 28-03-PLAN.md — Stop button fix: 0ms truth-enforcer + force metadata.isStreaming=false (BUG-06)
-- [ ] 28-04-PLAN.md — typing_stopped before streaming_error + abort-aware fallback skip (BUG-03, BUG-04)
-- [ ] 28-05-PLAN.md — AbortController reference cleanup in finally block (BUG-05)
+- [x] 28-01-PLAN.md — Wave 0 test infrastructure (5 tsx scripts + 2 Playwright specs gating BUG-01..06) — 4 commits
+- [x] 28-02-PLAN.md — SDK migration (@google/genai) + AbortSignal end-to-end propagation (BUG-01, BUG-02) — 4 commits
+- [x] 28-03-PLAN.md — Stop button fix: 0ms truth-enforcer + force metadata.isStreaming=false (BUG-06) — 2 commits
+- [x] 28-04-PLAN.md — typing_stopped before streaming_error + abort-aware fallback skip (BUG-03, BUG-04) — 3 commits
+- [x] 28-05-PLAN.md — AbortController reference cleanup in finally block (BUG-05) — 2 commits
 
 ### Phase 29: Discovery Redesign + MVB Gate
 **Goal**: Maya asks focused questions in batches and stops interrogating once the project brain has the minimum viable context — the discovery phase ends, it does not loop forever
@@ -410,7 +410,7 @@ Plans:
 | 25. Chat-Native Routine Creation | v3.0 | 0/? | Not started | - |
 | 26. Routines Management Panel | v3.0 | 0/? | Not started | - |
 | 27. Polish + Integration Hardening | v3.0 | 0/? | Not started | - |
-| 28. Maya Bug Fix + SDK Migration | v3.0 | 0/? | Not started | - |
+| 28. Maya Bug Fix + SDK Migration | v3.0 | 5/5   | Complete | 2026-04-27 |
 | 29. Discovery Redesign + MVB Gate | v3.0 | 0/? | Not started | - |
 | 30. Phase Machine + Blueprint + Skip-Maya | v3.0 | 0/? | Not started | - |
 | 31. Deliverable Feedback + Graceful Degradation | v3.0 | 0/? | Not started | - |
