@@ -80,7 +80,7 @@ export const TestimonialShowcase: React.FC<TestimonialShowcaseProps> = ({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={handleCardClick}
-        className="group relative overflow-hidden rounded-2xl border shadow-xs shadow-white/50 border-border/20 bg-background/80 backdrop-blur-sm transition-all duration-700 hover:border-yellow-400/60 cursor-pointer"
+        className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm transition-all duration-700 hover:border-yellow-400/60 cursor-pointer"
       >
         <div
           className="absolute inset-0 opacity-0 group-hover:opacity-30 transition-opacity duration-500"
@@ -98,7 +98,7 @@ export const TestimonialShowcase: React.FC<TestimonialShowcaseProps> = ({
         <div className="relative z-10 p-8 md:p-12 aspect-video transition-colors duration-300 rounded-2xl flex flex-col justify-center">
           <q
             className={cn(
-              'text-3xl md:text-5xl lg:text-6xl font-medium leading-11 md:leading-relaxed tracking-wide text-center text-gray-900 mt-auto transition-all duration-500',
+              'text-3xl md:text-5xl lg:text-6xl font-medium leading-11 md:leading-relaxed tracking-wide text-center text-white mt-auto transition-all duration-500',
               isAnimating ? 'blur-sm opacity-0 translate-y-4' : 'blur-0 opacity-100 translate-y-0'
             )}
           >
@@ -119,9 +119,9 @@ export const TestimonialShowcase: React.FC<TestimonialShowcaseProps> = ({
                 </AvatarFallback>
               </Avatar>
               <div>
-                <div className="font-semibold text-gray-900 text-lg">{activeTestimonial.author.name}</div>
+                <div className="font-semibold text-white text-lg">{activeTestimonial.author.name}</div>
                 {activeTestimonial.author.title && (
-                  <div className="text-sm text-gray-600 uppercase tracking-wider">
+                  <div className="text-sm text-white/60 uppercase tracking-wider">
                     {activeTestimonial.author.title}
                   </div>
                 )}

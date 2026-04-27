@@ -23,6 +23,9 @@ import {
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 
+const notionistAvatar = (seed: string) =>
+  `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(seed)}&backgroundColor=fef3c7,fed7aa,fde68a,fee2e2,e0e7ff,dbeafe,dcfce7&radius=50`;
+
 // ─── FEATURES ───────────────────────────────────────────────────────
 const FEATURES = [
   { label: "Real conversations", title: "They think. They push back.", description: "AI teammates with genuine expertise. Maya challenges your strategy. Drew architects the solution. Zara obsesses over every pixel.", color: "#d946ef", glow: "rgba(217,70,239,0.12)" },
@@ -89,15 +92,15 @@ const ChatDemo = ({ active }: { active: boolean }) => {
             </div>
           </div>
           <div className="flex gap-2">
-            {[{ n: "M", c: "#d946ef" }, { n: "D", c: "#3b82f6" }, { n: "Z", c: "#10b981" }].map((a) => (
+            {[{ n: "Maya", c: "#d946ef" }, { n: "Drew", c: "#3b82f6" }, { n: "Zara", c: "#10b981" }].map((a) => (
               <motion.div
                 key={a.n}
-                className="w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold"
-                style={{ background: `linear-gradient(135deg, ${a.c}25, ${a.c}10)`, border: `1px solid ${a.c}35`, color: a.c, boxShadow: `0 0 12px ${a.c}15` }}
+                className="w-6 h-6 rounded-full overflow-hidden"
+                style={{ border: `1px solid ${a.c}35`, boxShadow: `0 0 12px ${a.c}15` }}
                 animate={active ? { scale: [1, 1.1, 1] } : {}}
                 transition={{ duration: 2, delay: Math.random(), repeat: Infinity }}
               >
-                {a.n}
+                <img src={notionistAvatar(a.n)} alt={a.n} className="w-full h-full" />
               </motion.div>
             ))}
           </div>
@@ -121,10 +124,10 @@ const ChatDemo = ({ active }: { active: boolean }) => {
                 ) : (
                   <div className="max-w-[85%] flex gap-2.5">
                     <motion.div
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 mt-0.5"
-                      style={{ background: `linear-gradient(135deg, ${msg.color}20, ${msg.color}08)`, border: `1px solid ${msg.color}30`, color: msg.color, boxShadow: `0 0 15px ${msg.color}10` }}
+                      className="w-7 h-7 rounded-full overflow-hidden shrink-0 mt-0.5"
+                      style={{ border: `1px solid ${msg.color}30`, boxShadow: `0 0 15px ${msg.color}10` }}
                     >
-                      {msg.agent[0]}
+                      <img src={notionistAvatar(msg.agent)} alt={msg.agent} className="w-full h-full" />
                     </motion.div>
                     <div className="flex-1">
                       <span className="text-[9px] font-semibold uppercase tracking-widest" style={{ color: msg.color + "80" }}>{msg.agent}</span>
@@ -139,8 +142,8 @@ const ChatDemo = ({ active }: { active: boolean }) => {
           </AnimatePresence>
           {active && count > 0 && count < CHAT_MSGS.length && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-2.5 items-center">
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: `linear-gradient(135deg, ${CHAT_MSGS[count].color}20, ${CHAT_MSGS[count].color}08)`, border: `1px solid ${CHAT_MSGS[count].color}30`, color: CHAT_MSGS[count].color }}>
-                {CHAT_MSGS[count].agent === "user" ? "Y" : CHAT_MSGS[count].agent[0]}
+              <div className="w-7 h-7 rounded-full overflow-hidden" style={{ border: `1px solid ${CHAT_MSGS[count].color}30` }}>
+                <img src={notionistAvatar(CHAT_MSGS[count].agent === "user" ? "You" : CHAT_MSGS[count].agent)} alt="" className="w-full h-full" />
               </div>
               <div className="flex gap-1.5 p-2 px-3 rounded-full" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
                 {[0, 1, 2].map((d) => (
@@ -258,15 +261,26 @@ const AutonomousDemo = ({ active }: { active: boolean }) => {
                 <div className="absolute left-[23px] top-[40px] w-[1px] h-[calc(100%-12px)]" style={{ background: `linear-gradient(to bottom, ${item.color}20, transparent)` }} />
               )}
               <div className="relative shrink-0 mt-0.5">
-                <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${item.color}15, ${item.color}05)`, border: `1px solid ${item.color}30` }}>
-                  {i < 3 ? (
-                    <HugeiconsIcon icon={Tick01Icon} size={10} style={{ color: item.color }} />
-                  ) : (
-                    <motion.div className="w-2 h-2 rounded-full" style={{ background: item.color }} animate={{ scale: [1, 1.5, 1], opacity: [1, 0.6, 1] }} transition={{ duration: 1.5, repeat: Infinity }} />
-                  )}
+                <div className="w-7 h-7 rounded-full overflow-hidden" style={{ border: `1px solid ${item.color}30`, boxShadow: `0 0 12px ${item.color}10` }}>
+                  <img src={notionistAvatar(item.agent)} alt={item.agent} className="w-full h-full" />
                 </div>
+                {i === TIMELINE.length - 1 ? (
+                  <motion.div
+                    className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
+                    style={{ background: item.color, boxShadow: `0 0 0 1.5px #0A0C13` }}
+                    animate={{ scale: [1, 1.3, 1], opacity: [1, 0.6, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                  />
+                ) : (
+                  <div
+                    className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full flex items-center justify-center"
+                    style={{ background: item.color, boxShadow: `0 0 0 1.5px #0A0C13` }}
+                  >
+                    <HugeiconsIcon icon={Tick01Icon} size={7} className="text-white" />
+                  </div>
+                )}
                 {i === highlight && (
-                  <motion.div className="absolute -inset-1 rounded-full" style={{ border: `1px solid ${item.color}20` }} animate={{ scale: [1, 1.5], opacity: [0.5, 0] }} transition={{ duration: 1.5, repeat: Infinity }} />
+                  <motion.div className="absolute -inset-1 rounded-full" style={{ border: `1px solid ${item.color}30` }} animate={{ scale: [1, 1.5], opacity: [0.5, 0] }} transition={{ duration: 1.5, repeat: Infinity }} />
                 )}
               </div>
               <div className="flex-1">
@@ -294,10 +308,10 @@ const MEMORY_ITEMS = [
 ];
 
 const SYNC_AGENTS = [
-  { letter: "M", color: "#d946ef" },
-  { letter: "D", color: "#3b82f6" },
-  { letter: "Z", color: "#10b981" },
-  { letter: "S", color: "#f59e0b" },
+  { letter: "M", name: "Maya", color: "#d946ef" },
+  { letter: "D", name: "Drew", color: "#3b82f6" },
+  { letter: "Z", name: "Zara", color: "#10b981" },
+  { letter: "S", name: "Sam", color: "#f59e0b" },
 ];
 
 const BrainDemo = ({ active }: { active: boolean }) => {
@@ -335,8 +349,8 @@ const BrainDemo = ({ active }: { active: boolean }) => {
           </div>
           <div className="ml-auto flex -space-x-1.5">
             {SYNC_AGENTS.map((a) => (
-              <div key={a.letter} className="w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold relative z-10" style={{ background: `linear-gradient(135deg, ${a.color}20, ${a.color}08)`, border: `1.5px solid ${a.color}30`, color: a.color }}>
-                {a.letter}
+              <div key={a.letter} className="w-5 h-5 rounded-full overflow-hidden relative z-10" style={{ border: `1.5px solid ${a.color}30` }}>
+                <img src={notionistAvatar(a.name)} alt={a.name} className="w-full h-full" />
               </div>
             ))}
           </div>
@@ -371,18 +385,21 @@ const BrainDemo = ({ active }: { active: boolean }) => {
                             synced →
                           </motion.span>
                           <div className="flex -space-x-1">
-                            {item.synced.map((letter, si) => (
-                              <motion.div
-                                key={letter}
-                                className="w-3.5 h-3.5 rounded-full flex items-center justify-center text-[6px] font-bold"
-                                style={{ background: SYNC_AGENTS.find(a => a.letter === letter)?.color + "15", border: `1px solid ${SYNC_AGENTS.find(a => a.letter === letter)?.color}30`, color: SYNC_AGENTS.find(a => a.letter === letter)?.color }}
-                                initial={syncing ? { scale: 0, opacity: 0 } : {}}
-                                animate={{ scale: 1, opacity: 1 }}
-                                transition={{ delay: si * 0.15, type: "spring", stiffness: 400 }}
-                              >
-                                {letter}
-                              </motion.div>
-                            ))}
+                            {item.synced.map((letter, si) => {
+                              const agent = SYNC_AGENTS.find(a => a.letter === letter);
+                              return (
+                                <motion.div
+                                  key={letter}
+                                  className="w-4 h-4 rounded-full overflow-hidden"
+                                  style={{ border: `1px solid ${agent?.color}30` }}
+                                  initial={syncing ? { scale: 0, opacity: 0 } : {}}
+                                  animate={{ scale: 1, opacity: 1 }}
+                                  transition={{ delay: si * 0.15, type: "spring", stiffness: 400 }}
+                                >
+                                  <img src={notionistAvatar(agent?.name ?? letter)} alt={agent?.name ?? letter} className="w-full h-full" />
+                                </motion.div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -416,8 +433,8 @@ const TaskDemo = ({ active }: { active: boolean }) => {
         {/* Message */}
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(217,70,239,0.15), rgba(217,70,239,0.05))', border: '1px solid rgba(217,70,239,0.25)' }}>
-              <span className="text-[8px] font-bold text-fuchsia-400">M</span>
+            <div className="w-6 h-6 rounded-full overflow-hidden" style={{ border: '1px solid rgba(217,70,239,0.25)' }}>
+              <img src={notionistAvatar("Maya")} alt="Maya" className="w-full h-full" />
             </div>
             <span className="text-[10px] text-fuchsia-400/60 font-semibold uppercase tracking-wider">Maya</span>
             <span className="text-[9px] text-white/15 ml-auto">just now</span>
@@ -479,8 +496,8 @@ const TaskDemo = ({ active }: { active: boolean }) => {
                   <span className="text-[13px] font-medium text-orange-400/90 block">Redesign the onboarding flow</span>
                   <div className="flex items-center gap-3 mt-2">
                     <span className="text-[10px] text-white/25 flex items-center gap-1.5">
-                      <div className="w-4 h-4 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05))', border: '1px solid rgba(16,185,129,0.25)' }}>
-                        <span className="text-[6px] text-emerald-400 font-bold">Z</span>
+                      <div className="w-4 h-4 rounded-full overflow-hidden" style={{ border: '1px solid rgba(16,185,129,0.25)' }}>
+                        <img src={notionistAvatar("Zara")} alt="Zara" className="w-full h-full" />
                       </div>
                       Zara
                     </span>

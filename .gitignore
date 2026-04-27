@@ -25,3 +25,5 @@ eval/results/
 eval/drift/
 .vercel
 .env*.local
+.claude/worktrees/
+.playwright-mcp/

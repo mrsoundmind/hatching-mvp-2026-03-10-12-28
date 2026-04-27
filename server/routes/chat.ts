@@ -3015,15 +3015,22 @@ export function registerChatRoutes(
             timestamp: new Date().toISOString()
           }, { exclude: ws });
 
-          // Check for autonomous execution trigger after streaming completes
+          // BUG-04 ROOT CAUSE: this used to be `await`ed, which blocked the function from
+          // returning until autonomy trigger evaluation completed. Under load the eval can
+          // take >50s (DB lookups + heuristic LLM calls), causing the outer 60s STREAMING_HARD_TIMEOUT
+          // race to fire — which then emits `streaming_error` to the client EVEN THOUGH the
+          // user's response already streamed successfully. The user saw the agent's response,
+          // then a spurious "Failed to generate" red error, then a Maya "didn't come through"
+          // ghost message. Fire-and-forget like the compactor above — autonomy trigger is
+          // post-processing, not user-facing.
           if (resolvedProjectId) {
-            await checkForAutonomyTrigger(
+            checkForAutonomyTrigger(
               userMessage?.content ?? '',
               resolvedProjectId,
               conversationId,
               storage,
               broadcastToConversation,
-            );
+            ).catch(err => console.error('[autonomy-trigger] check failed (non-fatal):', err));
           }
         }
       } finally {
@@ -3066,14 +3073,20 @@ export function registerChatRoutes(
 
       try {
         if (hasPartialResponse) {
-          // Skip fallback message — real agent already responded (even if post-processing failed).
-          // Just send the error event so the frontend can show "Failed to generate" inline.
-          devLog('⚠️ Skipping fallback ghost message — real agent already sent content');
+          // BUG-04 (real fix): real agent ALREADY successfully streamed content to the user.
+          // Whatever exception fired here is server-side post-processing (action parser, task
+          // creator, tone guard, persistence rescue, etc.) — none of it is user-facing.
+          // Sending `streaming_error` here causes the client to display "Failed to generate
+          // response" + the spurious "I started a reply but it didn't come through" fallback
+          // EVEN THOUGH the user already saw the agent's full response. That's the bug.
+          //
+          // Fix: send `streaming_completed` (treating the streamed content as the success it
+          // was) instead of an error. Log the post-processing failure server-side only.
+          console.error('[chat.ts] post-streaming exception (response already delivered):', error);
           ws.send(JSON.stringify({
-            type: 'streaming_error',
+            type: 'streaming_completed',
             messageId: responseMessageId,
-            code: payload.code,
-            error: payload.error
+            message: { id: responseMessageId, content: _lastAccumulatedContent ?? '' },
           }));
         } else if (abortController?.signal.aborted) {
           // BUG-04: outer 60s timeout already fired and sent streaming_error to the client.

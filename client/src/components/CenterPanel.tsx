@@ -289,13 +289,19 @@ export function CenterPanel({
   // clear it — the stop button has no valid thing to stop.
   useEffect(() => {
     if (!streaming.isStreaming) return;
+    // Stale-flag guard: real streams complete in <60s. Any message with
+    // metadata.isStreaming=true that's older than that is a zombie from a
+    // crashed prior session and must NOT block the current stop button reset.
+    const isLiveStreamingMsg = (m: any) => {
+      const flag = m.status === 'streaming' || (m.metadata && (m.metadata as any).isStreaming === true);
+      if (!flag) return false;
+      const ts = m.timestamp ? new Date(m.timestamp).getTime() : 0;
+      return ts === 0 || (Date.now() - ts) < 60_000;
+    };
     const convId = currentChatContext?.conversationId;
     if (!convId) return;
     const msgs = messages.allMessages[convId] || [];
-    const hasLiveStream = msgs.some(m =>
-      m.status === 'streaming' ||
-      (m.metadata && (m.metadata as any).isStreaming === true)
-    );
+    const hasLiveStream = msgs.some(isLiveStreamingMsg);
     if (hasLiveStream) return;
     // 0ms timeout = microtask tick, lets React commit the messages.allMessages
     // update first so we observe the final state, then clear isStreaming.
@@ -1933,14 +1939,18 @@ export function CenterPanel({
         isStreaming={(() => {
           // Derived: the button can only show "stop" if a message in the active
           // conversation is literally streaming right now. No amount of event
-          // loss or state drift can leave this stuck.
+          // loss or state drift can leave this stuck. Stale-flag guard: real
+          // streams complete in <60s — older messages with isStreaming=true are
+          // zombies (e.g. browser crashed mid-stream) and must NOT block reset.
           const convId = currentChatContext?.conversationId;
           if (!convId) return false;
           const msgs = messages.allMessages[convId] || [];
-          return streaming.isStreaming && msgs.some(m =>
-            m.status === 'streaming' ||
-            (m.metadata && (m.metadata as any).isStreaming === true)
-          );
+          return streaming.isStreaming && msgs.some(m => {
+            const flag = m.status === 'streaming' || (m.metadata && (m.metadata as any).isStreaming === true);
+            if (!flag) return false;
+            const ts = m.timestamp ? new Date(m.timestamp).getTime() : 0;
+            return ts === 0 || (Date.now() - ts) < 60_000;
+          });
         })()}
         streamingMessageId={streaming.streamingMessageId.current}
         onCancelStreaming={() => {

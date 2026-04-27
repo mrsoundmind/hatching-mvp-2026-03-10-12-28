@@ -1,5 +1,5 @@
 app = "hatchin-mvp"
-primary_region = "iad"
+primary_region = "bom"
 
 [build]
 

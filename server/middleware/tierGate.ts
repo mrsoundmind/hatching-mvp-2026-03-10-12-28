@@ -2,9 +2,12 @@ import type { Request, Response, NextFunction } from 'express';
 import { storage } from '../storage.js';
 import { getDailyMessageCount } from '../billing/usageTracker.js';
 
-// Kill switch — when false, all gates pass through (every user treated as Pro)
+// Kill switch — when anything other than a truthy "true"/"1" is set, gates pass through.
+// Flipped the default from opt-out to opt-in: unset / empty / "false" all disable gates.
+// This prevents the Free-tier project cap from firing unintentionally on the MVP deploy.
 function billingGatesEnabled(): boolean {
-  return process.env.FEATURE_BILLING_GATES !== 'false';
+  const v = (process.env.FEATURE_BILLING_GATES || '').trim().toLowerCase();
+  return v === 'true' || v === '1';
 }
 
 // Tier limits — messages feel unlimited but have invisible safety caps.

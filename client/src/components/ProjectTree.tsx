@@ -7,6 +7,7 @@ import { getAgentColors } from '@/lib/agentColors';
 import { getRoleDefinition } from '@shared/roleRegistry';
 import AgentAvatar from '@/components/avatars/AgentAvatar';
 import { useAgentWorkingState } from '@/hooks/useAgentWorkingState';
+import { useToast } from '@/hooks/use-toast';
 
 /** Returns the best display name for an agent:
  *  - If user renamed the agent (name differs from default characterName), use agent.name
@@ -140,6 +141,8 @@ export function ProjectTree({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showTeamDeleteConfirm, setShowTeamDeleteConfirm] = useState<string | null>(null);
   const [showAgentDeleteConfirm, setShowAgentDeleteConfirm] = useState<string | null>(null);
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
+  const { toast } = useToast();
 
 
   // Focus input when editing starts
@@ -223,23 +226,32 @@ export function ProjectTree({
   };
 
   const handleDeleteProject = async (projectId: string) => {
+    if (deletingProjectId) return; // guard double-clicks
     devLog('handleDeleteProject called with projectId:', projectId);
-    if (onDeleteProject) {
-      try {
-        devLog('Calling onDeleteProject...');
-        await onDeleteProject(projectId);
-        devLog('Project deleted successfully');
-
-        setContextMenuOpen(null);
-        setShowDeleteConfirm(null);
-
-      } catch (error) {
-        console.error('Failed to delete project:', error);
-        setShowDeleteConfirm(null);
-      }
-    } else {
+    if (!onDeleteProject) {
       console.error('onDeleteProject is not defined');
       setShowDeleteConfirm(null);
+      return;
+    }
+    const project = projects.find(p => p.id === projectId);
+    setDeletingProjectId(projectId);
+    try {
+      await onDeleteProject(projectId);
+      setContextMenuOpen(null);
+      setShowDeleteConfirm(null);
+      toast({
+        title: 'Project deleted',
+        description: project ? `"${project.name}" has been removed.` : 'Project removed.',
+      });
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      toast({
+        title: 'Could not delete project',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeletingProjectId(null);
     }
   };
 
@@ -294,8 +306,31 @@ export function ProjectTree({
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
+  const deletingProject = deletingProjectId
+    ? projects.find(p => p.id === deletingProjectId)
+    : null;
+
   return (
     <div className="space-y-1" role="tree" aria-label="Project tree">
+      {/* Full-screen blurred overlay shown only while a project delete is in flight */}
+      {deletingProject && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 backdrop-blur-md"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <div className="inline-flex items-baseline text-2xl font-medium text-white">
+            <span>Deleting&nbsp;</span>
+            <span>"{deletingProject.name}"</span>
+            <span className="inline-flex gap-1.5 ml-2 mb-1">
+              <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms', animationDuration: '900ms' }} />
+              <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms', animationDuration: '900ms' }} />
+              <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms', animationDuration: '900ms' }} />
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Premium empty state when no projects exist */}
       {projects.length === 0 && (
         <div className="flex flex-col items-center justify-center py-8 px-3 text-center">
@@ -402,7 +437,7 @@ export function ProjectTree({
                   )}
 
                   {/* Delete Confirmation */}
-                  {showDeleteConfirm === project.id && (
+                  {showDeleteConfirm === project.id && deletingProjectId !== project.id && (
                     <div
                       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50"
                       onClick={(e) => {
@@ -421,8 +456,7 @@ export function ProjectTree({
                           <h3 className="text-lg font-medium text-foreground">Delete Project</h3>
                         </div>
                         <p className="text-sm text-muted-foreground mb-6">
-                          Are you sure you want to delete <span className="font-medium text-foreground">"{project.name}"</span>?
-                          This action cannot be undone.
+                          Are you sure you want to delete <span className="font-medium text-foreground">"{project.name}"</span>? This action cannot be undone.
                         </p>
                         <div className="flex gap-3 justify-end">
                           <button

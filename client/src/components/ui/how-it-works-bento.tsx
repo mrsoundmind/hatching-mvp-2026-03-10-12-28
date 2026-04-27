@@ -7,19 +7,19 @@ const notionist = (seed: string) =>
 function StepBadge({ n, title }: { n: number; title: string }) {
   return (
     <div className="flex items-center gap-2.5 mb-4">
-      <div className="w-7 h-7 rounded-full border border-orange-400 bg-orange-50 flex items-center justify-center">
-        <span className="text-orange-500 font-bold text-xs">{n}</span>
+      <div className="w-7 h-7 rounded-full border border-orange-400/60 bg-orange-500/10 flex items-center justify-center">
+        <span className="text-orange-400 font-bold text-xs">{n}</span>
       </div>
-      <h3 className="text-[15px] font-semibold text-gray-900">{title}</h3>
+      <h3 className="text-[15px] font-semibold text-white">{title}</h3>
     </div>
   );
 }
 
 function Card1() {
   return (
-    <div className="relative rounded-3xl border border-gray-200 bg-gradient-to-br from-orange-50/40 via-white to-white p-6 overflow-hidden h-full">
+    <div className="relative rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-6 overflow-hidden h-full">
       <StepBadge n={1} title="Tell Maya your idea" />
-      <p className="text-[13px] text-gray-500 leading-relaxed mb-5">
+      <p className="text-[13px] text-white/55 leading-relaxed mb-5">
         Describe what you're building. She asks the hard questions and shapes it into something real.
       </p>
 
@@ -43,7 +43,7 @@ function Card1() {
           className="flex items-start gap-2.5"
         >
           <img src={notionist("Maya")} alt="Maya" className="w-8 h-8 rounded-full flex-shrink-0" />
-          <div className="rounded-2xl rounded-tl-sm bg-white border border-gray-200 px-3.5 py-2 text-[12px] leading-relaxed text-gray-700 shadow-sm">
+          <div className="rounded-2xl rounded-tl-sm bg-white/[0.06] border border-white/10 px-3.5 py-2 text-[12px] leading-relaxed text-white/80">
             Love it. Who are you building this for — first-time founders or repeat?
           </div>
         </motion.div>
@@ -52,22 +52,22 @@ function Card1() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 1.0, duration: 0.3 }}
-          className="flex items-center gap-2 pt-1 text-[11px] text-gray-400"
+          className="flex items-center gap-2 pt-1 text-[11px] text-white/40"
         >
           <Sparkles className="w-3 h-3" />
           <span>Maya is thinking</span>
           <span className="flex gap-0.5">
-            <span className="w-1 h-1 rounded-full bg-gray-400 animate-[bounce_1s_infinite]" />
-            <span className="w-1 h-1 rounded-full bg-gray-400 animate-[bounce_1s_infinite_150ms]" />
-            <span className="w-1 h-1 rounded-full bg-gray-400 animate-[bounce_1s_infinite_300ms]" />
+            <span className="w-1 h-1 rounded-full bg-white/40 animate-[bounce_1s_infinite]" />
+            <span className="w-1 h-1 rounded-full bg-white/40 animate-[bounce_1s_infinite_150ms]" />
+            <span className="w-1 h-1 rounded-full bg-white/40 animate-[bounce_1s_infinite_300ms]" />
           </span>
         </motion.div>
       </div>
 
-      <div className="mt-5 flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2">
+      <div className="mt-5 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
         <div className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
-        <span className="text-[11px] text-gray-400 flex-1">Reply to Maya...</span>
-        <ArrowUp className="w-3.5 h-3.5 text-gray-400" />
+        <span className="text-[11px] text-white/40 flex-1">Reply to Maya...</span>
+        <ArrowUp className="w-3.5 h-3.5 text-white/40" />
       </div>
     </div>
   );
@@ -83,9 +83,9 @@ function Card2() {
     { name: "Rio", role: "Analyst" },
   ];
   return (
-    <div className="relative rounded-3xl border border-gray-200 bg-gradient-to-br from-amber-50/40 via-white to-white p-6 overflow-hidden h-full">
+    <div className="relative rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-6 overflow-hidden h-full">
       <StepBadge n={2} title="Your team assembles" />
-      <p className="text-[13px] text-gray-500 leading-relaxed mb-5">
+      <p className="text-[13px] text-white/55 leading-relaxed mb-5">
         Maya picks the right teammates for your project — engineer, designer, analyst. Each with their own expertise.
       </p>
 
@@ -97,21 +97,21 @@ function Card2() {
             whileInView={{ opacity: 1, y: 0, scale: 1 }}
             viewport={{ once: true }}
             transition={{ delay: i * 0.08, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="flex flex-col items-center gap-1.5 rounded-2xl border border-gray-200 bg-white p-3"
+            className="flex flex-col items-center gap-1.5 rounded-2xl border border-white/10 bg-white/[0.04] p-3"
           >
             <img src={notionist(h.name)} alt={h.name} className="w-10 h-10 rounded-full" />
-            <div className="text-[11px] font-semibold text-gray-800">{h.name}</div>
-            <div className="text-[9px] text-gray-400 uppercase tracking-wider">{h.role}</div>
+            <div className="text-[11px] font-semibold text-white/90">{h.name}</div>
+            <div className="text-[9px] text-white/40 uppercase tracking-wider">{h.role}</div>
           </motion.div>
         ))}
       </div>
 
-      <div className="mt-4 flex items-center justify-between rounded-xl bg-orange-50/70 border border-orange-100 px-3 py-2">
-        <div className="flex items-center gap-2 text-[11px] text-orange-700 font-medium">
+      <div className="mt-4 flex items-center justify-between rounded-xl bg-orange-500/10 border border-orange-400/20 px-3 py-2">
+        <div className="flex items-center gap-2 text-[11px] text-orange-300 font-medium">
           <Check className="w-3 h-3" />
           6 teammates ready
         </div>
-        <span className="text-[10px] text-orange-400">just now</span>
+        <span className="text-[10px] text-orange-400/70">just now</span>
       </div>
     </div>
   );
@@ -124,9 +124,9 @@ function Card3() {
     { icon: BarChart3, label: "Set up analytics", who: "Rio", pct: 30 },
   ];
   return (
-    <div className="relative rounded-3xl border border-gray-200 bg-gradient-to-br from-blue-50/40 via-white to-white p-6 overflow-hidden h-full">
+    <div className="relative rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-6 overflow-hidden h-full">
       <StepBadge n={3} title="They start building" />
-      <p className="text-[13px] text-gray-500 leading-relaxed mb-5">
+      <p className="text-[13px] text-white/55 leading-relaxed mb-5">
         Your team talks to each other, divides the work, and keeps going while you sleep. Wake up to progress.
       </p>
 
@@ -138,19 +138,19 @@ function Card3() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: i * 0.12, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="rounded-xl border border-gray-200 bg-white p-3"
+            className="rounded-xl border border-white/10 bg-white/[0.04] p-3"
           >
             <div className="flex items-center gap-2.5 mb-2">
-              <div className="w-6 h-6 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center">
-                <t.icon className="w-3 h-3 text-orange-500" />
+              <div className="w-6 h-6 rounded-lg bg-orange-500/10 border border-orange-400/20 flex items-center justify-center">
+                <t.icon className="w-3 h-3 text-orange-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[11.5px] font-medium text-gray-800 truncate">{t.label}</div>
-                <div className="text-[9.5px] text-gray-400 uppercase tracking-wider">{t.who}</div>
+                <div className="text-[11.5px] font-medium text-white/85 truncate">{t.label}</div>
+                <div className="text-[9.5px] text-white/40 uppercase tracking-wider">{t.who}</div>
               </div>
-              <span className="text-[10px] font-semibold text-gray-500 tabular-nums">{t.pct}%</span>
+              <span className="text-[10px] font-semibold text-white/60 tabular-nums">{t.pct}%</span>
             </div>
-            <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-1 bg-white/10 rounded-full overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 whileInView={{ width: `${t.pct}%` }}
@@ -164,8 +164,8 @@ function Card3() {
       </div>
 
       <div className="mt-4 flex items-center justify-between text-[11px]">
-        <span className="text-gray-400">Autonomy running</span>
-        <span className="flex items-center gap-1.5 text-green-600 font-medium">
+        <span className="text-white/40">Autonomy running</span>
+        <span className="flex items-center gap-1.5 text-green-400 font-medium">
           <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
           Live
         </span>
@@ -181,10 +181,10 @@ export default function HowItWorksBento() {
       {cards.map((c, i) => (
         <motion.div
           key={i}
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ delay: i * 0.18, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          initial={{ opacity: 0, y: 48, scale: 0.94, filter: "blur(8px)" }}
+          whileInView={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+          viewport={{ once: true, margin: "-120px" }}
+          transition={{ delay: i * 0.85, duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
         >
           {c}
         </motion.div>

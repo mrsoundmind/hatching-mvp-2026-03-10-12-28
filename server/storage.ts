@@ -1480,7 +1480,7 @@ export class MemStorage implements IStorage {
 // ============================================================
 import { db } from "./db";
 import * as schema from "@shared/schema";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc, inArray } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
   // Users
@@ -1564,27 +1564,41 @@ export class DatabaseStorage implements IStorage {
     return proj;
   }
   async deleteProject(id: string): Promise<boolean> {
-    // Cascade delete respecting all FK constraints:
-    // autonomy_events/deliberation_traces → typing_indicators → message_reactions →
-    // tasks → conversation_memory → messages → conversations → agents → teams → project
-    await db.delete(schema.autonomyEvents).where(eq(schema.autonomyEvents.projectId, id));
-    await db.delete(schema.deliberationTraces).where(eq(schema.deliberationTraces.projectId, id));
-    const convs = await db.select({ id: schema.conversations.id }).from(schema.conversations).where(eq(schema.conversations.projectId, id));
-    for (const conv of convs) {
-      await db.delete(schema.typingIndicators).where(eq(schema.typingIndicators.conversationId, conv.id));
-      const msgs = await db.select({ id: schema.messages.id }).from(schema.messages).where(eq(schema.messages.conversationId, conv.id));
-      for (const msg of msgs) {
-        await db.delete(schema.messageReactions).where(eq(schema.messageReactions.messageId, msg.id));
-      }
-      await db.delete(schema.messages).where(eq(schema.messages.conversationId, conv.id));
-      await db.delete(schema.conversationMemory).where(eq(schema.conversationMemory.conversationId, conv.id));
-    }
-    await db.delete(schema.tasks).where(eq(schema.tasks.projectId, id));
-    await db.delete(schema.conversations).where(eq(schema.conversations.projectId, id));
-    await db.delete(schema.agents).where(eq(schema.agents.projectId, id));
-    await db.delete(schema.teams).where(eq(schema.teams.projectId, id));
-    const result = await db.delete(schema.projects).where(eq(schema.projects.id, id)).returning();
-    return result.length > 0;
+    // Single transaction; uses IN (subquery) so each table is one statement instead of
+    // a N+1 select-then-loop. Cuts wall-clock from ~seconds to <1s on typical projects.
+    // Order respects FK constraints:
+    //   autonomy_events/deliberation_traces → typing_indicators → message_reactions →
+    //   messages → conversation_memory → tasks → conversations →
+    //   deliverable_versions → deliverables → deliverable_packages → agents → teams → project
+    return db.transaction(async (tx) => {
+      const convIds = tx.select({ id: schema.conversations.id })
+        .from(schema.conversations)
+        .where(eq(schema.conversations.projectId, id));
+      const msgIds = tx.select({ id: schema.messages.id })
+        .from(schema.messages)
+        .where(inArray(schema.messages.conversationId, convIds));
+      const deliverableIds = tx.select({ id: schema.deliverables.id })
+        .from(schema.deliverables)
+        .where(eq(schema.deliverables.projectId, id));
+
+      await tx.delete(schema.autonomyEvents).where(eq(schema.autonomyEvents.projectId, id));
+      await tx.delete(schema.deliberationTraces).where(eq(schema.deliberationTraces.projectId, id));
+      await tx.delete(schema.typingIndicators).where(inArray(schema.typingIndicators.conversationId, convIds));
+      await tx.delete(schema.messageReactions).where(inArray(schema.messageReactions.messageId, msgIds));
+      await tx.delete(schema.messages).where(inArray(schema.messages.conversationId, convIds));
+      await tx.delete(schema.conversationMemory).where(inArray(schema.conversationMemory.conversationId, convIds));
+      await tx.delete(schema.tasks).where(eq(schema.tasks.projectId, id));
+      await tx.delete(schema.conversations).where(eq(schema.conversations.projectId, id));
+      // v2.0: deliverable_versions FK→deliverables, deliverables/deliverable_packages FK→projects.
+      // Must clear before agents (deliverables.agentId references agents.id).
+      await tx.delete(schema.deliverableVersions).where(inArray(schema.deliverableVersions.deliverableId, deliverableIds));
+      await tx.delete(schema.deliverables).where(eq(schema.deliverables.projectId, id));
+      await tx.delete(schema.deliverablePackages).where(eq(schema.deliverablePackages.projectId, id));
+      await tx.delete(schema.agents).where(eq(schema.agents.projectId, id));
+      await tx.delete(schema.teams).where(eq(schema.teams.projectId, id));
+      const result = await tx.delete(schema.projects).where(eq(schema.projects.id, id)).returning();
+      return result.length > 0;
+    });
   }
 
   // Teams

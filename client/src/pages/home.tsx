@@ -701,33 +701,20 @@ function HomeInner() {
 
   const handleDeleteProject = async (projectId: string) => {
     devLog('🚀 handleDeleteProject called with projectId:', projectId);
-    try {
-      devLog('📡 Making DELETE request to:', `/api/projects/${projectId}`);
-      const response = await fetch(`/api/projects/${projectId}`, {
-        method: 'DELETE',
-      });
+    const response = await fetch(`/api/projects/${projectId}`, {
+      method: 'DELETE',
+    });
 
-      devLog('📡 Response status:', response.status);
-      devLog('📡 Response ok:', response.ok);
-
-      if (response.ok) {
-        devLog('✅ Project deleted successfully');
-        // Clear active project if it was the deleted one
-        if (activeProjectId === projectId) {
-          devLog('🔄 Clearing active project');
-          setActiveProjectId(null);
-        }
-        devLog('🔄 Refetching projects...');
-        queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-        devLog('✅ Projects refetched');
-      } else {
-        const errorText = await response.text();
-        console.error('❌ Failed to delete project. Status:', response.status);
-        console.error('❌ Error response:', errorText);
-      }
-    } catch (error) {
-      console.error('❌ Error deleting project:', error);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      console.error('❌ Failed to delete project. Status:', response.status, errorText);
+      throw new Error(`Server returned ${response.status}`);
     }
+
+    if (activeProjectId === projectId) {
+      setActiveProjectId(null);
+    }
+    queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
   };
 
   const handleUpdateProject = async (projectId: string, updates: Partial<Project>) => {

@@ -52,30 +52,6 @@ export default function LandingPage() {
     return () => observer.disconnect();
   }, []);
 
-  // Parallax — white card drifts slightly slower than dark section
-  useEffect(() => {
-    const bright = document.querySelector<HTMLElement>('.bright-section-start');
-    const dark = document.querySelector<HTMLElement>('.dark-section-start');
-    if (!bright || !dark) return;
-    let ticking = false;
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        const darkTop = dark.getBoundingClientRect().top;
-        const vh = window.innerHeight;
-        // Active only near the transition zone
-        if (darkTop < vh && darkTop > -vh) {
-          const progress = Math.max(-1, Math.min(1, (vh - darkTop) / vh));
-          bright.style.transform = `translateY(${progress * -24}px)`;
-        }
-        ticking = false;
-      });
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
   // Trigger footer entrance animations when footer enters viewport
   useEffect(() => {
     const node = footerRef.current;
@@ -223,6 +199,18 @@ export default function LandingPage() {
   return (
     <div className="w-full min-h-screen font-sans relative" style={{ background: '#0A0C13', overflowClipMargin: 'content-box', overflowX: 'clip' as any }}>
 
+      {/* ━━━ GLOBAL GRAIN OVERLAY ━━━ */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 z-[100] opacity-[0.08]"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.45 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>\")",
+          backgroundSize: "220px 220px",
+          mixBlendMode: "screen",
+        }}
+      />
+
       {/* ━━━ HERO ━━━ */}
       <section className="relative min-h-screen overflow-hidden flex-shrink-0">
 
@@ -324,10 +312,10 @@ export default function LandingPage() {
         {/* Social Proof */}
         <section className="w-full max-w-[1000px] mx-auto px-6 pt-14 pb-10 md:pt-20 md:pb-14 scroll-reveal">
           <div className="text-center mb-16">
-            <h2 className="text-2xl md:text-4xl font-semibold text-gray-900 mb-5" style={{ fontFamily: "'Poppins', sans-serif" }}>
+            <h2 className="text-2xl md:text-4xl font-semibold text-white mb-5" style={{ fontFamily: "'Poppins', sans-serif" }}>
               Real builders. Real results.
             </h2>
-            <p className="text-gray-500 text-base max-w-md mx-auto leading-relaxed">
+            <p className="text-white/50 text-base max-w-md mx-auto leading-relaxed">
               From solo founders to indie makers — here's what it's like to actually have a team.
             </p>
           </div>
@@ -337,10 +325,10 @@ export default function LandingPage() {
         {/* How It Works */}
         <section className="w-full max-w-[1200px] mx-auto px-6 pt-10 pb-20 md:pt-14 md:pb-28 scroll-reveal">
           <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-4xl font-semibold text-gray-900 mb-5" style={{ fontFamily: "'Poppins', sans-serif" }}>
+            <h2 className="text-2xl md:text-4xl font-semibold text-white mb-5" style={{ fontFamily: "'Poppins', sans-serif" }}>
               How it works.
             </h2>
-            <p className="text-gray-500 text-base max-w-md mx-auto leading-relaxed">
+            <p className="text-white/50 text-base max-w-md mx-auto leading-relaxed">
               From idea to a working team in under a minute. No setup. No configuration. Just build.
             </p>
           </div>
@@ -352,10 +340,15 @@ export default function LandingPage() {
       {/* ━━━ DARK SECTION (FAQ + PRICING) — card cutout + parallax ━━━ */}
       <div className="dark-section-start w-full relative">
 
-        {/* FAQ */}
-        <section className="w-full max-w-[700px] mx-auto px-6 pt-20 pb-12 md:pt-28 md:pb-16 scroll-reveal">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-4xl font-semibold text-white mb-5" style={{ fontFamily: "'Poppins', sans-serif" }}>
+        {/* FAQ — brutalist unit numbering */}
+        <section className="w-full max-w-[760px] mx-auto px-6 pt-20 pb-12 md:pt-28 md:pb-16 scroll-reveal">
+          <div className="text-center mb-14">
+            <div className="brutalist-mono text-[10px] text-white/40 tracking-[0.25em] uppercase mb-3 flex items-center justify-center gap-3">
+              <span className="h-px w-8 bg-white/15" />
+              <span>02 — FAQ</span>
+              <span className="h-px w-8 bg-white/15" />
+            </div>
+            <h2 className="text-2xl md:text-4xl font-semibold text-white mb-4" style={{ fontFamily: "'Poppins', sans-serif" }}>
               Good questions.
             </h2>
             <p className="text-white/50 text-base max-w-sm mx-auto leading-relaxed">
@@ -365,21 +358,24 @@ export default function LandingPage() {
           <Accordion
             type="single"
             collapsible
-            className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-2 backdrop-blur-sm"
+            className="w-full border border-white/10 bg-white/[0.02] backdrop-blur-sm"
           >
             {[
-              { id: "faq-1", q: "How is this different from ChatGPT?", a: "ChatGPT is a chatbot. Hatchin is a team. Your teammates remember everything, have distinct expertise, disagree with each other, and work together on your project across conversations. They're not answering prompts. They're building with you." },
-              { id: "faq-2", q: "Is my project data secure?", a: "Your data stays yours. We use encrypted connections, never train on your conversations, and you can delete everything at any time." },
-              { id: "faq-3", q: "What does it cost?", a: "Free to start. No credit card, no trial expiration. Build with your team and decide if you want more." },
-              { id: "faq-4", q: "Can AI really replace a team?", a: "They're not replacing humans. They're the team you don't have yet. Real opinions, real memory, real collaboration. Enough to get from idea to something you can show the world." },
-              { id: "faq-5", q: "What if I don't like it?", a: "Then you leave. No contracts, no lock-in, no guilt. But most people don't leave, because their team remembers them when they come back." },
+              { id: "faq-1", num: "Q.01", q: "How is this different from ChatGPT?", a: "ChatGPT is a chatbot. Hatchin is a team. Your teammates remember everything, have distinct expertise, disagree with each other, and work together on your project across conversations. They're not answering prompts. They're building with you." },
+              { id: "faq-2", num: "Q.02", q: "Is my project data secure?", a: "Your data stays yours. We use encrypted connections, never train on your conversations, and you can delete everything at any time." },
+              { id: "faq-3", num: "Q.03", q: "What does it cost?", a: "Free to start. No credit card, no trial expiration. Build with your team and decide if you want more." },
+              { id: "faq-4", num: "Q.04", q: "Can AI really replace a team?", a: "They're not replacing humans. They're the team you don't have yet. Real opinions, real memory, real collaboration. Enough to get from idea to something you can show the world." },
+              { id: "faq-5", num: "Q.05", q: "What if I don't like it?", a: "Then you leave. No contracts, no lock-in, no guilt. But most people don't leave, because their team remembers them when they come back." },
             ].map((faq) => (
-              <AccordionItem key={faq.id} value={faq.id} className="border-white/10 border-dotted last:border-b-0">
-                <AccordionTrigger className="cursor-pointer text-left text-[14px] font-semibold text-white hover:no-underline">
-                  {faq.q}
+              <AccordionItem key={faq.id} value={faq.id} className="border-white/10 border-dashed last:border-b-0 px-5 md:px-6">
+                <AccordionTrigger className="cursor-pointer text-left hover:no-underline py-5">
+                  <div className="flex items-start gap-4 md:gap-5 flex-1">
+                    <span className="brutalist-mono text-[11px] tracking-[0.15em] text-[#fb923c] mt-0.5 shrink-0">{faq.num}</span>
+                    <span className="text-[14px] font-semibold text-white leading-snug">{faq.q}</span>
+                  </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <p className="text-[13px] text-white/60 leading-relaxed">{faq.a}</p>
+                  <p className="text-[13px] text-white/60 leading-relaxed pl-[56px] md:pl-[60px] pb-4">{faq.a}</p>
                 </AccordionContent>
               </AccordionItem>
             ))}
@@ -392,55 +388,104 @@ export default function LandingPage() {
           </p>
         </section>
 
-        {/* Pricing */}
-        <section className="w-full max-w-[900px] mx-auto px-6 pt-10 pb-20 md:pt-16 md:pb-28 scroll-reveal">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-4xl font-semibold text-white mb-5" style={{ fontFamily: "'Poppins', sans-serif" }}>
+        {/* Pricing — brutalist spec-sheet */}
+        <section className="w-full max-w-[980px] mx-auto px-6 pt-10 pb-20 md:pt-16 md:pb-28 scroll-reveal">
+          <div className="text-center mb-14">
+            <div className="brutalist-mono text-[10px] text-white/40 tracking-[0.25em] uppercase mb-3 flex items-center justify-center gap-3">
+              <span className="h-px w-8 bg-white/15" />
+              <span>03 — PRICING</span>
+              <span className="h-px w-8 bg-white/15" />
+            </div>
+            <h2 className="text-2xl md:text-4xl font-semibold text-white mb-4" style={{ fontFamily: "'Poppins', sans-serif" }}>
               Simple pricing.
             </h2>
             <p className="text-white/50 text-base max-w-sm mx-auto leading-relaxed">
               Start free. Upgrade when you're ready to go faster.
             </p>
           </div>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-8 backdrop-blur-sm">
-              <h3 className="text-lg font-semibold text-white mb-1">Hatcher</h3>
-              <p className="text-3xl font-bold text-white mb-1">$0<span className="text-sm font-normal text-white/40">/mo</span></p>
-              <p className="text-white/40 text-sm mb-6">For solo builders getting started</p>
-              <ul className="space-y-2.5 text-sm text-white/60">
-                <li className="flex items-start gap-2"><span className="text-orange-400 mt-0.5">&#10003;</span>Unlimited messages</li>
-                <li className="flex items-start gap-2"><span className="text-orange-400 mt-0.5">&#10003;</span>3 projects</li>
-                <li className="flex items-start gap-2"><span className="text-orange-400 mt-0.5">&#10003;</span>All 30 AI teammates</li>
-                <li className="flex items-start gap-2"><span className="text-orange-400 mt-0.5">&#10003;</span>Pro AI model — same quality</li>
-                <li className="flex items-start gap-2"><span className="text-orange-400 mt-0.5">&#10003;</span>Real-time chat with streaming</li>
-                <li className="flex items-start gap-2"><span className="text-orange-400 mt-0.5">&#10003;</span>Automatic task detection</li>
-              </ul>
-              <Link href="/login">
-                <button className="w-full mt-8 py-2.5 rounded-lg border border-white/20 text-white text-sm font-medium hover:bg-white/10 transition-colors cursor-pointer">
-                  Get Started
-                </button>
-              </Link>
+
+          <div className="grid md:grid-cols-2 gap-5">
+            {/* FREE / HATCHER */}
+            <div className="brutalist-card relative bg-[#08090E] border border-white/[0.12]">
+              <div className="brutalist-mono flex justify-between px-5 py-3 border-b border-white/[0.08] text-[10px] tracking-[0.15em] text-white/40 uppercase">
+                <span>TIER 01</span>
+                <span>SKU: HATCHIN-FREE</span>
+              </div>
+              <div className="p-6 md:p-7">
+                <h3 className="text-[22px] md:text-[26px] font-bold tracking-[-0.02em] text-white uppercase mb-5">Hatcher</h3>
+                <div className="brutalist-mono flex items-baseline gap-2 mb-1">
+                  <span className="text-[34px] md:text-[40px] font-bold tracking-[-0.02em] text-white">$0.00</span>
+                  <span className="text-[11px] text-white/40 tracking-[0.15em] uppercase">USD / MO</span>
+                </div>
+                <div className="brutalist-mono text-[10px] tracking-[0.18em] text-white/35 uppercase pb-5 mb-5 border-b border-white/[0.08]">
+                  BILLING: NONE / FOR: SOLO BUILDERS
+                </div>
+                <div className="grid gap-px bg-white/[0.08] mb-6">
+                  {[
+                    "Unlimited messages",
+                    "3 projects",
+                    "All 30 teammates",
+                    "Pro AI model",
+                    "Real-time chat",
+                    "Automatic task detection",
+                  ].map((f) => (
+                    <div key={f} className="brutalist-mono flex items-center gap-3 bg-[#08090E] px-4 py-2.5 text-[11px] tracking-[0.05em] text-white/65 uppercase">
+                      <span className="text-[#f97316] font-bold tracking-normal">&gt;&gt;&gt;</span>
+                      <span>{f}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link href="/login">
+                  <button className="brutalist-mono w-full py-3.5 border border-white text-white text-[11px] tracking-[0.25em] uppercase hover:bg-white hover:text-[#0A0C13] transition-colors cursor-pointer">
+                    Deploy → Free
+                  </button>
+                </Link>
+              </div>
             </div>
-            <div className="rounded-xl border border-orange-400/40 bg-orange-500/[0.08] p-8 relative backdrop-blur-sm">
-              <span className="absolute -top-3 left-6 bg-orange-500 text-white text-[11px] font-bold uppercase tracking-wider px-3 py-0.5 rounded-full">Popular</span>
-              <h3 className="text-lg font-semibold text-white mb-1">Pro</h3>
-              <p className="text-3xl font-bold text-white mb-1">$19<span className="text-sm font-normal text-white/40">/mo</span></p>
-              <p className="text-white/40 text-sm mb-6">For builders who ship fast</p>
-              <ul className="space-y-2.5 text-sm text-white/60">
-                <li className="flex items-start gap-2"><span className="text-orange-400 mt-0.5">&#10003;</span>Unlimited messages</li>
-                <li className="flex items-start gap-2"><span className="text-orange-400 mt-0.5">&#10003;</span>Unlimited projects</li>
-                <li className="flex items-start gap-2"><span className="text-orange-400 mt-0.5">&#10003;</span>All 30 AI teammates</li>
-                <li className="flex items-start gap-2"><span className="text-orange-400 mt-0.5">&#10003;</span>Pro AI model</li>
-                <li className="flex items-start gap-2"><span className="text-orange-400 mt-0.5">&#10003;</span>Full autonomous execution</li>
-                <li className="flex items-start gap-2"><span className="text-orange-400 mt-0.5">&#10003;</span>50 background executions/day</li>
-                <li className="flex items-start gap-2"><span className="text-orange-400 mt-0.5">&#10003;</span>Peer review + safety gates</li>
-              </ul>
-              <Link href="/login">
-                <button className="w-full mt-8 py-2.5 rounded-lg bg-orange-500 hover:bg-orange-400 text-white text-sm font-medium transition-colors cursor-pointer">
-                  Start Building
-                </button>
-              </Link>
-              <p className="text-xs text-white/40 text-center mt-2">or $190/year (save 17%)</p>
+
+            {/* PRO */}
+            <div className="brutalist-card relative bg-[#08090E] border border-[#f97316]">
+              <div className="brutalist-mono bg-[#f97316] text-white flex justify-between px-5 py-2 text-[10px] tracking-[0.22em] uppercase">
+                <span>[ RECOMMENDED / UNIT-02 ]</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                  OPERATIONAL
+                </span>
+              </div>
+              <div className="brutalist-mono flex justify-between px-5 py-3 border-b border-white/[0.08] text-[10px] tracking-[0.15em] text-white/40 uppercase">
+                <span>TIER 02</span>
+                <span>SKU: HATCHIN-PRO</span>
+              </div>
+              <div className="p-6 md:p-7">
+                <h3 className="text-[22px] md:text-[26px] font-bold tracking-[-0.02em] text-white uppercase mb-5">Pro</h3>
+                <div className="brutalist-mono flex items-baseline gap-2 mb-1">
+                  <span className="text-[34px] md:text-[40px] font-bold tracking-[-0.02em] text-white">$19.00</span>
+                  <span className="text-[11px] text-white/40 tracking-[0.15em] uppercase">USD / MO</span>
+                </div>
+                <div className="brutalist-mono text-[10px] tracking-[0.18em] text-white/35 uppercase pb-5 mb-5 border-b border-white/[0.08]">
+                  BILLING: CONTINUOUS / ANNUAL: $190 (-17%)
+                </div>
+                <div className="grid gap-px bg-white/[0.08] mb-6">
+                  {[
+                    "Unlimited everything",
+                    "All 30 teammates",
+                    "Pro AI model",
+                    "Full autonomous execution",
+                    "50 background exec / day",
+                    "Peer review + safety gates",
+                  ].map((f) => (
+                    <div key={f} className="brutalist-mono flex items-center gap-3 bg-[#08090E] px-4 py-2.5 text-[11px] tracking-[0.05em] text-white/65 uppercase">
+                      <span className="text-[#f97316] font-bold tracking-normal">&gt;&gt;&gt;</span>
+                      <span>{f}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link href="/login">
+                  <button className="brutalist-mono w-full py-3.5 bg-[#f97316] hover:bg-[#fb923c] text-white text-[11px] tracking-[0.25em] uppercase transition-colors cursor-pointer">
+                    Deploy → Pro
+                  </button>
+                </Link>
+              </div>
             </div>
           </div>
         </section>

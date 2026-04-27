@@ -831,36 +831,26 @@
   transform: translateY(0);
 }
 
-/* Floating white card — arched top AND bottom (card cutout) */
-.bright-section-start {
-  background: #ffffff;
-  border-radius: 56px 56px 56px 56px;
-  margin-top: -48px;
-  margin-bottom: -56px;
-  padding-bottom: 72px;
-  position: relative;
-  z-index: 20;
-  box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.35);
-  will-change: transform;
+/* Brutalist mono utility — used by spec-sheet pricing */
+.brutalist-mono {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-feature-settings: "tnum" 1, "cv02" 1;
 }
 
-/* Dark section rises from under the white card — card cutout + parallax */
+/* Brutalist card — sharp corners, no radius */
+.brutalist-card {
+  border-radius: 0 !important;
+}
+.brutalist-card button {
+  border-radius: 0 !important;
+}
+
+/* Sections share one continuous surface — no visible boundary */
+.bright-section-start,
 .dark-section-start {
-  background: #0A0C13;
-  border-radius: 56px 56px 0 0;
+  background: transparent;
   position: relative;
   z-index: 10;
-  overflow: hidden;
-}
-
-.dark-section-start::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 80% 40% at 50% 0%, rgba(255, 255, 255, 0.04) 0%, transparent 70%),
-    radial-gradient(ellipse 60% 30% at 50% 100%, rgba(251, 146, 60, 0.06) 0%, transparent 70%);
-  pointer-events: none;
 }
 
 /* Waitlister-style animated footer layers */
