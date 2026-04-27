@@ -23,6 +23,7 @@ export interface LLMRequest {
   maxTokens?: number;
   timeoutMs?: number;
   seed?: number;
+  signal?: AbortSignal;
 }
 
 export interface LLMResponseMetadata {
