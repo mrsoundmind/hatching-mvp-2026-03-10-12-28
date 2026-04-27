@@ -301,7 +301,9 @@ app.use((req, res, next) => {
   server.listen({
     port,
     host: "0.0.0.0",
-    reusePort: true,
+    // reusePort enables multi-process load balancing in production; skipped in
+    // dev because some hosts (incl. recent macOS) reject SO_REUSEPORT with ENOTSUP.
+    ...(process.env.NODE_ENV === 'production' ? { reusePort: true } : {}),
   }, () => {
     log(`serving on port ${port}`);
   });
@@ -395,6 +397,44 @@ app.use((req, res, next) => {
       process.exit(1);
     }
   };
+
+  process.on('uncaughtException', (err: any) => {
+    const isNeonIdleTx =
+      err?.code === '25P03' ||
+      /idle-in-transaction/i.test(err?.message || '');
+    console.error('[Hatchin] uncaughtException:', {
+      message: err?.message,
+      code: err?.code,
+      stack: err?.stack?.split('\n').slice(0, 10).join('\n'),
+      isNeonIdleTx,
+    });
+    if (isNeonIdleTx) {
+      console.error('[Hatchin] Neon idle-in-transaction error — recovering, NOT exiting');
+      return;
+    }
+    console.error('[Hatchin] Unrecoverable uncaughtException — exiting');
+    process.exit(1);
+  });
+
+  process.on('unhandledRejection', (reason: any) => {
+    const isNeonIdleTx =
+      reason?.code === '25P03' ||
+      /idle-in-transaction/i.test(reason?.message || '');
+    console.error('[Hatchin] unhandledRejection:', {
+      reason: reason?.message || String(reason),
+      code: reason?.code,
+      stack: reason?.stack?.split('\n').slice(0, 10).join('\n'),
+      isNeonIdleTx,
+    });
+    if (isNeonIdleTx) {
+      console.error('[Hatchin] Neon idle-in-transaction promise rejection — recovering, NOT crashing');
+      return;
+    }
+    // Non-Neon unhandled rejection: log loudly but do NOT exit.
+    // Node v22 default behavior is exit-on-unhandled-rejection; we override
+    // for production stability since dev/streaming flows occasionally produce
+    // benign promise leaks (e.g., abandoned LLM aborts).
+  });
 
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
