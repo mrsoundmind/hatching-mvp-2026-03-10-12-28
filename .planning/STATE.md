@@ -4,8 +4,8 @@ milestone: v3.0
 milestone_name: Hatchin That Works
 status: "Phase 28 SHIPPED — all 6 BUG-XX closed (Maya infinite-thinking + SDK migration + stop button + AbortController hygiene). Phase 22 still in progress (22-03 reconciliation job pending)."
 stopped_at: Phase 28 complete (5/5 plans). Phase 22 mid-flight (2/3 plans).
-last_updated: "2026-04-27T11:30:00.000Z"
-last_activity: 2026-04-27 — Phase 28 (Maya Bug Fix + SDK Migration) shipped — BUG-01..06 closed, 18 commits, 5 SUMMARY.md files
+last_updated: "2026-04-27T12:30:00.000Z"
+last_activity: 2026-04-27 — Quick task 260427-ojf shipped DB-CRASH-01 fix (Neon idle-in-transaction recovery + transaction-leak fix in traceStore.ts); maya-fallback.spec.ts now passes 2/2 in 1.7min (previously crashed dev server)
 progress:
   total_phases: 24
   completed_phases: 6
@@ -101,13 +101,20 @@ Progress: [█████████░] 91% (21/23 plans complete in v3.0; pe
 
 ## Session Continuity
 
-Last session: 2026-04-27 — Phase 28 (Maya Bug Fix + SDK Migration) executed end-to-end via wave-based parallel orchestration.
-Stopped at: Phase 28 SHIPPED — all 5 plans landed, 6 BUG-XX requirements closed, regression scaffold green.
+Last session: 2026-04-27 — DB-CRASH-01 hotfix (quick task 260427-ojf) shipped. Phase 28 verified actually-working in runtime after the underlying process-stability bug was fixed.
+Stopped at: Maya bug fully resolved end-to-end. Dev server stable under sustained Playwright load. Ready for production deploy.
 
 Next action options (pick one):
-- `/gsd-plan-phase 22 --wave 2` or `/gsd-execute-phase 22 --wave 2` — close out Phase 22-03 reconciliation job (last Pillar A plan before scheduling work begins)
+- `fly deploy` — ship Phase 28 + DB-CRASH-01 to production (was blocked by the crash; now safe)
 - `/gsd-discuss-phase 29` — start Pillar B Phase 29 (Discovery Redesign + MVB Gate)
+- `/gsd-plan-phase 22 --wave 2` or `/gsd-execute-phase 22 --wave 2` — close out Phase 22-03 reconciliation job
 - `/gsd-discuss-phase 23` — start Pillar A Phase 23 (Budget UX Surfaces)
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260427-ojf | DB-CRASH-01: Neon idle-in-transaction recovery + traceStore.ts transaction-leak fix | 2026-04-27 | e52b14c | [260427-ojf-fix-db-crash-01](./quick/260427-ojf-fix-db-crash-01/) |
 
 ### Phase 28 — Outcomes (ARCHIVED)
 
