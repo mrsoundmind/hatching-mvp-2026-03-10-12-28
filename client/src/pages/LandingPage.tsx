@@ -557,6 +557,10 @@ export default function LandingPage() {
               Created by{" "}
               <a href="mailto:hello@hatchin.ai" className="text-white no-underline transition-colors duration-300 ease-out hover:text-[rgba(255,255,255,0.56)]">the Hatchin team</a>
             </p>
+            <p className="font-light tracking-[-0.02em]">•</p>
+            <a href="/legal/privacy" className="text-white no-underline transition-colors duration-300 ease-out hover:text-[rgba(255,255,255,0.56)]">Privacy</a>
+            <p className="font-light tracking-[-0.02em]">•</p>
+            <a href="/legal/terms" className="text-white no-underline transition-colors duration-300 ease-out hover:text-[rgba(255,255,255,0.56)]">Terms</a>
           </div>
         </div>
       </section>
