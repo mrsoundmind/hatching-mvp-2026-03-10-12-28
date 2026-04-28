@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Hatches That Self-Improve
-status: planning
-stopped_at: v3.0 closed partial 2026-04-28 — v2.1 milestone setup in progress via /gsd-new-milestone
-last_updated: "2026-04-28T12:00:00.000Z"
-last_activity: 2026-04-28 — v3.0 partial close-out (Phases 22 + 28 shipped; Phases 23-27, 29-34 re-scoped into ROADMAP-V3); v2.1 milestone artifacts being created
+status: ready_to_plan
+stopped_at: v2.1 milestone setup complete (REQUIREMENTS + ROADMAP committed) — Phase 35 ready for /gsd-discuss-phase or /gsd-plan-phase
+last_updated: "2026-04-28T13:00:00.000Z"
+last_activity: 2026-04-28 — v2.1 milestone setup complete (60 requirements, 12 phases 35-46 mapped, Phase 35 = corrected Phase 0 hotfix pass)
 progress:
-  total_phases: 0
+  total_phases: 12
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
