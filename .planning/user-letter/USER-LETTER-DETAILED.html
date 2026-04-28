@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Hatchin Roadmap — what's coming, and where we need your input</title>
+<style>
+  @page { size: A4; margin: 22mm 20mm; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.55;
+    color: #1a1a1a;
+    margin: 0;
+    padding: 0;
+  }
+  h1, h2, h3, h4 {
+    font-family: "SF Pro Display", -apple-system, "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+    color: #0d0d0d;
+    margin-top: 0;
+  }
+  h1 {
+    font-size: 30pt;
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    margin-bottom: 6pt;
+  }
+  h2 {
+    font-size: 18pt;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    margin-top: 26pt;
+    margin-bottom: 10pt;
+    padding-bottom: 6pt;
+    border-bottom: 2px solid #f0e5d0;
+  }
+  h3 {
+    font-size: 13pt;
+    line-height: 1.3;
+    margin-top: 16pt;
+    margin-bottom: 4pt;
+    color: #1a1a1a;
+  }
+  h4 {
+    font-size: 10pt;
+    line-height: 1.3;
+    margin-top: 10pt;
+    margin-bottom: 4pt;
+    color: #6b6b6b;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+  }
+  p { margin: 0 0 9pt 0; }
+  .muted { color: #6b6b6b; }
+  .accent { color: #b8862e; font-weight: 600; }
+  .small-caps {
+    font-size: 9.5pt;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: #b8862e;
+  }
+  .header-block {
+    border-bottom: 1px solid #e6e1d6;
+    padding-bottom: 18pt;
+    margin-bottom: 22pt;
+  }
+  .lede {
+    font-size: 12pt;
+    line-height: 1.5;
+    color: #2a2a2a;
+    border-left: 3px solid #d4a64a;
+    padding-left: 14pt;
+    margin: 14pt 0 18pt 0;
+    font-style: italic;
+  }
+  .signature {
+    margin-top: 20pt;
+    color: #2a2a2a;
+  }
+  .feature {
+    background: #fbf8f1;
+    border: 1px solid #ece4cf;
+    border-radius: 6pt;
+    padding: 14pt 18pt;
+    margin-bottom: 14pt;
+    page-break-inside: avoid;
+  }
+  .feature h3 { margin-top: 0; }
+  .feature h4 {
+    margin-top: 10pt;
+    color: #b8862e;
+    font-size: 9pt;
+  }
+  .feature .label {
+    display: inline-block;
+    background: #d4a64a;
+    color: white;
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2pt 8pt;
+    border-radius: 3pt;
+    vertical-align: middle;
+    margin-right: 8pt;
+    min-width: 26pt;
+    text-align: center;
+  }
+  .feature.swing { background: #1a1a1a; color: #fbf8f1; border-color: #2a2a2a; }
+  .feature.swing h3 { color: #fbf8f1; }
+  .feature.swing h4 { color: #f0c269; }
+  .feature.swing .label { background: #d4a64a; color: #1a1a1a; }
+  .feature.swing .muted { color: #b8b3a8; }
+  .feature.swing .example { background: rgba(255,255,255,0.05); border-left: 2px solid #d4a64a; }
+  .feature.deferred { background: #f6f4ee; border-style: dashed; }
+  .feature.deferred .label { background: #8a8170; }
+  .example {
+    background: white;
+    border-left: 3px solid #d4a64a;
+    padding: 8pt 12pt;
+    margin: 8pt 0;
+    font-size: 10pt;
+  }
+  .example p { margin-bottom: 4pt; }
+  .example p:last-child { margin-bottom: 0; }
+  .example strong { color: #b8862e; }
+  .ask-box {
+    background: #1a1a1a;
+    color: #fbf8f1;
+    border-radius: 8pt;
+    padding: 22pt 24pt;
+    margin: 24pt 0;
+    page-break-inside: avoid;
+  }
+  .ask-box h2 { color: #fbf8f1; border-bottom: 2px solid #d4a64a; margin-top: 0; }
+  .ask-box p, .ask-box li { color: #f0ebe0; }
+  .ask-box .accent { color: #f0c269; }
+  ol.questions { padding-left: 18pt; }
+  ol.questions li { margin-bottom: 14pt; line-height: 1.5; }
+  .summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12pt 0;
+    font-size: 9.5pt;
+  }
+  .summary-table th {
+    background: #1a1a1a;
+    color: #fbf8f1;
+    padding: 8pt 10pt;
+    text-align: left;
+    font-weight: 700;
+    font-size: 9pt;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .summary-table td {
+    padding: 8pt 10pt;
+    border-bottom: 1px solid #ece4cf;
+    vertical-align: top;
+  }
+  .summary-table tr:nth-child(even) td { background: #fbf8f1; }
+  .summary-table .number {
+    font-weight: 700;
+    color: #b8862e;
+    width: 24pt;
+    text-align: center;
+  }
+  .footer {
+    margin-top: 30pt;
+    padding-top: 14pt;
+    border-top: 1px solid #e6e1d6;
+    font-size: 9.5pt;
+    color: #6b6b6b;
+  }
+  .pull-quote {
+    font-size: 13pt;
+    line-height: 1.4;
+    color: #1a1a1a;
+    text-align: center;
+    margin: 22pt 30pt;
+    padding: 14pt 20pt;
+    border-top: 1px solid #d4a64a;
+    border-bottom: 1px solid #d4a64a;
+    page-break-inside: avoid;
+  }
+  .page-break { page-break-after: always; }
+  ul.simple { padding-left: 16pt; margin-top: 4pt; }
+  ul.simple li { margin-bottom: 4pt; }
+  .who-tag {
+    display: inline-block;
+    font-size: 8.5pt;
+    color: #6b6b6b;
+    background: #f0e5d0;
+    padding: 2pt 7pt;
+    border-radius: 10pt;
+    margin-right: 4pt;
+    margin-top: 3pt;
+  }
+  .feature.swing .who-tag {
+    background: rgba(212, 166, 74, 0.2);
+    color: #f0c269;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== PAGE 1: COVER ===================== -->
+<div class="header-block">
+  <div class="small-caps">A note from Shashank · April 2026</div>
+  <h1>The Hatchin Roadmap</h1>
+  <p class="muted" style="font-size: 13pt; margin-top: 4pt;">— what's coming, and where we need your input.</p>
+</div>
+
+<p>Hi there,</p>
+
+<p>Thanks for being on Hatchin. v2.0 just shipped at the end of March, and I'm now sitting down to plan the next 9–12 months. I've been spending a lot of time researching what to build — looking at how other AI tools are evolving, what production teams need from agent platforms, what the gaps in our own product feel like.</p>
+
+<p>I have a roadmap. <strong>It's plausible. It might also be wrong in places.</strong> What I'm missing is your voice — the people actually using this every day to ship real work.</p>
+
+<p>This document is my best attempt at being transparent about everything I'm considering, what each thing actually does, and where I genuinely don't know if I'm prioritizing right. It's longer than a typical product update because I'd rather give you the full picture than ask you to vote in the dark.</p>
+
+<p>Three things you'll find:</p>
+
+<ul class="simple">
+  <li>The full set of 11 things I'm considering, in plain English with real examples</li>
+  <li>Two paradigm shifts I'm planting flags on for later</li>
+  <li>A short feedback section where your answer changes what I build first</li>
+</ul>
+
+<p>If you only read one thing: skim the summary table on the next page, then jump to the dark feedback box at the end and reply. Even one sentence helps.</p>
+
+<div class="signature">
+  <p>— Shashank<br>
+  <span class="muted">Building Hatchin</span></p>
+</div>
+
+<div class="page-break"></div>
+
+<!-- ===================== PAGE 2: SUMMARY TABLE + CONTEXT ===================== -->
+<h2>The whole roadmap, at a glance</h2>
+
+<p class="muted">If you only have 30 seconds, this is the table to read. Detail on each item follows.</p>
+
+<table class="summary-table">
+  <thead>
+    <tr><th style="width:30pt;">#</th><th>What it does, in one line</th><th style="width:90pt;">Who it helps most</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="number">1</td><td>Refinements that don't quietly make things worse</td><td>Everyone</td></tr>
+    <tr><td class="number">2</td><td>Hatches that look things up live, instead of guessing</td><td>Marketers, researchers</td></tr>
+    <tr><td class="number">3</td><td>Upload PDFs/Excel/PowerPoint — Hatches actually read them</td><td>Anyone with files</td></tr>
+    <tr><td class="number">4</td><td>Drop in a brief, get a full hierarchical project plan</td><td>PMs, founders</td></tr>
+    <tr><td class="number">5</td><td>Marketing Hatches become real specialists, not generalists</td><td>Marketers</td></tr>
+    <tr><td class="number">6</td><td>Real files (.xlsx, .pptx, working prototypes) — not text descriptions</td><td>Strategists, designers, ops</td></tr>
+    <tr><td class="number">7</td><td>McKinsey-grade deep research reports with citations</td><td>Founders, strategists</td></tr>
+    <tr><td class="number">8</td><td>Use your Hatch team from outside Hatchin (API, webhooks, cron)</td><td>Power users, devs</td></tr>
+    <tr><td class="number">9</td><td><em>(deferred)</em> Background safety scans + compliance dashboard</td><td>Enterprise buyers</td></tr>
+    <tr><td class="number">10</td><td><strong>BIG:</strong> Hatches that remember your project across sessions</td><td>Everyone, eventually</td></tr>
+    <tr><td class="number">11</td><td><strong>BIG:</strong> Hatches that <em>do</em> things — send the email, fill the form</td><td>Everyone, eventually</td></tr>
+  </tbody>
+</table>
+
+<h2>Where we are right now</h2>
+
+<p><strong>v2.0 ("Hatches That Deliver") shipped end of March.</strong> Your Hatch team can now produce coordinated deliverables across roles — content sprints, launch packages, research bundles. Before that:</p>
+
+<ul class="simple">
+  <li><strong>v1.3</strong> made autonomy visible (the right sidebar, activity feed, approvals hub)</li>
+  <li><strong>v1.2</strong> brought billing and smarter LLM routing (Pro tier, Gemini Pro)</li>
+  <li><strong>v1.1</strong> gave Hatches the ability to actually <em>work</em> in the background, not just chat</li>
+</ul>
+
+<p>That's the foundation. The 11 things below are about what to build on top.</p>
+
+<p><strong>One thing worth knowing:</strong> Claude Code now lets me ship features in 1–2 week cycles instead of months. Whatever you tell me actually shows up in the product fast. This isn't a "we'll consider it" survey — it's an "I'm about to start building, please redirect me if I'm wrong" letter.</p>
+
+<div class="page-break"></div>
+
+<!-- ===================== PAGE 3-4: NEAR-TERM FEATURES (1-4) ===================== -->
+<h2>The 8 near-term things, in detail</h2>
+
+<p class="muted">Each of these is roughly 2–6 weeks of work. They're listed in the order I'd ship them today — but that order is exactly what your input could change.</p>
+
+<div class="feature">
+  <h3><span class="label">1</span> Refinements that don't quietly make things worse</h3>
+
+  <h4>The problem</h4>
+  <p>Right now, when you click "refine" on a Hatch's deliverable, the new version <em>could</em> be worse than the old one — and you might not notice. Sometimes a refinement adds bloat. Sometimes it drifts from your original brief. Sometimes it just produces a flatter version. You only catch it if you carefully compare versions, which most people don't.</p>
+
+  <h4>What changes</h4>
+  <p>Every refinement gets scored against a fixed quality bar — completeness against the deliverable's required sections, fidelity to your original brief, length discipline. If the new version scores lower than the previous one, we automatically keep the previous version and tell you why the refinement didn't make the cut. If you disagree, one click overrides.</p>
+
+  <div class="example">
+    <p><strong>Today:</strong> Wren refines your blog draft. The new version is wordier and drifts from your topic. You don't notice until you publish.</p>
+    <p><strong>With this:</strong> Wren refines, score drops 8.2 → 7.1, system auto-reverts. You see: <em>"Tried tightening the intro — score dropped because brief-fidelity dropped. Kept v3. Want to override?"</em></p>
+  </div>
+
+  <span class="who-tag">Everyone</span>
+</div>
+
+<div class="feature">
+  <h3><span class="label">2</span> Hatches that look things up live, instead of guessing</h3>
+
+  <h4>The problem</h4>
+  <p>Today your SEO Hatch (Robin), Growth Hatch (Kai), and Brand Hatch (Cass) work from training data — which is months out of date. So when you ask Robin "what's the current SERP for our top keyword?" she either hedges, makes something up, or pulls outdated info from training data. Same problem hits research-heavy roles like Sage (data) and Blake (strategist).</p>
+
+  <h4>What changes</h4>
+  <p>Nine research-heavy Hatches gain the ability to actually search the live web mid-conversation, with proper citations. Robin checks live SERPs. Cass pulls fresh competitor positioning. Sage finds current papers. Mira cites real, fresh sources in drafts. This would be a Pro-tier feature because the search API has real per-call cost.</p>
+
+  <div class="example">
+    <p><strong>Today:</strong> "Robin, what's the current top organic result for 'AI project management'?" Robin: <em>"As of my last training data..."</em></p>
+    <p><strong>With this:</strong> Robin actually searches, returns: <em>"Top result is asana.com/ai (rank 1, schema present, title 58 chars). Here's how your page compares..."</em></p>
+  </div>
+
+  <span class="who-tag">Marketers</span>
+  <span class="who-tag">Researchers</span>
+  <span class="who-tag">Strategists</span>
+</div>
+
+<div class="feature">
+  <h3><span class="label">3</span> Upload PDFs, Excel, PowerPoint — Hatches actually read them</h3>
+
+  <h4>The problem</h4>
+  <p>If you upload a scanned PDF today, Hatchin silently fails to extract any text — the upload "succeeds" but Hatches respond confused. If you upload a spreadsheet with tables, the structured data gets flattened to garbage text. If you have a fillable PDF (vendor questionnaire, NDA, expense report), there's nothing a Hatch can do with it beyond reading the prose.</p>
+
+  <h4>What changes</h4>
+  <p>Three pieces: <strong>(a)</strong> proper OCR for scanned PDFs so brain uploads work even when the source is a scan; <strong>(b)</strong> structured table extraction so Excel/CSV uploads keep their rows-and-columns shape; <strong>(c)</strong> form filling — a Hatch reads a fillable PDF, populates the fields from your project brain, and returns the completed file.</p>
+
+  <div class="example">
+    <p><strong>Today:</strong> You upload a scanned NDA. Hatch says <em>"I see you uploaded a document but I can't find any text in it."</em></p>
+    <p><strong>With this:</strong> Quinn reads the NDA via OCR, identifies the 8 fillable fields, populates them from project brain, returns a filled PDF you can send.</p>
+  </div>
+
+  <span class="who-tag">Anyone with files</span>
+  <span class="who-tag">Ops</span>
+  <span class="who-tag">Founders</span>
+</div>
+
+<div class="feature">
+  <h3><span class="label">4</span> Drop in a brief, get a full project plan</h3>
+
+  <h4>The problem</h4>
+  <p>Today, tasks in Hatchin show up reactively from chat — you say something, the system extracts a task. Useful, but it doesn't help you go from "I have a brief" to "we have a working plan." You still have to mentally decompose the work, decide who does what, figure out what depends on what.</p>
+
+  <h4>What changes</h4>
+  <p>Paste a project spec or brief into Maya. She breaks it into a hierarchical task tree — who does what (which Hatch role), what depends on what, what gets delivered, rough effort estimates. Hatches then work through it autonomously, with proper handoffs. You can run multiple workstreams in parallel (engineering / design / marketing as separate tracks).</p>
+
+  <div class="example">
+    <p><strong>Today:</strong> You paste a 1-page spec for a new feature launch. Maya summarizes it back. You manually create tasks, assign Hatches, hope the order works.</p>
+    <p><strong>With this:</strong> Maya returns a 14-task tree: Cleo (design system) → Finn (component build) → Wren (landing copy) → Kai (launch plan), with dependencies wired up. Hit "start." It runs.</p>
+  </div>
+
+  <span class="who-tag">Founders</span>
+  <span class="who-tag">PMs</span>
+  <span class="who-tag">Anyone running projects</span>
+</div>
+
+<div class="page-break"></div>
+
+<!-- ===================== PAGE 5-6: FEATURES (5-8) ===================== -->
+<div class="feature">
+  <h3><span class="label">5</span> Marketing Hatches become real specialists, not generalists</h3>
+
+  <h4>The problem</h4>
+  <p>Robin (SEO), Wren (Copy), Kai (Growth), Drew (Email), Pixel (Social), Cass (Brand), Mira (Content), Nova (Marketing) all do passable work today. But none of them are <em>specialists</em> in the way a senior practitioner is. Robin doesn't walk you through a real schema markup audit. Wren writes copy without applying actual conversion principles. Kai doesn't really know A/B testing methodology.</p>
+
+  <h4>What changes</h4>
+  <p>Each of these 11 marketing-adjacent Hatches gets the deep frameworks that senior practitioners actually use — borrowed from the canonical playbooks in the field (real CRO frameworks, real SEO audit checklists, real cold-email structures, real psychology of pricing). Frameworks load on-demand when a relevant question comes up, so prompts don't get bloated.</p>
+
+  <div class="example">
+    <p><strong>Today:</strong> "Robin, audit my landing page for SEO." Robin: a generic checklist (title tag, meta description, headings).</p>
+    <p><strong>With this:</strong> Robin runs the actual SEO audit framework — schema markup, internal linking depth, Core Web Vitals, search intent alignment, competitor SERP analysis, AI search readiness, accessibility. Specifics, not generalities.</p>
+  </div>
+
+  <span class="who-tag">Marketers</span>
+  <span class="who-tag">Growth folks</span>
+  <span class="who-tag">Brand teams</span>
+</div>
+
+<div class="feature">
+  <h3><span class="label">6</span> Real files, not just text descriptions</h3>
+
+  <h4>The problem</h4>
+  <p>Today most deliverables come back as markdown — narrative text describing what something should be. If you ask Cass for a pitch deck, you get a markdown outline of slides. You then rebuild it in Keynote. If you ask Blake for a financial model, you get a markdown table. You rebuild it in Excel. The Hatch did the thinking, but you do the file work.</p>
+
+  <h4>What changes</h4>
+  <p>Three new deliverable formats:</p>
+  <ul class="simple">
+    <li><strong>Excel (.xlsx)</strong> — Blake, Morgan, Rio, Sage, Quinn produce working spreadsheets with proper formulas, color coding, and zero formula errors</li>
+    <li><strong>PowerPoint (.pptx)</strong> — Cass, Zara, Nova, Kai, Maya produce branded decks with real design (no AI slop)</li>
+    <li><strong>Interactive prototype (HTML)</strong> — Cleo, Lumi, Finn, Arlo, Roux produce clickable React+shadcn prototypes you can demo</li>
+  </ul>
+  <p>Plus a <strong>brand layer</strong> at the start: Cass interrogates you about your brand (or extracts it from your existing site), then everything generated downstream uses your colors, fonts, and voice — not generic AI-template output.</p>
+
+  <div class="example">
+    <p><strong>Today:</strong> "Blake, build a SaaS financial model with $1M ARR scenarios." Markdown table with assumptions in prose.</p>
+    <p><strong>With this:</strong> Blake returns <em>q3-financial-model.xlsx</em> — working spreadsheet, blue inputs, black formulas, scenario tabs, proper number formatting. Open it in Excel and run scenarios.</p>
+  </div>
+
+  <span class="who-tag">Strategists</span>
+  <span class="who-tag">Designers</span>
+  <span class="who-tag">Ops</span>
+  <span class="who-tag">Brand teams</span>
+</div>
+
+<div class="feature">
+  <h3><span class="label">7</span> McKinsey-grade deep research reports</h3>
+
+  <h4>The problem</h4>
+  <p>Today, when you ask a Hatch for "research" you get a synthesis based on what one Hatch knows. It's fine for quick lookups but not for the kind of analysis you'd hand to a board, an investor, or a client. There's no triangulation across sources, no critique loop, no real validation. And it's one Hatch working alone — not the multi-perspective rigor a real research engagement has.</p>
+
+  <h4>What changes</h4>
+  <p>A new <strong>"deep research" package</strong> that orchestrates a multi-Hatch 8-phase pipeline: scope → plan → parallel research → triangulate → outline → synthesize → critique (with three reviewer Hatches red-teaming the findings) → refine → package. Output is a McKinsey-style HTML report (also as PDF) with full citations, an executive summary, and adversarial review baked in.</p>
+
+  <div class="example">
+    <p><strong>Today:</strong> "Tell me about the EU healthtech market." 600 words of mid-quality summary.</p>
+    <p><strong>With this:</strong> 18,000-word report with executive summary, 60+ citations, three Hatches challenging the findings before publication, and a properly-formatted HTML/PDF output you can send to investors.</p>
+  </div>
+
+  <span class="who-tag">Founders</span>
+  <span class="who-tag">Strategists</span>
+  <span class="who-tag">Anyone needing depth</span>
+</div>
+
+<div class="feature">
+  <h3><span class="label">8</span> Use your Hatch team from outside Hatchin</h3>
+
+  <h4>The problem</h4>
+  <p>Right now your configured Hatches only work inside Hatchin's chat UI. They're trapped in the product. You can't have your CMS call Robin on a schedule. You can't make your Slack bot route questions to Maya. You can't build a custom workflow that uses Quinn for ops automation.</p>
+
+  <h4>What changes</h4>
+  <p>Four pieces:</p>
+  <ul class="simple">
+    <li><strong>Project-as-API</strong> — every Pro project gets a stable REST endpoint per Hatch, with API keys</li>
+    <li><strong>Project-as-MCP-server</strong> — your Hatches become tools other AI agents can use</li>
+    <li><strong>Webhook triggers</strong> — schedule a Hatch on cron or external events</li>
+    <li><strong>Workflow export/import</strong> — package a configured project (Hatches + brain + brand + tasks) as portable JSON to share or sell</li>
+  </ul>
+
+  <div class="example">
+    <p><strong>Today:</strong> Robin only works when you're chatting with her in Hatchin.</p>
+    <p><strong>With this:</strong> "Every Monday 9am, Robin audits our top 10 SEO pages and posts results to #marketing in Slack." Robin runs autonomously, posts to Slack, you wake up to fresh audit data.</p>
+  </div>
+
+  <span class="who-tag">Power users</span>
+  <span class="who-tag">Developers</span>
+  <span class="who-tag">Agencies</span>
+</div>
+
+<div class="page-break"></div>
+
+<!-- ===================== PAGE 7: DEFERRED + TWO PARADIGM SHIFTS ===================== -->
+
+<div class="feature deferred">
+  <h3><span class="label">9</span> Background safety scans + compliance dashboard <span style="font-size: 9pt; color: #6b6b6b; font-weight: 400; margin-left: 6pt;">(deferred)</span></h3>
+
+  <h4>The problem (and why this is deferred)</h4>
+  <p>For enterprise customers, "is your AI safe?" is a real question. They want to see prompt-injection attempts blocked, PII leaks flagged, off-brand outputs caught. Today we have basic safety guards but no audit trail you could hand to a compliance team.</p>
+
+  <h4>Why I'm flagging this transparently</h4>
+  <p>This would be an enterprise-tier feature ($500–2,000/month bracket) — not for Free or Pro users. I'm <strong>not</strong> building it now because no Enterprise prospect has explicitly asked for it. Including it here for transparency, not for your vote. If you're a buyer at a company that <em>would</em> need this, please reply and I'll prioritize accordingly.</p>
+
+  <span class="who-tag">Enterprise buyers only</span>
+</div>
+
+<h2 style="margin-top: 28pt;">Two bigger swings I'm thinking about</h2>
+
+<p class="muted">These are paradigm shifts, not refinements. They take longer (3+ months each) and they fundamentally change what Hatchin is. I'm including them because if either is what you actually want, that changes everything else.</p>
+
+<div class="feature swing">
+  <h3><span class="label">10</span> Hatches that remember</h3>
+
+  <h4>The problem</h4>
+  <p>Today, every Hatch starts each conversation cold. They don't remember the brand decision you locked in three weeks ago. The freemium pricing question Blake pushed back on last month. The design direction Cleo championed in March. After 100 conversations, none of them have a real memory of your project — they have transcripts.</p>
+
+  <h4>What changes</h4>
+  <p>Every Hatch gets persistent memory of your project — a structured graph of what was decided, what's still open, what you said yes/no to, who pushed back on what. When you come back after a week, Maya opens with: <em>"Cass is still concerned about the brand color drift you flagged. Blake is waiting on your call about freemium. Robin found three new SERP movements while you were away."</em></p>
+  <p>This is the swing that turns Hatchin from "AI tool" into "AI colleagues." It's also the prerequisite for the second big swing.</p>
+
+  <div class="example">
+    <p><strong>Today:</strong> You return after a week. Cass produces a brand brief. It contradicts something you locked in three weeks ago.</p>
+    <p><strong>With this:</strong> Cass refuses: <em>"This contradicts the positioning we locked on Apr 12 — confirm override?"</em></p>
+  </div>
+
+  <span class="who-tag">Everyone, eventually</span>
+</div>
+
+<div class="feature swing">
+  <h3><span class="label">11</span> Hatches that <em>do</em> things, not just describe them</h3>
+
+  <h4>The problem</h4>
+  <p>Robin can write the perfect SEO audit. Robin can't fix the meta tags. Drew can write the perfect cold email. Drew can't send it. Quinn can plan the perfect ops automation. Quinn can't create the Linear tickets. Every Hatch produces instructions you then have to execute. The promise of an "AI team" is incomplete until they can actually ship work, not just describe it.</p>
+
+  <h4>What changes</h4>
+  <p>A Mac companion app — "Hatchin Desktop" — that lets Hatches actually drive your software. With your one-click approval each time. Robin opens Webflow and updates meta tags. Drew opens Gmail and sends the email. Pixel opens LinkedIn and posts. Quinn creates the Linear tickets. Each action is a learned recipe (JSON, auditable, replayable, shareable).</p>
+  <p>Mac-only at first. Privacy-sensitive — needs proper guardrails. Probably 12 months out from now. But this is the version of Hatchin that actually replaces work, not just helps with it.</p>
+
+  <div class="example">
+    <p><strong>Today:</strong> "Drew, send the Q4 invoice to Sarah." Drew drafts the email. You copy-paste it into Gmail and hit send.</p>
+    <p><strong>With this:</strong> "Drew, send the Q4 invoice to Sarah." Drew opens Gmail, fills the email, asks "send?" — you click yes. Done.</p>
+  </div>
+
+  <span class="who-tag">Everyone, eventually</span>
+  <span class="who-tag">Mac users first</span>
+</div>
+
+<div class="page-break"></div>
+
+<!-- ===================== PAGE 8: THE ASK ===================== -->
+
+<div class="pull-quote">
+  The roadmap is plausible.<br>
+  Whether it's <em>actually</em> what you need — only you can tell me.
+</div>
+
+<div class="ask-box">
+  <h2>Five questions. Reply with whatever fits.</h2>
+
+  <p>Don't feel obligated to answer all five. The first three are the most important. Answer those, skip the rest if you don't have time. One paragraph total is plenty.</p>
+
+  <ol class="questions">
+    <li>
+      <strong class="accent">Out of items 1–8, which TOP THREE would you want first?</strong><br>
+      <span style="opacity: 0.85;">Just numbers (e.g. "3, 6, 1") is fine. If something's missing entirely, name that instead.</span>
+    </li>
+    <li>
+      <strong class="accent">Of the two big swings (#10 memory, #11 doing things) — which would change Hatchin more for you, if it landed?</strong><br>
+      <span style="opacity: 0.85;">Memory, doing-things, both, or neither. (This tells me which long bet to plant flags on first.)</span>
+    </li>
+    <li>
+      <strong class="accent">When you come back to Hatchin after a few days, does the Hatch remember enough — or do you find yourself re-explaining things?</strong><br>
+      <span style="opacity: 0.85;">Yes / no, plus one example if you have one. (This tells me how badly we need #10.)</span>
+    </li>
+    <li>
+      <strong class="accent">When a Hatch finishes a deliverable, what do you do with it next?</strong><br>
+      <span style="opacity: 0.85;">Walk me through what happens. (If you say "I rebuild it in Excel/Keynote/Figma," that tells me #6 needs to ship sooner.)</span>
+    </li>
+    <li>
+      <strong class="accent">If a Hatch could literally do anything for you — even things that sound impossible — what would you most want?</strong><br>
+      <span style="opacity: 0.85;">Don't filter. (This is the question I most want your unfiltered answer to.)</span>
+    </li>
+  </ol>
+
+  <p style="margin-top: 20pt;"><strong class="accent">How to reply:</strong> just hit reply to this email, or message me directly on Hatchin (Maya can pass it along). One paragraph is plenty. I read every single one.</p>
+</div>
+
+<div class="footer">
+  <p><strong>One last thing.</strong> The fact that you've stuck with v2.0 means I owe you a v2.1 that's actually worth your time. Help me make sure it is. Reply this week if you can — I'm starting v2.1 next week and your input directly shapes which milestone that turns out to be.</p>
+  <p style="margin-top: 10pt;">— Shashank</p>
+</div>
+
+</body>
+</html>
