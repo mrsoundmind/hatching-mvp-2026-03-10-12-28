@@ -1,93 +1,82 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: Hatchin That Works
-status: "Phase 28 SHIPPED — all 6 BUG-XX closed (Maya infinite-thinking + SDK migration + stop button + AbortController hygiene). Phase 22 still in progress (22-03 reconciliation job pending)."
-stopped_at: Phase 28 complete (5/5 plans). Phase 22 mid-flight (2/3 plans).
-last_updated: "2026-04-27T12:30:00.000Z"
-last_activity: 2026-04-27 — Quick task 260427-ojf shipped DB-CRASH-01 fix (Neon idle-in-transaction recovery + transaction-leak fix in traceStore.ts); maya-fallback.spec.ts now passes 2/2 in 1.7min (previously crashed dev server)
+milestone: v2.1
+milestone_name: Hatches That Self-Improve
+status: planning
+stopped_at: v3.0 closed partial 2026-04-28 — v2.1 milestone setup in progress via /gsd-new-milestone
+last_updated: "2026-04-28T12:00:00.000Z"
+last_activity: 2026-04-28 — v3.0 partial close-out (Phases 22 + 28 shipped; Phases 23-27, 29-34 re-scoped into ROADMAP-V3); v2.1 milestone artifacts being created
 progress:
-  total_phases: 24
-  completed_phases: 6
-  total_plans: 23
-  completed_plans: 21
-  percent: 91
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # State: Hatchin
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-25)
+See: .planning/PROJECT.md (updated 2026-04-28)
 
 **Core value:** No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
-**Current focus:** v3.0 — Hatchin That Works (Phase 28 SHIPPED 2026-04-27; Phase 22 in progress; rest of Pillar B awaiting)
+**Current focus:** v2.1 milestone setup — defining requirements + roadmap from ROADMAP-V3 v2.1 scope (corrected Phase 0 = LEGAL-01 page content + graceful LLM degradation runtime audit).
 
 ---
 
 ## Current Position
 
-Phase 28 (Pillar B / Maya Bug Fix + SDK Migration): COMPLETE — 5/5 plans, BUG-01..06 closed
-Phase 22 (Pillar A / Atomic Budget Enforcement): IN PROGRESS — 2/3 plans (22-01 ✓ · 22-02 ✓ · 22-03 reconciliation job pending)
-
-Status: Phase 28 shipped. Maya now has end-to-end AbortSignal handling (30s timeout), the deprecated SDK is removed, the stop button resets within 1s, and the heap leak is closed (70.58MB → 0.11MB delta).
-Last activity: 2026-04-27 — Phase 28 final commit `01d93b1` (5/5 plans, 18 commits, 5 SUMMARY.md files); merged worktrees for 28-01..05 to main.
-
-Progress: [█████████░] 91% (21/23 plans complete in v3.0; pending: Phase 22-03 + all of Phases 23-27 + 29-34)
+Phase: Not started (defining v2.1 requirements)
+Plan: —
+Status: Defining v2.1 requirements (Phase 1 = Production Hotfix Pass with audit corrections; Phases 2-12 = v2.1 pillars from ROADMAP-V3)
+Last activity: 2026-04-28 — v3.0 partial close-out (Phases 22 + 28 shipped, rest re-scoped); milestones/v3.0-ROADMAP.md + v3.0-REQUIREMENTS.md archived; ROADMAP.md collapsed v3.0; PROJECT.md + MILESTONES.md updated
 
 ---
 
 ## Accumulated Context
 
-### Decisions (preserved)
+### Decisions (preserved across milestone switch)
 
 - **Use-case-driven development**: Organize around user goals, not features
 - **Text-first deliverables**: Focus on what LLMs produce well
 - **Groq LLM verified**: All deliverable generation works with Groq llama-3.3-70b
+- **ROADMAP-V3 is canonical post-v2.0 plan** (created 2026-04-28 from 18 repo evaluations + 15-item gap audit). Supersedes ROADMAP-V2 (archived).
+- **v3.0 close-out is partial, not full ship**: Phase 22 + 28 shipped; remaining 11 phases re-scoped (no work abandoned).
 
-### v3.0 Decisions (Pillar A — Reliable Autonomy)
+### v3.0 shipped decisions (preserved)
 
-- **Budget correctness precedes scheduling (hard constraint):** Phase 22 must ship before Phase 24
-- **Pattern A atomic ledger:** new `autonomy_daily_counters` table with `INSERT...ON CONFLICT...WHERE reserved_count < limit RETURNING`
-- **Phase 22-01 shipped:** autonomyDailyCounters schema, budgetLedger.ts (reserveBudgetSlot + releaseBudgetSlot), Wave 0 tests. BUDG-01 empirically proven: 5/10 concurrent reservations succeed at limit=5.
-- **Phase 22-02 shipped:** handleTaskJob rewired to use reserveBudgetSlot atomically; releaseBudgetSlot in catch path only (failure releases slot; success keeps it consumed for the day); chat.ts pre-check removed (BUDG-01+BUDG-02 now enforced at pipeline level only).
-- **budgetLedger.ts is standalone (not IStorage):** follows upsertDailyUsage precedent; raw pool.query used because Drizzle 0.39.1 cannot express WHERE on DO UPDATE clause
-- **Reuse existing pipeline for scheduling:** scheduled fires enqueue a `tasks` row + `boss.send('autonomous_task_execution', ...)`
-- **pg-boss native scheduler:** use `boss.schedule()` (distributed-safe, IANA tz, single-fire)
-- **Extend intentClassifier:** add `SCHEDULE_REQUEST` variant
-- **New deps:** `chrono-node` (NL datetime) + `cronstrue` (reverse cron → human-readable)
+- **Pattern A atomic ledger** for budget enforcement: `autonomy_daily_counters` table with `INSERT...ON CONFLICT...WHERE reserved_count < limit RETURNING`
+- **`@google/generative-ai` → `@google/genai`** SDK migration was prerequisite for AbortSignal hygiene (deprecated SDK had unresolved Issue #303)
+- **Phase state lives in DB** (`conversations.mayaPhase`), not React state — survives WS reconnects (carried into v2.1 Pillar 6)
+- **Background brain extraction is mandatory alongside MVB gate** — gate checks DB fields that only populate via extraction (carried into v2.1 Pillar 7)
+- **Button-only handoff trigger** for blueprint confirmation (no LLM intent classifier on plain affirmations) — carried into v2.1 Pillar 6
+- **Dollar amounts never in primary UI** — quota framing only — carried into v2.1 Pillar 9
+- **Gemini embedding cosine similarity** for team formation (pre-computed at startup, hash-invalidated) — carried into v2.3 Pillar 7
+- **OWASP LLM01 sanitization mandatory** on preference write — carried into v3.0-V3 (Mental Models) Pillar 4
 
-### v3.0 Decisions (Pillar B — Maya + Teamness, confirmed 2026-04-25)
+### Audit findings (2026-04-28)
 
-- **Bundle Pillar A + Pillar B into v3.0**: User testing exposed both reliability gaps; same trust signal
-- **Maya bug fix (Phase 28) is urgent and independent**: Ships in parallel with Pillar A; does not block or depend on any Pillar A phase
-- **@google/generative-ai → @google/genai migration is mandatory prerequisite**: The deprecated SDK has an unresolved AbortController bug (Issue #303); migration is not optional and must complete before any other Pillar B LLM work
-- **Phase state lives in DB (conversations.mayaPhase), not React state**: Survives WS reconnects; DEFAULT 'discovery' on new column
-- **Background brain extraction is mandatory alongside MVB gate**: Gate checks DB fields that only populate via extraction or action blocks — if extraction is skipped, the gate never passes (MVB false negative pitfall)
-- **Button-only handoff trigger for blueprint confirmation**: LLM intent classifier for "looks good but..." risks false positives; per user decision Q2, button is primary handoff signal
-- **All Pillar B schema changes batch into one Drizzle migration**: conversations.mayaPhase, users.preferences JSONB, deliverables feedback columns (userAcceptedAt/dismissedAt/editsCount/impressionCount), autonomy_events.cost_cents — deployed as one migration for safety
-- **Dollar amounts never in primary UI**: Quota framing only ("47 of 50 runs remaining") — loss aversion research backed
-- **Gemini embedding cosine similarity for team formation**: Pre-computed at server startup, hash-invalidated when roleRegistry.ts changes; ~720KB in memory
-- **OWASP LLM01 sanitization mandatory on preference write**: Enum allowlists + 200-char cap on free-text fields; injected as user-context block, never system role
+- **AUTH-GATE-01 was a phantom bug** in V3 Phase 0 — `<AuthGuard>` already redirects unauthed `/account` to `/login?next={path}` in `App.tsx:19-58`; login.tsx reads `?next=` post-signin. Marked complete on close-out.
+- **LEGAL-01 is real but bigger than V3 estimate** (5 min → 1-2 hr): links shipped (commit `3bbab4c`) but `/legal/privacy` and `/legal/terms` routes/pages do NOT exist. Links 404. Folded into v2.1 Phase 1.
+- **Graceful LLM degradation is ~70-80% done** — typed error map exists in `CenterPanel.tsx:651-662` (6 codes); banner UX missing. Folded into v2.1 Phase 1.
+- **22-03 reconciliation cron is shipped** — registered at `5 0 * * *` UTC in `backgroundRunner.ts:316-324` (always-on, no feature flag). STATE.md previously said "pending" — was stale.
 
 ### Anti-features (preserved)
 
 - no visual cron editor, no sub-hourly cadence, no shared routines, no manual budget override, no budget projection UX
 - no dollar amounts in primary cost UI, no auto-advance to execution after inactivity, no LLM-based "looks good" intent classifier for plain affirmations, no hard MVB gate blocking all agent responses (gate controls phase transition only)
 
-### Deferred to v3.1+
+### Deferred (status preserved across V3 re-scope)
 
-- AUDIT-01/02 — audit timeline UX
-- TMPL-01/02 — exportable project templates
-- ROLL-01/02 — config versioning + rollback
-- MOB-01/02 — mobile digest + push
-- PAB-01/02 — per-agent budgets
-- CHAT-07/08, MGMT-09 — conversational schedule edit/cancel + skip-next-run
-
-### Deferred to v3.2
-
-- DISG-01/02/03 — Agent disagreement orchestration (highest-risk; needs production data for confidence calibration)
-- GOAL-01/02/03 — Project milestones / definition-of-done (lower priority; depends on blueprint + feedback both stable)
+- AUDIT-01/02 — audit timeline UX (v3.1+)
+- TMPL-01/02 — exportable project templates (v3.1+)
+- ROLL-01/02 — config versioning + rollback (v3.1+)
+- MOB-01/02 — mobile digest + push (v3.1+)
+- PAB-01/02 — per-agent budgets (v3.1+)
+- CHAT-07/08, MGMT-09 — conversational schedule edit/cancel + skip-next-run (v3.1+ within V3 v2.7)
+- DISG-01/02/03 — Agent disagreement orchestration (V3 backlog; needs production data for confidence calibration)
+- GOAL-01/02/03 — Project milestones / definition-of-done (V3 backlog)
 
 ### Shipped Milestones
 
@@ -96,42 +85,16 @@ Progress: [█████████░] 91% (21/23 plans complete in v3.0; pe
 - v1.2 Billing + LLM Intelligence (2026-03-23) — Phase 10
 - v1.3 Autonomy Visibility & Right Sidebar Revamp (2026-03-29) — Phases 11-15
 - v2.0 Hatches That Deliver (2026-03-30) — Phases 16-21
+- v3.0 Hatchin That Works (PARTIAL, 2026-04-28) — Phase 22 (atomic budget) + Phase 28 (Maya bug fix + SDK migration); rest re-scoped to V3
 
 ---
 
 ## Session Continuity
 
-Last session: 2026-04-27 — DB-CRASH-01 hotfix (quick task 260427-ojf) shipped. Phase 28 verified actually-working in runtime after the underlying process-stability bug was fixed.
-Stopped at: Maya bug fully resolved end-to-end. Dev server stable under sustained Playwright load. Ready for production deploy.
+Last session: 2026-04-28 — v3.0 close-out + v2.1 milestone setup. Audit verified all "v3.0 unfinished" requirements are re-homed in V3, not abandoned.
+Stopped at: v3.0 archived to milestones/. Next step is to resume `/gsd-new-milestone` for v2.1 (gather requirements + roadmap from ROADMAP-V3 v2.1 scope).
 
 Next action options (pick one):
-- `fly deploy` — ship Phase 28 + DB-CRASH-01 to production (was blocked by the crash; now safe)
-- `/gsd-discuss-phase 29` — start Pillar B Phase 29 (Discovery Redesign + MVB Gate)
-- `/gsd-plan-phase 22 --wave 2` or `/gsd-execute-phase 22 --wave 2` — close out Phase 22-03 reconciliation job
-- `/gsd-discuss-phase 23` — start Pillar A Phase 23 (Budget UX Surfaces)
-
-### Quick Tasks Completed
-
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260427-ojf | DB-CRASH-01: Neon idle-in-transaction recovery + traceStore.ts transaction-leak fix | 2026-04-27 | e52b14c | [260427-ojf-fix-db-crash-01](./quick/260427-ojf-fix-db-crash-01/) |
-
-### Phase 28 — Outcomes (ARCHIVED)
-
-**All 6 BUG-XX requirements closed:**
-- BUG-01 (SDK migration `@google/generative-ai` → `@google/genai`) — 28-02
-- BUG-02 (AbortSignal end-to-end propagation) — 28-02
-- BUG-03 (`typing_stopped` before `streaming_error`) — 28-04
-- BUG-04 (zombie fallback message guarded by abort check) — 28-04
-- BUG-05 (AbortController reference cleanup; heap delta 70.58MB → 0.11MB) — 28-05
-- BUG-06 (stop button resets within 1s on terminal stream events) — 28-03
-
-**Notable execution decisions / deviations:**
-- Plan 28-01 used `general-purpose` agent (gsd-executor sandbox initially blocked `git merge --ff-only`)
-- 28-02 exported `providerRegistry` from `providerResolver.ts` (1-char change) so the propagation test can spy on it
-- 28-04 hoisted `abortController` from block-scope `const` to function-scope `let` because the catch handler couldn't see it otherwise — also flipped `const` → assignment at the original site, added `?.` in cancelHandler closure
-- `@google/genai` 1.50.x API differs from plan: `generateContentStream` is single-arg (signal lives in `params.config.abortSignal`), `chunk.text` is a getter not a method
-- Worktree-based execution worked but worktrees started from old commit `4533283c` (not main HEAD) — required explicit `git merge main --ff-only` in each worktree
-
-**Wave 0 regression scaffold (always-on):** `npx playwright test tests/e2e/v3-local-gap-audit.spec.ts` + `npx tsx scripts/test-abort-{cleanup,heap}.ts` should all be green now.
-- Key files: `server/llm/providers/geminiProvider.ts`, `server/routes/chat.ts`, `server/llm/providerResolver.ts`
+- `/gsd-new-milestone` — resume v2.1 milestone setup (recommended; in progress)
+- Address uncommitted `wip/pre-reset-2026-04-28` work (`ProjectTree.tsx` 5-line deletion + planning docs) before v2.1 starts
+- `fly deploy` — ship the shipped v3.0 work + DB-CRASH-01 hotfix to production (was blocked by the crash; now safe)

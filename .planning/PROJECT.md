@@ -10,33 +10,31 @@ Hatchin solves the prompting problem. Most people can't use AI effectively becau
 
 No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
 
-## Current Milestone: v3.0 Hatchin That Works
+## Current Milestone: Planning v2.1 (Hatches That Self-Improve)
 
-**Goal:** Make Hatchin trustworthy in two dimensions at once — the autonomy backend (no runaway spend, scheduled routines) AND the conversation experience (Maya knows when to start, agents act like a real team, deliverables ship). Bundling because user testing exposed both reliability gaps simultaneously.
+**Status:** v3.0 partially closed 2026-04-28 — Phases 22 + 28 shipped, remaining 11 phases re-scoped into ROADMAP-V3. v2.1 milestone setup in progress via `/gsd-new-milestone`.
 
-**Pillar A — Reliable Autonomy:**
-- Atomic budget enforcement — close the check-then-act race in `taskExecutionPipeline.ts:543-560` via transactional reserve/release ledger
-- Scheduled routines — recurring autonomous work via natural-language schedule ("every Monday at 9am, Kai drafts the growth update"), chat-native creation
-- Budget UX — UsageBar autonomy extension, 80% warn, in-character hard-stop, Free-tier upgrade path
+**v2.1 goal (per ROADMAP-V3):** Make autonomous Hatch work *trustworthy*. Refinements stop making things worse silently. Maya knows when she has enough context. Power users can skip discovery.
 
-**Pillar B — Reliable Maya & Teamness:**
-- Maya phase machine — discovery → blueprint draft → handoff to specialists; bounded discovery (≤3 questions per topic) so users get to action fast
-- Maya bug fix — eliminate infinite "thinking" state, add LLM request timeout, kill spurious "out for lunch" fallback during valid streams
-- Minimum-viable-brain gate — agents stop interrogating once a small required schema is satisfied
-- Cross-project user preferences — working style, tone, role learned once, applied everywhere
-- Dynamic team formation — freeform projects get a 3-4 agent recommendation, not all 30 at once
-- Disagreement orchestration — surface conflicting agent views as user decisions instead of papering over them
-- Project milestones / definition-of-done — goal layer above tasks
-- Deliverable feedback loop — track accept/edit/dismiss so quality improves with use
-- Per-run cost visibility — users see what each autonomy run cost
-- Graceful LLM degradation UX — no more raw 500 errors when providers fail
-- Skip-Maya escape hatch — power users bypass discovery entirely
-
-**Scope philosophy:** Bundle reliability work into one milestone because the user-facing trust signal is the same — "does this thing actually work?" Ship Pillar A's foundation (atomic budget) first, ship the urgent Maya bug fix in parallel, then layer the rest.
+**See:** `.planning/ROADMAP-V3.md` for full 12-milestone plan (v2.1 → v4.0)
 
 ---
 
-## Previous Milestone: v2.0 Hatches That Deliver
+## Previous Milestone: v3.0 Hatchin That Works (Partial — closed 2026-04-28)
+
+**Status:** PARTIAL CLOSE-OUT — 9/77 requirements shipped (Phase 22 atomic budget, Phase 28 Maya bug fix + SDK migration). Remaining 68 requirements re-scoped into ROADMAP-V3 (no work abandoned).
+
+**What shipped:**
+- Phase 22 — Atomic budget enforcement + daily reconciliation cron (BUDG-01..03)
+- Phase 28 — Maya bug fix + `@google/genai` SDK migration + AbortSignal end-to-end + heap leak closure + stop button reset (BUG-01..06)
+- AUTH-GATE-01 — verified shipped on close-out (audit found `<AuthGuard>` already redirects unauthed `/account`)
+- Hotfix DB-CRASH-01 — Neon idle-in-transaction recovery + traceStore transaction-leak
+
+**See:** [.planning/milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md) | [.planning/milestones/v3.0-REQUIREMENTS.md](milestones/v3.0-REQUIREMENTS.md)
+
+---
+
+## Earlier Milestone: v2.0 Hatches That Deliver
 
 **Goal:** Transform Hatchin from "AI chatroom" to "AI team that ships coordinated work" — linked deliverable packages, visible team coordination, async production, professional export.
 
