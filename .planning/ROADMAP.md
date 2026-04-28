@@ -143,7 +143,13 @@ See archived roadmap: [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
   3. Banner auto-dismisses within 5 seconds of the next successful streamed response (recovery signal works)
   4. A Gemini 429 rate-limit error routes to the next provider and does NOT trigger the banner (rate limits ≠ degradation)
   5. Playwright runtime spec verifies all 4 above end-to-end against a live restarted dev server
-**Plans**: TBD (likely 2-3 plans)
+**Plans**: 5 plans
+
+  - [ ] 35-01-PLAN.md — Foundation: WS schema additions (PROVIDER_DEGRADED/RECOVERED) + provider-health sliding-window counter module + DEV-only outage injector unit tests
+  - [ ] 35-02-PLAN.md — Server-side: wire counter into providerResolver fallback chain, broadcast PROVIDER_DEGRADED on 3-in-60s exhaustion, broadcastToAllSockets helper (LLMUX-01)
+  - [ ] 35-03-PLAN.md — Client-side: PROVIDER_DEGRADED/RECOVERED handlers in CenterPanel.tsx → persistent shadcn toast with default copy + recovery dismiss (LLMUX-02, LLMUX-03)
+  - [ ] 35-04-PLAN.md — Public legal pages: PrivacyPage + TermsPage + LegalPageLayout, registered routes in App.tsx, DRAFT marker per D-04 (LEGAL-01)
+  - [ ] 35-05-PLAN.md — Playwright spec: 4-case smoke against live dev server, DEV-only force-outage admin endpoint with production guard (AUDIT-01)
 
 ### Phase 36: Frozen-Rubric Deliverable Iteration
 **Goal**: Every deliverable refinement is scored against a locked, type-specific rubric. New version < old version → auto-revert. Quality compounds through the feedback columns.
