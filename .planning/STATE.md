@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Hatches That Self-Improve
-status: ready_to_plan
-stopped_at: v2.1 milestone setup complete (REQUIREMENTS + ROADMAP committed) — Phase 35 ready for /gsd-discuss-phase or /gsd-plan-phase
-last_updated: "2026-04-28T13:00:00.000Z"
-last_activity: 2026-04-28 — v2.1 milestone setup complete (60 requirements, 12 phases 35-46 mapped, Phase 35 = corrected Phase 0 hotfix pass)
+status: phase_context_gathered
+stopped_at: Phase 35 context gathered — 4 gray areas resolved (legal copy / banner UI / trigger threshold / audit + deploy). Ready for /gsd-plan-phase 35.
+last_updated: "2026-04-28T14:00:00.000Z"
+last_activity: 2026-04-28 — Phase 35 CONTEXT.md + DISCUSSION-LOG.md written; 18 implementation decisions captured (D-01..D-18)
 progress:
   total_phases: 12
   completed_phases: 0
