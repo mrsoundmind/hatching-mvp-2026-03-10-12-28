@@ -32,8 +32,9 @@ export const providerRegistry: Record<ProviderId, LLMProvider> = {
   mock: mockProvider,
 };
 
-// LLM_PRIMARY env var: explicit override of which proprietary provider sits at head of prod chain.
-// Defaults: 'deepseek' if DEEPSEEK_API_KEY set, else 'gemini' if GEMINI_API_KEY set, else 'openai'.
+// LLM_PRIMARY env var: explicit override of which provider sits at head of prod chain.
+// Defaults: 'deepseek' if DEEPSEEK_API_KEY set, else 'gemini' if GEMINI_API_KEY set.
+// OpenAI removed from default prod chain — only fires if explicitly set via LLM_PRIMARY=openai.
 // Rollback: set LLM_PRIMARY=gemini to instantly demote DeepSeek without code change.
 function resolvePrimaryProvider(env = process.env): ProviderId {
   const explicit = (env.LLM_PRIMARY || '').trim().toLowerCase();
@@ -42,7 +43,9 @@ function resolvePrimaryProvider(env = process.env): ProviderId {
   if (explicit === 'openai' && env.OPENAI_API_KEY) return 'openai';
   if (env.DEEPSEEK_API_KEY) return 'deepseek';
   if (env.GEMINI_API_KEY) return 'gemini';
-  return 'openai';
+  // Last-resort: if user has only OPENAI_API_KEY set, allow it. No silent default.
+  if (env.OPENAI_API_KEY) return 'openai';
+  return 'gemini'; // will fail downstream with a clear "GEMINI_API_KEY missing" error
 }
 
 export interface RuntimeDiagnostics {
@@ -199,19 +202,25 @@ function isRecoverableOpenAITestError(error: any): boolean {
 function buildProviderOrder(config: RuntimeConfig, priorError?: any): ProviderId[] {
   if (config.mode === 'prod') {
     // Prod chain: <primary> → <other-proprietary-as-fallback> → Groq (if set)
-    // DeepSeek is the cost-optimized default; Gemini stays as a hot fallback so
-    // DeepSeek outages don't take chat down. Groq remains the free-tier safety net.
+    // DeepSeek is the cost-optimized default; Gemini is the hot fallback so DeepSeek
+    // outages don't take chat down. Groq is the FREE safety net (Llama 3.3-70B).
+    // OpenAI removed from default chain — only invoked if LLM_PRIMARY=openai is set.
     if (config.provider === 'deepseek') {
       const chain: ProviderId[] = ['deepseek'];
       if (process.env.GEMINI_API_KEY) chain.push('gemini');
-      if (process.env.OPENAI_API_KEY) chain.push('openai');
       if (process.env.GROQ_API_KEY) chain.push('groq');
       return chain;
     }
     if (config.provider === 'gemini') {
       const chain: ProviderId[] = ['gemini'];
       if (process.env.DEEPSEEK_API_KEY) chain.push('deepseek');
-      if (process.env.OPENAI_API_KEY) chain.push('openai');
+      if (process.env.GROQ_API_KEY) chain.push('groq');
+      return chain;
+    }
+    if (config.provider === 'openai') {
+      // Explicit LLM_PRIMARY=openai escape hatch. Still falls back to Gemini/Groq if set.
+      const chain: ProviderId[] = ['openai'];
+      if (process.env.GEMINI_API_KEY) chain.push('gemini');
       if (process.env.GROQ_API_KEY) chain.push('groq');
       return chain;
     }

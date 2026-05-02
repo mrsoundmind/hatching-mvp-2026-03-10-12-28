@@ -25,6 +25,22 @@ The v1.2 milestone (shipped 2026-03-23) shipped a deliberate multi-layer LLM sta
 | Test only | Ollama | llama3.1:8b | ✓ self-host | `LLM_MODE=test` | ₹0 |
 | CI | Mock | deterministic | n/a | eval suite | ₹0 |
 
+### Final prod chain after Phase A (OpenAI removed)
+
+```
+DeepSeek V4-Flash (primary, NEW)
+   │
+   │ on failure
+   ▼
+Gemini 2.5-Flash (hot fallback, kept from v1.2)
+   │
+   │ on failure
+   ▼
+Groq Llama 3.3-70B (FREE safety net)
+```
+
+OpenAI is removed from the default prod chain. It stays registered (the `OpenAIProvider` class is still in the registry) but only fires if explicitly set via `LLM_PRIMARY=openai`. This simplifies the chain from 4 layers to 3 and eliminates a paid proprietary fallback.
+
 This layering already delivers 35-50% compound savings (per `.planning/v1.2-MILESTONE-AUDIT.md`). The remaining cost problem is Layers 2 + 3 (Gemini Flash + Gemini Pro).
 
 **The migration shape is INSERTION, not REPLACEMENT:**
