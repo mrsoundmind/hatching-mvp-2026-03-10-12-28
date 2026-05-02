@@ -14,10 +14,12 @@ import { OllamaTestProvider } from './providers/ollamaProvider.js';
 import { MockProvider } from './providers/mockProvider.js';
 import { GeminiProvider } from './providers/geminiProvider.js';
 import { GroqProvider } from './providers/groqProvider.js';
+import { DeepSeekProvider } from './providers/deepseekProvider.js';
 
 const openaiProvider = new OpenAIProvider();
 const geminiProvider = new GeminiProvider();
 const groqProvider = new GroqProvider();
+const deepseekProvider = new DeepSeekProvider();
 const ollamaProvider = new OllamaTestProvider();
 const mockProvider = new MockProvider();
 
@@ -25,9 +27,23 @@ export const providerRegistry: Record<ProviderId, LLMProvider> = {
   openai: openaiProvider,
   gemini: geminiProvider,
   groq: groqProvider,
+  deepseek: deepseekProvider,
   'ollama-test': ollamaProvider,
   mock: mockProvider,
 };
+
+// LLM_PRIMARY env var: explicit override of which proprietary provider sits at head of prod chain.
+// Defaults: 'deepseek' if DEEPSEEK_API_KEY set, else 'gemini' if GEMINI_API_KEY set, else 'openai'.
+// Rollback: set LLM_PRIMARY=gemini to instantly demote DeepSeek without code change.
+function resolvePrimaryProvider(env = process.env): ProviderId {
+  const explicit = (env.LLM_PRIMARY || '').trim().toLowerCase();
+  if (explicit === 'deepseek' && env.DEEPSEEK_API_KEY) return 'deepseek';
+  if (explicit === 'gemini' && env.GEMINI_API_KEY) return 'gemini';
+  if (explicit === 'openai' && env.OPENAI_API_KEY) return 'openai';
+  if (env.DEEPSEEK_API_KEY) return 'deepseek';
+  if (env.GEMINI_API_KEY) return 'gemini';
+  return 'openai';
+}
 
 export interface RuntimeDiagnostics {
   status: 'ok' | 'degraded' | 'down';
@@ -45,11 +61,12 @@ function toMode(raw: string | undefined): RuntimeMode {
   return raw?.toLowerCase() === 'test' ? 'test' : 'prod';
 }
 
-function parseTestProvider(raw: string | undefined): 'openai' | 'groq' | 'ollama' | 'mock' {
+function parseTestProvider(raw: string | undefined): 'openai' | 'groq' | 'ollama' | 'mock' | 'deepseek' {
   const normalized = (raw || '').trim().toLowerCase();
   if (normalized === 'openai') return 'openai';
   if (normalized === 'groq') return 'groq';
   if (normalized === 'ollama') return 'ollama';
+  if (normalized === 'deepseek') return 'deepseek';
   return 'mock';
 }
 
@@ -61,8 +78,17 @@ export function resolveRuntimeConfig(env = process.env): RuntimeConfig {
     if (illegalProvider.includes('ollama')) {
       throw new Error('Ollama test provider cannot run in production mode.');
     }
-    // Prefer Gemini if key is set, fall back to OpenAI
-    if (env.GEMINI_API_KEY) {
+    // Primary provider precedence: DeepSeek (if key) → Gemini (if key) → OpenAI
+    // Override via LLM_PRIMARY env var (rollback path).
+    const primary = resolvePrimaryProvider(env);
+    if (primary === 'deepseek') {
+      return {
+        mode,
+        provider: 'deepseek',
+        model: env.DEEPSEEK_MODEL || 'deepseek-v4-flash',
+      };
+    }
+    if (primary === 'gemini') {
       return {
         mode,
         provider: 'gemini',
@@ -104,6 +130,15 @@ export function resolveRuntimeConfig(env = process.env): RuntimeConfig {
     };
   }
 
+  if (testProvider === 'deepseek') {
+    return {
+      mode,
+      provider: 'deepseek',
+      testProvider: 'deepseek',
+      model: env.DEEPSEEK_MODEL || 'deepseek-v4-flash',
+    };
+  }
+
   if (testProvider === 'ollama') {
     return {
       mode,
@@ -127,8 +162,9 @@ export function getCurrentRuntimeConfig(): RuntimeConfig {
 }
 
 export function assertRuntimeGuardrails(config = resolveRuntimeConfig()): void {
-  if (config.mode === 'prod' && config.provider !== 'openai' && config.provider !== 'gemini' && config.provider !== 'groq') {
-    throw new Error('Production mode must use OpenAI, Gemini, or Groq provider only.');
+  const allowedProdProviders: ProviderId[] = ['openai', 'gemini', 'groq', 'deepseek'];
+  if (config.mode === 'prod' && !allowedProdProviders.includes(config.provider)) {
+    throw new Error('Production mode must use OpenAI, Gemini, Groq, or DeepSeek provider only.');
   }
 
   if (config.mode === 'prod' && process.env.TEST_LLM_PROVIDER?.toLowerCase() === 'ollama') {
@@ -162,9 +198,19 @@ function isRecoverableOpenAITestError(error: any): boolean {
 
 function buildProviderOrder(config: RuntimeConfig, priorError?: any): ProviderId[] {
   if (config.mode === 'prod') {
-    // In prod: Gemini primary → OpenAI (if set) → Groq (if set)
+    // Prod chain: <primary> → <other-proprietary-as-fallback> → Groq (if set)
+    // DeepSeek is the cost-optimized default; Gemini stays as a hot fallback so
+    // DeepSeek outages don't take chat down. Groq remains the free-tier safety net.
+    if (config.provider === 'deepseek') {
+      const chain: ProviderId[] = ['deepseek'];
+      if (process.env.GEMINI_API_KEY) chain.push('gemini');
+      if (process.env.OPENAI_API_KEY) chain.push('openai');
+      if (process.env.GROQ_API_KEY) chain.push('groq');
+      return chain;
+    }
     if (config.provider === 'gemini') {
       const chain: ProviderId[] = ['gemini'];
+      if (process.env.DEEPSEEK_API_KEY) chain.push('deepseek');
       if (process.env.OPENAI_API_KEY) chain.push('openai');
       if (process.env.GROQ_API_KEY) chain.push('groq');
       return chain;
@@ -174,6 +220,10 @@ function buildProviderOrder(config: RuntimeConfig, priorError?: any): ProviderId
 
   if (priorError && isOpenAIQuotaError(priorError)) {
     return ['ollama-test', 'mock'];
+  }
+
+  if (config.provider === 'deepseek') {
+    return ['deepseek', 'ollama-test', 'mock'];
   }
 
   if (config.provider === 'gemini') {
@@ -200,6 +250,13 @@ function buildProviderOrder(config: RuntimeConfig, priorError?: any): ProviderId
 function applyModelDefaults(request: LLMRequest, config: RuntimeConfig, provider: ProviderId): LLMRequest {
   if (request.model) {
     return request;
+  }
+
+  if (provider === 'deepseek') {
+    const tieredDefault = request.modelTier === 'premium'
+      ? (process.env.DEEPSEEK_PRO_MODEL || 'deepseek-v4-pro')
+      : (process.env.DEEPSEEK_MODEL || config.model || 'deepseek-v4-flash');
+    return { ...request, model: tieredDefault };
   }
 
   if (provider === 'gemini') {
@@ -306,10 +363,21 @@ export async function runRuntimeStartupChecks(): Promise<RuntimeDiagnostics> {
   const details: string[] = [];
 
   if (config.mode === 'prod') {
+    const hasDeepSeek = Boolean(process.env.DEEPSEEK_API_KEY);
     const hasGemini = Boolean(process.env.GEMINI_API_KEY);
     const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
-    const status = (hasGemini || hasOpenAI) ? 'ok' : 'down';
-    const activeKey = config.provider === 'gemini' ? hasGemini : hasOpenAI;
+    const activeKey =
+      config.provider === 'deepseek' ? hasDeepSeek :
+      config.provider === 'gemini' ? hasGemini :
+      hasOpenAI;
+    const providerLabel =
+      config.provider === 'deepseek' ? 'DeepSeek' :
+      config.provider === 'gemini' ? 'Gemini' :
+      'OpenAI';
+    const missingKeyName =
+      config.provider === 'deepseek' ? 'DEEPSEEK_API_KEY' :
+      config.provider === 'gemini' ? 'GEMINI_API_KEY' :
+      'OPENAI_API_KEY';
     cachedDiagnostics = {
       status: activeKey ? 'ok' : 'down',
       mode: config.mode,
@@ -318,8 +386,8 @@ export async function runRuntimeStartupChecks(): Promise<RuntimeDiagnostics> {
       ollamaReachable: false,
       modelAvailable: false,
       details: activeKey
-        ? [`Production mode active with ${config.provider === 'gemini' ? 'Gemini' : 'OpenAI'} provider`]
-        : [`${config.provider === 'gemini' ? 'GEMINI_API_KEY' : 'OPENAI_API_KEY'} is missing`],
+        ? [`Production mode active with ${providerLabel} provider`]
+        : [`${missingKeyName} is missing`],
     };
     return cachedDiagnostics;
   }
@@ -333,6 +401,22 @@ export async function runRuntimeStartupChecks(): Promise<RuntimeDiagnostics> {
       ollamaReachable: false,
       modelAvailable: false,
       details: ['Deterministic test mode active (Mock provider)'],
+    };
+    return cachedDiagnostics;
+  }
+
+  if (config.provider === 'deepseek') {
+    const status = process.env.DEEPSEEK_API_KEY ? 'ok' : 'down';
+    cachedDiagnostics = {
+      status,
+      mode: config.mode,
+      provider: config.provider,
+      model: config.model,
+      ollamaReachable: false,
+      modelAvailable: false,
+      details: process.env.DEEPSEEK_API_KEY
+        ? [`Using DeepSeek (${config.model}) with fallback chain to Ollama/Mock on errors`]
+        : ['DEEPSEEK_API_KEY missing — get one at platform.deepseek.com'],
     };
     return cachedDiagnostics;
   }
@@ -420,15 +504,26 @@ export function getCachedRuntimeDiagnostics(): RuntimeDiagnostics | null {
 
 /**
  * Resolve which model to use based on tier.
- * - standard → Gemini 2.5 Flash (default)
- * - premium → Gemini 2.5 Pro (for autonomy/peer review — Pro users only)
+ * - standard → default runtime model (DeepSeek V4-Flash > Gemini 2.5-Flash > OpenAI)
+ * - premium  → DeepSeek V4-Pro (preferred), Gemini 2.5-Pro (fallback) — Pro users only
+ *
+ * Premium routing follows the same primary-precedence as resolveRuntimeConfig:
+ * DEEPSEEK_API_KEY wins, then GEMINI_API_KEY, then standard default.
  */
 export function resolveModelForTier(tier: ModelTier): { provider: ProviderId; model: string } {
-  if (tier === 'premium' && process.env.GEMINI_API_KEY) {
-    return {
-      provider: 'gemini',
-      model: process.env.GEMINI_PRO_MODEL || 'gemini-2.5-pro',
-    };
+  if (tier === 'premium') {
+    if (process.env.DEEPSEEK_API_KEY) {
+      return {
+        provider: 'deepseek',
+        model: process.env.DEEPSEEK_PRO_MODEL || 'deepseek-v4-pro',
+      };
+    }
+    if (process.env.GEMINI_API_KEY) {
+      return {
+        provider: 'gemini',
+        model: process.env.GEMINI_PRO_MODEL || 'gemini-2.5-pro',
+      };
+    }
   }
   // Standard tier — use default config
   const config = resolveRuntimeConfig();
@@ -487,10 +582,13 @@ export async function streamWithPreferredProvider(
 export async function getProviderHealthSummary(): Promise<Record<ProviderId, ProviderHealth>> {
   const config = resolveRuntimeConfig();
 
-  const [openai, gemini, groq, ollama, mock] = await Promise.all([
+  const [openai, gemini, groq, deepseek, ollama, mock] = await Promise.all([
     openaiProvider.healthCheck?.(process.env.OPENAI_MODEL || 'gpt-4o-mini') || Promise.resolve({ status: 'down', details: 'Unavailable' } as ProviderHealth),
     geminiProvider.healthCheck?.(process.env.GEMINI_MODEL || 'gemini-2.5-flash') || Promise.resolve({ status: 'down', details: 'Unavailable' } as ProviderHealth),
     groqProvider.healthCheck?.(process.env.GROQ_MODEL || 'llama-3.3-70b-versatile') || Promise.resolve({ status: 'down', details: 'Unavailable' } as ProviderHealth),
+    process.env.DEEPSEEK_API_KEY
+      ? (deepseekProvider.healthCheck?.(process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash') || Promise.resolve({ status: 'down', details: 'Unavailable' } as ProviderHealth))
+      : Promise.resolve({ status: 'down', details: 'DEEPSEEK_API_KEY not set' } as ProviderHealth),
     ollamaProvider.healthCheck?.(process.env.TEST_OLLAMA_MODEL || 'llama3.1:8b') || Promise.resolve({ status: 'down', details: 'Unavailable' } as ProviderHealth),
     mockProvider.healthCheck?.() || Promise.resolve({ status: 'ok', details: 'Deterministic mock available' } as ProviderHealth),
   ]);
@@ -499,6 +597,7 @@ export async function getProviderHealthSummary(): Promise<Record<ProviderId, Pro
     openai,
     gemini,
     groq,
+    deepseek,
     'ollama-test': ollama,
     mock,
   };

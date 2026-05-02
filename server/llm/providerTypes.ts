@@ -1,6 +1,6 @@
 export type RuntimeMode = 'prod' | 'test';
 
-export type ProviderId = 'openai' | 'gemini' | 'groq' | 'ollama-test' | 'mock';
+export type ProviderId = 'openai' | 'gemini' | 'groq' | 'ollama-test' | 'mock' | 'deepseek';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -64,6 +64,6 @@ export interface RuntimeConfig {
   mode: RuntimeMode;
   provider: ProviderId;
   model: string;
-  testProvider?: 'openai' | 'groq' | 'ollama' | 'mock';
+  testProvider?: 'openai' | 'groq' | 'ollama' | 'mock' | 'deepseek';
   ollamaBaseUrl?: string;
 }

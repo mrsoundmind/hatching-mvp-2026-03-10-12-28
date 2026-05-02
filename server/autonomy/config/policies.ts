@@ -53,6 +53,13 @@ export const FEATURE_FLAGS = {
 
 export const MAX_HANDOFF_HOPS = Number(process.env.MAX_HANDOFF_HOPS ?? 4);
 
+/** Per-day LLM cost cap (in cents) for solo-dev mode. Prevents runaway autonomy
+ *  loops from blowing up the bill while dogfooding the showcase pipeline.
+ *  Default: 200 cents (₹165) when LLM_MODE != 'test' AND DEV_COST_CAP=true.
+ *  Production deployments should leave DEV_COST_CAP unset. */
+export const DAILY_COST_CAP_CENTS_DEV = Number(process.env.DAILY_COST_CAP_CENTS_DEV ?? 200);
+export const DEV_COST_CAP_ENABLED = (process.env.DEV_COST_CAP ?? 'false').toLowerCase() === 'true';
+
 /** Tier-specific autonomy budgets */
 export function getTierBudgets(tier: 'free' | 'pro') {
   return {

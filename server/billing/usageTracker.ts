@@ -7,6 +7,9 @@ const COST_TABLE: Record<string, { prompt: number; completion: number }> = {
   'gemini-2.5-pro': { prompt: 125, completion: 500 },       // $1.25/$5.00 per 1M
   'gpt-4o-mini': { prompt: 15, completion: 60 },            // $0.15/$0.60 per 1M
   'llama-3.3-70b-versatile': { prompt: 0, completion: 0 },  // FREE on Groq
+  'deepseek-v4-flash': { prompt: 14, completion: 28 },      // $0.14/$0.28 per 1M
+  // PROMO PRICING — V4-Pro reverts to { prompt: 174, completion: 348 } after 2026-05-31. Re-evaluate then.
+  'deepseek-v4-pro': { prompt: 43, completion: 87 },        // $0.435/$0.87 per 1M (75% promo)
 };
 
 function estimateCostCents(model: string, usage: TokenUsage): number {
