@@ -256,35 +256,52 @@ function buildProviderOrder(config: RuntimeConfig, priorError?: any): ProviderId
   return ['mock'];
 }
 
+// Patterns identifying which provider a model name belongs to. If a request
+// arrives with an explicit model name that targets a DIFFERENT provider (e.g.
+// 'deepseek-v4-pro' arriving at the Gemini provider during fallback), we must
+// override it — otherwise the upstream API returns 404. This keeps the
+// fallback chain self-healing across providers.
+const MODEL_PREFIX: Record<ProviderId, RegExp> = {
+  deepseek: /^deepseek-/i,
+  gemini: /^gemini-/i,
+  openai: /^(gpt-|o\d|chatgpt)/i,
+  groq: /^(llama-|mixtral|gemma)/i,
+  'ollama-test': /^(llama|mistral|phi|qwen|gemma)/i,
+  mock: /^mock-/i,
+};
+
+function modelBelongsToProvider(model: string, provider: ProviderId): boolean {
+  return MODEL_PREFIX[provider].test(model);
+}
+
+function pickProviderDefault(provider: ProviderId, request: LLMRequest, config: RuntimeConfig): string {
+  if (provider === 'deepseek') {
+    return request.modelTier === 'premium'
+      ? (process.env.DEEPSEEK_PRO_MODEL || 'deepseek-v4-pro')
+      : (process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash');
+  }
+  if (provider === 'gemini') {
+    return request.modelTier === 'premium'
+      ? (process.env.GEMINI_PRO_MODEL || 'gemini-2.5-pro')
+      : (process.env.GEMINI_MODEL || 'gemini-2.5-flash');
+  }
+  if (provider === 'openai') return process.env.OPENAI_MODEL || 'gpt-4o-mini';
+  if (provider === 'groq') return process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  if (provider === 'ollama-test') return process.env.TEST_OLLAMA_MODEL || 'llama3.1:8b';
+  return config.model || 'mock-v1';
+}
+
 function applyModelDefaults(request: LLMRequest, config: RuntimeConfig, provider: ProviderId): LLMRequest {
-  if (request.model) {
+  // If model is explicitly set AND belongs to this provider, keep it.
+  // If it's set but belongs to a different provider (cross-provider fallback),
+  // override with this provider's appropriate default.
+  if (request.model && modelBelongsToProvider(request.model, provider)) {
     return request;
   }
 
-  if (provider === 'deepseek') {
-    const tieredDefault = request.modelTier === 'premium'
-      ? (process.env.DEEPSEEK_PRO_MODEL || 'deepseek-v4-pro')
-      : (process.env.DEEPSEEK_MODEL || config.model || 'deepseek-v4-flash');
-    return { ...request, model: tieredDefault };
-  }
-
-  if (provider === 'gemini') {
-    return { ...request, model: process.env.GEMINI_MODEL || config.model || 'gemini-2.5-flash' };
-  }
-
-  if (provider === 'openai') {
-    return { ...request, model: process.env.OPENAI_MODEL || config.model || 'gpt-4o-mini' };
-  }
-
-  if (provider === 'groq') {
-    return { ...request, model: process.env.GROQ_MODEL || config.model || 'llama-3.3-70b-versatile' };
-  }
-
-  if (provider === 'ollama-test') {
-    return { ...request, model: process.env.TEST_OLLAMA_MODEL || config.model || 'llama3.1:8b', seed: request.seed ?? 42 };
-  }
-
-  return { ...request, model: config.model || 'mock-v1', seed: request.seed ?? 42 };
+  const model = pickProviderDefault(provider, request, config);
+  const seed = (provider === 'ollama-test' || provider === 'mock') ? (request.seed ?? 42) : request.seed;
+  return { ...request, model, ...(seed !== undefined ? { seed } : {}) };
 }
 
 export async function generateChatWithRuntimeFallback(request: LLMRequest): Promise<LLMGenerationResult> {

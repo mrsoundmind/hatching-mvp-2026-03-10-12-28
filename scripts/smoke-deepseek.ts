@@ -22,6 +22,20 @@
  */
 
 import 'dotenv/config';
+
+// Force prod-mode chain behavior for the duration of the smoke test, regardless
+// of whatever LLM_MODE / TEST_LLM_PROVIDER the developer has set in their .env
+// for daily work. This makes the smoke test mode-agnostic.
+const SAVED_LLM_MODE = process.env.LLM_MODE;
+const SAVED_TEST_PROVIDER = process.env.TEST_LLM_PROVIDER;
+process.env.LLM_MODE = 'prod';
+delete process.env.TEST_LLM_PROVIDER;
+process.on('exit', () => {
+  if (SAVED_LLM_MODE === undefined) delete process.env.LLM_MODE;
+  else process.env.LLM_MODE = SAVED_LLM_MODE;
+  if (SAVED_TEST_PROVIDER !== undefined) process.env.TEST_LLM_PROVIDER = SAVED_TEST_PROVIDER;
+});
+
 import {
   generateChatWithRuntimeFallback,
   generateWithPreferredProvider,
