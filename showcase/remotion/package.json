@@ -1,0 +1,24 @@
+{
+  "name": "hatchin-showcase-remotion",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Programmatic walkthrough videos for Hatchin case studies. 12 cases, one MP4 each, all generated from a shared component library.",
+  "scripts": {
+    "dev": "remotion studio",
+    "render": "remotion render",
+    "render:case01": "remotion render src/index.tsx Case01 out/case-01-launch-saas.mp4",
+    "render:all": "remotion render src/index.tsx Case01 out/case-01-launch-saas.mp4 && echo 'Add more cases here as you build them.'",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.6.3"
+  }
+}

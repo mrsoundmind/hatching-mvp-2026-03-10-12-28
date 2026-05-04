@@ -38,7 +38,8 @@
     "test:pushback": "tsx scripts/test-agent-pushback.ts",
     "test:reasoning": "tsx scripts/test-reasoning-patterns.ts",
     "test:ws-race": "tsx scripts/test-ws-race.ts",
-    "test:ws-reconnect": "tsx scripts/test-ws-reconnect.ts"
+    "test:ws-reconnect": "tsx scripts/test-ws-reconnect.ts",
+    "smoke:deepseek": "tsx scripts/smoke-deepseek.ts"
   },
   "dependencies": {
     "@google/genai": "^1.50.1",
