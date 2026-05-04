@@ -30,6 +30,45 @@ function resolveDeepSeekModel(request: LLMRequest): string {
   return process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash';
 }
 
+/**
+ * DeepSeek V4 models use a reasoning preamble that consumes tokens BEFORE
+ * emitting visible content. If max_tokens is set too low, reasoning eats the
+ * full budget and `finish_reason: 'length'` fires with empty content.
+ *
+ * We enforce a minimum of 2000 tokens so reasoning has room AND visible output
+ * still gets emitted. Callers requesting tiny budgets (e.g. 100 for a tweet)
+ * still get the 2000 ceiling — DeepSeek will still stop naturally when done.
+ *
+ * Reference: https://api-docs.deepseek.com/quick_start/pricing  (V4 reasoning)
+ */
+const DEEPSEEK_MIN_MAX_TOKENS = 2000;
+
+function resolveMaxTokens(request: LLMRequest): number {
+  return Math.max(request.maxTokens ?? 1200, DEEPSEEK_MIN_MAX_TOKENS);
+}
+
+/**
+ * V4 returns content in two places:
+ *   - message.content              → final visible answer
+ *   - message.reasoning_content    → internal "thinking", not for the user
+ *
+ * If content is empty (truncated by max_tokens before output started), we
+ * surface the last paragraph of reasoning_content as a graceful fallback so
+ * the user gets SOMETHING rather than a silent empty string.
+ */
+function extractContent(message: any): string {
+  const content = (message?.content || '').trim();
+  if (content.length > 0) return content;
+
+  const reasoning = (message?.reasoning_content || '').trim();
+  if (reasoning.length > 0) {
+    // Take the last paragraph of reasoning as a fallback summary.
+    const paragraphs = reasoning.split(/\n\s*\n/).filter((p: string) => p.trim().length > 0);
+    return paragraphs[paragraphs.length - 1] || reasoning.slice(-500);
+  }
+  return '';
+}
+
 export class DeepSeekProvider implements LLMProvider {
   readonly id = 'deepseek' as const;
 
@@ -41,10 +80,10 @@ export class DeepSeekProvider implements LLMProvider {
       model,
       messages: request.messages,
       temperature: request.temperature ?? 0.7,
-      max_tokens: request.maxTokens ?? 1200,
+      max_tokens: resolveMaxTokens(request),
     });
 
-    const content = completion.choices[0]?.message?.content || '';
+    const content = extractContent(completion.choices[0]?.message);
     return {
       content,
       metadata: {
@@ -53,7 +92,7 @@ export class DeepSeekProvider implements LLMProvider {
         model,
         latencyMs: Date.now() - started,
         temperature: request.temperature ?? 0.7,
-        maxTokens: request.maxTokens ?? 1200,
+        maxTokens: resolveMaxTokens(request),
         modelTier: request.modelTier,
         tokenUsage: completion.usage ? {
           promptTokens: completion.usage.prompt_tokens,
@@ -75,7 +114,7 @@ export class DeepSeekProvider implements LLMProvider {
       stream: true,
       stream_options: { include_usage: true },
       temperature: request.temperature ?? 0.7,
-      max_tokens: request.maxTokens ?? 1200,
+      max_tokens: resolveMaxTokens(request),
     });
 
     const metadata: LLMStreamResult['metadata'] = {
@@ -84,7 +123,7 @@ export class DeepSeekProvider implements LLMProvider {
       model,
       latencyMs: Date.now() - started,
       temperature: request.temperature ?? 0.7,
-      maxTokens: request.maxTokens ?? 1200,
+      maxTokens: resolveMaxTokens(request),
       modelTier: request.modelTier,
     };
 

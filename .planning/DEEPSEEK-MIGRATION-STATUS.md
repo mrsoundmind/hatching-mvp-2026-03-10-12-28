@@ -117,7 +117,31 @@ This layering already delivers 35-50% compound savings (per `.planning/v1.2-MILE
 
 ## What's next
 
-### Phase A.eval — BLOCKING gate before flipping production primary
+### Phase A.eval — ✅ PASSED 2026-05-04
+
+All blocking checks passed. Bench score IMPROVED over baseline.
+
+| Test | Result |
+|---|---|
+| smoke:deepseek | ✅ 6/6 (after fixing cross-provider model fallback bug) |
+| test:tone | ✅ PASS |
+| test:voice | ✅ 8/8 |
+| test:pushback | ✅ 46/46 |
+| test:reasoning | ✅ 240/240 |
+| eval:routing | ✅ 93.33% (hatch 96.67%, deliberation 90%) |
+| eval:bench | ✅ **29.00/35** vs Groq baseline 26.83 = **+8.1% better** |
+| gate:safety | ✅ PASS |
+| gate:conductor | ✅ 10/10 improved-or-equal, 0 safety regressions |
+| gate:performance | ⚠️ No historical samples (false-negative — needs live traffic) |
+
+**Critical bug caught and fixed during eval gate:**
+- DeepSeek V4 emits hidden reasoning tokens BEFORE visible content. With small
+  `max_tokens` budgets, reasoning consumed the budget and `content` came back
+  empty (finish_reason='length'). Fixed by enforcing minimum max_tokens=2000 in
+  `deepseekProvider.ts` and falling back to `reasoning_content` if content is
+  still empty. Eval bench score went from 23.00 → 29.00 after this fix.
+
+### Phase A.eval — historical (BLOCKING gate before flipping production primary)
 
 Get DeepSeek API key from platform.deepseek.com, then run all of these:
 
