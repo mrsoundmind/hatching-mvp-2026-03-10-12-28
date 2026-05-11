@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Hatches That Self-Improve
-status: phase_35_shipped_to_production
-stopped_at: Phase 35 deployed to Fly production 2026-05-11 (version 19, image deployment-01KRB7R3TP4NBV9WREP1PQNGVN). Production smoke-checks GREEN (/, /legal/privacy, /legal/terms all HTTP 200). Tags created — pre-phase-35 (rollback anchor) + phase-35-deployed.
-last_updated: "2026-05-11T16:05:00.000Z"
-last_activity: 2026-05-11 — Phase 35 SHIPPED. 5/5 plans, 26 commits, Playwright 7/7 pass, fly deploy → version 19 live at https://hatchin-mvp.fly.dev. LEGAL-01 + LLMUX-01..03 + AUDIT-01 closed.
+status: phase_36_context_gathered
+stopped_at: Phase 36 CONTEXT.md written via auto-mode discuss. 30 decisions captured across 6 gray areas (rubric registry, LLM judge, auto-revert UX, feedback columns, prompt injection, verification). 4 plans proposed. Ready for /gsd-plan-phase 36.
+last_updated: "2026-05-11T17:00:00.000Z"
+last_activity: 2026-05-11 — Phase 36 discuss complete (auto-mode). CONTEXT.md + DISCUSSION-LOG.md written. Phase 35 still SHIPPED at Fly version 19; Phase 36 is the next advance.
 progress:
   total_phases: 12
   completed_phases: 1
@@ -27,10 +27,16 @@ See: .planning/PROJECT.md (updated 2026-04-28)
 
 ## Current Position
 
-Phase: 35 (Production Hotfix Pass) — SHIPPED 2026-05-11
-Plans complete: 5/5 (35-01..05)
-Status: Live in production at https://hatchin-mvp.fly.dev (Fly version 19, image deployment-01KRB7R3TP4NBV9WREP1PQNGVN). All routes verified HTTP 200. Branch + tags pushed to origin. Ready to advance to Phase 36.
-Last activity: 2026-05-11 — Phase 35 fly-deployed; 26 commits pushed to origin/wip/pre-reset-2026-04-28; tags pre-phase-35 (rollback anchor at 31c0dc5) + phase-35-deployed (at 906cba1) created and pushed.
+Phase: 36 (Frozen-Rubric Deliverable Iteration) — CONTEXT GATHERED 2026-05-11
+Plans complete: 0/4 proposed (36-01..04 to be confirmed by planner)
+Status: Discuss complete via auto-mode. CONTEXT.md captures 30 decisions; researcher/planner have open questions Q1–Q4 to resolve. Phase 35 remains shipped at Fly version 19. Next: `/gsd-plan-phase 36`.
+Last activity: 2026-05-11 — Phase 36 discuss (auto-mode). Created `.planning/phases/36-frozen-rubric-deliverable-iteration/36-CONTEXT.md` + `36-DISCUSSION-LOG.md`. No code changes yet.
+
+### Proposed plan breakdown (subject to planner refinement)
+- 36-01 — Foundation: rubric registry (`shared/deliverableRubrics.ts`, 15 rubrics, Zod-validated) + DB schema additions
+- 36-02 — Server scoring: `rubricScorer.ts` (Groq judge, temp=0), auto-revert in `iterateDeliverable()`, accept/dismiss/impression endpoints
+- 36-03 — Client UI: ArtifactPanel Accept/Dismiss buttons, RubricBreakdown toggle, AutoRevertBanner (visual checkpoint required)
+- 36-04 — Agent prompt feedback signal in `openaiService.ts` + Playwright runtime spec + 36-VERIFICATION.md
 
 ### Rollback recipe (if Phase 35 misbehaves in prod)
 
