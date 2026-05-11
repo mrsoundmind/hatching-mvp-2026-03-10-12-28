@@ -58,7 +58,7 @@ export function CenterPanel({
   onAddProjectClick,
 }: CenterPanelProps) {
   const { user } = useAuth();
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
 
   const toDisplayText = (value: unknown, fallback = ''): string => {
     if (typeof value === 'string') return value;
@@ -109,6 +109,14 @@ export function CenterPanel({
     summary?: string;
   } | null>(null);
   const deliberationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 35-03: Tracks the active provider-degradation toast id so we can dismiss it on
+  // PROVIDER_RECOVERED (primary signal, D-08) or streaming_completed (fallback, D-08).
+  // NOTE: do NOT gate the toast() call on this ref — useToast.ts has TOAST_LIMIT=1
+  // (line 8) and competing toasts in this file (lines 829, 839, 878, 988, 991, 1009)
+  // can evict our degradation toast, leaving this ref holding a stale id. Always-fire
+  // on PROVIDER_DEGRADED; let useToast dedupe via TOAST_LIMIT.
+  const degradationToastIdRef = useRef<string | null>(null);
 
   // Deliverable proposal state (v2.0)
   const [deliverableProposal, setDeliverableProposal] = useState<{
@@ -630,6 +638,16 @@ export function CenterPanel({
       streaming.setStreamingContent('');
       streaming.setStreamingAgent(null);
       streaming.setStreamingConversationId(null);
+
+      // 35-03 / D-08 fallback: dismiss the degradation banner on a clean stream completion.
+      // Idempotent — second dismiss of same id is a no-op. PROVIDER_RECOVERED is the
+      // primary signal; this is belt-and-suspenders if that signal is lost or delayed.
+      // We intentionally do NOT widen this to chat_message — only streaming_completed
+      // is the unambiguous "this stream succeeded end-to-end" signal.
+      if (degradationToastIdRef.current) {
+        dismiss(degradationToastIdRef.current);
+        degradationToastIdRef.current = null;
+      }
     }
     else if (message.type === 'streaming_cancelled') {
       streaming.clearPendingResponseTimeout();
@@ -1043,6 +1061,35 @@ export function CenterPanel({
         status: 'resolved',
         summary: (message as any).synthesis || 'Coordination complete',
       } : null);
+    }
+    else if (message.type === 'provider_degraded') {
+      // 35-03 / LLMUX-02. CRITICAL: do NOT gate this on degradationToastIdRef.current.
+      // use-toast.ts has TOAST_LIMIT=1 (line 8) and the reducer slices to that limit
+      // (line 79). Other toasts in this file (lines 829, 839, 878, 988, 991, 1009) WILL
+      // evict our toast, leaving the ref holding a stale id. If we gated here on the
+      // ref, the banner would silently fail to re-show after eviction (LLMUX-02 silently
+      // regresses). useToast naturally dedupes to one visible toast at a time; just
+      // always-fire and overwrite the ref with the latest id.
+      // Server may override the default copy via the `reason` field; schema-validated
+      // at the server boundary (35-01 strict() schemas), 1-200 chars.
+      const reason = (message as any).reason || 'Agents are slow right now, hang tight';
+      const t = toast({
+        title: 'Agents are slow',
+        description: reason,
+        duration: Infinity,
+        variant: 'default',
+      });
+      degradationToastIdRef.current = t.id;
+    }
+    else if (message.type === 'provider_recovered') {
+      // 35-03 / LLMUX-03. Dismiss by stored id if non-null. Tolerant of the id having
+      // been evicted — dismiss(id) on a no-longer-tracked id is a safe no-op.
+      // UNCONDITIONALLY clear the ref so subsequent degradation cycles start clean,
+      // even if the dismiss was a no-op due to prior eviction.
+      if (degradationToastIdRef.current) {
+        dismiss(degradationToastIdRef.current);
+      }
+      degradationToastIdRef.current = null;
     }
   };
 
