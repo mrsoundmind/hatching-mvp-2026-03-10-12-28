@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Hatches That Self-Improve
-status: phase_context_gathered
-stopped_at: Phase 35 context gathered — 4 gray areas resolved (legal copy / banner UI / trigger threshold / audit + deploy). Ready for /gsd-plan-phase 35.
-last_updated: "2026-04-28T14:00:00.000Z"
-last_activity: 2026-04-28 — Phase 35 CONTEXT.md + DISCUSSION-LOG.md written; 18 implementation decisions captured (D-01..D-18)
+status: phase_35_shipped_pending_fly_deploy
+stopped_at: Phase 35 code-complete and runtime-verified (Playwright 7/7 pass, typecheck + build green). User-action pending — run `fly deploy` to push to production.
+last_updated: "2026-05-11T15:30:00.000Z"
+last_activity: 2026-05-11 — Phase 35 executed across 3 waves; 24 commits; LEGAL-01 + LLMUX-01..03 + AUDIT-01 closed; modal contrast fix applied live during 35-04 visual checkpoint; 35-03 visual gate satisfied by 35-05 spec cases 3+4
 progress:
   total_phases: 12
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 5
+  completed_plans: 5
+  percent: 8
 ---
 
 # State: Hatchin
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-28)
 
 **Core value:** No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
-**Current focus:** v2.1 milestone setup — defining requirements + roadmap from ROADMAP-V3 v2.1 scope (corrected Phase 0 = LEGAL-01 page content + graceful LLM degradation runtime audit).
+**Current focus:** v2.1 milestone in progress — Phase 35 (Production Hotfix Pass) code-complete + runtime-verified, awaiting user `fly deploy`. Next: Phase 36 (Frozen-Rubric Deliverable Iteration).
 
 ---
 
 ## Current Position
 
-Phase: Not started (defining v2.1 requirements)
-Plan: —
-Status: Defining v2.1 requirements (Phase 1 = Production Hotfix Pass with audit corrections; Phases 2-12 = v2.1 pillars from ROADMAP-V3)
-Last activity: 2026-04-28 — v3.0 partial close-out (Phases 22 + 28 shipped, rest re-scoped); milestones/v3.0-ROADMAP.md + v3.0-REQUIREMENTS.md archived; ROADMAP.md collapsed v3.0; PROJECT.md + MILESTONES.md updated
+Phase: 35 (Production Hotfix Pass) — CODE-COMPLETE + RUNTIME-VERIFIED · awaiting `fly deploy`
+Plans complete: 5/5 (35-01, 35-02, 35-03, 35-04, 35-05)
+Status: Deploy approved by user 2026-05-11. Next user-action: run `fly deploy` to push to production. After that, advance to Phase 36.
+Last activity: 2026-05-11 — Phase 35 execution complete: 24 commits, Playwright 7/7 pass (2x deterministic, 1.5min runtime, 386ms recovery latency vs 5s budget), typecheck + build green, 5/5 requirements closed (LEGAL-01 + LLMUX-01..03 + AUDIT-01), modal contrast fix applied live during 35-04 visual checkpoint review
 
 ---
 
