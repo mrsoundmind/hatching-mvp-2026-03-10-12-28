@@ -13,6 +13,8 @@ import { useEffect } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import AutonomyDashboard from "@/devtools/autonomyDashboard";
 import AccountPage from "@/pages/AccountPage";
+import PrivacyPage from "@/pages/legal/PrivacyPage";
+import TermsPage from "@/pages/legal/TermsPage";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AppErrorFallback } from "@/components/ErrorFallbacks";
 
@@ -109,6 +111,8 @@ function Router() {
           </AuthGuard>
         </Route>
       )}
+      <Route path="/legal/privacy" component={PrivacyPage} />
+      <Route path="/legal/terms" component={TermsPage} />
       <Route component={NotFound} />
     </Switch>
   );
