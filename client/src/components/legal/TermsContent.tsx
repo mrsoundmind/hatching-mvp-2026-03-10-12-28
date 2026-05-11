@@ -1,0 +1,214 @@
+/**
+ * TermsContent — pure JSX content for the Terms of Service. Renders ONLY the
+ * body sections (h2 + p + ul) with no outer chrome. Imported by both:
+ *   - LegalModal (type="terms")  — modal default UX
+ *   - TermsPage                  — /legal/terms deep-link fallback
+ *
+ * Plain JSX, no markdown parser. Per-element Tailwind classes so the content
+ * renders correctly in both modal (max-h scroll) and page (max-w-3xl) contexts.
+ *
+ * Tone: clear, plain-English legal copy — readable, not corporate-stiff.
+ * Per CLAUDE.md § 7, legal copy is the explicit exception to the chat-tone
+ * rules: lists and headings ARE allowed here.
+ */
+export default function TermsContent() {
+  return (
+    <div className="text-slate-800 text-base leading-relaxed">
+      <p className="mt-2 text-slate-600">
+        These terms govern your use of Hatchin. By signing in or otherwise
+        using the service, you agree to them. If you do not agree, please do
+        not use Hatchin.
+      </p>
+
+      <h2 className="mt-8 text-2xl font-semibold text-slate-900">
+        1. Acceptance of Terms
+      </h2>
+      <p className="mt-3">
+        By creating an account, signing in with Google, or otherwise accessing
+        Hatchin, you agree to be bound by these Terms of Service and by our{" "}
+        <a
+          href="/legal/privacy"
+          className="text-indigo-600 hover:text-indigo-800 underline"
+        >
+          Privacy Policy
+        </a>
+        . We may revise these terms over time — material changes will be
+        announced in-app, and continued use after the change constitutes
+        acceptance.
+      </p>
+
+      <h2 className="mt-8 text-2xl font-semibold text-slate-900">
+        2. Account Responsibilities
+      </h2>
+      <p className="mt-3">
+        You are responsible for the activity that happens on your account.
+        Keep your Google credentials secure. If you believe your account has
+        been accessed without your authorization, contact us immediately at{" "}
+        <a
+          href="mailto:hello@hatchin.ai"
+          className="text-indigo-600 hover:text-indigo-800 underline"
+        >
+          hello@hatchin.ai
+        </a>
+        . You must be at least 13 years old (16 in the EU) to use Hatchin.
+      </p>
+
+      <h2 className="mt-8 text-2xl font-semibold text-slate-900">
+        3. Acceptable Use
+      </h2>
+      <p className="mt-3">
+        When using Hatchin, you agree not to:
+      </p>
+      <ul className="mt-3 list-disc list-inside space-y-1">
+        <li>
+          Use the service to harass, threaten, defame, or otherwise harm other
+          people
+        </li>
+        <li>
+          Attempt to scrape, reverse-engineer, decompile, or extract our
+          source code or model weights
+        </li>
+        <li>
+          Use Hatchin's outputs to train a competing AI product or service
+        </li>
+        <li>
+          Submit content that violates intellectual-property rights, exports
+          regulated material, or breaks any applicable law
+        </li>
+        <li>
+          Attempt to gain unauthorized access to other users' accounts or to
+          Hatchin's infrastructure
+        </li>
+        <li>
+          Use automated scripts to send chat messages at a rate that bypasses
+          our published rate limits
+        </li>
+        <li>
+          Submit prompts designed to extract personal information about other
+          users from the system
+        </li>
+      </ul>
+
+      <h2 className="mt-8 text-2xl font-semibold text-slate-900">
+        4. Subscription and Billing
+      </h2>
+      <p className="mt-3">
+        Hatchin offers a free tier (Hatcher) and a paid tier (Pro, $19/month
+        or $190/year). Pro subscriptions are billed in advance through Stripe
+        and renew automatically until cancelled. You can cancel at any time
+        through the Stripe customer portal linked from your account page —
+        cancellation takes effect at the end of the current billing period.
+        We do not pro-rate refunds for partial periods. If a payment fails,
+        we will retry per Stripe's standard policy; if it continues to fail,
+        your account will be downgraded to the free tier with your data
+        intact.
+      </p>
+
+      <h2 className="mt-8 text-2xl font-semibold text-slate-900">
+        5. Intellectual Property
+      </h2>
+      <p className="mt-3">
+        You retain all rights to the content you submit to Hatchin (prompts,
+        documents, project material). You grant us a non-exclusive license to
+        store, process, and display that content as necessary to operate the
+        service for you — including transmitting your prompts to our LLM
+        providers (see the Privacy Policy).
+      </p>
+      <p className="mt-3">
+        Hatchin retains all rights to its software, branding, designs, and
+        underlying models. You may not use the Hatchin name or logo without
+        written permission. Output generated by AI teammates in response to
+        your prompts is yours to use, subject to the AI-Generated Output
+        section below.
+      </p>
+
+      <h2 className="mt-8 text-2xl font-semibold text-slate-900">
+        6. AI-Generated Output
+      </h2>
+      <p className="mt-3">
+        Hatchin generates content using AI models from third-party providers.
+        AI-Generated outputs are produced statistically — they may be
+        inaccurate, incomplete, biased, or fabricated, even when they appear
+        confident. You should verify any output before relying on it for
+        decisions that matter (legal, medical, financial, or other consequential
+        actions). Hatchin makes no warranty that AI outputs are correct,
+        complete, or fit for any particular purpose.
+      </p>
+      <p className="mt-3">
+        AI outputs may resemble content the underlying models were trained on.
+        You are responsible for ensuring that your use of AI-generated content
+        does not infringe third-party intellectual-property rights.
+      </p>
+
+      <h2 className="mt-8 text-2xl font-semibold text-slate-900">
+        7. Termination
+      </h2>
+      <p className="mt-3">
+        You may stop using Hatchin and request account deletion at any time
+        by emailing{" "}
+        <a
+          href="mailto:hello@hatchin.ai"
+          className="text-indigo-600 hover:text-indigo-800 underline"
+        >
+          hello@hatchin.ai
+        </a>
+        . We may suspend or terminate accounts that violate these terms,
+        materially abuse the service, or pose a security risk. Where
+        practicable, we will provide notice before termination so you can
+        export your data; for serious violations we may terminate immediately.
+      </p>
+
+      <h2 className="mt-8 text-2xl font-semibold text-slate-900">
+        8. Disclaimer of Warranties
+      </h2>
+      <p className="mt-3">
+        Hatchin is provided "as is" and "as available," without warranties of
+        any kind, express or implied. We disclaim all implied warranties
+        including merchantability, fitness for a particular purpose, and
+        non-infringement. We do not warrant that the service will be
+        uninterrupted, error-free, or secure against every form of attack.
+      </p>
+
+      <h2 className="mt-8 text-2xl font-semibold text-slate-900">
+        9. Limitation of Liability
+      </h2>
+      <p className="mt-3">
+        To the maximum extent permitted by law, Hatchin's total aggregate
+        liability for any claim arising out of or relating to these terms or
+        the service is capped at the greater of (a) the amount you paid to
+        Hatchin in the 12 months preceding the event giving rise to the claim,
+        or (b) USD $100. We are not liable for indirect, incidental,
+        consequential, special, or punitive damages — including lost profits,
+        lost data, or loss of business — even if advised of the possibility.
+      </p>
+
+      <h2 className="mt-8 text-2xl font-semibold text-slate-900">
+        10. Governing Law
+      </h2>
+      {/* TODO: lawyer-review confirm governing law jurisdiction */}
+      <p className="mt-3">
+        These terms are governed by the laws of the State of California, USA,
+        without regard to its conflict-of-laws provisions. Any dispute
+        arising out of or relating to these terms or the service will be
+        resolved in the state or federal courts located in San Francisco
+        County, California, and you and Hatchin each consent to the personal
+        jurisdiction of those courts.
+      </p>
+
+      <h2 className="mt-8 text-2xl font-semibold text-slate-900">
+        11. Contact
+      </h2>
+      <p className="mt-3">
+        Questions about these terms, account deletion, or anything else —
+        email{" "}
+        <a
+          href="mailto:hello@hatchin.ai"
+          className="text-indigo-600 hover:text-indigo-800 underline"
+        >
+          hello@hatchin.ai
+        </a>
+        .
+      </p>
+    </div>
+  );
+}
