@@ -40,14 +40,24 @@ export default function LegalModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription className="text-amber-600">
+      {/*
+        Force light-mode rendering on the modal regardless of host page theme.
+        Without this, the modal inherits the dark landing/login background and
+        body text washes out to barely-visible gray. Light card against dark
+        overlay reads sharply on every host.
+
+        Inner sections (Header, scrollable body) and the close button get
+        explicit slate text classes so they don't fall back to theme-foreground
+        tokens that won't exist on a forced bg-white surface.
+      */}
+      <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col p-0 bg-white text-slate-900 border-slate-200 [&>button]:text-slate-500 [&>button]:hover:text-slate-700">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-200">
+          <DialogTitle className="text-slate-900">{title}</DialogTitle>
+          <DialogDescription className="text-amber-700">
             DRAFT — for legal review · Last updated 2026-05-04
           </DialogDescription>
         </DialogHeader>
-        <div className="overflow-y-auto px-6 py-4">
+        <div className="overflow-y-auto px-6 py-4 text-slate-700">
           {type === "privacy" ? <PrivacyContent /> : <TermsContent />}
         </div>
       </DialogContent>
