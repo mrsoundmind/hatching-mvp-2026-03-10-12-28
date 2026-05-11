@@ -65,6 +65,20 @@ export default defineConfig({
       ],
       timeout: 120000, // 2 min per test for AI-heavy tests
     },
+    // Phase 35 production hotfix smoke — LEGAL-01 + LLMUX-02/03 + AUDIT-01.
+    // Needs authenticated session for cases 3-4 (ensureAppLoaded → chat page).
+    // Cases 3-4 exercise the WS round-trip path so we give it the same 2-min
+    // budget as chromium-ai. Cases 1a-2c are fast page loads.
+    {
+      name: 'phase-35',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/e2e/.auth/session.json',
+      },
+      dependencies: ['setup'],
+      testMatch: /phase-35-production-hotfix\.spec\.ts/,
+      timeout: 120000,
+    },
     // Mobile viewport — authenticated
     {
       name: 'mobile',
