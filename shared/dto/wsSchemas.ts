@@ -294,6 +294,18 @@ const requiredServerSchemas = z.union([
     agentRole: z.string(),
     confidence: z.number(),
   }),
+  // Phase 35: Provider health / graceful degradation banner events.
+  // SECURITY: Both schemas use .strict() to reject unknown keys at the validation
+  // boundary. Default Zod 'strip' mode would silently drop extra fields, which would
+  // let a future server bug leak provider identity (e.g. {provider:'openai'}) without
+  // detection. T-35-01 mitigation depends on .strict() being present here.
+  z.object({
+    type: z.literal('provider_degraded'),
+    reason: z.string().min(1).max(200),
+  }).strict(),
+  z.object({
+    type: z.literal('provider_recovered'),
+  }).strict(),
 ]);
 
 export const wsServerMessageSchema = requiredServerSchemas;
