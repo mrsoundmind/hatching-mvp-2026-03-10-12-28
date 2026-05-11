@@ -26,6 +26,7 @@ import {
   generateOAuthState,
   isGoogleAuthConfigured,
 } from "./auth/googleOAuth.js";
+import { registerHealthBroadcaster } from "./llm/providerResolver.js";
 
 type SessionParser = (req: any, res: any, next: (err?: unknown) => void) => void;
 
@@ -36,6 +37,13 @@ let _globalBroadcast: ((conversationId: string, data: unknown) => void) | null =
 export function getGlobalBroadcast(): ((conversationId: string, data: unknown) => void) | null {
   return _globalBroadcast;
 }
+
+// Phase 35-02: Module-level reference to the all-sockets broadcaster (set once
+// chat.ts fires its onBroadcastReady callback). Used by providerResolver.ts via
+// registerHealthBroadcaster() and by providerHealthState.ts via the recovery
+// hook registered below — both routed to broadcastToAllSockets so PROVIDER_DEGRADED
+// and PROVIDER_RECOVERED reach every connected client.
+let providerHealthBroadcast: ((data: unknown) => void) | null = null;
 
 export async function registerRoutes(app: Express, sessionParser?: SessionParser): Promise<Server> {
   // Initialize pre-trained AI colleagues on server start
@@ -491,6 +499,15 @@ export async function registerRoutes(app: Express, sessionParser?: SessionParser
       broadcastToConversation = fns.broadcastToConversation;
       broadcastToProject = fns.broadcastToProject;
       _globalBroadcast = (conversationId, data) => fns.broadcastToConversation(conversationId, data);
+
+      // Phase 35-02: Wire the all-sockets broadcaster + provider health hooks.
+      // - registerHealthBroadcaster routes PROVIDER_DEGRADED / PROVIDER_RECOVERED
+      //   emits from providerResolver.ts (Task 2) to every connected WS client.
+      // - registerRecoveryHook (added in Task 3) wires the same broadcaster so
+      //   35-05's DEV-only /api/dev/force-recovery → forceRecoveryBroadcast()
+      //   deterministically fires PROVIDER_RECOVERED without a real LLM call.
+      providerHealthBroadcast = fns.broadcastToAllSockets;
+      registerHealthBroadcaster((data) => providerHealthBroadcast?.(data));
     },
   });
 

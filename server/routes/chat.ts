@@ -137,6 +137,7 @@ export interface RegisterChatDeps {
   onBroadcastReady: (fns: {
     broadcastToConversation: (conversationId: string, data: unknown) => void;
     broadcastToProject: (projectId: string, data: unknown) => void;
+    broadcastToAllSockets: (data: unknown) => void;
   }) => void;
 }
 
@@ -1162,9 +1163,27 @@ export function registerChatRoutes(
     }
   }
 
+  // Phase 35-02: Broadcast to every OPEN socket across all conversations.
+  // Used for server-wide events (e.g. PROVIDER_DEGRADED / PROVIDER_RECOVERED)
+  // where the signal is global rather than per-project or per-conversation.
+  // Sockets that appear in multiple conversations are deduped via a Set.
+  function broadcastToAllSockets(data: unknown) {
+    const payload = JSON.stringify(data);
+    const seen = new Set<WebSocket>();
+    activeConnections.forEach((connections) => {
+      connections.forEach((connection) => {
+        if (seen.has(connection)) return;
+        seen.add(connection);
+        if (connection.readyState === WebSocket.OPEN) {
+          connection.send(payload);
+        }
+      });
+    });
+  }
+
   // Expose broadcast functions to routes.ts via callback so it can set _globalBroadcast
   // and pass them to project/task route modules
-  onBroadcastReady({ broadcastToConversation, broadcastToProject });
+  onBroadcastReady({ broadcastToConversation, broadcastToProject, broadcastToAllSockets });
 
   // E2.1: Multi-agent response handler for team dynamics
   async function handleMultiAgentResponse(

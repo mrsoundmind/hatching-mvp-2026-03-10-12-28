@@ -15,6 +15,11 @@ import { MockProvider } from './providers/mockProvider.js';
 import { GeminiProvider } from './providers/geminiProvider.js';
 import { GroqProvider } from './providers/groqProvider.js';
 import { DeepSeekProvider } from './providers/deepseekProvider.js';
+import {
+  recordFailure,
+  recordSuccess,
+  getDegradedState,
+} from './providerHealthState.js';
 
 const openaiProvider = new OpenAIProvider();
 const geminiProvider = new GeminiProvider();
@@ -31,6 +36,43 @@ export const providerRegistry: Record<ProviderId, LLMProvider> = {
   'ollama-test': ollamaProvider,
   mock: mockProvider,
 };
+
+// ─── Phase 35-02: Provider health broadcaster registry ────────────────────────
+// server/routes.ts wires this at startup via onBroadcastReady → registerHealth-
+// Broadcaster(fn). The callback routes PROVIDER_DEGRADED / PROVIDER_RECOVERED
+// payloads to broadcastToAllSockets in chat.ts. Module-scope state because there
+// is exactly one provider chain per server process (mirrors providerHealthState).
+//
+// Tests can register a spy via this same export to assert emit semantics without
+// hitting the WS layer (see scripts/test-provider-degraded-emit.ts).
+let healthBroadcaster: ((data: unknown) => void) | null = null;
+
+export function registerHealthBroadcaster(fn: (data: unknown) => void): void {
+  healthBroadcaster = fn;
+}
+
+// Internal emit helpers — wrap broadcaster invocation in try/catch so a broken
+// WS layer can never propagate up and kill an in-flight LLM call. The shape of
+// each payload is fixed by the .strict() Zod schemas added in 35-01 — adding
+// any other fields would fail client-side validation.
+function emitDegraded(): void {
+  try {
+    healthBroadcaster?.({
+      type: 'provider_degraded',
+      reason: getDegradedState().reason,
+    });
+  } catch {
+    // Best-effort broadcast — never break the LLM call path.
+  }
+}
+
+function emitRecovered(): void {
+  try {
+    healthBroadcaster?.({ type: 'provider_recovered' });
+  } catch {
+    // Best-effort broadcast — never break the LLM call path.
+  }
+}
 
 // LLM_PRIMARY env var: explicit override of which provider sits at head of prod chain.
 // Defaults: 'deepseek' if DEEPSEEK_API_KEY set, else 'gemini' if GEMINI_API_KEY set.
