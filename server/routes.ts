@@ -27,7 +27,7 @@ import {
   isGoogleAuthConfigured,
 } from "./auth/googleOAuth.js";
 import { registerHealthBroadcaster } from "./llm/providerResolver.js";
-import { registerRecoveryHook } from "./llm/providerHealthState.js";
+import { registerRecoveryHook, registerDegradedHook } from "./llm/providerHealthState.js";
 
 type SessionParser = (req: any, res: any, next: (err?: unknown) => void) => void;
 
@@ -513,6 +513,15 @@ export async function registerRoutes(app: Express, sessionParser?: SessionParser
       providerHealthBroadcast = fns.broadcastToAllSockets;
       registerHealthBroadcaster((data) => providerHealthBroadcast?.(data));
       registerRecoveryHook(() => providerHealthBroadcast?.({ type: 'provider_recovered' }));
+      // 35-05: symmetric degraded hook so DEV-only /api/dev/force-outage can fire
+      // PROVIDER_DEGRADED deterministically without a real LLM round-trip. Silent
+      // no-op in production (T-35-21 mitigation in providerHealthState.registerDegradedHook).
+      registerDegradedHook(() =>
+        providerHealthBroadcast?.({
+          type: 'provider_degraded',
+          reason: 'Agents are slow right now, hang tight',
+        }),
+      );
     },
   });
 

@@ -33,6 +33,7 @@ let isDegraded = false;
 let degradedReason: string = DEFAULT_REASON;
 let outageModeActive = false;
 let recoveryHook: (() => void) | null = null;
+let degradedHook: (() => void) | null = null;
 
 /**
  * Prune timestamps older than the sliding window.
@@ -133,6 +134,47 @@ export function registerRecoveryHook(fn: () => void): void {
 }
 
 /**
+ * Register a callback to fire when forceDegradedBroadcast() is invoked. Symmetric
+ * to registerRecoveryHook. Wired by 35-02 in server/routes.ts so that the DEV-only
+ * /api/dev/force-outage endpoint can deterministically fire PROVIDER_DEGRADED
+ * WITHOUT requiring a real LLM round-trip (the normal emit path in providerResolver.ts
+ * is gated on `if (recordFailure()) emitDegraded()` which only fires from an
+ * in-flight LLM call — useless from a Playwright spec).
+ *
+ * Silent no-op in production (T-35-21 mitigation).
+ */
+export function registerDegradedHook(fn: () => void): void {
+  if (process.env.NODE_ENV === 'production') {
+    return; // silent no-op — see T-35-21
+  }
+  degradedHook = fn;
+}
+
+/**
+ * DEV-only: deterministic degraded broadcast for 35-05's Playwright spec. Sets
+ * the in-memory degraded flag (so getDegradedState() reflects reality for late-join
+ * replay), then invokes the registered degraded hook so the broadcaster fires
+ * PROVIDER_DEGRADED to every connected socket WITHOUT requiring a real LLM call.
+ *
+ * Symmetric to forceRecoveryBroadcast(). Throws FATAL in production (T-35-02).
+ */
+export function forceDegradedBroadcast(): void {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'FATAL: forceDegradedBroadcast() called in production. This is a DEV-only ' +
+        'mechanism and must not be reachable from a production code path.',
+    );
+  }
+  isDegraded = true;
+  degradedReason = DEFAULT_REASON;
+  try {
+    degradedHook?.();
+  } catch {
+    // Never let a dev-only hook crash the response path.
+  }
+}
+
+/**
  * DEV-only: deterministic recovery broadcast for 35-05's Playwright spec. Calls
  * recordSuccess() (which clears outage mode is NOT done here — caller should
  * forceOutageMode(false) first if injection was active), then invokes the
@@ -165,8 +207,15 @@ export function forceRecoveryBroadcast(): void {
 
 /**
  * Test-only: reset all module state between cases.
- * Clears the counter, degraded flag, outage mode, AND the recovery hook so test
- * isolation is complete. Throws in production for defence-in-depth.
+ * Clears the counter, degraded flag, outage mode, AND the recovery / degraded
+ * hooks so test isolation is complete. Throws in production for defence-in-depth.
+ *
+ * IMPORTANT: This helper is intended for in-process UNIT TESTS that re-register
+ * hooks themselves each case (see scripts/test-provider-health-state.ts). It is
+ * NOT safe to call from a live server endpoint, because it would destroy the
+ * hooks wired ONCE at server startup (server/routes.ts onBroadcastReady). For
+ * the live server's DEV-only force-outage / reset endpoints (35-05), use
+ * __resetCountersOnly() which preserves the registered hooks.
  */
 export function __resetForTests(): void {
   if (process.env.NODE_ENV === 'production') {
@@ -180,6 +229,32 @@ export function __resetForTests(): void {
   degradedReason = DEFAULT_REASON;
   outageModeActive = false;
   recoveryHook = null;
+  degradedHook = null;
+}
+
+/**
+ * Live-server reset for 35-05's DEV-only endpoints. Clears counter / degraded
+ * flag / outage mode but PRESERVES the recovery + degraded hooks (which are
+ * wired ONCE at startup by server/routes.ts and must persist across test cases).
+ *
+ * Throws in production for defence-in-depth (T-35-02 / T-35-17). The DEV-only
+ * /api/dev/force-outage and /api/dev/reset-provider-state endpoints call this
+ * instead of __resetForTests() so subsequent /api/dev/force-recovery still
+ * finds an intact recoveryHook to broadcast through.
+ */
+export function __resetCountersOnly(): void {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'FATAL: __resetCountersOnly() called in production. DEV-only helper must not run ' +
+        'in a production code path.',
+    );
+  }
+  failureTimestamps = [];
+  isDegraded = false;
+  degradedReason = DEFAULT_REASON;
+  outageModeActive = false;
+  // Intentionally do NOT clear recoveryHook / degradedHook — those are wired
+  // once at startup by routes.ts and must survive test-cycle resets.
 }
 
 /**
