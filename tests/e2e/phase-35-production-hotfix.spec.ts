@@ -84,15 +84,18 @@ test.describe.serial('Phase 35 — Production Hotfix Pass', () => {
   });
 
   test('1b — Privacy modal opens from landing footer click (no navigation)', async ({ page }) => {
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    // Use /landing explicitly — / redirects authenticated sessions to Home (which
+    // has no footer legal links). The phase-35 Playwright project uses
+    // storageState (authenticated cookie), so '/' would render the app.
+    await page.goto('/landing', { waitUntil: 'domcontentloaded' });
 
     // Capture URL before click — should not change since modal preventDefaults nav.
     const urlBefore = page.url();
 
     // Click the landing footer Privacy anchor. Use .first() because TermsContent
     // (rendered if Terms modal ever opens) also includes a /legal/privacy link.
-    // On a fresh '/' page-load no modal is open yet, so the only such link is
-    // the footer one — .first() is defense in depth.
+    // On a fresh '/landing' page-load no modal is open yet, so the only such link
+    // is the footer one — .first() is defense in depth.
     await page.locator('a[href="/legal/privacy"]').first().click();
 
     // Dialog should open with the Privacy title.
@@ -122,7 +125,9 @@ test.describe.serial('Phase 35 — Production Hotfix Pass', () => {
   });
 
   test('2b — Terms modal opens from landing footer click (no navigation)', async ({ page }) => {
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    // /landing required so the LandingPage renders for authenticated sessions
+    // (see 1b for the same reasoning).
+    await page.goto('/landing', { waitUntil: 'domcontentloaded' });
     const urlBefore = page.url();
 
     await page.locator('a[href="/legal/terms"]').first().click();
@@ -137,27 +142,44 @@ test.describe.serial('Phase 35 — Production Hotfix Pass', () => {
     await expect(dialog).not.toBeVisible({ timeout: 2_000 });
   });
 
-  test('2c — Login footer Privacy + Terms also open modals (no navigation)', async ({ page }) => {
-    await page.goto('/login', { waitUntil: 'domcontentloaded' });
+  test('2c — Login footer Privacy + Terms also open modals (no navigation)', async ({
+    browser,
+  }) => {
+    // /login redirects authenticated sessions to Home (login.tsx line 45-48).
+    // Use a FRESH unauthenticated browser context so the login page actually
+    // renders. We can't share the test.describe's authenticated storageState
+    // here — Playwright resolves storageState at context creation.
+    const unauthContext = await browser.newContext({ storageState: undefined });
+    const page = await unauthContext.newPage();
+    try {
+      await page.goto('/login', { waitUntil: 'domcontentloaded' });
 
-    // Privacy first.
-    const urlBefore = page.url();
-    await page.locator('a[href="/legal/privacy"]').first().click();
-    const privacyDialog = page.getByRole('dialog');
-    await expect(privacyDialog).toBeVisible({ timeout: 3_000 });
-    await expect(privacyDialog.getByRole('heading', { name: /Privacy Policy/i })).toBeVisible();
-    expect(page.url()).toBe(urlBefore);
-    await page.keyboard.press('Escape');
-    await expect(privacyDialog).not.toBeVisible({ timeout: 2_000 });
+      // Privacy first.
+      const urlBefore = page.url();
+      await page.locator('a[href="/legal/privacy"]').first().click();
+      const privacyDialog = page.getByRole('dialog');
+      await expect(privacyDialog).toBeVisible({ timeout: 3_000 });
+      await expect(privacyDialog.getByRole('heading', { name: /Privacy Policy/i })).toBeVisible();
+      expect(page.url()).toBe(urlBefore);
+      await page.keyboard.press('Escape');
+      // Wait for Radix close animation (data-state="closed" → unmount) to complete.
+      // Bumped to 4s to absorb animation + focus restoration before Terms click.
+      await expect(privacyDialog).toHaveCount(0, { timeout: 4_000 });
 
-    // Then Terms — same flow.
-    await page.locator('a[href="/legal/terms"]').first().click();
-    const termsDialog = page.getByRole('dialog');
-    await expect(termsDialog).toBeVisible({ timeout: 3_000 });
-    await expect(termsDialog.getByRole('heading', { name: /Terms of Service/i })).toBeVisible();
-    expect(page.url()).toBe(urlBefore);
-    await page.keyboard.press('Escape');
-    await expect(termsDialog).not.toBeVisible({ timeout: 2_000 });
+      // Then Terms — same flow. Focus must be back on the trigger anchor for
+      // Escape to route to the next dialog cleanly.
+      await page.locator('a[href="/legal/terms"]').first().click();
+      const termsDialog = page.getByRole('dialog');
+      await expect(termsDialog).toBeVisible({ timeout: 3_000 });
+      await expect(termsDialog.getByRole('heading', { name: /Terms of Service/i })).toBeVisible();
+      expect(page.url()).toBe(urlBefore);
+      // Click the close (X) button rather than Escape — more reliable in CI.
+      // shadcn Dialog renders the close as the first button inside the dialog.
+      await termsDialog.locator('button').first().click();
+      await expect(termsDialog).toHaveCount(0, { timeout: 4_000 });
+    } finally {
+      await unauthContext.close();
+    }
   });
 
   // -------------------------------------------------------------------------
