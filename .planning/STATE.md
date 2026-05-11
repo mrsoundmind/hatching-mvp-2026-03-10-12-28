@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Hatches That Self-Improve
-status: phase_35_shipped_pending_fly_deploy
-stopped_at: Phase 35 code-complete and runtime-verified (Playwright 7/7 pass, typecheck + build green). User-action pending — run `fly deploy` to push to production.
-last_updated: "2026-05-11T15:30:00.000Z"
-last_activity: 2026-05-11 — Phase 35 executed across 3 waves; 24 commits; LEGAL-01 + LLMUX-01..03 + AUDIT-01 closed; modal contrast fix applied live during 35-04 visual checkpoint; 35-03 visual gate satisfied by 35-05 spec cases 3+4
+status: phase_35_shipped_to_production
+stopped_at: Phase 35 deployed to Fly production 2026-05-11 (version 19, image deployment-01KRB7R3TP4NBV9WREP1PQNGVN). Production smoke-checks GREEN (/, /legal/privacy, /legal/terms all HTTP 200). Tags created — pre-phase-35 (rollback anchor) + phase-35-deployed.
+last_updated: "2026-05-11T16:05:00.000Z"
+last_activity: 2026-05-11 — Phase 35 SHIPPED. 5/5 plans, 26 commits, Playwright 7/7 pass, fly deploy → version 19 live at https://hatchin-mvp.fly.dev. LEGAL-01 + LLMUX-01..03 + AUDIT-01 closed.
 progress:
   total_phases: 12
   completed_phases: 1
@@ -21,16 +21,39 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-28)
 
 **Core value:** No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
-**Current focus:** v2.1 milestone in progress — Phase 35 (Production Hotfix Pass) code-complete + runtime-verified, awaiting user `fly deploy`. Next: Phase 36 (Frozen-Rubric Deliverable Iteration).
+**Current focus:** v2.1 milestone in progress — Phase 35 SHIPPED to production 2026-05-11. Next: Phase 36 (Frozen-Rubric Deliverable Iteration).
 
 ---
 
 ## Current Position
 
-Phase: 35 (Production Hotfix Pass) — CODE-COMPLETE + RUNTIME-VERIFIED · awaiting `fly deploy`
-Plans complete: 5/5 (35-01, 35-02, 35-03, 35-04, 35-05)
-Status: Deploy approved by user 2026-05-11. Next user-action: run `fly deploy` to push to production. After that, advance to Phase 36.
-Last activity: 2026-05-11 — Phase 35 execution complete: 24 commits, Playwright 7/7 pass (2x deterministic, 1.5min runtime, 386ms recovery latency vs 5s budget), typecheck + build green, 5/5 requirements closed (LEGAL-01 + LLMUX-01..03 + AUDIT-01), modal contrast fix applied live during 35-04 visual checkpoint review
+Phase: 35 (Production Hotfix Pass) — SHIPPED 2026-05-11
+Plans complete: 5/5 (35-01..05)
+Status: Live in production at https://hatchin-mvp.fly.dev (Fly version 19, image deployment-01KRB7R3TP4NBV9WREP1PQNGVN). All routes verified HTTP 200. Branch + tags pushed to origin. Ready to advance to Phase 36.
+Last activity: 2026-05-11 — Phase 35 fly-deployed; 26 commits pushed to origin/wip/pre-reset-2026-04-28; tags pre-phase-35 (rollback anchor at 31c0dc5) + phase-35-deployed (at 906cba1) created and pushed.
+
+### Rollback recipe (if Phase 35 misbehaves in prod)
+
+**Git revert (preserves history):**
+```bash
+git revert --no-commit 4f3d664..906cba1
+git commit -m "revert: roll back Phase 35"
+git push origin wip/pre-reset-2026-04-28
+fly deploy
+```
+
+**Fly-only rollback (no git changes):**
+```bash
+fly releases list                 # confirm previous version 18
+fly releases rollback             # or specify version target
+```
+
+**Hard reset to pre-Phase-35 (destructive, prefer revert above):**
+```bash
+git checkout pre-phase-35         # detached HEAD at 31c0dc5
+# OR: git reset --hard pre-phase-35 (rewrites branch — only if no later work)
+fly deploy
+```
 
 ---
 
