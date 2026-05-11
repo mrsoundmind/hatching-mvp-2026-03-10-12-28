@@ -1,9 +1,10 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Particles } from "@/components/ui/particles";
 import { ChevronLeftIcon } from "lucide-react";
+import LegalModal from "@/components/legal/LegalModal";
 
 function sanitizeNextPath(value: string | null): string {
   if (!value) return "/";
@@ -34,6 +35,11 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search);
     return params.get("error");
   }, []);
+
+  const [legalModal, setLegalModal] = useState<{ open: boolean; type: "privacy" | "terms" }>({
+    open: false,
+    type: "privacy",
+  });
 
   useEffect(() => {
     if (!isLoading && isSignedIn && location !== nextPath) {
@@ -83,13 +89,37 @@ export default function LoginPage() {
 
             <p className="text-muted-foreground text-sm">
               By clicking continue, you agree to our{" "}
-              <a href="/legal/terms" className="hover:text-primary underline underline-offset-4">Terms of Service</a>{" "}
+              <a
+                href="/legal/terms"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setLegalModal({ open: true, type: "terms" });
+                }}
+                className="hover:text-primary underline underline-offset-4"
+              >
+                Terms of Service
+              </a>{" "}
               and{" "}
-              <a href="/legal/privacy" className="hover:text-primary underline underline-offset-4">Privacy Policy</a>.
+              <a
+                href="/legal/privacy"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setLegalModal({ open: true, type: "privacy" });
+                }}
+                className="hover:text-primary underline underline-offset-4"
+              >
+                Privacy Policy
+              </a>
+              .
             </p>
           </div>
         </div>
       </div>
+      <LegalModal
+        open={legalModal.open}
+        onOpenChange={(open) => setLegalModal((prev) => ({ ...prev, open }))}
+        type={legalModal.type}
+      />
     </div>
   );
 }

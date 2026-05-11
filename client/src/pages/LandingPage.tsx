@@ -6,6 +6,7 @@ import LandingBento from "@/components/LandingBento";
 import { TestimonialShowcase } from "@/components/ui/testimonial-showcase";
 import HowItWorksBento from "@/components/ui/how-it-works-bento";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import LegalModal from "@/components/legal/LegalModal";
 
 const avatarFor = (seed: string) =>
   `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(seed)}&backgroundColor=fef3c7,fed7aa,fde68a,fee2e2,e0e7ff,dbeafe`;
@@ -27,6 +28,10 @@ export default function LandingPage() {
   const gradientCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const particlesCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [footerVisible, setFooterVisible] = useState(false);
+  const [legalModal, setLegalModal] = useState<{ open: boolean; type: "privacy" | "terms" }>({
+    open: false,
+    type: "privacy",
+  });
 
   // Reset scroll + body overflow on mount
   useEffect(() => {
@@ -558,12 +563,36 @@ export default function LandingPage() {
               <a href="mailto:hello@hatchin.ai" className="text-white no-underline transition-colors duration-300 ease-out hover:text-[rgba(255,255,255,0.56)]">the Hatchin team</a>
             </p>
             <p className="font-light tracking-[-0.02em]">•</p>
-            <a href="/legal/privacy" className="text-white no-underline transition-colors duration-300 ease-out hover:text-[rgba(255,255,255,0.56)]">Privacy</a>
+            <a
+              href="/legal/privacy"
+              onClick={(e) => {
+                e.preventDefault();
+                setLegalModal({ open: true, type: "privacy" });
+              }}
+              className="text-white no-underline transition-colors duration-300 ease-out hover:text-[rgba(255,255,255,0.56)]"
+            >
+              Privacy
+            </a>
             <p className="font-light tracking-[-0.02em]">•</p>
-            <a href="/legal/terms" className="text-white no-underline transition-colors duration-300 ease-out hover:text-[rgba(255,255,255,0.56)]">Terms</a>
+            <a
+              href="/legal/terms"
+              onClick={(e) => {
+                e.preventDefault();
+                setLegalModal({ open: true, type: "terms" });
+              }}
+              className="text-white no-underline transition-colors duration-300 ease-out hover:text-[rgba(255,255,255,0.56)]"
+            >
+              Terms
+            </a>
           </div>
         </div>
       </section>
+
+      <LegalModal
+        open={legalModal.open}
+        onOpenChange={(open) => setLegalModal((prev) => ({ ...prev, open }))}
+        type={legalModal.type}
+      />
 
     </div>
   );
