@@ -40,6 +40,7 @@ import {
   getCurrentRuntimeConfig,
   generateChatWithRuntimeFallback,
 } from "../llm/providerResolver.js";
+import { getDegradedState } from "../llm/providerHealthState.js";
 import { writeConfigSnapshot } from "../utils/configSnapshot.js";
 import { checkConversationAccess } from "../utils/conversationAccess.js";
 import { logAutonomyEvent } from "../autonomy/events/eventLogger.js";
@@ -131,6 +132,38 @@ async function checkForAutonomyTrigger(
 }
 
 type AuthedWebSocket = WebSocket & { __userId?: string };
+
+/**
+ * Phase 35-02 Task 4: Late-join PROVIDER_DEGRADED replay.
+ *
+ * Called from wss.on('connection') after a socket finishes auth. If the server
+ * is currently in a degraded state (per providerHealthState.getDegradedState()),
+ * send a one-shot PROVIDER_DEGRADED to JUST this new socket so a client that
+ * connects mid-outage (or refreshes the page during an outage) still gets the
+ * banner — existing sockets already received the original broadcast when the
+ * threshold crossed.
+ *
+ * Read-only on health state: never calls recordFailure/recordSuccess. Best-effort
+ * — wrapped in try/catch so a transient state-read error or a socket-send error
+ * can never break an otherwise-healthy WS handshake.
+ *
+ * Exported for unit-test injection (see scripts/test-provider-late-join-replay.ts).
+ * The minimal shape is intentional: any object with a numeric readyState, an
+ * OPEN constant, and a send(string) method works. This keeps the test from
+ * needing to construct a real WebSocket.
+ */
+export function maybeReplayDegradedToSocket(
+  ws: { readyState: number; OPEN: number; send: (payload: string) => void },
+): void {
+  try {
+    const state = getDegradedState();
+    if (!state.isDegraded) return;
+    if (ws.readyState !== ws.OPEN) return;
+    ws.send(JSON.stringify({ type: 'provider_degraded', reason: state.reason }));
+  } catch {
+    // Late-join replay is best-effort — never let this break the connection.
+  }
+}
 
 export interface RegisterChatDeps {
   sessionParser?: (req: any, res: any, next: (err?: unknown) => void) => void;
@@ -519,6 +552,12 @@ export function registerChatRoutes(
     }
     ws.__userId = socketUserId;
     devLog('New WebSocket connection established');
+
+    // Phase 35-02 Task 4: late-join PROVIDER_DEGRADED replay.
+    // If the server is currently degraded, send the banner directly to this
+    // socket so a client that connects mid-outage (or refreshes during one)
+    // still sees the toast. Read-only + best-effort.
+    maybeReplayDegradedToSocket(ws);
 
     const handleWsMessage = async (rawMessage: Buffer) => {
       try {
