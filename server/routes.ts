@@ -27,6 +27,7 @@ import {
   isGoogleAuthConfigured,
 } from "./auth/googleOAuth.js";
 import { registerHealthBroadcaster } from "./llm/providerResolver.js";
+import { registerRecoveryHook } from "./llm/providerHealthState.js";
 
 type SessionParser = (req: any, res: any, next: (err?: unknown) => void) => void;
 
@@ -503,11 +504,15 @@ export async function registerRoutes(app: Express, sessionParser?: SessionParser
       // Phase 35-02: Wire the all-sockets broadcaster + provider health hooks.
       // - registerHealthBroadcaster routes PROVIDER_DEGRADED / PROVIDER_RECOVERED
       //   emits from providerResolver.ts (Task 2) to every connected WS client.
-      // - registerRecoveryHook (added in Task 3) wires the same broadcaster so
-      //   35-05's DEV-only /api/dev/force-recovery → forceRecoveryBroadcast()
-      //   deterministically fires PROVIDER_RECOVERED without a real LLM call.
+      // - registerRecoveryHook wires the same broadcaster so 35-05's DEV-only
+      //   /api/dev/force-recovery → forceRecoveryBroadcast() deterministically
+      //   fires PROVIDER_RECOVERED without a real LLM call. The registry is a
+      //   silent no-op in production (T-35-21 mitigation in providerHealthState),
+      //   so even though this closure is always registered, it's never invoked
+      //   in prod (forceRecoveryBroadcast itself also throws in prod).
       providerHealthBroadcast = fns.broadcastToAllSockets;
       registerHealthBroadcaster((data) => providerHealthBroadcast?.(data));
+      registerRecoveryHook(() => providerHealthBroadcast?.({ type: 'provider_recovered' }));
     },
   });
 
