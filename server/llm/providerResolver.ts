@@ -364,6 +364,11 @@ export async function generateChatWithRuntimeFallback(request: LLMRequest): Prom
         continue;
       }
       const fallbackChain = attempted.length > 0 ? [...attempted] : undefined;
+      // Phase 35-02 (D-12): success — reset failure counter and emit
+      // PROVIDER_RECOVERED if this was the first success after a degradation.
+      // recordSuccess() returns true only on the degraded→healthy transition,
+      // so emitRecovered() fires at most once per outage cycle.
+      if (recordSuccess()) emitRecovered();
       return {
         ...result,
         metadata: {
@@ -377,14 +382,23 @@ export async function generateChatWithRuntimeFallback(request: LLMRequest): Prom
       console.error(`[LLM] Provider ${providerId} failed (generate), trying next:`, error.message || error);
 
       if (providerId === 'openai' && !isOpenAIQuotaError(error) && !isRecoverableOpenAITestError(error)) {
+        // Phase 35-02: OpenAI direct-throw is a terminal chain failure from the
+        // caller's perspective — record + emit before throwing. (OpenAI is now
+        // escape-hatch only via LLM_PRIMARY=openai per commit 34c8f23, but the
+        // counter must close regardless of which providers were attempted.)
+        if (recordFailure()) emitDegraded();
         throw error;
       }
 
-      // Continue fallback chain in all modes (prod + test)
+      // D-13: per-provider failures within a chain do NOT count — only the
+      // terminal throw (post-loop or direct-throw above) counts as a chain
+      // exhaustion. A 429 here continues to the next provider; if that next
+      // provider succeeds, the success path's recordSuccess() fires.
       continue;
     }
   }
 
+  if (recordFailure()) emitDegraded();
   throw lastError || new Error('No LLM provider available');
 }
 
@@ -400,6 +414,12 @@ export async function streamChatWithRuntimeFallback(request: LLMRequest): Promis
     try {
       const result = await provider.streamChat(applyModelDefaults(request, config, providerId), config.mode);
       const fallbackChain = attempted.length > 0 ? [...attempted] : undefined;
+      // Phase 35-02 (D-12): the resolver's "success" is the provider accepting
+      // the request and returning a stream handle — even if the stream later
+      // throws mid-iteration, this function has already returned. Partial
+      // successes count per D-12 ("at least one chunk streamed counts"); the
+      // stream-construction success here is the strongest signal we have.
+      if (recordSuccess()) emitRecovered();
       return {
         ...result,
         metadata: {
@@ -413,14 +433,19 @@ export async function streamChatWithRuntimeFallback(request: LLMRequest): Promis
       console.error(`[LLM] Provider ${providerId} failed (stream), trying next:`, error.message || error);
 
       if (providerId === 'openai' && !isOpenAIQuotaError(error) && !isRecoverableOpenAITestError(error)) {
+        // Phase 35-02: OpenAI direct-throw — terminal chain failure (see
+        // generate path for full rationale). Record + emit before throwing.
+        if (recordFailure()) emitDegraded();
         throw error;
       }
 
-      // Continue fallback chain in all modes (prod + test)
+      // D-13: per-provider failures within a chain do NOT count — only the
+      // terminal throw (post-loop or direct-throw above) counts.
       continue;
     }
   }
 
+  if (recordFailure()) emitDegraded();
   throw lastError || new Error('No LLM provider available for streaming');
 }
 
