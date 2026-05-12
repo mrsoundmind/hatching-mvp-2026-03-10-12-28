@@ -3,6 +3,49 @@ import { starterPacksByCategory, allHatchTemplates } from "@shared/templates";
 import { parseConversationId } from "@shared/conversationId";
 import { randomUUID } from "crypto";
 
+// -----------------------------------------------------------------------------
+// Phase 36 — Impression dedupe (FBK-03, D-20).
+//
+// 5s server-side window per (deliverableId, userId) drops React StrictMode
+// double-fires in dev. Module-scope so both MemStorage and DatabaseStorage
+// share it (single-server). A future multi-instance deployment can route
+// through Redis behind a thin wrapper without changing the IStorage contract.
+//
+// Size bound + opportunistic cleanup keeps the Map bounded under DoS (T-36-15).
+// -----------------------------------------------------------------------------
+
+const __impressionDedupeMap = new Map<string, number>();
+const __IMPRESSION_DEDUPE_MS = 5_000;
+const __IMPRESSION_DEDUPE_MAX_ENTRIES = 1000;
+const __IMPRESSION_DEDUPE_CLEANUP_OLDER_THAN_MS = 60_000;
+
+function __shouldRecordImpression(deliverableId: string, userId: string): boolean {
+  const key = `${deliverableId}:${userId}`;
+  const now = Date.now();
+  const last = __impressionDedupeMap.get(key) ?? 0;
+  if (now - last < __IMPRESSION_DEDUPE_MS) return false;
+  __impressionDedupeMap.set(key, now);
+  if (__impressionDedupeMap.size > __IMPRESSION_DEDUPE_MAX_ENTRIES) {
+    for (const [k, t] of __impressionDedupeMap) {
+      if (now - t > __IMPRESSION_DEDUPE_CLEANUP_OLDER_THAN_MS) {
+        __impressionDedupeMap.delete(k);
+      }
+    }
+  }
+  return true;
+}
+
+/**
+ * DEV-only: clear the impression dedupe Map between tests. Throws FATAL in
+ * production (T-36-13 mirror — mirrors __setForcedScoreForTests prod guard).
+ */
+export function __resetImpressionDedupeForTests(): void {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL: __resetImpressionDedupeForTests called in production');
+  }
+  __impressionDedupeMap.clear();
+}
+
 // Phase 0.6.a: Storage Mode Declaration
 export type StorageMode = "memory" | "db";
 
@@ -203,6 +246,25 @@ export interface IStorage {
   getDeliverableVersions(deliverableId: string): Promise<DeliverableVersion[]>;
   createDeliverableVersion(version: InsertDeliverableVersion): Promise<DeliverableVersion>;
   restoreDeliverableVersion(deliverableId: string, versionNumber: number): Promise<Deliverable | undefined>;
+
+  // === Phase 36 (FBK-01..04 / RUBR-02..04) ===
+  acceptDeliverable(id: string): Promise<Deliverable | undefined>;
+  dismissDeliverable(id: string): Promise<Deliverable | undefined>;
+  recordImpression(id: string, userId: string): Promise<{ deliverable: Deliverable | undefined; deduped: boolean }>;
+  incrementEditsCount(id: string): Promise<Deliverable | undefined>;
+  updateDeliverableVersionScore(
+    versionId: string,
+    fields: {
+      rubricVersion: string;
+      rubricScore: {
+        total: number;
+        breakdown: Array<{ criterion: string; score: number; justification: string }>;
+        skipped?: boolean;
+        reason?: string;
+      };
+    },
+  ): Promise<DeliverableVersion | undefined>;
+  getRecentFinalizedDeliverablesByAgent(projectId: string, agentId: string, limit: number): Promise<Deliverable[]>;
 
   // v2.0: Packages
   getPackagesByProject(projectId: string): Promise<DeliverablePackage[]>;
@@ -1464,6 +1526,71 @@ export class MemStorage implements IStorage {
     return this.updateDeliverable(deliverableId, { content: target.content, currentVersion: versionNumber });
   }
 
+  // === Phase 36 (FBK-01..04 / RUBR-02..04) — MemStorage impls ===
+  async acceptDeliverable(id: string): Promise<Deliverable | undefined> {
+    // D-18 mutually exclusive but reversible — set userAcceptedAt, clear dismissedAt.
+    return this.updateDeliverable(id, { userAcceptedAt: new Date(), dismissedAt: null });
+  }
+  async dismissDeliverable(id: string): Promise<Deliverable | undefined> {
+    // Symmetric to acceptDeliverable (D-18).
+    return this.updateDeliverable(id, { dismissedAt: new Date(), userAcceptedAt: null });
+  }
+  async recordImpression(id: string, userId: string): Promise<{ deliverable: Deliverable | undefined; deduped: boolean }> {
+    const existing = await this.getDeliverable(id);
+    if (!existing) return { deliverable: undefined, deduped: false };
+    if (!__shouldRecordImpression(id, userId)) {
+      // 5s window hit — return current state without incrementing (D-20).
+      return { deliverable: existing, deduped: true };
+    }
+    const updated = await this.updateDeliverable(id, {
+      impressionCount: (existing.impressionCount ?? 0) + 1,
+    });
+    return { deliverable: updated, deduped: false };
+  }
+  async incrementEditsCount(id: string): Promise<Deliverable | undefined> {
+    // MemStorage is single-threaded JS — RMW is safe here. DatabaseStorage uses
+    // `sql\`${editsCount} + 1\`` to defeat parallel-iterate races.
+    const existing = await this.getDeliverable(id);
+    if (!existing) return undefined;
+    return this.updateDeliverable(id, { editsCount: (existing.editsCount ?? 0) + 1 });
+  }
+  async updateDeliverableVersionScore(
+    versionId: string,
+    fields: {
+      rubricVersion: string;
+      rubricScore: {
+        total: number;
+        breakdown: Array<{ criterion: string; score: number; justification: string }>;
+        skipped?: boolean;
+        reason?: string;
+      };
+    },
+  ): Promise<DeliverableVersion | undefined> {
+    const existing = this.deliverableVersions.get(versionId);
+    if (!existing) return undefined;
+    const updated = { ...existing, ...fields } as DeliverableVersion;
+    this.deliverableVersions.set(versionId, updated);
+    return updated;
+  }
+  async getRecentFinalizedDeliverablesByAgent(
+    projectId: string,
+    agentId: string,
+    limit: number,
+  ): Promise<Deliverable[]> {
+    const all = [...this.deliverables.values()]
+      .filter(
+        (d) =>
+          d.projectId === projectId &&
+          d.agentId === agentId &&
+          d.status === 'complete',
+      )
+      .sort(
+        (a, b) =>
+          (b.updatedAt?.getTime() ?? 0) - (a.updatedAt?.getTime() ?? 0),
+      );
+    return all.slice(0, limit);
+  }
+
   // v2.0: Packages (MemStorage)
   async getPackagesByProject(projectId: string): Promise<DeliverablePackage[]> {
     return Array.from(this.deliverablePackages.values()).filter(p => p.projectId === projectId);
@@ -2202,6 +2329,76 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(schema.deliverableVersions.deliverableId, deliverableId), eq(schema.deliverableVersions.versionNumber, versionNumber)));
     if (!target) return undefined;
     return this.updateDeliverable(deliverableId, { content: target.content, currentVersion: versionNumber });
+  }
+
+  // === Phase 36 (FBK-01..04 / RUBR-02..04) — DatabaseStorage impls ===
+  async acceptDeliverable(id: string): Promise<Deliverable | undefined> {
+    return this.updateDeliverable(id, { userAcceptedAt: new Date(), dismissedAt: null });
+  }
+  async dismissDeliverable(id: string): Promise<Deliverable | undefined> {
+    return this.updateDeliverable(id, { dismissedAt: new Date(), userAcceptedAt: null });
+  }
+  async recordImpression(id: string, userId: string): Promise<{ deliverable: Deliverable | undefined; deduped: boolean }> {
+    const existing = await this.getDeliverable(id);
+    if (!existing) return { deliverable: undefined, deduped: false };
+    if (!__shouldRecordImpression(id, userId)) {
+      return { deliverable: existing, deduped: true };
+    }
+    // Atomic SQL increment — defeats RMW race two parallel /impression calls
+    // would otherwise hit on the same (deliverable, user) outside the dedupe
+    // window (e.g. two browser tabs).
+    const [row] = await db.update(schema.deliverables)
+      .set({
+        impressionCount: sql`${schema.deliverables.impressionCount} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.deliverables.id, id))
+      .returning();
+    return { deliverable: row, deduped: false };
+  }
+  async incrementEditsCount(id: string): Promise<Deliverable | undefined> {
+    // Atomic SQL increment — defeats RMW race two parallel iterate calls that
+    // both pass scoring would otherwise hit (T-36-16 / W-5).
+    const [row] = await db.update(schema.deliverables)
+      .set({
+        editsCount: sql`${schema.deliverables.editsCount} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.deliverables.id, id))
+      .returning();
+    return row;
+  }
+  async updateDeliverableVersionScore(
+    versionId: string,
+    fields: {
+      rubricVersion: string;
+      rubricScore: {
+        total: number;
+        breakdown: Array<{ criterion: string; score: number; justification: string }>;
+        skipped?: boolean;
+        reason?: string;
+      };
+    },
+  ): Promise<DeliverableVersion | undefined> {
+    const [row] = await db.update(schema.deliverableVersions)
+      .set(fields)
+      .where(eq(schema.deliverableVersions.id, versionId))
+      .returning();
+    return row;
+  }
+  async getRecentFinalizedDeliverablesByAgent(
+    projectId: string,
+    agentId: string,
+    limit: number,
+  ): Promise<Deliverable[]> {
+    return db.select().from(schema.deliverables)
+      .where(and(
+        eq(schema.deliverables.projectId, projectId),
+        eq(schema.deliverables.agentId, agentId),
+        eq(schema.deliverables.status, 'complete'),
+      ))
+      .orderBy(desc(schema.deliverables.updatedAt))
+      .limit(limit);
   }
 
   // v2.0: Packages (DatabaseStorage)
