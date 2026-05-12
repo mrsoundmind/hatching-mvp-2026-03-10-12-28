@@ -274,16 +274,80 @@ export function registerDeliverableRoutes(app: Express, deps: RegisterDeliverabl
 
     try {
       const { iterateDeliverable } = await import('../ai/deliverableGenerator.js');
-      const updated = await iterateDeliverable(
+      const result = await iterateDeliverable(
         req.params.id,
         instruction,
         deliverable.agentName || 'Agent',
         deliverable.agentRole || 'Team Member',
       );
-      return res.json({ deliverable: updated });
+      // Phase 36 — response shape grows to include the rubric verdict so the
+      // client (ArtifactPanel in 36-03) can render the AutoRevertBanner without
+      // a second round-trip. Schema in shared/dto/apiSchemas.ts.
+      return res.json({
+        deliverable: result.deliverable,
+        reverted: result.reverted,
+        oldScore: result.oldScore,
+        newScore: result.newScore,
+      });
     } catch (err: any) {
       return res.status(500).json({ error: err.message || 'Iteration failed' });
     }
+  });
+
+  // === Phase 36 — Feedback endpoints (FBK-02, FBK-03) ===
+  // All three follow the existing getSessionUserId + getOwnedProject pattern.
+  // 404 (not 403) on ownership mismatch so the user can't infer the existence
+  // of a deliverable they don't own (T-36-14).
+
+  // POST /api/deliverables/:id/accept (FBK-02 / D-18)
+  app.post('/api/deliverables/:id/accept', async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const deliverable = await storage.getDeliverable(req.params.id);
+    if (!deliverable) return res.status(404).json({ error: 'Deliverable not found' });
+
+    const project = await getOwnedProject(deliverable.projectId, userId);
+    if (!project) return res.status(404).json({ error: 'Deliverable not found' });
+
+    // Idempotent: re-accepting an already-accepted deliverable just refreshes
+    // the timestamp. Mutually exclusive: clears dismissedAt per D-18.
+    const updated = await storage.acceptDeliverable(req.params.id);
+    return res.json({ deliverable: updated });
+  });
+
+  // POST /api/deliverables/:id/dismiss (FBK-02 / D-18)
+  app.post('/api/deliverables/:id/dismiss', async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const deliverable = await storage.getDeliverable(req.params.id);
+    if (!deliverable) return res.status(404).json({ error: 'Deliverable not found' });
+
+    const project = await getOwnedProject(deliverable.projectId, userId);
+    if (!project) return res.status(404).json({ error: 'Deliverable not found' });
+
+    const updated = await storage.dismissDeliverable(req.params.id);
+    return res.json({ deliverable: updated });
+  });
+
+  // POST /api/deliverables/:id/impression (FBK-03 / D-20)
+  // 5s server-side dedupe per (id, userId) lives in storage.recordImpression
+  // — protects against React StrictMode double-mount in dev (Pitfall 4) and
+  // multi-tab DoS (T-36-15). Always returns 200 with `deduped` flag so client
+  // treats idempotent semantics identically.
+  app.post('/api/deliverables/:id/impression', async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const deliverable = await storage.getDeliverable(req.params.id);
+    if (!deliverable) return res.status(404).json({ error: 'Deliverable not found' });
+
+    const project = await getOwnedProject(deliverable.projectId, userId);
+    if (!project) return res.status(404).json({ error: 'Deliverable not found' });
+
+    const result = await storage.recordImpression(req.params.id, userId);
+    return res.json({ deliverable: result.deliverable, deduped: result.deduped });
   });
 
   // === Packages ===
