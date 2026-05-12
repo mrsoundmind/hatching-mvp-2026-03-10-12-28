@@ -113,3 +113,44 @@ export const evidencePackSchema = z.object({
   }),
   drift: z.record(z.unknown()),
 });
+
+// === Phase 36 — Iterate response (RUBR-02) ===
+//
+// Schema for POST /api/deliverables/:id/iterate response, after Phase 36 grew
+// the shape from { deliverable } to { deliverable, reverted, oldScore?,
+// newScore? }. Consumed by client/src/components/ArtifactPanel.tsx in 36-03.
+//
+// Design choices:
+// - Outer `.strict()` — extra top-level keys (e.g. a future server bug
+//   leaking { debug: '...' }) fail validation. T-35-01 / T-36-21 discipline.
+// - Inner `deliverable` is `.passthrough()` — the Deliverable row has many
+//   columns and continues to grow (4 added in 36-01, more likely). Bottle-
+//   necking schema evolution on this DTO would force coupled rewrites every
+//   time the Drizzle schema changes. Extra fields on the deliverable pass
+//   through silently; the outer envelope stays strict.
+// - `__versionScoreSchema` re-derived here (not imported from rubricScorer.ts)
+//   to keep the client-shareable schema decoupled from server-only modules.
+//   Both copies must match shape — drift caught by client-side parse in 36-03.
+// - `oldScore?` / `newScore?` optional: on the generation-throw branch,
+//   iterateDeliverable returns { deliverable: existing, reverted: false }
+//   with no scores.
+
+const __criterionScoreSchema = z.object({
+  criterion: z.string(),
+  score: z.number().min(0).max(10),
+  justification: z.string().min(1).max(300),
+}).strict();
+
+const __versionScoreSchema = z.object({
+  total: z.number().min(0).max(10),
+  breakdown: z.array(__criterionScoreSchema),
+}).strict();
+
+export const iterateDeliverableResponseSchema = z.object({
+  deliverable: z.object({}).passthrough().optional(),
+  reverted: z.boolean(),
+  oldScore: __versionScoreSchema.optional(),
+  newScore: __versionScoreSchema.optional(),
+}).strict();
+
+export type IterateDeliverableResponse = z.infer<typeof iterateDeliverableResponseSchema>;
