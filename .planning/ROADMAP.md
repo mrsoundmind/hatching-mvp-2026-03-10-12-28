@@ -161,7 +161,12 @@ See archived roadmap: [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
   3. User can click Accept or Dismiss on any deliverable in the artifact panel; both actions persist across page refreshes via the new feedback columns
   4. Agent prompts include role-specific feedback signal ("your last 3 PRDs were accepted, 1 dismissed") after enough impressions accumulate — verified via prompt-snapshot test
   5. `impressionCount` increments every time a deliverable is opened in the artifact panel; opened-but-never-accepted deliverables are visible in the funnel record
-**Plans**: TBD (likely 3-4 plans)
+**Plans**: 4 plans
+
+  - [ ] 36-01-PLAN.md — Foundation: rubric registry (`shared/deliverableRubrics.ts`, 15 rubrics, Zod-validated, Object.freeze invariant) + DB schema additions (4 cols on `deliverables`, 3 cols on `deliverable_versions`) + Wave-1 unit tests
+  - [ ] 36-02-PLAN.md — Server scoring: `server/ai/rubricScorer.ts` (Groq judge, temp=0, fail-open, server-side recommendation override), wrap `iterateDeliverable()` with revert gate, baseline scoring on v1, +3 accept/dismiss/impression endpoints, DEV-only `/api/dev/force-judge-score` (double-guarded), iterate response shape grows
+  - [ ] 36-03-PLAN.md — Client UI: RubricBreakdown + AutoRevertBanner components, Accept/Dismiss buttons + Rubric toggle + impression-fire useEffect + revert-banner wiring in ArtifactPanel.tsx (**visual checkpoint required** before commit)
+  - [ ] 36-04-PLAN.md — Agent feedback signal (`deliverableFeedbackAggregator.ts` + `openaiService.ts` injection) + Playwright runtime spec (6 cases, live dev server) + 36-VERIFICATION.md mapping ROADMAP success criteria to PASS
 
 ### Phase 37: Git-Style Run Tree
 **Goal**: Autonomous execution becomes browsable history — every task and handoff is a step node in a parent-child tree. Score deltas (from Phase 36) attach to nodes so users can see where quality regressed or improved.

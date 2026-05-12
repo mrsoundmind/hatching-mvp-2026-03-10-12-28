@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Hatches That Self-Improve
-status: phase_36_context_gathered
-stopped_at: Phase 36 CONTEXT.md written via auto-mode discuss. 30 decisions captured across 6 gray areas (rubric registry, LLM judge, auto-revert UX, feedback columns, prompt injection, verification). 4 plans proposed. Ready for /gsd-plan-phase 36.
-last_updated: "2026-05-11T17:00:00.000Z"
-last_activity: 2026-05-11 — Phase 36 discuss complete (auto-mode). CONTEXT.md + DISCUSSION-LOG.md written. Phase 35 still SHIPPED at Fly version 19; Phase 36 is the next advance.
+status: phase_36_planned
+stopped_at: Phase 36 plans verified PASS after 1 revision iteration. 4 PLAN.md files (36-01..04) + RESEARCH.md + PATTERNS.md + CONTEXT.md committed. All 8 requirements (RUBR-01..04, FBK-01..04) covered. 33 STRIDE threats modeled. Ready for /gsd-execute-phase 36.
+last_updated: "2026-05-12T10:00:00.000Z"
+last_activity: 2026-05-12 — Phase 36 plan complete. Researcher resolved Q1+Q2, pattern-mapper found analogs for all 17 files, planner built 4-wave linear plan, plan-checker iteration 2 PASSED after revision fixed W-3/W-4/W-5/W-6/I-1/I-2 (case 1 PRD seed, deterministic T-36-11 unit pin, atomic editsCount increment, inline TYPE_LABEL_MAP, refine data-testids, stale-banner useEffect).
 progress:
   total_phases: 12
   completed_phases: 1
@@ -27,16 +27,22 @@ See: .planning/PROJECT.md (updated 2026-04-28)
 
 ## Current Position
 
-Phase: 36 (Frozen-Rubric Deliverable Iteration) — CONTEXT GATHERED 2026-05-11
-Plans complete: 0/4 proposed (36-01..04 to be confirmed by planner)
-Status: Discuss complete via auto-mode. CONTEXT.md captures 30 decisions; researcher/planner have open questions Q1–Q4 to resolve. Phase 35 remains shipped at Fly version 19. Next: `/gsd-plan-phase 36`.
-Last activity: 2026-05-11 — Phase 36 discuss (auto-mode). Created `.planning/phases/36-frozen-rubric-deliverable-iteration/36-CONTEXT.md` + `36-DISCUSSION-LOG.md`. No code changes yet.
+Phase: 36 (Frozen-Rubric Deliverable Iteration) — PLANNED 2026-05-12, VERIFIED PASS
+Plans complete: 0/4 (36-01..04 written and verified, awaiting execution)
+Status: 4 plans committed. Researcher resolved Q1 (single-call judge) + Q2 (60s in-process cache, no write-invalidation). Pattern-mapper found 17/17 analogs. Plan-checker iteration 2 PASSED — all 6 prior warnings (W-3, W-4, W-5, W-6, I-1, I-2) resolved. Next: `/gsd-execute-phase 36`.
+Last activity: 2026-05-12 — Phase 36 plan complete. 6 files in phase dir: CONTEXT, DISCUSSION-LOG, RESEARCH, PATTERNS, 4 PLAN.md (total ~3,750 lines of plan content).
 
-### Proposed plan breakdown (subject to planner refinement)
-- 36-01 — Foundation: rubric registry (`shared/deliverableRubrics.ts`, 15 rubrics, Zod-validated) + DB schema additions
-- 36-02 — Server scoring: `rubricScorer.ts` (Groq judge, temp=0), auto-revert in `iterateDeliverable()`, accept/dismiss/impression endpoints
-- 36-03 — Client UI: ArtifactPanel Accept/Dismiss buttons, RubricBreakdown toggle, AutoRevertBanner (visual checkpoint required)
-- 36-04 — Agent prompt feedback signal in `openaiService.ts` + Playwright runtime spec + 36-VERIFICATION.md
+### Plan breakdown (locked)
+- **36-01** (Wave 1, autonomous) — Foundation: `shared/deliverableRubrics.ts` (15 rubrics, Zod-validated, Object.freeze invariant) + DB schema additions (4 cols on `deliverables`, 3 on `deliverable_versions`). Requirements: RUBR-01, RUBR-03 schema, FBK-01.
+- **36-02** (Wave 2, autonomous, deps 01) — Server scoring: `rubricScorer.ts` (Groq judge, temp=0, server-side recommendation override per T-36-11), wrap `iterateDeliverable()`, atomic `incrementEditsCount()`, accept/dismiss/impression endpoints, DEV-only `/api/dev/force-judge-score`. Requirements: RUBR-02 server, RUBR-03 persistence, FBK-02 server, FBK-03 server. 9 unit-test cases including deterministic T-36-11 pin.
+- **36-03** (Wave 3, **NON-AUTONOMOUS — visual checkpoint required**, deps 01+02) — Client UI: `RubricBreakdown` + `AutoRevertBanner` components, Accept/Dismiss buttons, impression-fire + stale-banner-clear useEffects, Refine data-testids. Requirements: RUBR-04, FBK-02 UI, FBK-03 UI.
+- **36-04** (Wave 4, autonomous, deps 01+02+03) — Agent prompt feedback (`deliverableFeedbackAggregator.ts` + `openaiService.ts` injection, 15-entry inline `TYPE_LABEL_MAP`) + 6-case Playwright spec on live dev server + 36-VERIFICATION.md. Requirements: FBK-04 + cross-cutting verification of RUBR-02/04 + FBK-02/03.
+
+### Open questions resolved
+- Q1 (judge prompt structure): single call comparing OLD+NEW — anchoring stability, comparative justifications
+- Q2 (feedback cache strategy): keep 60s in-process, NO write-invalidation — avoids wrong-direction read/write coupling
+- Q3 (backfill pre-Phase-36 versions): NO — pre-Phase-36 versions stay `rubricVersion: null`, UI shows fallback
+- Q4 (impressionCount storage): DB column per FBK-01 wording; migrate later if volume justifies
 
 ### Rollback recipe (if Phase 35 misbehaves in prod)
 
