@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Hatches That Self-Improve
-status: phase_36_planned
-stopped_at: Phase 36 plans verified PASS after 1 revision iteration. 4 PLAN.md files (36-01..04) + RESEARCH.md + PATTERNS.md + CONTEXT.md committed. All 8 requirements (RUBR-01..04, FBK-01..04) covered. 33 STRIDE threats modeled. Ready for /gsd-execute-phase 36.
-last_updated: "2026-05-12T10:00:00.000Z"
-last_activity: 2026-05-12 — Phase 36 plan complete. Researcher resolved Q1+Q2, pattern-mapper found analogs for all 17 files, planner built 4-wave linear plan, plan-checker iteration 2 PASSED after revision fixed W-3/W-4/W-5/W-6/I-1/I-2 (case 1 PRD seed, deterministic T-36-11 unit pin, atomic editsCount increment, inline TYPE_LABEL_MAP, refine data-testids, stale-banner useEffect).
+status: phase_36_in_progress
+stopped_at: Phase 36-01 (Foundation — frozen rubric registry + DB schema additions) SHIPPED. 15 rubrics live, Object.freeze invariant verified, 7 schema cols applied to dev DB, 3-case test scaffold green. Next plan in queue 36-02 (Server scoring).
+last_updated: "2026-05-11T00:00:00.000Z"
+last_activity: 2026-05-11 — Phase 36-01 execution complete. shared/deliverableRubrics.ts (15 rubrics, ~742 lines) + shared/schema.ts (4 cols on deliverables, 3 on deliverable_versions) + scripts/test-rubric-scorer.ts (3 Wave-1 cases) committed in 3 atomic commits (1829ef8, 422c654, 64bcac4). 2 Rule-3 auto-fixes (db:push prompt bypass, MemStorage literal extension).
 progress:
   total_phases: 12
   completed_phases: 1
-  total_plans: 5
-  completed_plans: 5
-  percent: 8
+  total_plans: 6
+  completed_plans: 6
+  percent: 10
 ---
 
 # State: Hatchin
@@ -27,13 +27,13 @@ See: .planning/PROJECT.md (updated 2026-04-28)
 
 ## Current Position
 
-Phase: 36 (Frozen-Rubric Deliverable Iteration) — PLANNED 2026-05-12, VERIFIED PASS
-Plans complete: 0/4 (36-01..04 written and verified, awaiting execution)
-Status: 4 plans committed. Researcher resolved Q1 (single-call judge) + Q2 (60s in-process cache, no write-invalidation). Pattern-mapper found 17/17 analogs. Plan-checker iteration 2 PASSED — all 6 prior warnings (W-3, W-4, W-5, W-6, I-1, I-2) resolved. Next: `/gsd-execute-phase 36`.
-Last activity: 2026-05-12 — Phase 36 plan complete. 6 files in phase dir: CONTEXT, DISCUSSION-LOG, RESEARCH, PATTERNS, 4 PLAN.md (total ~3,750 lines of plan content).
+Phase: 36 (Frozen-Rubric Deliverable Iteration) — IN PROGRESS
+Plans complete: 1/4 (36-01 shipped 2026-05-11; 36-02..04 awaiting execution)
+Status: Wave 1 foundation landed. shared/deliverableRubrics.ts (15 rubrics, frozen registry), schema columns applied to dev DB, Wave-1 test scaffold green (3/3 PASS). 3 atomic commits on wip/pre-reset-2026-04-28 (1829ef8, 422c654, 64bcac4). Next: `/gsd-execute-phase 36-02`.
+Last activity: 2026-05-11 — Phase 36-01 SHIPPED. typecheck + build + tests all green; T-36-01 / T-36-02 / T-36-03 mitigations verified live.
 
 ### Plan breakdown (locked)
-- **36-01** (Wave 1, autonomous) — Foundation: `shared/deliverableRubrics.ts` (15 rubrics, Zod-validated, Object.freeze invariant) + DB schema additions (4 cols on `deliverables`, 3 on `deliverable_versions`). Requirements: RUBR-01, RUBR-03 schema, FBK-01.
+- **36-01** (Wave 1, autonomous) — **SHIPPED 2026-05-11.** Foundation: `shared/deliverableRubrics.ts` (15 rubrics, Zod-validated, Object.freeze invariant) + DB schema additions (4 cols on `deliverables`, 3 on `deliverable_versions`) + Wave-1 test scaffold (3/3 PASS). Requirements covered: RUBR-01, RUBR-03 schema, FBK-01. See `.planning/phases/36-frozen-rubric-deliverable-iteration/36-01-SUMMARY.md`.
 - **36-02** (Wave 2, autonomous, deps 01) — Server scoring: `rubricScorer.ts` (Groq judge, temp=0, server-side recommendation override per T-36-11), wrap `iterateDeliverable()`, atomic `incrementEditsCount()`, accept/dismiss/impression endpoints, DEV-only `/api/dev/force-judge-score`. Requirements: RUBR-02 server, RUBR-03 persistence, FBK-02 server, FBK-03 server. 9 unit-test cases including deterministic T-36-11 pin.
 - **36-03** (Wave 3, **NON-AUTONOMOUS — visual checkpoint required**, deps 01+02) — Client UI: `RubricBreakdown` + `AutoRevertBanner` components, Accept/Dismiss buttons, impression-fire + stale-banner-clear useEffects, Refine data-testids. Requirements: RUBR-04, FBK-02 UI, FBK-03 UI.
 - **36-04** (Wave 4, autonomous, deps 01+02+03) — Agent prompt feedback (`deliverableFeedbackAggregator.ts` + `openaiService.ts` injection, 15-entry inline `TYPE_LABEL_MAP`) + 6-case Playwright spec on live dev server + 36-VERIFICATION.md. Requirements: FBK-04 + cross-cutting verification of RUBR-02/04 + FBK-02/03.
