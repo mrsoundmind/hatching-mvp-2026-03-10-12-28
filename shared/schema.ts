@@ -326,6 +326,11 @@ export const deliverables = pgTable("deliverables", {
     generationTimeMs?: number;
     chainPosition?: number;
   }>().default({}),
+  // Phase 36 (FBK-01) — accept/dismiss timestamps + impression/edit counters
+  userAcceptedAt: timestamp("user_accepted_at"),
+  dismissedAt: timestamp("dismissed_at"),
+  editsCount: integer("edits_count").notNull().default(0),
+  impressionCount: integer("impression_count").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
@@ -343,6 +348,15 @@ export const deliverableVersions = pgTable("deliverable_versions", {
   changeDescription: text("change_description"),
   createdByAgentId: varchar("created_by_agent_id").references(() => agents.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Phase 36 (RUBR-03) — frozen rubric score persistence + revert marker
+  rubricVersion: text("rubric_version"),
+  rubricScore: jsonb("rubric_score").$type<{
+    total: number;
+    breakdown: Array<{ criterion: string; score: number; justification: string }>;
+    skipped?: boolean;
+    reason?: string;
+  }>(),
+  revertedFromHigherScore: boolean("reverted_from_higher_score").notNull().default(false),
 }, (table) => ({
   deliverableIdIdx: index("deliverable_versions_deliverable_id_idx").on(table.deliverableId),
   versionIdx: index("deliverable_versions_version_idx").on(table.deliverableId, table.versionNumber),

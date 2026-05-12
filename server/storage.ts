@@ -1420,7 +1420,19 @@ export class MemStorage implements IStorage {
     this.deliverables.set(id, deliverable);
     // Auto-create v1
     const vId = randomUUID();
-    const version: DeliverableVersion = { id: vId, deliverableId: id, versionNumber: 1, content: deliverable.content, changeDescription: 'Initial version', createdByAgentId: data.agentId ?? null, createdAt: now };
+    const version: DeliverableVersion = {
+      id: vId,
+      deliverableId: id,
+      versionNumber: 1,
+      content: deliverable.content,
+      changeDescription: 'Initial version',
+      createdByAgentId: data.agentId ?? null,
+      createdAt: now,
+      // Phase 36 — fields default for MemStorage v1 (pre-scoring path; 36-02 scorer writes real values)
+      rubricVersion: null,
+      rubricScore: null,
+      revertedFromHigherScore: false,
+    };
     this.deliverableVersions.set(vId, version);
     return deliverable;
   }
