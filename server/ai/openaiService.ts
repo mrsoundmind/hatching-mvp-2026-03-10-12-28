@@ -284,9 +284,14 @@ export async function* generateStreamingResponse(
 
     // Build Maya-specific or generic Hatch intelligence instructions
     const isMaya = agentRole === 'Idea Partner' || agentRole === 'Maya';
-    const conversationTurnCount = context.conversationHistory.length;
 
-    const mayaTeamSuggestionInstructions = isMaya && conversationTurnCount >= 2 ? `
+    // Phase 36.5 (IMP-03) — Maya can suggest a team on turn 1. Earlier the gate
+    // required at-least-two turns so Maya wouldn't propose teams before having
+    // any context, but this conflicts with users who open a project with a clear
+    // idea and want to see a team proposal immediately. Maya's prompt still
+    // requires "when you have enough context" — if context is thin she'll naturally
+    // ask one clarifying question first.
+    const mayaTeamSuggestionInstructions = isMaya ? `
 --- MAYA TEAM INTELLIGENCE ---
 When you have enough context, suggest a team. Mention it in text first ("I'd suggest adding X, Y, Z — should I?"), then append at the very end:
 <!--HATCH_SUGGESTION:{"teams":[{"name":"Core Team","emoji":"⭐","agents":[{"name":"Alex","role":"Product Designer","color":"orange"}]}],"trigger":"user_agreement"}-->
