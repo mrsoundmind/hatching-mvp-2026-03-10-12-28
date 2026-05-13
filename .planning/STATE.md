@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Hatches That Self-Improve
-status: phase_36.5_code_complete
-stopped_at: Phase 36.5 CODE-COMPLETE — single-plan hotfix shipped (36.5-01 imperative shortcut parser + Maya gate drop + Playwright probe regression gate). 21/21 unit cases PASS, 2/2 agent-probe Playwright PASS (1.3m), 5/5 phase-36 regression Playwright still PASS (1.5m). Bundled with Phase 36 for next `fly deploy` (user-action — auto-mode safety carve-out).
-last_updated: "2026-05-13T09:30:00.000Z"
-last_activity: 2026-05-13 — Phase 36.5-01 execution complete. 6 atomic commits (d870f15 parser, 02dbffe wiring, 36f53cd Maya gate, e3ce9d3 unit tests, 0feefe3 probe spec, plus this final docs commit). Three Rule-1 parser fixes discovered by unit tests (comma-form whitespace, task-colon separator, rename-form/change-form split) — each captured as a test case so regressions surface. Runtime gate green: 2/2 agent-probe PASS deterministic; phase-36 spec confirmed unbroken (5/5 PASS).
+status: phase_37_context_gathered
+stopped_at: Phase 37 CONTEXT.md written via auto-mode discuss. 25 decisions captured across 7 gray areas (schema design, step writer integration, Activity tab toggle, click-to-deliverable wiring, backfill strategy, live updates policy, verification). 4 proposed plans (37-01..04). Ready for /gsd-plan-phase 37. Phase 36 + 36.5 still bundled awaiting fly deploy.
+last_updated: "2026-05-13T11:00:00.000Z"
+last_activity: 2026-05-13 — Phase 37 discuss complete (auto-mode). Created .planning/phases/37-git-style-run-tree/37-CONTEXT.md (25 decisions) + 37-DISCUSSION-LOG.md (reasoning audit trail). No code changes yet. Phase 36 + 36.5 remain code-complete bundled for next deploy.
 progress:
   total_phases: 13
   completed_phases: 3
@@ -27,10 +27,13 @@ See: .planning/PROJECT.md (updated 2026-04-28)
 
 ## Current Position
 
-Phase: 36.5 (Imperative Action Shortcuts — HOTFIX) — CODE-COMPLETE, bundled with Phase 36 for next `fly deploy`
-Plans complete: 1/1 (36.5-01 shipped 2026-05-13)
-Status: Phase 36.5 surface is RUNTIME-VERIFIED. Agent-probe Playwright spec 2/2 PASS (1.3m); 21/21 unit cases PASS; phase-36 regression unbroken (5/5 PASS, 1.5m). All 4 IMP requirements closed. Bundled with Phase 36 for the same deploy (no new infra, no new env vars).
-Last activity: 2026-05-13 — Phase 36.5-01 SHIPPED. 6 atomic commits (d870f15 parser, 02dbffe wiring, 36f53cd Maya gate, e3ce9d3 unit tests + 3 Rule-1 parser fixes, 0feefe3 probe regression gate, this final docs commit). Closes the 2026-05-13 audit gap where "create an agent named X" / "add a task to Y" / "rename the project to Z" were met with clarifying questions instead of action.
+Phase: 37 (Git-Style Run Tree) — CONTEXT GATHERED 2026-05-13
+Plans complete: 0/4 proposed (37-01 schema, 37-02 server writer + instrumentation, 37-03 client UI, 37-04 backfill + verification)
+Status: Auto-mode discuss complete. CONTEXT.md captures 25 decisions; researcher/planner have 4 open questions to resolve. Phase 36 + 36.5 remain code-complete, awaiting `fly deploy` (user-action). Next: `/gsd-plan-phase 37`.
+Last activity: 2026-05-13 — Phase 37 discuss (auto-mode). Created .planning/phases/37-git-style-run-tree/37-CONTEXT.md + 37-DISCUSSION-LOG.md. Server work begins after planning; UI step requires visual checkpoint per saved feedback rule.
+
+### Phase 36.5 — also CODE-COMPLETE (shipped 2026-05-13, bundled with Phase 36 for same deploy)
+Hotfix from 2026-05-13 audit. Imperative shortcut parser fires create-agent / create-task / rename-project / set-brain-field on turn 1 (no LLM dance). Maya turn-count gate dropped. Probe spec is regression gate (2/2 PASS).
 
 ### Phase 36 — also CODE-COMPLETE (shipped 2026-05-11, awaiting same deploy)
 
