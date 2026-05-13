@@ -47,8 +47,12 @@ function trimEnd(input: string): string {
 // "create an agent named Alex"                  → role defaults to 'Specialist'
 //
 // Negative: "hire a Pixel as Social Media Manager" → no "named"/"called", no match.
+//
+// The role-separator group accepts both whitespace-led ("as X" / "who is X")
+// and comma-led (", a X") forms — the comma case has no whitespace before
+// the comma so we use \s* on the whitespace-led alternatives.
 const CREATE_AGENT_RE =
-  /\b(?:create|add|make|spawn|hire)\s+(?:an?\s+)?agent\s+(?:named|called)\s+([A-Za-z][A-Za-z0-9'\- ]{0,30}?)(?:\s+(?:as|who\s+is|who's|,\s*a|—\s*a)\s+(?:an?\s+)?([A-Za-z][A-Za-z0-9 \-/]{1,40}?))?(?:[.!?]|\s*$)/i;
+  /\b(?:create|add|make|spawn|hire)\s+(?:an?\s+)?agent\s+(?:named|called)\s+([A-Za-z][A-Za-z0-9'\- ]{0,30}?)(?:(?:\s+(?:as|who\s+is|who's)|\s*,\s*a|\s*—\s*a)\s+(?:an?\s+)?([A-Za-z][A-Za-z0-9 \-/]{1,40}?))?(?:[.!?]|\s*$)/i;
 
 function parseCreateAgent(text: string): ImperativeIntent | null {
   const m = text.match(CREATE_AGENT_RE);
@@ -70,8 +74,10 @@ function parseCreateAgent(text: string): ImperativeIntent | null {
 // "create a task: review legal copy"
 // "make a task for shipping the iOS build"
 // Priority words bump the level: "urgent" / "high priority" → high; "minor" / "low priority" → low.
+// Separator after "task" may be a colon directly attached ("task: review ...")
+// or a whitespace-led keyword ("task to update ..."). Both shapes accepted.
 const CREATE_TASK_RE =
-  /\b(?:add|create|make)\s+(?:an?\s+(?:urgent\s+|high[- ]priority\s+|low[- ]priority\s+|minor\s+)?)?task\s+(?:to|that|for|:)\s+(.{3,200}?)(?:[.!?]|\s*$)/i;
+  /\b(?:add|create|make)\s+(?:an?\s+(?:urgent\s+|high[- ]priority\s+|low[- ]priority\s+|minor\s+)?)?task(?:\s+(?:to|that|for)|\s*:)\s+(.{3,200}?)(?:[.!?]|\s*$)/i;
 
 function detectPriority(fullText: string): 'low' | 'medium' | 'high' {
   const lower = fullText.toLowerCase();
@@ -93,32 +99,43 @@ function parseCreateTask(text: string): ImperativeIntent | null {
 }
 
 // ─── rename-project ──────────────────────────────────────────────────────────
-// "rename the project to Falcon"
-// "rename project to Falcon Mobile App"
-// "change the project name to Falcon"
-// "call the project Falcon"
+// Three primary shapes:
+//   1. "rename the project to Falcon" / "rename project to Falcon Mobile App"
+//   2. "change the project name to Falcon" / "change the name to Falcon"
+//   3. "call the project Falcon" (no "to")
 //
-// Secondary pattern: "rename to X" / "call it X" only if the message also
-// contains the word "project" earlier — keeps the regex narrow.
-const RENAME_PROJECT_PRIMARY_RE =
-  /\b(?:rename|call|change\s+the\s+(?:project\s+)?name)\s+(?:the\s+)?project\s+(?:to|:)?\s*([A-Za-z0-9 _'\-]{2,60}?)(?:[.!?]|\s*$)/i;
+// Secondary fallback: "rename to X" / "call it X" only if message also
+// contains the word "project" elsewhere — keeps the regex narrow.
 
+// Shape 1: rename / call the project [to] X
+const RENAME_PROJECT_RENAME_RE =
+  /\b(?:rename|call)\s+(?:the\s+)?project\s+(?:to\s+)?([A-Za-z0-9 _'\-]{2,60}?)(?:[.!?]|\s*$)/i;
+
+// Shape 2: change the [project] name to X
+const RENAME_PROJECT_CHANGE_RE =
+  /\bchange\s+the\s+(?:project\s+)?name\s+(?:of\s+the\s+project\s+)?to\s+([A-Za-z0-9 _'\-]{2,60}?)(?:[.!?]|\s*$)/i;
+
+// Shape 3 fallback: "rename/call to X" / "rename/call it X" requires the
+// word "project" present somewhere in the message.
 const RENAME_IT_RE = /\b(?:rename|call)\s+(?:it\s+)?(?:to|:)\s+([A-Za-z0-9 _'\-]{2,60}?)(?:[.!?]|\s*$)/i;
 
 function parseRenameProject(text: string): ImperativeIntent | null {
-  const primary = text.match(RENAME_PROJECT_PRIMARY_RE);
-  if (primary) {
-    const name = trimEnd(primary[1] || '');
-    if (!name || name.length < 2) return null;
-    return { kind: 'rename-project', name };
+  const m1 = text.match(RENAME_PROJECT_RENAME_RE);
+  if (m1) {
+    const name = trimEnd(m1[1] || '');
+    if (name && name.length >= 2) return { kind: 'rename-project', name };
   }
-  // Secondary form requires "project" word elsewhere in the message.
+  const m2 = text.match(RENAME_PROJECT_CHANGE_RE);
+  if (m2) {
+    const name = trimEnd(m2[1] || '');
+    if (name && name.length >= 2) return { kind: 'rename-project', name };
+  }
+  // Fallback: requires "project" word elsewhere.
   if (/\bproject\b/i.test(text)) {
     const it = text.match(RENAME_IT_RE);
     if (it) {
       const name = trimEnd(it[1] || '');
-      if (!name || name.length < 2) return null;
-      return { kind: 'rename-project', name };
+      if (name && name.length >= 2) return { kind: 'rename-project', name };
     }
   }
   return null;
