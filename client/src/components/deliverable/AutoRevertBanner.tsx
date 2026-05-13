@@ -69,7 +69,7 @@ export function AutoRevertBanner({
               Refinement made it worse, kept previous version.
             </div>
             <div className="mt-0.5">
-              Rubric scored the new draft {newScore.toFixed(1)} / 10 vs {oldScore.toFixed(1)} / 10.
+              The new draft scored {newScore.toFixed(1)} / 10 vs {oldScore.toFixed(1)} / 10.
               The earlier version is still active.
             </div>
             <button
