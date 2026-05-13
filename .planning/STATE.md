@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Hatches That Self-Improve
 status: phase_36_in_progress
-stopped_at: Phase 36-01 (Foundation — frozen rubric registry + DB schema additions) SHIPPED. 15 rubrics live, Object.freeze invariant verified, 7 schema cols applied to dev DB, 3-case test scaffold green. Next plan in queue 36-02 (Server scoring).
-last_updated: "2026-05-11T00:00:00.000Z"
-last_activity: 2026-05-11 — Phase 36-01 execution complete. shared/deliverableRubrics.ts (15 rubrics, ~742 lines) + shared/schema.ts (4 cols on deliverables, 3 on deliverable_versions) + scripts/test-rubric-scorer.ts (3 Wave-1 cases) committed in 3 atomic commits (1829ef8, 422c654, 64bcac4). 2 Rule-3 auto-fixes (db:push prompt bypass, MemStorage literal extension).
+stopped_at: Phase 36-02 (Server scoring + endpoints) SHIPPED. rubricScorer with server-side T-36-11 recompute, iterateDeliverable wrapped with revert gate, accept/dismiss/impression endpoints, DEV force-judge-score endpoint, 9/9 unit tests PASS. Next plan 36-03 (Client UI — NON-AUTONOMOUS, visual checkpoint required).
+last_updated: "2026-05-13T00:00:00.000Z"
+last_activity: 2026-05-13 — Phase 36-02 execution complete. 7 atomic commits (7189839, 8b8be7d, c126a1a, 04a2da0, 5bebbd2, 08d41c7, fea6fe2). Server-side recompute defeats prompt-injection recommendation flip (T-36-11) — pinned at unit layer via case_recommendationRecompute. 2 Rule-3 deviations (executor stream timeout mid-Task-7, ESM monkey-patch impossibility — both auto-fixed).
 progress:
   total_phases: 12
   completed_phases: 1
-  total_plans: 6
-  completed_plans: 6
-  percent: 10
+  total_plans: 7
+  completed_plans: 7
+  percent: 12
 ---
 
 # State: Hatchin
@@ -28,13 +28,13 @@ See: .planning/PROJECT.md (updated 2026-04-28)
 ## Current Position
 
 Phase: 36 (Frozen-Rubric Deliverable Iteration) — IN PROGRESS
-Plans complete: 1/4 (36-01 shipped 2026-05-11; 36-02..04 awaiting execution)
-Status: Wave 1 foundation landed. shared/deliverableRubrics.ts (15 rubrics, frozen registry), schema columns applied to dev DB, Wave-1 test scaffold green (3/3 PASS). 3 atomic commits on wip/pre-reset-2026-04-28 (1829ef8, 422c654, 64bcac4). Next: `/gsd-execute-phase 36-02`.
-Last activity: 2026-05-11 — Phase 36-01 SHIPPED. typecheck + build + tests all green; T-36-01 / T-36-02 / T-36-03 mitigations verified live.
+Plans complete: 2/4 (36-01 shipped 2026-05-11; 36-02 shipped 2026-05-13; 36-03 + 36-04 awaiting execution)
+Status: Waves 1 + 2 landed. Server scoring + auto-revert + 3 feedback endpoints + DEV override all live. 9/9 unit tests deterministic PASS including T-36-11 prompt-injection defense. 7 atomic 36-02 commits on wip/pre-reset-2026-04-28. Next: 36-03 (Client UI — **NON-AUTONOMOUS**, visual checkpoint required before commit per saved feedback rule).
+Last activity: 2026-05-13 — Phase 36-02 SHIPPED. typecheck + build + 9/9 tests all green; T-36-01 / T-36-11 / T-36-13 mitigations pinned deterministically.
 
 ### Plan breakdown (locked)
 - **36-01** (Wave 1, autonomous) — **SHIPPED 2026-05-11.** Foundation: `shared/deliverableRubrics.ts` (15 rubrics, Zod-validated, Object.freeze invariant) + DB schema additions (4 cols on `deliverables`, 3 on `deliverable_versions`) + Wave-1 test scaffold (3/3 PASS). Requirements covered: RUBR-01, RUBR-03 schema, FBK-01. See `.planning/phases/36-frozen-rubric-deliverable-iteration/36-01-SUMMARY.md`.
-- **36-02** (Wave 2, autonomous, deps 01) — Server scoring: `rubricScorer.ts` (Groq judge, temp=0, server-side recommendation override per T-36-11), wrap `iterateDeliverable()`, atomic `incrementEditsCount()`, accept/dismiss/impression endpoints, DEV-only `/api/dev/force-judge-score`. Requirements: RUBR-02 server, RUBR-03 persistence, FBK-02 server, FBK-03 server. 9 unit-test cases including deterministic T-36-11 pin.
+- **36-02** (Wave 2, autonomous, deps 01) — **SHIPPED 2026-05-13.** Server scoring: `rubricScorer.ts` (Groq judge, temp=0, server-side recommendation override per T-36-11), wrap `iterateDeliverable()`, atomic `incrementEditsCount()`, 3 endpoints (accept/dismiss/impression), DEV-only `/api/dev/force-judge-score`. 9/9 unit tests deterministic PASS. Requirements covered: RUBR-02 server, RUBR-03 persistence, FBK-02 server, FBK-03 server. See `.planning/phases/36-frozen-rubric-deliverable-iteration/36-02-SUMMARY.md`.
 - **36-03** (Wave 3, **NON-AUTONOMOUS — visual checkpoint required**, deps 01+02) — Client UI: `RubricBreakdown` + `AutoRevertBanner` components, Accept/Dismiss buttons, impression-fire + stale-banner-clear useEffects, Refine data-testids. Requirements: RUBR-04, FBK-02 UI, FBK-03 UI.
 - **36-04** (Wave 4, autonomous, deps 01+02+03) — Agent prompt feedback (`deliverableFeedbackAggregator.ts` + `openaiService.ts` injection, 15-entry inline `TYPE_LABEL_MAP`) + 6-case Playwright spec on live dev server + 36-VERIFICATION.md. Requirements: FBK-04 + cross-cutting verification of RUBR-02/04 + FBK-02/03.
 
