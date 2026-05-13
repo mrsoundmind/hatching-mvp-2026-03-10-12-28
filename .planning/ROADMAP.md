@@ -8,7 +8,7 @@
 - ✅ **v1.3 Autonomy Visibility & Right Sidebar Revamp** — Phases 11-15 (shipped 2026-03-29)
 - ✅ **v2.0 Hatches That Deliver** — Phases 16-21 (shipped 2026-03-30)
 - ⚠️ **v3.0 Hatchin That Works** — Phases 22 + 28 shipped; Phases 23-27, 29-34 re-scoped into V3 (closed 2026-04-28) — [archive](milestones/v3.0-ROADMAP.md)
-- 🚧 **v2.1 Hatches That Self-Improve** — Phases 35-46 (12 phases, 5-7w est. — in progress)
+- 🚧 **v2.1 Hatches That Self-Improve** — Phases 35-47 (13 phases inc. Phase 47 backlog batch + Phase 36.5 hotfix; 5-7w est. — in progress)
 - 📋 **Future:** v2.1.5, v2.2, v2.3, v2.4, v2.5, v2.5.5, v2.6, v2.7, v3.0 (Mental Models), v4.0 — see [ROADMAP-V3.md](ROADMAP-V3.md) for full post-v2.0 plan
 
 ---
@@ -118,6 +118,7 @@ See archived roadmap: [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
 
 - [x] **Phase 35: Production Hotfix Pass** — LEGAL-01 hybrid legal pages (modal + deep-link); LLMUX-01..03 graceful degradation banner; AUDIT-01 Playwright spec 7/7 pass · **SHIPPED 2026-05-11** (Fly version 19, deployment-01KRB7R3TP4NBV9WREP1PQNGVN). Rollback: `git checkout pre-phase-35` + `fly releases rollback`
 - [ ] **Phase 36: Frozen-Rubric Deliverable Iteration** — Per-type rubric scoring, auto-revert on score regression, deliverable feedback columns
+- [x] **Phase 36.5: Imperative Action Shortcuts (HOTFIX)** — Regex-based imperative-command parser fires actions BEFORE the LLM call; lowers Maya's turn-count gate; closes the gap until Phase 38/41/42/43 land · **SHIPPED 2026-05-13** (6 commits d870f15..0feefe3, 21/21 unit cases PASS, agent-probe Playwright PASS, phase-36 regression unbroken). Bundled with Phase 36 for next `fly deploy`.
 - [ ] **Phase 37: Git-Style Run Tree** — `autonomy_runs` + `autonomy_run_steps` tables, sidebar tree visualization with score-delta badges
 - [ ] **Phase 38: "Never Stop, Never Ask" Autonomy Prompt** — Level-4 autonomy stops asking clarifying questions during chains
 - [ ] **Phase 39: Reader Testing Peer Review Mode** — Context-naïve fresh reviewer for doc-type deliverables
@@ -128,6 +129,7 @@ See archived roadmap: [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
 - [ ] **Phase 44: Per-Run Cost Visibility** — `autonomy_events.cost_cents`, quota framing in UsageBar, per-run delta in Activity feed
 - [ ] **Phase 45: Maya 3-Stage Interrogation** — gstack /office-hours pattern: idea spike → context build → blueprint draft, bounded per stage
 - [ ] **Phase 46: AI Slop Detection** — Peer-review lens for copy-producing roles flags AI-tone patterns (advisory, not blocking)
+- [ ] **Phase 47: Accumulated Upgrades & Course Corrections** — Batched bucket for off-roadmap discoveries surfaced during 36-46. No new decimal hotfixes mid-milestone; everything that's not on the canonical path lands here and gets decided as a group before milestone close-out. See backlog below.
 
 ---
 
@@ -167,6 +169,20 @@ See archived roadmap: [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
   - [x] 36-02-PLAN.md — Server scoring: `server/ai/rubricScorer.ts` (Groq judge, temp=0, fail-open, server-side recommendation override), wrap `iterateDeliverable()` with revert gate, baseline scoring on v1, +3 accept/dismiss/impression endpoints, DEV-only `/api/dev/force-judge-score` (double-guarded), iterate response shape grows **(shipped 2026-05-13; commits 7189839, 8b8be7d, c126a1a, 04a2da0, 5bebbd2, 08d41c7, fea6fe2 — 9/9 unit tests PASS deterministic incl T-36-11 pin)**
   - [x] 36-03-PLAN.md — Client UI: score chip (color-coded by quality) + RubricBreakdown ("Why this scored X / 10") + AutoRevertBanner (amber non-blocking) + impression-fire useEffect + stale-banner-clear useEffect + Refine data-testids in ArtifactPanel.tsx **(shipped 2026-05-13; commits f31ba1b, 8a027de, 36c850a — visual checkpoint approved via 3 Playwright screenshots; Accept/Dismiss UI dropped per user simplification, word "rubric" removed from user-facing UI)**
   - [x] 36-04-PLAN.md — Agent feedback signal (`deliverableFeedbackAggregator.ts` with 60s cache + score-based phrasing + `openaiService.ts` injection between ROLE EXPERTISE and PROJECT CONTEXT) + 4-case Playwright runtime spec on live dev server + 36-VERIFICATION.md mapping ROADMAP success criteria **(shipped 2026-05-11; commits 05e41bb, 1b27011, 5d2b888, 96e0bb2 — 4/4 Playwright PASS deterministic, 4/4 feedback-signal unit cases PASS, 7 requirements closed + 1 FBK-02 UI deferred per 36-03 simplification)**
+
+### Phase 36.5: Imperative Action Shortcuts (HOTFIX)
+**Goal**: Close the user-facing gap where imperative chat commands ("create an agent named X", "rename the project to Y", "add a task to Z") get met with clarifying questions instead of action. Bridge until Phase 38/41/42/43 land the structural fix.
+**Depends on**: Nothing (independent — works alongside Phase 36)
+**Requirements**: IMP-01, IMP-02, IMP-03, IMP-04
+**Success Criteria** (what must be TRUE):
+  1. Sending "create an agent named Pixel as Social Media Manager" in chat creates the agent immediately, no follow-up questions
+  2. Sending "add a task to update the landing page" creates the task immediately
+  3. Sending "rename the project to Falcon" updates the project name immediately
+  4. When the user's message does NOT match an imperative pattern, the existing LLM flow runs unchanged (no regression in current behavior)
+  5. Maya's team-suggestion grammar fires on turn 1 (drops the `conversationTurnCount >= 2` gate) — when a user with no team asks "what should I build", Maya can propose a team immediately
+**Plans**: 1 plan (focused hotfix)
+
+  - [x] 36.5-01-PLAN.md — Imperative shortcut parser + Maya gate drop + Playwright probe spec passes **(shipped 2026-05-13; commits d870f15, 02dbffe, 36f53cd, e3ce9d3, 0feefe3 — 21/21 unit cases PASS, agent-probe 2/2 PASS deterministic 1.3m, phase-36 regression 5/5 PASS unbroken)**
 
 ### Phase 37: Git-Style Run Tree
 **Goal**: Autonomous execution becomes browsable history — every task and handoff is a step node in a parent-child tree. Score deltas (from Phase 36) attach to nodes so users can see where quality regressed or improved.
@@ -283,6 +299,38 @@ See archived roadmap: [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
 
 ---
 
+### Phase 47: Accumulated Upgrades & Course Corrections
+**Goal**: Batched off-roadmap improvements surfaced during Phases 36-46. Each item is a "wait, we should also fix X" discovery that came up while building the main path. Instead of mid-milestone decimal hotfixes (e.g. avoid future "Phase X.5" splits), we accumulate them here and decide as a group near milestone close-out.
+
+**Discipline rule (established 2026-05-13):**
+> *Off-roadmap discoveries during a phase don't become decimal hotfixes. They get logged into Phase 47's backlog with date + source phase + 1-paragraph context. At Phase 47 we triage the list, pick what's worth shipping in v2.1, push the rest to v2.1.5 / v2.2 / future milestones, and execute the chosen subset as a single focused phase.*
+
+**Exceptions to the rule:** Production-breaking bugs (like Phase 35 Production Hotfix Pass) and direct audit-driven gap closures that block the next phase's success (like Phase 36.5 Imperative Action Shortcuts) still get inline treatment. Phase 47 is for *improvements*, not blockers.
+
+**Depends on**: Phases 36-46 (all canonical phases complete or scope-locked)
+**Requirements**: (deferred — populated at triage time based on which backlog items make the cut)
+
+**Backlog of off-roadmap discoveries** (chronological):
+
+| # | Date | Source phase | Discovery | Proposed approach |
+|---|---|---|---|---|
+| 1 | 2026-05-13 | Phase 36.5 audit | **Off-registry agents have no domain depth.** When a user creates an agent with a role outside the 30 canonical roles (e.g. "Chief Vibes Officer", "Growth Hacker Ninja"), `getRoleDefinition` returns undefined and the prompt-builder silently drops the ROLE EXPERTISE / CHARACTER VOICE / PRACTITIONER SKILLS sections. The agent works but feels generic. | Generate a custom role profile via Groq on agent creation (~30s, one-time cost), save to `agents.personality` JSONB, prompt-builder falls back to the saved profile when registry returns undefined. ~1 day of work. Lower-quality than canonical (~70-80%) but scales to arbitrary roles. |
+
+**Backlog item template (for future additions):**
+```
+| {N} | YYYY-MM-DD | Phase XX {context} | {1-sentence problem} | {1-2 sentence approach + rough effort estimate} |
+```
+
+**Success Criteria** (what must be TRUE at Phase 47 close-out):
+  1. Each backlog item has a triage verdict: SHIP (in this phase) / DEFER (to specific future milestone) / DROP (no longer relevant)
+  2. SHIP items are implemented with the same plan / execute / verify rigor as canonical phases
+  3. DEFER items are added to their target milestone's planning notes so they don't get lost
+  4. DROP items are documented with the reason (e.g. "fixed indirectly by Phase 42") so we don't relitigate
+
+**Plans**: TBD (populated when Phase 47 starts — likely 1 plan per SHIP item)
+
+---
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -313,7 +361,8 @@ See archived roadmap: [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
 | 28. Maya Bug Fix + SDK Migration | v3.0 | 5/5 | Complete | 2026-04-27 |
 | 29-34. Discovery + Phase Machine + Blueprint + Skip + Feedback + Degradation + Prefs + Form + Cost | v3.0 | — | Re-scoped to V3 v2.1/v2.3/v3.0 | 2026-04-28 |
 | 35. Production Hotfix Pass | v2.1 | 5/5 | Shipped to prod (Fly v19) | 2026-05-11 |
-| 36. Frozen-Rubric Deliverable Iteration | v2.1 | 0/? | Not started | — |
+| 36. Frozen-Rubric Deliverable Iteration | v2.1 | 4/4 | Code-complete (awaiting fly deploy) | 2026-05-13 |
+| 36.5. Imperative Action Shortcuts (HOTFIX) | v2.1 | 1/1 | Code-complete (bundled with 36 for next fly deploy) | 2026-05-13 |
 | 37. Git-Style Run Tree | v2.1 | 0/? | Not started | — |
 | 38. "Never Stop, Never Ask" Autonomy Prompt | v2.1 | 0/? | Not started | — |
 | 39. Reader Testing Peer Review Mode | v2.1 | 0/? | Not started | — |

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Hatches That Self-Improve
-status: phase_36_code_complete
-stopped_at: Phase 36 CODE-COMPLETE — 4/4 plans shipped (36-01 schema/registry, 36-02 server scoring + endpoints, 36-03 UI score-chip + breakdown + auto-revert banner, 36-04 agent feedback signal + Playwright runtime spec + 36-VERIFICATION.md). Awaiting `fly deploy` (user-action — auto-mode safety carve-out). 36-VERIFICATION.md status 7 PASS + 1 DEFER (FBK-02 UI surface deferred per 36-03 user simplification; server endpoints persist).
-last_updated: "2026-05-11T00:00:00.000Z"
-last_activity: 2026-05-11 — Phase 36-04 execution complete. 5 atomic commits (05e41bb, 1b27011, 5d2b888, 96e0bb2, plus this final docs commit). Three documented mid-phase revisions all flowed from 36-03's user-driven simplification: (1) aggregator switched to score-based phrasing, (2) Playwright spec 6→4 cases, (3) FBK-02 marked DEFER in 36-VERIFICATION.md. One Rule-3 auto-fix: extended /api/dev/force-judge-score endpoint with optional oldBreakdown/newBreakdown arrays so phase-36 spec case 1 can verify criterion rows render. Runtime gate green: 4/4 Playwright PASS deterministic across 2 consecutive runs (1.5m each) on live restarted dev server.
+status: phase_36.5_code_complete
+stopped_at: Phase 36.5 CODE-COMPLETE — single-plan hotfix shipped (36.5-01 imperative shortcut parser + Maya gate drop + Playwright probe regression gate). 21/21 unit cases PASS, 2/2 agent-probe Playwright PASS (1.3m), 5/5 phase-36 regression Playwright still PASS (1.5m). Bundled with Phase 36 for next `fly deploy` (user-action — auto-mode safety carve-out).
+last_updated: "2026-05-13T09:30:00.000Z"
+last_activity: 2026-05-13 — Phase 36.5-01 execution complete. 6 atomic commits (d870f15 parser, 02dbffe wiring, 36f53cd Maya gate, e3ce9d3 unit tests, 0feefe3 probe spec, plus this final docs commit). Three Rule-1 parser fixes discovered by unit tests (comma-form whitespace, task-colon separator, rename-form/change-form split) — each captured as a test case so regressions surface. Runtime gate green: 2/2 agent-probe PASS deterministic; phase-36 spec confirmed unbroken (5/5 PASS).
 progress:
-  total_phases: 12
-  completed_phases: 2
-  total_plans: 11
-  completed_plans: 11
-  percent: 17
+  total_phases: 13
+  completed_phases: 3
+  total_plans: 12
+  completed_plans: 12
+  percent: 23
 ---
 
 # State: Hatchin
@@ -21,22 +21,27 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-28)
 
 **Core value:** No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
-**Current focus:** v2.1 milestone in progress — Phase 35 SHIPPED to production 2026-05-11. Next: Phase 36 (Frozen-Rubric Deliverable Iteration).
+**Current focus:** v2.1 milestone in progress — Phase 35 SHIPPED to production 2026-05-11. Phase 36 + Phase 36.5 CODE-COMPLETE awaiting next `fly deploy`. Next phase: 37 (Git-Style Run Tree).
 
 ---
 
 ## Current Position
 
-Phase: 36 (Frozen-Rubric Deliverable Iteration) — CODE-COMPLETE, awaiting `fly deploy`
-Plans complete: 4/4 (36-01 shipped 2026-05-11; 36-02 shipped 2026-05-13; 36-03 shipped 2026-05-13; 36-04 shipped 2026-05-11)
-Status: Phase 36 surface is RUNTIME-VERIFIED. 4/4 phase-36 Playwright cases PASS deterministic on live restarted dev server (2 consecutive runs). 36-VERIFICATION.md: 5/5 ROADMAP success criteria + 7/8 requirements PASS, 1 DEFER (FBK-02 UI — deliberate scope drop in 36-03 per user simplification; server endpoints persist). Next: `fly deploy` (user-action — auto-mode safety carve-out).
-Last activity: 2026-05-11 — Phase 36-04 SHIPPED. 5 atomic commits (05e41bb, 1b27011, 5d2b888, 96e0bb2, final docs commit). Score-based aggregator + RECENT FEEDBACK section injection in agent prompts + 4-case Playwright spec + 36-VERIFICATION.md. Three documented mid-phase revisions all flowing from 36-03's UI simplification.
+Phase: 36.5 (Imperative Action Shortcuts — HOTFIX) — CODE-COMPLETE, bundled with Phase 36 for next `fly deploy`
+Plans complete: 1/1 (36.5-01 shipped 2026-05-13)
+Status: Phase 36.5 surface is RUNTIME-VERIFIED. Agent-probe Playwright spec 2/2 PASS (1.3m); 21/21 unit cases PASS; phase-36 regression unbroken (5/5 PASS, 1.5m). All 4 IMP requirements closed. Bundled with Phase 36 for the same deploy (no new infra, no new env vars).
+Last activity: 2026-05-13 — Phase 36.5-01 SHIPPED. 6 atomic commits (d870f15 parser, 02dbffe wiring, 36f53cd Maya gate, e3ce9d3 unit tests + 3 Rule-1 parser fixes, 0feefe3 probe regression gate, this final docs commit). Closes the 2026-05-13 audit gap where "create an agent named X" / "add a task to Y" / "rename the project to Z" were met with clarifying questions instead of action.
+
+### Phase 36 — also CODE-COMPLETE (shipped 2026-05-11, awaiting same deploy)
+
+Plans complete: 4/4 (36-01 shipped 2026-05-11; 36-02 shipped 2026-05-13; 36-03 shipped 2026-05-13; 36-04 shipped 2026-05-11). 36-VERIFICATION.md: 5/5 ROADMAP success criteria + 7/8 requirements PASS, 1 DEFER (FBK-02 UI — deliberate scope drop in 36-03 per user simplification; server endpoints persist).
 
 ### Plan breakdown (locked)
 - **36-01** (Wave 1, autonomous) — **SHIPPED 2026-05-11.** Foundation: `shared/deliverableRubrics.ts` (15 rubrics, Zod-validated, Object.freeze invariant) + DB schema additions (4 cols on `deliverables`, 3 on `deliverable_versions`) + Wave-1 test scaffold (3/3 PASS). Requirements covered: RUBR-01, RUBR-03 schema, FBK-01. See `.planning/phases/36-frozen-rubric-deliverable-iteration/36-01-SUMMARY.md`.
 - **36-02** (Wave 2, autonomous, deps 01) — **SHIPPED 2026-05-13.** Server scoring: `rubricScorer.ts` (Groq judge, temp=0, server-side recommendation override per T-36-11), wrap `iterateDeliverable()`, atomic `incrementEditsCount()`, 3 endpoints (accept/dismiss/impression), DEV-only `/api/dev/force-judge-score`. 9/9 unit tests deterministic PASS. Requirements covered: RUBR-02 server, RUBR-03 persistence, FBK-02 server, FBK-03 server. See `.planning/phases/36-frozen-rubric-deliverable-iteration/36-02-SUMMARY.md`.
 - **36-03** (Wave 3, NON-AUTONOMOUS — visual checkpoint, deps 01+02) — **SHIPPED 2026-05-13** with simplifications. Client UI surface: score chip (replaces FileSpreadsheet rubric-toggle) + RubricBreakdown card (header "Why this scored X / 10") + AutoRevertBanner (amber non-blocking, no "rubric" word). Accept/Dismiss UI DROPPED — server endpoints persist (Wave 2) but no UI surface; FBK-04 agent signal switches to score-based phrasing in 36-04. Requirements covered: RUBR-04, FBK-03 UI. FBK-02 UI deferred. See `36-03-SUMMARY.md`.
 - **36-04** (Wave 4, autonomous, deps 01+02+03) — **SHIPPED 2026-05-11.** Agent prompt feedback (`deliverableFeedbackAggregator.ts` with 60s cache + 15-entry inline TYPE_LABEL_MAP + score-based phrasing per REVISION 1; injection in `openaiService.ts` between domainIntelligenceSection and emotionalSignatureSection) + 4-case Playwright spec on live dev server (4/4 PASS deterministic; REVISION 2 from 6→4 cases) + 36-VERIFICATION.md (5/5 ROADMAP success criteria; 7 PASS + 1 DEFER for FBK-02 UI per REVISION 3) + extended `/api/dev/force-judge-score` endpoint with optional oldBreakdown/newBreakdown (Rule-3 auto-fix). Requirements closed: FBK-04 + cross-cutting verification of RUBR-02/04 + FBK-03. See `36-04-SUMMARY.md`.
+- **36.5-01** (Wave 1, autonomous, no deps) — **SHIPPED 2026-05-13** — HOTFIX. Imperative shortcut parser (`server/ai/imperativeIntentParser.ts` — 4 intent shapes, conservative regex, 21 unit cases) + WS chat handler short-circuits LLM on imperative match (early check + `handleImperativeIntent` helper covering create-agent / create-task / rename-project / set-brain-field) + Maya turn-count gate removed in `openaiService.ts` so Maya can propose teams on turn 1 + Playwright probe regression gate converted from diagnostic to 3 expect-asserted cases. Three Rule-1 parser fixes discovered by tests (comma-form, task-colon, rename-change-form). Requirements closed: IMP-01, IMP-02, IMP-03, IMP-04. See `.planning/phases/36.5-imperative-action-shortcuts/36.5-01-SUMMARY.md`.
 
 ### Open questions resolved
 - Q1 (judge prompt structure): single call comparing OLD+NEW — anchoring stability, comparative justifications
@@ -78,6 +83,7 @@ fly deploy
 - **Groq LLM verified**: All deliverable generation works with Groq llama-3.3-70b
 - **ROADMAP-V3 is canonical post-v2.0 plan** (created 2026-04-28 from 18 repo evaluations + 15-item gap audit). Supersedes ROADMAP-V2 (archived).
 - **v3.0 close-out is partial, not full ship**: Phase 22 + 28 shipped; remaining 11 phases re-scoped (no work abandoned).
+- **No mid-milestone decimal hotfixes (established 2026-05-13)**: Off-roadmap discoveries during a phase don't become Phase X.5 splits. They get logged into the dedicated `Phase 47: Accumulated Upgrades & Course Corrections` backlog with date + source phase + context. At Phase 47 we triage as a group and decide SHIP / DEFER / DROP. Exceptions only for production-breaking bugs or direct audit-driven blockers (Phase 35 Production Hotfix, Phase 36.5 Imperative Shortcuts are the grandfathered examples). See ROADMAP.md § Phase 47 for the active backlog.
 
 ### v3.0 shipped decisions (preserved)
 
@@ -126,10 +132,10 @@ fly deploy
 
 ## Session Continuity
 
-Last session: 2026-04-28 — v3.0 close-out + v2.1 milestone setup. Audit verified all "v3.0 unfinished" requirements are re-homed in V3, not abandoned.
-Stopped at: v3.0 archived to milestones/. Next step is to resume `/gsd-new-milestone` for v2.1 (gather requirements + roadmap from ROADMAP-V3 v2.1 scope).
+Last session: 2026-05-13 — Phase 36.5-01 execution complete. Imperative shortcut hotfix shipped in 6 atomic commits. Closes the 2026-05-13 audit gap; bundled with Phase 36 for next deploy.
+Stopped at: Phase 36 + Phase 36.5 CODE-COMPLETE. Awaiting `fly deploy` (user-action — auto-mode safety carve-out for production deploys).
 
 Next action options (pick one):
-- `/gsd-new-milestone` — resume v2.1 milestone setup (recommended; in progress)
-- Address uncommitted `wip/pre-reset-2026-04-28` work (`ProjectTree.tsx` 5-line deletion + planning docs) before v2.1 starts
-- `fly deploy` — ship the shipped v3.0 work + DB-CRASH-01 hotfix to production (was blocked by the crash; now safe)
+- `fly deploy` — ship Phase 35 + Phase 36 + Phase 36.5 to production (user-driven; auto-mode does not deploy)
+- Begin Phase 37 (Git-Style Run Tree) — autonomy_runs + autonomy_run_steps schema + sidebar tree visualization with rubric score-delta badges
+- Address uncommitted `wip/pre-reset-2026-04-28` work (`ProjectTree.tsx` 5-line deletion + planning docs) if relevant to next phase
