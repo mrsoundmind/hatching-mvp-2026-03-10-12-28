@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Hatches That Self-Improve
 status: phase_36_in_progress
-stopped_at: Phase 36-02 (Server scoring + endpoints) SHIPPED. rubricScorer with server-side T-36-11 recompute, iterateDeliverable wrapped with revert gate, accept/dismiss/impression endpoints, DEV force-judge-score endpoint, 9/9 unit tests PASS. Next plan 36-03 (Client UI — NON-AUTONOMOUS, visual checkpoint required).
+stopped_at: Phase 36-03 (Client UI) SHIPPED with simplification — Accept/Dismiss UI dropped, score chip replaces rubric-toggle button, word "rubric" removed from user-facing UI. Visual checkpoint approved via Playwright screenshots 2026-05-13. Next: 36-04 (agent feedback signal + Playwright spec).
 last_updated: "2026-05-13T00:00:00.000Z"
 last_activity: 2026-05-13 — Phase 36-02 execution complete. 7 atomic commits (7189839, 8b8be7d, c126a1a, 04a2da0, 5bebbd2, 08d41c7, fea6fe2). Server-side recompute defeats prompt-injection recommendation flip (T-36-11) — pinned at unit layer via case_recommendationRecompute. 2 Rule-3 deviations (executor stream timeout mid-Task-7, ESM monkey-patch impossibility — both auto-fixed).
 progress:
@@ -28,14 +28,14 @@ See: .planning/PROJECT.md (updated 2026-04-28)
 ## Current Position
 
 Phase: 36 (Frozen-Rubric Deliverable Iteration) — IN PROGRESS
-Plans complete: 2/4 (36-01 shipped 2026-05-11; 36-02 shipped 2026-05-13; 36-03 + 36-04 awaiting execution)
-Status: Waves 1 + 2 landed. Server scoring + auto-revert + 3 feedback endpoints + DEV override all live. 9/9 unit tests deterministic PASS including T-36-11 prompt-injection defense. 7 atomic 36-02 commits on wip/pre-reset-2026-04-28. Next: 36-03 (Client UI — **NON-AUTONOMOUS**, visual checkpoint required before commit per saved feedback rule).
-Last activity: 2026-05-13 — Phase 36-02 SHIPPED. typecheck + build + 9/9 tests all green; T-36-01 / T-36-11 / T-36-13 mitigations pinned deterministically.
+Plans complete: 3/4 (36-01 shipped 2026-05-11; 36-02 shipped 2026-05-13; 36-03 shipped 2026-05-13; 36-04 awaiting execution)
+Status: Waves 1+2+3 landed. Client UI surface is the simplified "score chip + breakdown card + auto-revert banner" version — Accept/Dismiss UI dropped per user feedback, word "rubric" removed from user-facing UI. Visual checkpoint approved via 3 Playwright screenshots (`/tmp/36-03-screenshot-{1-default,2-accepted,3-revert}.png`). 3 atomic 36-03 commits on wip/pre-reset-2026-04-28 (f31ba1b, 8a027de, 36c850a). Next: 36-04 (agent prompt feedback signal phrasing revised to score-based; Playwright spec 6 cases → 4 cases).
+Last activity: 2026-05-13 — Phase 36-03 SHIPPED with mid-execution simplifications: FBK-02 UI deferred, score chip replaces FileSpreadsheet rubric-toggle, RubricBreakdown header label + AutoRevertBanner copy rephrased to remove "rubric" word from UI.
 
 ### Plan breakdown (locked)
 - **36-01** (Wave 1, autonomous) — **SHIPPED 2026-05-11.** Foundation: `shared/deliverableRubrics.ts` (15 rubrics, Zod-validated, Object.freeze invariant) + DB schema additions (4 cols on `deliverables`, 3 on `deliverable_versions`) + Wave-1 test scaffold (3/3 PASS). Requirements covered: RUBR-01, RUBR-03 schema, FBK-01. See `.planning/phases/36-frozen-rubric-deliverable-iteration/36-01-SUMMARY.md`.
 - **36-02** (Wave 2, autonomous, deps 01) — **SHIPPED 2026-05-13.** Server scoring: `rubricScorer.ts` (Groq judge, temp=0, server-side recommendation override per T-36-11), wrap `iterateDeliverable()`, atomic `incrementEditsCount()`, 3 endpoints (accept/dismiss/impression), DEV-only `/api/dev/force-judge-score`. 9/9 unit tests deterministic PASS. Requirements covered: RUBR-02 server, RUBR-03 persistence, FBK-02 server, FBK-03 server. See `.planning/phases/36-frozen-rubric-deliverable-iteration/36-02-SUMMARY.md`.
-- **36-03** (Wave 3, **NON-AUTONOMOUS — visual checkpoint required**, deps 01+02) — Client UI: `RubricBreakdown` + `AutoRevertBanner` components, Accept/Dismiss buttons, impression-fire + stale-banner-clear useEffects, Refine data-testids. Requirements: RUBR-04, FBK-02 UI, FBK-03 UI.
+- **36-03** (Wave 3, NON-AUTONOMOUS — visual checkpoint, deps 01+02) — **SHIPPED 2026-05-13** with simplifications. Client UI surface: score chip (replaces FileSpreadsheet rubric-toggle) + RubricBreakdown card (header "Why this scored X / 10") + AutoRevertBanner (amber non-blocking, no "rubric" word). Accept/Dismiss UI DROPPED — server endpoints persist (Wave 2) but no UI surface; FBK-04 agent signal switches to score-based phrasing in 36-04. Requirements covered: RUBR-04, FBK-03 UI. FBK-02 UI deferred. See `36-03-SUMMARY.md`.
 - **36-04** (Wave 4, autonomous, deps 01+02+03) — Agent prompt feedback (`deliverableFeedbackAggregator.ts` + `openaiService.ts` injection, 15-entry inline `TYPE_LABEL_MAP`) + 6-case Playwright spec on live dev server + 36-VERIFICATION.md. Requirements: FBK-04 + cross-cutting verification of RUBR-02/04 + FBK-02/03.
 
 ### Open questions resolved
