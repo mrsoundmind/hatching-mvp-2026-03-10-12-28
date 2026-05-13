@@ -175,9 +175,14 @@ export async function scoreIteration(
 
   // 4. Call Groq (free tier) with temperature=0 for determinism. No retry loop
   //    — fail-open on any throw.
+  //    DEV-only test hook: if __setGenerateOverrideForTests was called, use that
+  //    function instead of the real provider. Lets case_recommendationRecompute
+  //    inject adversarial JSON without monkey-patching ESM namespace exports
+  //    (which are read-only at runtime).
+  const generate = __testGenerateOverride ?? generateWithPreferredProvider;
   let raw: string;
   try {
-    const result = await generateWithPreferredProvider(
+    const result = await generate(
       {
         messages: [
           {
@@ -264,4 +269,31 @@ export function __setForcedScoreForTests(result: RubricScoreResult | null): void
  */
 export function __clearForcedScoreForTests(): void {
   __setForcedScoreForTests(null);
+}
+
+// -----------------------------------------------------------------------------
+// DEV-only generate-function override — for case_recommendationRecompute (T-36-11).
+// Plan 36-02 Task 7 originally specified "monkey-patch generateWithPreferredProvider
+// via dynamic import", which doesn't work for ESM (namespace exports are read-only).
+// Instead we expose an explicit DEV-only injection hook that scoreIteration consults
+// when set. Same production-guard pattern as __setForcedScoreForTests.
+// -----------------------------------------------------------------------------
+
+type GenerateFn = typeof generateWithPreferredProvider;
+let __testGenerateOverride: GenerateFn | null = null;
+
+/**
+ * DEV-only: override the LLM generation function used by scoreIteration's natural
+ * (non-forced) path. Used by case_recommendationRecompute to inject adversarial
+ * JSON and verify the server-side recommendation recompute (T-36-11). Throws FATAL
+ * in production.
+ */
+export function __setGenerateOverrideForTests(fn: GenerateFn | null): void {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'FATAL: __setGenerateOverrideForTests called in production. This is a DEV-only ' +
+        'injection mechanism and must not be reachable from a production code path.',
+    );
+  }
+  __testGenerateOverride = fn;
 }
