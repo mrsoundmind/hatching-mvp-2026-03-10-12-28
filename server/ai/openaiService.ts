@@ -20,6 +20,10 @@ import { detectEmotionalState } from './responsePostProcessing.js';
 import { classifyMessageComplexity, resolveMaxTokens } from './taskComplexityClassifier.js';
 import { getReasoningHint, cacheReasoningPattern } from './reasoningCache.js';
 import { storage } from '../storage.js';
+import {
+  getRecentFeedbackSignal,
+  formatFeedbackSection,
+} from './deliverableFeedbackAggregator.js';
 
 export class OpenAIConfigurationError extends Error {
   code: string;
@@ -361,6 +365,24 @@ After 5+ exchanges, if you've learned something significant about the project, s
       } catch { /* non-critical — skip task injection on error */ }
     }
 
+    // Phase 36 (FBK-04): inject RECENT FEEDBACK section after ROLE EXPERTISE,
+    // before PROJECT CONTEXT. Threshold-gated (D-23: ≥3 finalized deliverables);
+    // aggregate counts only (D-24: no IDs, no user names); 60s in-process cache
+    // (Q2: no write-invalidation). Section omitted entirely if agentId or
+    // projectId is missing or below threshold.
+    let recentFeedbackSection = '';
+    if (context.projectId && context.agentId) {
+      try {
+        const signal = await getRecentFeedbackSignal(context.projectId, context.agentId);
+        if (signal) {
+          const body = formatFeedbackSection(signal);
+          if (body) {
+            recentFeedbackSection = `\n--- RECENT FEEDBACK ON YOUR WORK (this project) ---\n${body}\n--- END RECENT FEEDBACK ---`;
+          }
+        }
+      } catch { /* non-critical — skip on error */ }
+    }
+
     // Hard format rules — placed last so they are fresh when the model generates
     const agentRoleLabel = roleProfile?.characterName || agentRole;
     const hardFormatRules = `\n--- ABSOLUTE FORMAT RULES (read these last, follow them first) ---
@@ -377,6 +399,7 @@ After 5+ exchanges, if you've learned something significant about the project, s
 ${characterSection}
 ${professionalDepthSection}
 ${domainIntelligenceSection}
+${recentFeedbackSection}
 ${emotionalSignatureSection}
 ${skillsSection}
 ${projectContextSection}
