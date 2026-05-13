@@ -79,6 +79,21 @@ export default defineConfig({
       testMatch: /phase-35-production-hotfix\.spec\.ts/,
       timeout: 120000,
     },
+    // Phase 36 frozen-rubric deliverable iteration smoke —
+    // RUBR-02 (auto-revert), RUBR-04 (breakdown), FBK-03 (impressionCount), FBK-04 (verified via unit test).
+    // Cases 2-3 drive the iterate path which calls into Groq judge (forced via /api/dev/force-judge-score
+    // so deterministic). Case 4 has an explicit 6s sleep to walk past the impression dedupe window.
+    // Same 2-min budget as phase-35 — sufficient headroom for the slowest case (case 4).
+    {
+      name: 'phase-36',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/e2e/.auth/session.json',
+      },
+      dependencies: ['setup'],
+      testMatch: /phase-36-rubric-iteration\.spec\.ts/,
+      timeout: 120000,
+    },
     // Mobile viewport — authenticated
     {
       name: 'mobile',

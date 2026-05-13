@@ -178,10 +178,23 @@ export function registerHealthRoute(app: Express, deps: RegisterHealthDeps): voi
   // from non-existent paths.
   // ---------------------------------------------------------------------------
 
+  const breakdownEntrySchema = z.object({
+    criterion: z.string().min(1).max(100),
+    score: z.number().min(0).max(10),
+    justification: z.string().min(1).max(500),
+  }).strict();
   const forceJudgeScoreBodySchema = z.object({
     recommendation: z.enum(['keep_new', 'revert']),
     oldTotal: z.number().min(0).max(10).optional(),
     newTotal: z.number().min(0).max(10).optional(),
+    // Phase 36-04: optional populated breakdown so the Playwright spec can
+    // verify per-criterion rows render in RubricBreakdown. Server-side
+    // recompute (T-36-11) still applies to recommendation if these are
+    // supplied via the natural (non-forced) judge path — but for the forced
+    // path scoreIteration short-circuits and returns this verbatim, so what
+    // we send here lands in deliverable_versions.rubricScore.breakdown.
+    oldBreakdown: z.array(breakdownEntrySchema).max(10).optional(),
+    newBreakdown: z.array(breakdownEntrySchema).max(10).optional(),
     clear: z.boolean().optional(),
   }).strict();
 
@@ -209,8 +222,8 @@ export function registerHealthRoute(app: Express, deps: RegisterHealthDeps): voi
       // rubricVersion is overwritten by scoreIteration with the actual registry
       // value (T-36-12 defence); '1.0.0' is just a placeholder.
       rubricVersion: '1.0.0',
-      oldScore: { total: oldTotal, breakdown: [] },
-      newScore: { total: newTotal, breakdown: [] },
+      oldScore: { total: oldTotal, breakdown: parsed.data.oldBreakdown ?? [] },
+      newScore: { total: newTotal, breakdown: parsed.data.newBreakdown ?? [] },
       recommendation: parsed.data.recommendation,
     };
     __setForcedScoreForTests(synthetic);
