@@ -162,11 +162,14 @@ test.describe('Agent Action Probe — chat-to-action chain (Phase 36.5 regressio
       'create-task intent should fire on turn 1, but taskCount did not increase',
     ).toBeGreaterThan(before5.taskCount);
 
-    // ── Test 6: "rename the project to Falcon Probe" ────────────────────────
+    // ── Test 6: "rename the project to Falcon Probe <timestamp>" ────────────
     //   Phase 36.5 ASSERTS: rename-project intent updates project name on turn 1.
+    //   Use a unique target name so the test is resilient to state pollution
+    //   when the dev server persists MemStorage across test runs in a session.
+    const renameTarget = `Falcon Probe ${Date.now()}`;
     const before6 = after5;
-    console.log('\n[probe] >>> Test 6: "rename the project to Falcon Probe"');
-    await sendMessage(page, 'rename the project to Falcon Probe');
+    console.log(`\n[probe] >>> Test 6: "rename the project to ${renameTarget}"`);
+    await sendMessage(page, `rename the project to ${renameTarget}`);
     await page.waitForTimeout(3000);
     const after6 = await getProjectState(page, projectId);
     const reply6 = await readLastAgentMessage(page);
@@ -175,8 +178,8 @@ test.describe('Agent Action Probe — chat-to-action chain (Phase 36.5 regressio
 
     expect(
       after6.projectName,
-      'rename-project intent should update projects.name to "Falcon Probe" on turn 1',
-    ).toBe('Falcon Probe');
+      `rename-project intent should update projects.name to "${renameTarget}" on turn 1`,
+    ).toBe(renameTarget);
     expect(
       after6.projectName,
       'rename-project must not leave projectName unchanged from before6',
