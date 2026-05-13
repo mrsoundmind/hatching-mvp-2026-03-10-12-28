@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Hatches That Self-Improve
-status: phase_36_in_progress
-stopped_at: Phase 36-03 (Client UI) SHIPPED with simplification — Accept/Dismiss UI dropped, score chip replaces rubric-toggle button, word "rubric" removed from user-facing UI. Visual checkpoint approved via Playwright screenshots 2026-05-13. Next: 36-04 (agent feedback signal + Playwright spec).
-last_updated: "2026-05-13T00:00:00.000Z"
-last_activity: 2026-05-13 — Phase 36-02 execution complete. 7 atomic commits (7189839, 8b8be7d, c126a1a, 04a2da0, 5bebbd2, 08d41c7, fea6fe2). Server-side recompute defeats prompt-injection recommendation flip (T-36-11) — pinned at unit layer via case_recommendationRecompute. 2 Rule-3 deviations (executor stream timeout mid-Task-7, ESM monkey-patch impossibility — both auto-fixed).
+status: phase_36_code_complete
+stopped_at: Phase 36 CODE-COMPLETE — 4/4 plans shipped (36-01 schema/registry, 36-02 server scoring + endpoints, 36-03 UI score-chip + breakdown + auto-revert banner, 36-04 agent feedback signal + Playwright runtime spec + 36-VERIFICATION.md). Awaiting `fly deploy` (user-action — auto-mode safety carve-out). 36-VERIFICATION.md status 7 PASS + 1 DEFER (FBK-02 UI surface deferred per 36-03 user simplification; server endpoints persist).
+last_updated: "2026-05-11T00:00:00.000Z"
+last_activity: 2026-05-11 — Phase 36-04 execution complete. 5 atomic commits (05e41bb, 1b27011, 5d2b888, 96e0bb2, plus this final docs commit). Three documented mid-phase revisions all flowed from 36-03's user-driven simplification: (1) aggregator switched to score-based phrasing, (2) Playwright spec 6→4 cases, (3) FBK-02 marked DEFER in 36-VERIFICATION.md. One Rule-3 auto-fix: extended /api/dev/force-judge-score endpoint with optional oldBreakdown/newBreakdown arrays so phase-36 spec case 1 can verify criterion rows render. Runtime gate green: 4/4 Playwright PASS deterministic across 2 consecutive runs (1.5m each) on live restarted dev server.
 progress:
   total_phases: 12
-  completed_phases: 1
-  total_plans: 7
-  completed_plans: 7
-  percent: 12
+  completed_phases: 2
+  total_plans: 11
+  completed_plans: 11
+  percent: 17
 ---
 
 # State: Hatchin
@@ -27,16 +27,16 @@ See: .planning/PROJECT.md (updated 2026-04-28)
 
 ## Current Position
 
-Phase: 36 (Frozen-Rubric Deliverable Iteration) — IN PROGRESS
-Plans complete: 3/4 (36-01 shipped 2026-05-11; 36-02 shipped 2026-05-13; 36-03 shipped 2026-05-13; 36-04 awaiting execution)
-Status: Waves 1+2+3 landed. Client UI surface is the simplified "score chip + breakdown card + auto-revert banner" version — Accept/Dismiss UI dropped per user feedback, word "rubric" removed from user-facing UI. Visual checkpoint approved via 3 Playwright screenshots (`/tmp/36-03-screenshot-{1-default,2-accepted,3-revert}.png`). 3 atomic 36-03 commits on wip/pre-reset-2026-04-28 (f31ba1b, 8a027de, 36c850a). Next: 36-04 (agent prompt feedback signal phrasing revised to score-based; Playwright spec 6 cases → 4 cases).
-Last activity: 2026-05-13 — Phase 36-03 SHIPPED with mid-execution simplifications: FBK-02 UI deferred, score chip replaces FileSpreadsheet rubric-toggle, RubricBreakdown header label + AutoRevertBanner copy rephrased to remove "rubric" word from UI.
+Phase: 36 (Frozen-Rubric Deliverable Iteration) — CODE-COMPLETE, awaiting `fly deploy`
+Plans complete: 4/4 (36-01 shipped 2026-05-11; 36-02 shipped 2026-05-13; 36-03 shipped 2026-05-13; 36-04 shipped 2026-05-11)
+Status: Phase 36 surface is RUNTIME-VERIFIED. 4/4 phase-36 Playwright cases PASS deterministic on live restarted dev server (2 consecutive runs). 36-VERIFICATION.md: 5/5 ROADMAP success criteria + 7/8 requirements PASS, 1 DEFER (FBK-02 UI — deliberate scope drop in 36-03 per user simplification; server endpoints persist). Next: `fly deploy` (user-action — auto-mode safety carve-out).
+Last activity: 2026-05-11 — Phase 36-04 SHIPPED. 5 atomic commits (05e41bb, 1b27011, 5d2b888, 96e0bb2, final docs commit). Score-based aggregator + RECENT FEEDBACK section injection in agent prompts + 4-case Playwright spec + 36-VERIFICATION.md. Three documented mid-phase revisions all flowing from 36-03's UI simplification.
 
 ### Plan breakdown (locked)
 - **36-01** (Wave 1, autonomous) — **SHIPPED 2026-05-11.** Foundation: `shared/deliverableRubrics.ts` (15 rubrics, Zod-validated, Object.freeze invariant) + DB schema additions (4 cols on `deliverables`, 3 on `deliverable_versions`) + Wave-1 test scaffold (3/3 PASS). Requirements covered: RUBR-01, RUBR-03 schema, FBK-01. See `.planning/phases/36-frozen-rubric-deliverable-iteration/36-01-SUMMARY.md`.
 - **36-02** (Wave 2, autonomous, deps 01) — **SHIPPED 2026-05-13.** Server scoring: `rubricScorer.ts` (Groq judge, temp=0, server-side recommendation override per T-36-11), wrap `iterateDeliverable()`, atomic `incrementEditsCount()`, 3 endpoints (accept/dismiss/impression), DEV-only `/api/dev/force-judge-score`. 9/9 unit tests deterministic PASS. Requirements covered: RUBR-02 server, RUBR-03 persistence, FBK-02 server, FBK-03 server. See `.planning/phases/36-frozen-rubric-deliverable-iteration/36-02-SUMMARY.md`.
 - **36-03** (Wave 3, NON-AUTONOMOUS — visual checkpoint, deps 01+02) — **SHIPPED 2026-05-13** with simplifications. Client UI surface: score chip (replaces FileSpreadsheet rubric-toggle) + RubricBreakdown card (header "Why this scored X / 10") + AutoRevertBanner (amber non-blocking, no "rubric" word). Accept/Dismiss UI DROPPED — server endpoints persist (Wave 2) but no UI surface; FBK-04 agent signal switches to score-based phrasing in 36-04. Requirements covered: RUBR-04, FBK-03 UI. FBK-02 UI deferred. See `36-03-SUMMARY.md`.
-- **36-04** (Wave 4, autonomous, deps 01+02+03) — Agent prompt feedback (`deliverableFeedbackAggregator.ts` + `openaiService.ts` injection, 15-entry inline `TYPE_LABEL_MAP`) + 6-case Playwright spec on live dev server + 36-VERIFICATION.md. Requirements: FBK-04 + cross-cutting verification of RUBR-02/04 + FBK-02/03.
+- **36-04** (Wave 4, autonomous, deps 01+02+03) — **SHIPPED 2026-05-11.** Agent prompt feedback (`deliverableFeedbackAggregator.ts` with 60s cache + 15-entry inline TYPE_LABEL_MAP + score-based phrasing per REVISION 1; injection in `openaiService.ts` between domainIntelligenceSection and emotionalSignatureSection) + 4-case Playwright spec on live dev server (4/4 PASS deterministic; REVISION 2 from 6→4 cases) + 36-VERIFICATION.md (5/5 ROADMAP success criteria; 7 PASS + 1 DEFER for FBK-02 UI per REVISION 3) + extended `/api/dev/force-judge-score` endpoint with optional oldBreakdown/newBreakdown (Rule-3 auto-fix). Requirements closed: FBK-04 + cross-cutting verification of RUBR-02/04 + FBK-03. See `36-04-SUMMARY.md`.
 
 ### Open questions resolved
 - Q1 (judge prompt structure): single call comparing OLD+NEW — anchoring stability, comparative justifications
