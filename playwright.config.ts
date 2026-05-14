@@ -94,6 +94,22 @@ export default defineConfig({
       testMatch: /phase-36-rubric-iteration\.spec\.ts/,
       timeout: 120000,
     },
+    // Phase 37 git-style run tree smoke —
+    // TREE-03 (tree visualization), TREE-04 (click → deliverable version, W-4),
+    // TREE-05 (backfill marker surfaced in UI). Uses 3 DEV-only endpoints
+    // (/api/dev/seed-run-tree, /api/dev/reset-run-tree, /api/dev/mark-flat-historical)
+    // to build deterministic tree state. Per saved memory rule feedback_verify_in_runtime,
+    // the spec runs on a LIVE FRESHLY-RESTARTED dev server. 2-min budget mirrors phase-36.
+    {
+      name: 'phase-37',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/e2e/.auth/session.json',
+      },
+      dependencies: ['setup'],
+      testMatch: /phase-37-run-tree\.spec\.ts/,
+      timeout: 120000,
+    },
     // Agent-action probe — diagnostic, not a regression gate. Records whether
     // imperative chat commands trigger real DB side effects or just clarifying Qs.
     {

@@ -1,5 +1,7 @@
-import type { Express, Request } from 'express';
+import type { Express, Request, Response } from 'express';
+import { randomUUID } from 'crypto';
 import { storage } from '../storage.js';
+import { pool } from '../db.js';
 import { evaluateConductorDecision, buildRoleIdentity } from '../ai/conductor.js';
 import { evaluateSafetyScore } from '../ai/safety.js';
 import {
@@ -799,6 +801,164 @@ export function registerAutonomyRoutes(app: Express): void {
       return res.status(500).json({ error: 'Failed to read autonomy run tree' });
     }
   });
+
+  // ---------------------------------------------------------------------
+  // Phase 37 (TREE-05) — DEV-only seed/reset/mark-flat-historical endpoints.
+  //
+  // Used by tests/e2e/phase-37-run-tree.spec.ts to build deterministic tree
+  // state without driving the live autonomy pipeline. Pattern mirrors Phase 36-02's
+  // /api/dev/force-judge-score: double-guard (conditional registration AND
+  // in-handler production throw). NEVER exposed in production.
+  // ---------------------------------------------------------------------
+  if (process.env.NODE_ENV !== 'production') {
+    app.post('/api/dev/seed-run-tree', async (req: Request, res: Response) => {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('FATAL: /api/dev/seed-run-tree called in production. DEV-only endpoint must not run in a production code path.');
+      }
+      try {
+        const { projectId, runs } = req.body as {
+          projectId: string;
+          runs: Array<{
+            rootGoal: string;
+            metadata?: Record<string, unknown>;
+            steps: Array<{
+              stepType: 'task' | 'handoff' | 'peer_review' | 'deliberation' | 'safety_block' | 'approval_request';
+              parentStepIndex?: number | null;
+              agentName: string;
+              agentRole: string;
+              title: string;
+              status: 'pending' | 'running' | 'complete' | 'failed' | 'skipped';
+              scoreDelta?: number | null;
+              deliverableId?: string | null;
+              deliverableVersionId?: string | null;
+              deliverableVersionNumber?: number | null;
+            }>;
+          }>;
+        };
+        if (!projectId || !Array.isArray(runs)) {
+          return res.status(400).json({ error: 'projectId and runs[] required' });
+        }
+        for (const r of runs) {
+          const traceId = randomUUID();
+          const run = await storage.createRun({
+            traceId,
+            projectId,
+            userId: null,
+            rootAgentId: null,
+            rootGoal: r.rootGoal.slice(0, 500),
+            status: 'complete',
+            stepCount: r.steps.length,
+            aggregateScoreDelta: null,
+            metadata: r.metadata ?? {},
+          });
+          const createdStepIds: string[] = [];
+          for (const s of r.steps) {
+            const parentIdx = typeof s.parentStepIndex === 'number' ? s.parentStepIndex : -1;
+            const parentStepId =
+              parentIdx >= 0 && parentIdx < createdStepIds.length
+                ? createdStepIds[parentIdx]
+                : null;
+            const step = await storage.createRunStep({
+              runId: run.id,
+              parentStepId,
+              traceId,
+              agentId: null,
+              agentName: s.agentName,
+              agentRole: s.agentRole,
+              stepType: s.stepType,
+              title: s.title.slice(0, 200),
+              status: s.status,
+              deliverableId: s.deliverableId ?? null,
+              deliverableVersionId: s.deliverableVersionId ?? null,
+              deliverableVersionNumber: s.deliverableVersionNumber ?? null,
+              scoreDelta: s.scoreDelta ?? null,
+              metadata: {},
+              completedAt: s.status === 'complete' || s.status === 'failed' ? new Date() : null,
+              latencyMs: null,
+            });
+            createdStepIds.push(step.id);
+          }
+        }
+        return res.json({ ok: true });
+      } catch (error) {
+        console.error('[dev] seed-run-tree error:', error);
+        return res.status(500).json({ error: 'Failed to seed run tree', detail: (error as Error).message });
+      }
+    });
+
+    app.post('/api/dev/reset-run-tree', async (req: Request, res: Response) => {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('FATAL: /api/dev/reset-run-tree called in production. DEV-only endpoint must not run in a production code path.');
+      }
+      try {
+        const { projectId } = req.body as { projectId: string };
+        if (!projectId) return res.status(400).json({ error: 'projectId required' });
+        // Reset path branches on storage type. In DB mode we use raw pool.query for
+        // batch deletes. In MemStorage mode the in-process Maps are the source of
+        // truth; mutate them directly via the same hook __resetRunTreeForTests uses.
+        if (process.env.STORAGE_MODE === 'db') {
+          await pool.query(
+            `DELETE FROM autonomy_run_steps WHERE run_id IN (SELECT id FROM autonomy_runs WHERE project_id = $1)`,
+            [projectId],
+          );
+          await pool.query(`DELETE FROM autonomy_runs WHERE project_id = $1`, [projectId]);
+        } else {
+          const mem = storage as unknown as {
+            autonomyRuns?: Map<string, { id: string; projectId: string }>;
+            autonomyRunSteps?: Map<string, { id: string; runId: string }>;
+          };
+          if (mem.autonomyRuns && mem.autonomyRunSteps) {
+            const runIdsToDrop = new Set<string>();
+            for (const [id, run] of mem.autonomyRuns.entries()) {
+              if (run.projectId === projectId) runIdsToDrop.add(id);
+            }
+            for (const [stepId, step] of mem.autonomyRunSteps.entries()) {
+              if (runIdsToDrop.has(step.runId)) mem.autonomyRunSteps.delete(stepId);
+            }
+            for (const id of runIdsToDrop) mem.autonomyRuns.delete(id);
+          }
+        }
+        return res.json({ ok: true });
+      } catch (error) {
+        console.error('[dev] reset-run-tree error:', error);
+        return res.status(500).json({ error: 'Failed to reset run tree', detail: (error as Error).message });
+      }
+    });
+
+    app.post('/api/dev/mark-flat-historical', async (req: Request, res: Response) => {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('FATAL: /api/dev/mark-flat-historical called in production. DEV-only endpoint must not run in a production code path.');
+      }
+      try {
+        const { projectId } = req.body as { projectId: string };
+        if (!projectId) return res.status(400).json({ error: 'projectId required' });
+        if (process.env.STORAGE_MODE === 'db') {
+          await pool.query(
+            `UPDATE autonomy_runs SET metadata = jsonb_set(COALESCE(metadata, '{}'::jsonb), '{flatHistorical}', 'true') WHERE project_id = $1`,
+            [projectId],
+          );
+        } else {
+          const mem = storage as unknown as {
+            autonomyRuns?: Map<string, { id: string; projectId: string; metadata: Record<string, unknown> }>;
+          };
+          if (mem.autonomyRuns) {
+            for (const [id, run] of mem.autonomyRuns.entries()) {
+              if (run.projectId === projectId) {
+                mem.autonomyRuns.set(id, {
+                  ...run,
+                  metadata: { ...(run.metadata ?? {}), flatHistorical: true },
+                });
+              }
+            }
+          }
+        }
+        return res.json({ ok: true });
+      } catch (error) {
+        console.error('[dev] mark-flat-historical error:', error);
+        return res.status(500).json({ error: 'Failed to mark flat historical', detail: (error as Error).message });
+      }
+    });
+  }
 
   app.get('/api/autonomy/evidence-pack', async (req, res) => {
     try {
