@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Project, type InsertProject, type Team, type InsertTeam, type Agent, type InsertAgent, type Conversation, type InsertConversation, type Message, type InsertMessage, type MessageReaction, type InsertMessageReaction, type TypingIndicator, type InsertTypingIndicator, type Task, type InsertTask, type UsageDailySummary, type Deliverable, type InsertDeliverable, type DeliverableVersion, type InsertDeliverableVersion, type DeliverablePackage, type InsertDeliverablePackage } from "@shared/schema";
+import { type User, type InsertUser, type Project, type InsertProject, type Team, type InsertTeam, type Agent, type InsertAgent, type Conversation, type InsertConversation, type Message, type InsertMessage, type MessageReaction, type InsertMessageReaction, type TypingIndicator, type InsertTypingIndicator, type Task, type InsertTask, type UsageDailySummary, type Deliverable, type InsertDeliverable, type DeliverableVersion, type InsertDeliverableVersion, type DeliverablePackage, type InsertDeliverablePackage, type AutonomyRun, type InsertAutonomyRun, type AutonomyRunStep, type InsertAutonomyRunStep } from "@shared/schema";
 import { starterPacksByCategory, allHatchTemplates } from "@shared/templates";
 import { parseConversationId } from "@shared/conversationId";
 import { randomUUID } from "crypto";
@@ -271,6 +271,12 @@ export interface IStorage {
   getPackage(id: string): Promise<DeliverablePackage | undefined>;
   createPackage(pkg: InsertDeliverablePackage): Promise<DeliverablePackage>;
   updatePackage(id: string, updates: Partial<DeliverablePackage>): Promise<DeliverablePackage | undefined>;
+
+  // Phase 37 — autonomy run tree (TREE-01)
+  createRun(run: InsertAutonomyRun): Promise<AutonomyRun>;
+  createRunStep(step: InsertAutonomyRunStep): Promise<AutonomyRunStep>;
+  updateRunStep(id: string, updates: Partial<AutonomyRunStep>): Promise<AutonomyRunStep | undefined>;
+  getRunsByProject(projectId: string, options?: { limit?: number; offset?: number }): Promise<{ runs: AutonomyRun[]; steps: AutonomyRunStep[] }>;
 }
 
 
@@ -1612,6 +1618,104 @@ export class MemStorage implements IStorage {
     this.deliverablePackages.set(id, updated);
     return updated;
   }
+
+  // Phase 37 (TREE-01) — autonomy run tree (MemStorage)
+  private autonomyRuns: Map<string, AutonomyRun> = new Map();
+  private autonomyRunSteps: Map<string, AutonomyRunStep> = new Map();
+
+  async createRun(input: InsertAutonomyRun): Promise<AutonomyRun> {
+    const id = randomUUID();
+    const now = new Date();
+    const row = {
+      id,
+      traceId: input.traceId,
+      projectId: input.projectId,
+      userId: input.userId ?? null,
+      rootAgentId: input.rootAgentId ?? null,
+      rootGoal: input.rootGoal ?? null,
+      status: input.status ?? 'running',
+      stepCount: input.stepCount ?? 0,
+      aggregateScoreDelta: input.aggregateScoreDelta ?? null,
+      metadata: (input.metadata as Record<string, unknown>) ?? {},
+      createdAt: now,
+      updatedAt: now,
+    } as AutonomyRun;
+    this.autonomyRuns.set(id, row);
+    return row;
+  }
+
+  async createRunStep(input: InsertAutonomyRunStep): Promise<AutonomyRunStep> {
+    // Parent-mismatch guard — cross-run parentStepId claim is a tree-integrity violation
+    if (input.parentStepId) {
+      const parent = this.autonomyRunSteps.get(input.parentStepId);
+      if (!parent || parent.runId !== input.runId) {
+        throw new Error(`parentStepId ${input.parentStepId} does not belong to runId ${input.runId}`);
+      }
+    }
+    const id = randomUUID();
+    const startedAt = new Date();
+    const status = input.status ?? 'pending';
+    const isRunning = status === 'running' || status === 'pending';
+    const row = {
+      id,
+      runId: input.runId,
+      parentStepId: input.parentStepId ?? null,
+      traceId: input.traceId,
+      agentId: input.agentId ?? null,
+      agentName: input.agentName ?? null,
+      agentRole: input.agentRole ?? null,
+      stepType: input.stepType,
+      title: input.title ?? null,
+      status,
+      deliverableId: input.deliverableId ?? null,
+      deliverableVersionId: input.deliverableVersionId ?? null,
+      deliverableVersionNumber: input.deliverableVersionNumber ?? null,
+      scoreDelta: input.scoreDelta ?? null,
+      metadata: (input.metadata as Record<string, unknown>) ?? {},
+      startedAt,
+      completedAt: input.completedAt ?? null,
+      latencyMs: input.latencyMs ?? null,
+      // Q4: 30-min timeout matches pg-boss expireInMinutes — only set on running/pending inserts
+      timeoutAt: isRunning ? new Date(startedAt.getTime() + 30 * 60 * 1000) : null,
+    } as AutonomyRunStep;
+    this.autonomyRunSteps.set(id, row);
+    return row;
+  }
+
+  async updateRunStep(id: string, updates: Partial<AutonomyRunStep>): Promise<AutonomyRunStep | undefined> {
+    const existing = this.autonomyRunSteps.get(id);
+    if (!existing) return undefined;
+    const merged = { ...existing, ...updates };
+    this.autonomyRunSteps.set(id, merged);
+    return merged;
+  }
+
+  async getRunsByProject(projectId: string, options?: { limit?: number; offset?: number }): Promise<{ runs: AutonomyRun[]; steps: AutonomyRunStep[] }> {
+    const limit = options?.limit ?? 20;
+    const offset = options?.offset ?? 0;
+    // Q4: opportunistic sweep — mark stuck rows as failed (mirrors DB-mode semantics for parity)
+    const now = new Date();
+    for (const [stepId, step] of this.autonomyRunSteps.entries()) {
+      if (step.status === 'running' && step.timeoutAt && step.timeoutAt.getTime() < now.getTime()) {
+        const projectRun = this.autonomyRuns.get(step.runId);
+        if (projectRun && projectRun.projectId === projectId) {
+          this.autonomyRunSteps.set(stepId, {
+            ...step,
+            status: 'failed',
+            completedAt: now,
+            metadata: { ...step.metadata, timeoutReason: 'inferred from pg-boss expiry' },
+          });
+        }
+      }
+    }
+    const allRuns = [...this.autonomyRuns.values()]
+      .filter(r => r.projectId === projectId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const runs = allRuns.slice(offset, offset + limit);
+    const runIds = new Set(runs.map(r => r.id));
+    const steps = [...this.autonomyRunSteps.values()].filter(s => runIds.has(s.runId));
+    return { runs, steps };
+  }
 }
 
 // ============================================================
@@ -2417,6 +2521,62 @@ export class DatabaseStorage implements IStorage {
     const [row] = await db.update(schema.deliverablePackages).set({ ...updates, updatedAt: new Date() }).where(eq(schema.deliverablePackages.id, id)).returning();
     return row;
   }
+
+  // Phase 37 (TREE-01) — autonomy run tree (DatabaseStorage)
+  async createRun(input: InsertAutonomyRun): Promise<AutonomyRun> {
+    const [row] = await db.insert(schema.autonomyRuns).values(input as any).returning();
+    return row;
+  }
+
+  async createRunStep(input: InsertAutonomyRunStep): Promise<AutonomyRunStep> {
+    // Parent-mismatch guard — same write-time integrity enforcement as MemStorage
+    if (input.parentStepId) {
+      const [parent] = await db
+        .select({ id: schema.autonomyRunSteps.id, runId: schema.autonomyRunSteps.runId })
+        .from(schema.autonomyRunSteps)
+        .where(eq(schema.autonomyRunSteps.id, input.parentStepId))
+        .limit(1);
+      if (!parent || parent.runId !== input.runId) {
+        throw new Error(`parentStepId ${input.parentStepId} does not belong to runId ${input.runId}`);
+      }
+    }
+    const status = input.status ?? 'pending';
+    const isRunning = status === 'running' || status === 'pending';
+    // Q4: timeoutAt = startedAt + 30min matches pg-boss expireInMinutes; set on running/pending inserts only
+    const valuesWithTimeout = isRunning
+      ? { ...input, timeoutAt: sql`NOW() + interval '30 minutes'` as unknown as Date }
+      : input;
+    const [row] = await db.insert(schema.autonomyRunSteps).values(valuesWithTimeout as any).returning();
+    return row;
+  }
+
+  async updateRunStep(id: string, updates: Partial<AutonomyRunStep>): Promise<AutonomyRunStep | undefined> {
+    const [row] = await db.update(schema.autonomyRunSteps).set(updates).where(eq(schema.autonomyRunSteps.id, id)).returning();
+    return row;
+  }
+
+  async getRunsByProject(projectId: string, options?: { limit?: number; offset?: number }): Promise<{ runs: AutonomyRun[]; steps: AutonomyRunStep[] }> {
+    const limit = options?.limit ?? 20;
+    const offset = options?.offset ?? 0;
+    // Q4 opportunistic sweep — UPDATE stuck rows BEFORE the SELECT
+    await db.execute(sql`
+      UPDATE autonomy_run_steps
+      SET status = 'failed',
+          completed_at = NOW(),
+          metadata = jsonb_set(metadata, '{timeoutReason}', '"inferred from pg-boss expiry"')
+      WHERE status = 'running'
+        AND timeout_at < NOW()
+        AND run_id IN (SELECT id FROM autonomy_runs WHERE project_id = ${projectId})
+    `);
+    const runs = await db.select().from(schema.autonomyRuns)
+      .where(eq(schema.autonomyRuns.projectId, projectId))
+      .orderBy(desc(schema.autonomyRuns.createdAt))
+      .limit(limit).offset(offset);
+    if (runs.length === 0) return { runs: [], steps: [] };
+    const runIds = runs.map(r => r.id);
+    const steps = await db.select().from(schema.autonomyRunSteps).where(inArray(schema.autonomyRunSteps.runId, runIds));
+    return { runs, steps };
+  }
 }
 
 // ============================================================
@@ -2436,3 +2596,17 @@ function createStorage(): IStorage {
 }
 
 export const storage = createStorage();
+
+/**
+ * Phase 37 (TREE-01) — DEV-only test helper for clearing the in-memory run-tree state between cases.
+ * Mirrors the prod-guard pattern from server/llm/providerHealthState.ts and
+ * __resetImpressionDedupeForTests at the top of this file.
+ */
+export function __resetRunTreeForTests(): void {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL: __resetRunTreeForTests() called in production. Test-only helper must not run in a production code path.');
+  }
+  const mem = storage as { autonomyRuns?: Map<string, unknown>; autonomyRunSteps?: Map<string, unknown> };
+  mem.autonomyRuns?.clear();
+  mem.autonomyRunSteps?.clear();
+}
