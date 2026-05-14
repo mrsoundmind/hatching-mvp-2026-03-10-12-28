@@ -5,6 +5,8 @@ import { logAutonomyEvent } from '../events/eventLogger.js';
 import { MAX_HANDOFF_HOPS } from '../config/policies.js';
 import type { IStorage } from '../../storage.js';
 import { getRoleIntelligence } from '@shared/roleIntelligence';
+// Phase 37 — autonomy run tree writer (non-fatal step writes)
+import { startStep } from '../runs/runTreeWriter.js';
 
 export interface HandoffResult {
   status: 'queued' | 'cycle_detected' | 'no_next_task' | 'max_hops_reached';
@@ -19,6 +21,11 @@ export async function orchestrateHandoff(input: {
   handoffChain: string[];
   storage: IStorage;
   broadcastToConversation: (convId: string, payload: unknown) => void;
+  // Phase 37 — autonomy run tree lineage. Optional so legacy callers (none currently)
+  // still compile; when omitted, handoff step rows are skipped (writer short-circuit).
+  runId?: string;
+  traceId?: string;
+  sourceStepId?: string | null;   // The completed task's step id — parent of this handoff step.
 }): Promise<HandoffResult> {
   // Guard: max hops prevents runaway chains
   if (input.handoffChain.length >= MAX_HANDOFF_HOPS) {
@@ -123,10 +130,53 @@ export async function orchestrateHandoff(input: {
     } as any,
   });
 
+  // Phase 37 — autonomy run tree: write the handoff step row (parent = source step from input).
+  // status='complete' immediately because handoff is instant — the downstream work runs in the
+  // next worker invocation as a separate 'task' step parented to this handoff row.
+  // If runId/traceId weren't propagated (legacy/test callers), the writer no-ops and handoffStepId = null.
+  const handoffStepId =
+    input.runId !== undefined && input.traceId !== undefined
+      ? await startStep(input.runId, input.sourceStepId ?? null, {
+          traceId: input.traceId,
+          agentId: input.completedAgent.id,
+          agentName: input.completedAgent.name,
+          agentRole: input.completedAgent.role,
+          stepType: 'handoff',
+          title: `${input.completedAgent.name} → ${targetAgent.name}: ${input.completedTask.title.slice(0, 150)}`,
+          status: 'complete',
+        })
+      : null;
+
+  // Phase 37 (D-07.1) — forward-compat event for backfill of POST-37 runs.
+  // Co-existing with the run_steps row write so future re-runs of the backfill against richer
+  // post-Phase-37 history can reconstruct full handoff trees from events alone.
+  await logAutonomyEvent({
+    eventType: 'handoff_initiated',
+    projectId: input.completedTask.projectId,
+    hatchId: input.completedAgent.id,
+    conversationId: 'project:' + input.completedTask.projectId,
+    provider: null,
+    mode: 'autonomous',
+    teamId: null,
+    latencyMs: null,
+    confidence: null,
+    riskScore: null,
+    payload: {
+      fromAgent: { id: input.completedAgent.id, name: input.completedAgent.name },
+      toAgent: { id: targetAgent.id, name: targetAgent.name },
+      taskId: nextTask.id,
+      sourceStepId: input.sourceStepId ?? null,
+      handoffStepId,
+    },
+  });
+
   const queued = await queueTaskExecution({
     taskId: nextTask.id,
     projectId: input.completedTask.projectId,
     agentId: targetAgent.id,
+    // Phase 37 — propagate to downstream worker so its 'task' step parents under this handoff
+    traceId: input.traceId,
+    parentStepId: handoffStepId ?? undefined,
   });
 
   const wasQueued = queued !== null && queued !== undefined;

@@ -822,6 +822,12 @@ export async function handleTaskJob(
       handoffChain,
       storage: deps.storage,
       broadcastToConversation: deps.broadcastToConversation,
+      // Phase 37 — propagate autonomy run tree lineage from this handler's scope.
+      // sourceStepId is this task's stepId from HOOK A (Task 2); when null the writer
+      // creates the handoff step as a root, which is graceful degradation.
+      runId,
+      traceId,
+      sourceStepId: result.stepId ?? null,
     });
 
     // Emit in-character announcement after successful handoff queue (HAND-02)
