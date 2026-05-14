@@ -2,11 +2,18 @@
 /**
  * Phase 37 — Unit tests for the autonomy run-tree storage layer + writer module.
  *
- * Wave 1 (this plan, 37-01) implements: schema-shape, writer-roundtrip,
+ * Wave 1 (37-01) implements: schema-shape, writer-roundtrip,
  *   parent-mismatch-rejected, mem-db-parity-storage-only.
  *
- * Wave 2 (37-02) APPENDS: pipeline-instrumentation, handoff-instrumentation,
- *   score-delta-math (require the runTreeWriter module that 37-02 creates).
+ * Wave 2 (37-02) APPENDS:
+ *   - case_pipelineInstrumentation: simulates executeTask success + failure paths
+ *     through the writer (startStep → completeStep with latency; startStep → failStep
+ *     with metadata.error). Proves 3-hook contract is wired correctly.
+ *   - case_handoffInstrumentation: simulates 3-generation tree
+ *     (agent A task → handoff → agent B task) with parentStepId propagation.
+ *     Pitfall 2 defense — ensures tree depth = 3, not flat.
+ *   - case_scoreDeltaMath: 3 scenarios — pre-Phase-36 prior (null), both-finite (diff),
+ *     NaN input (null, NOT NaN). Pitfall 4 defense.
  *
  * Run with: STORAGE_MODE=memory NODE_ENV=test npx tsx scripts/test-run-tree-writer.ts
  */
@@ -19,6 +26,13 @@ import {
   type InsertAutonomyRunStep,
 } from '../shared/schema.js';
 import { storage, __resetRunTreeForTests } from '../server/storage.js';
+import {
+  ensureRunForTrace,
+  startStep,
+  completeStep,
+  failStep,
+  __resetWriterForTests,
+} from '../server/autonomy/runs/runTreeWriter.js';
 
 async function case_schemaShape(): Promise<void> {
   // .strict() guards on insertAutonomyRunSchema
@@ -145,12 +159,201 @@ async function case_memDbParity(): Promise<void> {
   console.log('PASS mem-db-parity-storage-only: IStorage exposes all 4 methods; runtime contract satisfied');
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Wave 2 (37-02) cases — pipeline-instrumentation, handoff-instrumentation,
+// score-delta-math. Exercise the runTreeWriter module directly with mocked
+// storage state (the 37-04 Playwright spec covers the full pipeline end-to-end).
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function case_pipelineInstrumentation(): Promise<void> {
+  __resetRunTreeForTests();
+  __resetWriterForTests();
+
+  // Success scenario — startStep + completeStep with latency
+  const runId = await ensureRunForTrace('trace-pi-success', {
+    projectId: 'p1',
+    rootAgentId: 'a1',
+  });
+  const successStepId = await startStep(runId, null, {
+    traceId: 'trace-pi-success',
+    agentId: 'a1',
+    agentName: 'A',
+    agentRole: 'engineer',
+    stepType: 'task',
+    title: 'success task',
+    status: 'running',
+  });
+  assert.ok(successStepId, 'success path: startStep returns a stepId');
+  await completeStep(successStepId, { priorRubricTotal: null, currentRubricTotal: null }, Date.now() - 250);
+
+  // Failure scenario — startStep + failStep with metadata.error
+  const failStepId = await startStep(runId, null, {
+    traceId: 'trace-pi-success',
+    agentId: 'a1',
+    agentName: 'A',
+    agentRole: 'engineer',
+    stepType: 'task',
+    title: 'failing task',
+    status: 'running',
+  });
+  assert.ok(failStepId, 'failure path: startStep returns a stepId');
+  await failStep(failStepId, new Error('simulated LLM provider failure'));
+
+  // Verify
+  const tree = await storage.getRunsByProject('p1');
+  const success = tree.steps.find((s) => s.id === successStepId);
+  const failed = tree.steps.find((s) => s.id === failStepId);
+  assert.equal(success?.status, 'complete', 'success step status reflects completeStep');
+  assert.ok(
+    success?.latencyMs !== null && success?.latencyMs !== undefined,
+    'latencyMs computed from startedAtMs',
+  );
+  assert.equal(failed?.status, 'failed', 'failure step status reflects failStep');
+  assert.match(
+    JSON.stringify(failed?.metadata),
+    /simulated LLM provider failure/,
+    'failure metadata.error captured',
+  );
+
+  console.log('PASS pipeline-instrumentation: 3-hook contract writes correct status + latency + error');
+}
+
+async function case_handoffInstrumentation(): Promise<void> {
+  __resetRunTreeForTests();
+  __resetWriterForTests();
+
+  const runId = await ensureRunForTrace('trace-ho', {
+    projectId: 'p1',
+    rootAgentId: 'agent-A',
+  });
+
+  // Agent A's task step (root)
+  const stepAId = await startStep(runId, null, {
+    traceId: 'trace-ho',
+    agentId: 'agent-A',
+    agentName: 'A',
+    agentRole: 'engineer',
+    stepType: 'task',
+    title: 'agent A initial task',
+    status: 'running',
+  });
+  await completeStep(stepAId, { priorRubricTotal: null, currentRubricTotal: null }, Date.now() - 100);
+
+  // Handoff step (parent = stepA)
+  const handoffStepId = await startStep(runId, stepAId, {
+    traceId: 'trace-ho',
+    agentId: 'agent-A',
+    agentName: 'A',
+    agentRole: 'engineer',
+    stepType: 'handoff',
+    title: 'A → B: continue work',
+    status: 'complete',
+  });
+
+  // Agent B's task step (parent = handoff)
+  const stepBId = await startStep(runId, handoffStepId, {
+    traceId: 'trace-ho',
+    agentId: 'agent-B',
+    agentName: 'B',
+    agentRole: 'designer',
+    stepType: 'task',
+    title: 'agent B follow-up task',
+    status: 'running',
+  });
+  await completeStep(stepBId, { priorRubricTotal: null, currentRubricTotal: null }, Date.now() - 50);
+
+  // Verify tree shape — 3 generations: source-task → handoff → next-task
+  const tree = await storage.getRunsByProject('p1');
+  const a = tree.steps.find((s) => s.id === stepAId);
+  const h = tree.steps.find((s) => s.id === handoffStepId);
+  const b = tree.steps.find((s) => s.id === stepBId);
+  assert.equal(a?.parentStepId, null, 'stepA is root');
+  assert.equal(h?.parentStepId, stepAId, 'handoff parent = stepA');
+  assert.equal(b?.parentStepId, handoffStepId, 'stepB parent = handoff (3-gen tree)');
+  assert.equal(h?.stepType, 'handoff');
+  assert.equal(h?.status, 'complete', 'handoff is instant-complete');
+
+  console.log('PASS handoff-instrumentation: 3-generation tree source-task → handoff → next-task');
+}
+
+async function case_scoreDeltaMath(): Promise<void> {
+  __resetRunTreeForTests();
+  __resetWriterForTests();
+
+  const runId = await ensureRunForTrace('trace-sdm', { projectId: 'p1' });
+
+  // Scenario 1: prior is null (pre-Phase-36 deliverable version) → scoreDelta = null
+  const s1 = await startStep(runId, null, {
+    traceId: 'trace-sdm',
+    stepType: 'task',
+    title: 'pre-36',
+    agentId: 'a1',
+    agentName: 'A',
+    agentRole: 'r',
+    status: 'running',
+  });
+  await completeStep(
+    s1,
+    { deliverableVersionId: 'dv1', priorRubricTotal: null, currentRubricTotal: 7.5 },
+    Date.now() - 100,
+  );
+
+  // Scenario 2: both finite → scoreDelta = diff
+  const s2 = await startStep(runId, null, {
+    traceId: 'trace-sdm',
+    stepType: 'task',
+    title: 'both-finite',
+    agentId: 'a1',
+    agentName: 'A',
+    agentRole: 'r',
+    status: 'running',
+  });
+  await completeStep(
+    s2,
+    { deliverableVersionId: 'dv2', priorRubricTotal: 6.0, currentRubricTotal: 7.5 },
+    Date.now() - 100,
+  );
+
+  // Scenario 3: NaN input → scoreDelta = null (NOT NaN!) — Pitfall 4 NaN-guard
+  const s3 = await startStep(runId, null, {
+    traceId: 'trace-sdm',
+    stepType: 'task',
+    title: 'nan-guard',
+    agentId: 'a1',
+    agentName: 'A',
+    agentRole: 'r',
+    status: 'running',
+  });
+  await completeStep(
+    s3,
+    { deliverableVersionId: 'dv3', priorRubricTotal: NaN, currentRubricTotal: 7.5 },
+    Date.now() - 100,
+  );
+
+  const tree = await storage.getRunsByProject('p1');
+  const r1 = tree.steps.find((s) => s.id === s1);
+  const r2 = tree.steps.find((s) => s.id === s2);
+  const r3 = tree.steps.find((s) => s.id === s3);
+
+  // Note: case_scoreDeltaMath is the case_scoreDeltaMath marker grep expects.
+  assert.equal(r1?.scoreDelta, null, 'pre-Phase-36 prior → null');
+  assert.equal(r2?.scoreDelta, 1.5, 'both-finite → exact diff');
+  assert.equal(r3?.scoreDelta, null, 'NaN input → null (Pitfall 4)');
+  // Critical: r3 must NOT be the literal NaN — JSON-serialized NaN would break the GET endpoint
+  assert.ok(!Number.isNaN(r3?.scoreDelta as number), 'scoreDelta must not be NaN');
+
+  console.log('PASS score-delta-math: null prior, finite-diff, and NaN-guard all behave correctly');
+}
+
 async function main(): Promise<void> {
   await case_schemaShape();
   await case_writerRoundtrip();
   await case_parentMismatchRejected();
   await case_memDbParity();
-  console.log('\nAll Wave 1 cases passed (4/4).');
+  await case_pipelineInstrumentation();
+  await case_handoffInstrumentation();
+  await case_scoreDeltaMath();
+  console.log('\nAll Wave 1+2 cases passed (7/7).');
 }
 
 main().catch((err) => {
