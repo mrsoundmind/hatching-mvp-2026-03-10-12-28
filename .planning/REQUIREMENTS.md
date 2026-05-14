@@ -39,6 +39,17 @@
 
 ---
 
+## Phase 36.5 — Imperative Action Shortcuts (HOTFIX)
+
+**Theme:** Skip the LLM ask-first dance for clearly-imperative chat commands. Parse intent server-side before the LLM call, fire the action directly, return a brief confirmation. Falls back to existing LLM flow for ambiguous messages.
+
+- [x] **IMP-01**: New `imperativeIntentParser.ts` module recognizes 4 imperative-command patterns from chat text: create-agent ("create an agent named X as Y"), create-task ("add a task to Z"), rename-project ("rename the project to W"), set-brain-field ("set the project goal to V"). Returns structured intent or `null` for ambiguous text.
+- [x] **IMP-02**: WS chat handler in `server/routes/chat.ts` checks for imperative intent BEFORE spawning the LLM. On match: fires the corresponding storage write (createAgent/createTask/updateProject/updateBrain), emits the existing WS event (`teams_auto_hatched` / `task_created` / `brain_updated_from_chat`), and posts a brief confirmation message from the responding agent ("Done — added Pixel as Social Media Manager"). No LLM call needed. On no-match: existing flow runs unchanged.
+- [x] **IMP-03**: Maya's team-suggestion grammar drops the `conversationTurnCount >= 2` requirement in `openaiService.ts` so Maya can propose a team on turn 1 when a no-team project is opened.
+- [x] **IMP-04**: Playwright probe spec (`tests/e2e/agent-action-probe.spec.ts` — already written during audit) passes: Turn 1 "create an agent named Pixel" creates the agent; Turn 2 "add a task to update landing" creates the task; Turn 3 ambiguous question routes to LLM unchanged.
+
+---
+
 ## Phase 37 — Git-Style Run Tree (V3 Pillar 2)
 
 **Theme:** `autonomy_runs` + `autonomy_run_steps` tables. Activity feed visualizes the tree with score deltas.
@@ -196,11 +207,12 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LEGAL-01 | 35 | Pending |
-| LLMUX-01..03 | 35 | Pending |
-| AUDIT-01 | 35 | Pending |
-| RUBR-01..04 | 36 | Pending |
-| FBK-01..04 | 36 | Pending |
+| LEGAL-01 | 35 | Shipped 2026-05-11 |
+| LLMUX-01..03 | 35 | Shipped 2026-05-11 |
+| AUDIT-01 | 35 | Shipped 2026-05-11 |
+| RUBR-01..04 | 36 | Code-complete (awaiting deploy) |
+| FBK-01..04 | 36 | Code-complete (awaiting deploy; FBK-02 UI deferred) |
+| IMP-01..04 | 36.5 | Shipped 2026-05-13 (code-complete, bundled with 36 for deploy) |
 | TREE-01..05 | 37 | Pending |
 | ALWY-01..03 | 38 | Pending |
 | READ-01..04 | 39 | Pending |
@@ -215,8 +227,8 @@
 | SLOP-01..04 | 46 | Pending |
 
 **Coverage:**
-- v2.1 total: 60 requirements
-- Mapped to phases: 60 (12 phases)
+- v2.1 total: 64 requirements (60 original + 4 IMP added 2026-05-13 hotfix)
+- Mapped to phases: 64 (13 phases including 36.5 hotfix)
 - Unmapped: 0 ✓
 
 ---

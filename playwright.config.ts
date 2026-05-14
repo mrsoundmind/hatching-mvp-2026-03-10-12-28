@@ -94,6 +94,18 @@ export default defineConfig({
       testMatch: /phase-36-rubric-iteration\.spec\.ts/,
       timeout: 120000,
     },
+    // Agent-action probe — diagnostic, not a regression gate. Records whether
+    // imperative chat commands trigger real DB side effects or just clarifying Qs.
+    {
+      name: 'agent-probe',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/e2e/.auth/session.json',
+      },
+      dependencies: ['setup'],
+      testMatch: /agent-action-probe\.spec\.ts/,
+      timeout: 240000,
+    },
     // Mobile viewport — authenticated
     {
       name: 'mobile',
