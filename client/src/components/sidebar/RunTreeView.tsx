@@ -19,11 +19,11 @@
  *   step without deliverable → RunTreeNode toggles its own 'expanded' state.
  */
 
-import { useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, Activity } from 'lucide-react';
 import { useAutonomyRunTree } from '../../hooks/useAutonomyRunTree';
 import { RunTreeNode } from './RunTreeNode';
-import { formatScoreDelta } from '@shared/scoreFormat';
+import { formatScoreDelta, formatScoreDeltaWord } from '@shared/scoreFormat';
 import type { AutonomyRunStep } from '@shared/schema';
 
 interface RunTreeViewProps {
@@ -33,13 +33,32 @@ interface RunTreeViewProps {
 export function RunTreeView({ projectId }: RunTreeViewProps) {
   const { runs, steps, isLoading } = useAutonomyRunTree(projectId);
 
-  // Default-open the 3 most-recent runs (D-11). Memoized so refetches don't reset.
-  const initialOpenIds = useMemo(
-    () => new Set(runs.slice(0, 3).map((r) => r.id)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [runs.length === 0 ? 'empty' : runs[0]?.id]
-  );
-  const [expandedRunIds, setExpandedRunIds] = useState<Set<string>>(initialOpenIds);
+  // Track user-toggled run IDs. Auto-default: the 3 most-recent runs open.
+  // Once the user manually toggles a run, the manual choice is preserved across
+  // refetches (we don't auto-re-open closed runs or auto-close manually-opened
+  // ones). The 3-most-recent default re-applies when a fresh run appears at the
+  // top of the list (its id wasn't in the previous run set).
+  const [expandedRunIds, setExpandedRunIds] = useState<Set<string>>(() => new Set());
+  const [autoOpenedIds, setAutoOpenedIds] = useState<Set<string>>(() => new Set());
+
+  // Auto-open default: when new run ids appear in the most-recent 3, open them
+  // ONCE (won't re-open if the user later closes them).
+  useEffect(() => {
+    if (runs.length === 0) return;
+    const topThreeIds = runs.slice(0, 3).map((r) => r.id);
+    const newToOpen = topThreeIds.filter((id) => !autoOpenedIds.has(id));
+    if (newToOpen.length === 0) return;
+    setExpandedRunIds((prev) => {
+      const next = new Set(prev);
+      newToOpen.forEach((id) => next.add(id));
+      return next;
+    });
+    setAutoOpenedIds((prev) => {
+      const next = new Set(prev);
+      newToOpen.forEach((id) => next.add(id));
+      return next;
+    });
+  }, [runs, autoOpenedIds]);
 
   const handleStepClick = (step: AutonomyRunStep) => {
     if (!step.deliverableId) return;
@@ -102,8 +121,27 @@ export function RunTreeView({ projectId }: RunTreeViewProps) {
         const runSteps = steps.filter((s) => s.runId === run.id);
         const rootSteps = runSteps.filter((s) => s.parentStepId === null);
         const aggDelta = formatScoreDelta(run.aggregateScoreDelta);
+        const aggWord = formatScoreDeltaWord(run.aggregateScoreDelta, 'aggregate');
         const meta = (run.metadata ?? {}) as Record<string, unknown>;
         const isFlatHistorical = meta.flatHistorical === true;
+
+        // Phase 37 — agent chain summary (feedback_ui_self_documenting 2026-05-14).
+        // "3 steps" was unclear; show the actual story: "Alex → Cass → Mira"
+        // Walks rootSteps depth-first to preserve chronological order; deduplicates
+        // adjacent same-agent steps so a chain like A→A→C reads as A → C.
+        const agentChain: string[] = [];
+        runSteps
+          .slice()
+          .sort((a, b) => {
+            const ta = a.startedAt ? new Date(a.startedAt).getTime() : 0;
+            const tb = b.startedAt ? new Date(b.startedAt).getTime() : 0;
+            return ta - tb;
+          })
+          .forEach((s) => {
+            const name = s.agentName ?? '?';
+            if (agentChain[agentChain.length - 1] !== name) agentChain.push(name);
+          });
+        const chainStr = agentChain.length > 0 ? agentChain.slice(0, 4).join(' → ') + (agentChain.length > 4 ? ' …' : '') : '';
 
         return (
           <div
@@ -115,35 +153,70 @@ export function RunTreeView({ projectId }: RunTreeViewProps) {
             <button
               type="button"
               onClick={() => toggleRun(run.id)}
-              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[var(--hatchin-surface)]/40 transition-colors text-left"
+              className="w-full flex items-start gap-2 px-3 py-2.5 hover:bg-[var(--hatchin-surface)]/40 transition-colors text-left"
               aria-expanded={isOpen}
-              aria-label={`Run ${run.rootGoal ?? 'untitled'} — ${run.stepCount} steps`}
+              aria-label={`Run ${run.rootGoal ?? 'untitled'} — ${aggWord.label}`}
+              title={aggDelta.label && aggDelta.label !== 'new' ? `Quality change: ${aggDelta.label} (raw)` : undefined}
             >
               {isOpen ? (
-                <ChevronDown className="w-3 h-3 shrink-0 hatchin-text-muted" />
+                <ChevronDown className="w-3 h-3 shrink-0 hatchin-text-muted mt-1" />
               ) : (
-                <ChevronRight className="w-3 h-3 shrink-0 hatchin-text-muted" />
+                <ChevronRight className="w-3 h-3 shrink-0 hatchin-text-muted mt-1" />
               )}
-              <span className="text-[12px] font-semibold truncate flex-1 hatchin-text">
-                {run.rootGoal ?? '(no goal recorded)'}
-              </span>
-              <span className="text-[10px] hatchin-text-muted shrink-0">
-                {run.stepCount} step{run.stepCount === 1 ? '' : 's'}
-              </span>
-              {aggDelta.tone === 'positive' && (
+              <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                {/* Title — wraps to 2 lines instead of mid-word truncation */}
                 <span
-                  className="text-[10px] font-semibold tabular-nums shrink-0"
-                  style={{ color: 'var(--hatchin-green)' }}
+                  className="text-[12px] font-semibold leading-snug hatchin-text"
+                  style={{
+                    display: '-webkit-box',
+                    WebkitBoxOrient: 'vertical',
+                    WebkitLineClamp: 2,
+                    overflow: 'hidden',
+                  }}
                 >
-                  {aggDelta.label}
+                  {run.rootGoal ?? '(no goal recorded)'}
+                </span>
+                {/* Agent chain story — "Alex → Cass → Mira" */}
+                {chainStr && (
+                  <span className="text-[10px] hatchin-text-muted">
+                    {chainStr}
+                  </span>
+                )}
+              </span>
+              {/* Semantic-word aggregate badge */}
+              {aggWord.tone === 'positive' && (
+                <span
+                  className="text-[10px] font-semibold shrink-0 px-2 py-0.5 rounded-full whitespace-nowrap mt-0.5"
+                  style={{
+                    color: 'var(--hatchin-green)',
+                    backgroundColor: 'hsla(158, 66%, 47%, 0.12)',
+                    border: '1px solid hsla(158, 66%, 47%, 0.45)',
+                  }}
+                >
+                  ✓ {aggWord.label}
                 </span>
               )}
-              {aggDelta.tone === 'negative' && (
+              {aggWord.tone === 'negative' && (
                 <span
-                  className="text-[10px] font-semibold tabular-nums shrink-0"
-                  style={{ color: 'var(--hatchin-orange)' }}
+                  className="text-[10px] font-semibold shrink-0 px-2 py-0.5 rounded-full whitespace-nowrap mt-0.5"
+                  style={{
+                    color: 'var(--hatchin-orange)',
+                    backgroundColor: 'hsla(25, 100%, 60%, 0.12)',
+                    border: '1px solid hsla(25, 100%, 60%, 0.45)',
+                  }}
                 >
-                  {aggDelta.label}
+                  ⚠ {aggWord.label}
+                </span>
+              )}
+              {aggWord.tone === 'new' && (
+                <span
+                  className="text-[10px] font-medium shrink-0 px-2 py-0.5 rounded-full whitespace-nowrap mt-0.5"
+                  style={{
+                    color: 'var(--hatchin-text-muted)',
+                    border: '1px solid var(--hatchin-border-subtle)',
+                  }}
+                >
+                  In progress
                 </span>
               )}
             </button>

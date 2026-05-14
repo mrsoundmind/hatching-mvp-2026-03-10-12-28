@@ -64,6 +64,12 @@ function HomeInner() {
 
   // Artifact panel state (v2.0)
   const [activeDeliverableId, setActiveDeliverableId] = useState<string | null>(null);
+  // Phase 37 (TREE-04) — when the open_deliverable CustomEvent carries a
+  // versionNumber (e.g., from RunTreeView's step click), capture it so
+  // ArtifactPanel can auto-navigate via its pendingVersionNumber prop.
+  // undefined means "no target version" → panel opens to most-recent (backward
+  // compat for Phase 36 callers that don't carry versionNumber).
+  const [pendingVersionNumber, setPendingVersionNumber] = useState<number | undefined>(undefined);
 
   // Mobile drawer state
   const [mobileLeftOpen, setMobileLeftOpen] = useState(false);
@@ -853,12 +859,20 @@ function HomeInner() {
     return () => document.removeEventListener('keydown', handleKeydown);
   }, []);
 
-  // Listen for deliverable open events (v2.0)
+  // Listen for deliverable open events (v2.0 + Phase 37 versionNumber extension)
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.deliverableId) {
         setActiveDeliverableId(detail.deliverableId);
+        // Phase 37 (TREE-04) — capture optional versionNumber for ArtifactPanel
+        // auto-navigate. Clear (undefined) when not present so a subsequent
+        // event on a different deliverable doesn't carry stale state.
+        if (typeof detail.versionNumber === 'number') {
+          setPendingVersionNumber(detail.versionNumber);
+        } else {
+          setPendingVersionNumber(undefined);
+        }
       }
     };
     window.addEventListener('open_deliverable', handler);
@@ -1016,7 +1030,11 @@ function HomeInner() {
           {activeDeliverableId && (
             <ArtifactPanel
               deliverableId={activeDeliverableId}
-              onClose={() => setActiveDeliverableId(null)}
+              pendingVersionNumber={pendingVersionNumber}
+              onClose={() => {
+                setActiveDeliverableId(null);
+                setPendingVersionNumber(undefined);
+              }}
             />
           )}
         </AnimatePresence>

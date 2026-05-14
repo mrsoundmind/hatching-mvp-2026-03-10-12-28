@@ -17,29 +17,29 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Clock, ArrowRightLeft, Search, MessagesSquare, ShieldAlert } from 'lucide-react';
 import type { AutonomyRunStep } from '@shared/schema';
-import { formatScoreDelta } from '@shared/scoreFormat';
+import { formatScoreDelta, formatScoreDeltaWord } from '@shared/scoreFormat';
 
-// D-12 — step type → lucide icon mapping
-const stepTypeIcons: Record<AutonomyRunStep['stepType'], typeof Clock> = {
-  task: Clock,
-  handoff: ArrowRightLeft,
-  peer_review: Search,
-  deliberation: MessagesSquare,
-  safety_block: ShieldAlert,
-  approval_request: ShieldAlert,
-};
-
-// D-12 — step type → CSS variable color
-const stepTypeColor: Record<AutonomyRunStep['stepType'], string> = {
-  task: 'var(--hatchin-blue)',
-  handoff: 'var(--hatchin-text-muted)',
-  peer_review: 'var(--hatchin-teal, var(--hatchin-blue))',
-  deliberation: 'var(--hatchin-text-muted)',
-  safety_block: 'var(--hatchin-orange)',
-  approval_request: 'var(--hatchin-orange)',
-};
+// Phase 37 — verb-led step descriptions (feedback_ui_self_documenting 2026-05-14).
+// User shouldn't have to decode icons. The verb tells them what happened.
+function stepVerb(stepType: AutonomyRunStep['stepType']): string {
+  switch (stepType) {
+    case 'task':
+      return 'worked on';
+    case 'handoff':
+      return 'handed off';
+    case 'peer_review':
+      return 'reviewed';
+    case 'deliberation':
+      return 'deliberated on';
+    case 'safety_block':
+      return 'paused (safety check)';
+    case 'approval_request':
+      return 'requested approval for';
+    default:
+      return 'worked on';
+  }
+}
 
 // Deterministic agent-name → palette mapping (mirrors ActivityFeedItem.tsx avatar palette)
 const AVATAR_PALETTES = [
@@ -75,12 +75,13 @@ export function RunTreeNode({ step, allSteps, depth, onClick }: RunTreeNodeProps
   // Auto-expand if within MAX_VISIBLE_DEPTH; collapsed beyond.
   const [expanded, setExpanded] = useState(depth < MAX_VISIBLE_DEPTH);
 
-  const StepIcon = stepTypeIcons[step.stepType] ?? Clock;
-  const iconColor = stepTypeColor[step.stepType] ?? 'var(--hatchin-text-muted)';
   const hasDeliverable = !!step.deliverableId;
   const delta = formatScoreDelta(step.scoreDelta);
+  const deltaWord = formatScoreDeltaWord(step.scoreDelta, 'step');
   const palette = avatarPalette(step.agentName);
   const initial = step.agentName ? step.agentName.charAt(0).toUpperCase() : '?';
+  const verb = stepVerb(step.stepType);
+  const agentName = step.agentName ?? 'Unknown';
 
   const handleClick = () => {
     if (hasDeliverable) {
@@ -95,63 +96,66 @@ export function RunTreeNode({ step, allSteps, depth, onClick }: RunTreeNodeProps
       <button
         type="button"
         onClick={handleClick}
-        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--hatchin-surface)] text-left transition-colors"
-        aria-label={`Step ${step.title ?? step.stepType} — ${step.status}`}
+        className="w-full flex items-start gap-2 px-2 py-2 rounded-lg hover:bg-[var(--hatchin-surface)] text-left transition-colors"
+        aria-label={`${agentName} ${verb}: ${step.title ?? step.stepType} — ${step.status}`}
         data-testid={`run-tree-step-${step.id}`}
+        title={delta.label && delta.label !== 'new' ? `Quality change: ${delta.label}` : undefined}
       >
-        {/* Step-type icon */}
-        <StepIcon className="w-3 h-3 shrink-0" style={{ color: iconColor }} />
-
-        {/* 16px agent avatar circle with first letter */}
+        {/* 18px agent avatar circle with first letter */}
         <span
-          className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0"
+          className="w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 mt-0.5"
           style={{ backgroundColor: palette.bg, color: palette.text }}
           aria-hidden
         >
           {initial}
         </span>
 
-        {/* Agent name (semibold 11px) */}
+        {/* Verb-led description (wraps to 2 lines naturally — no truncation) */}
         <span
-          className="text-[11px] font-semibold shrink-0"
+          className="text-[11px] leading-snug flex-1 min-w-0"
           style={{ color: 'var(--hatchin-text)' }}
         >
-          {step.agentName ?? 'Unknown'}
+          <span className="font-semibold">{agentName}</span>{' '}
+          <span className="hatchin-text-muted">{verb}</span>{' '}
+          <span style={{ color: 'var(--hatchin-text)' }}>
+            {step.title ?? '(untitled)'}
+          </span>
         </span>
 
-        {/* Role (muted 9px) */}
-        {step.agentRole && (
-          <span className="text-[9px] hatchin-text-muted shrink-0">{step.agentRole}</span>
-        )}
-
-        {/* Title (10px muted truncated) */}
-        <span className="text-[10px] hatchin-text-muted truncate flex-1 min-w-0">
-          {step.title ?? '(no title)'}
-        </span>
-
-        {/* Score-delta badge (or 'new' for null + deliverable) */}
-        {delta.tone === 'positive' && (
+        {/* Semantic-word delta badge: "Better" (green) / "Worse" (amber) / "New" (muted pill) */}
+        {deltaWord.tone === 'positive' && (
           <span
-            className="text-[10px] font-semibold tabular-nums shrink-0"
-            style={{ color: 'var(--hatchin-green)' }}
+            className="text-[10px] font-semibold shrink-0 px-1.5 py-0.5 rounded-full whitespace-nowrap mt-0.5"
+            style={{
+              color: 'var(--hatchin-green)',
+              backgroundColor: 'hsla(158, 66%, 47%, 0.12)',
+              border: '1px solid hsla(158, 66%, 47%, 0.45)',
+            }}
           >
-            {delta.label}
+            ✓ {deltaWord.label}
           </span>
         )}
-        {delta.tone === 'negative' && (
+        {deltaWord.tone === 'negative' && (
           <span
-            className="text-[10px] font-semibold tabular-nums shrink-0"
-            style={{ color: 'var(--hatchin-orange)' }}
+            className="text-[10px] font-semibold shrink-0 px-1.5 py-0.5 rounded-full whitespace-nowrap mt-0.5"
+            style={{
+              color: 'var(--hatchin-orange)',
+              backgroundColor: 'hsla(25, 100%, 60%, 0.12)',
+              border: '1px solid hsla(25, 100%, 60%, 0.45)',
+            }}
           >
-            {delta.label}
+            ⚠ {deltaWord.label}
           </span>
         )}
-        {delta.tone === 'new' && hasDeliverable && (
+        {deltaWord.tone === 'new' && hasDeliverable && (
           <span
-            className="text-[9px] italic shrink-0 hatchin-text-muted"
-            style={{ fontStyle: 'italic' }}
+            className="text-[10px] font-medium shrink-0 px-1.5 py-0.5 rounded-full whitespace-nowrap mt-0.5"
+            style={{
+              color: 'var(--hatchin-text-muted)',
+              border: '1px solid var(--hatchin-border-subtle)',
+            }}
           >
-            new
+            New
           </span>
         )}
       </button>

@@ -51,6 +51,11 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 interface ArtifactPanelProps {
   deliverableId: string;
+  // Phase 37 (D-15, TREE-04) — when set by the open_deliverable event handler in
+  // home.tsx, the panel auto-navigates to this version via the existing
+  // restoreMutation. Backward compatible: callers that don't pass it get current
+  // behavior (panel opens to most-recent version).
+  pendingVersionNumber?: number;
   onClose: () => void;
 }
 
@@ -64,7 +69,7 @@ type RubricBreakdownScore = {
   reason?: string;
 };
 
-export function ArtifactPanel({ deliverableId, onClose }: ArtifactPanelProps) {
+export function ArtifactPanel({ deliverableId, pendingVersionNumber, onClose }: ArtifactPanelProps) {
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
@@ -190,6 +195,26 @@ export function ArtifactPanel({ deliverableId, onClose }: ArtifactPanelProps) {
   const deliverable = deliverableData?.deliverable;
   const versions = versionsData?.versions || [];
   const currentVersion = deliverable?.currentVersion || 1;
+
+  // Phase 37 (D-15, TREE-04) — auto-navigate to pendingVersionNumber when the
+  // RunTreeView's open_deliverable dispatch carries a versionNumber. Fires once
+  // versionsData has loaded AND the deliverable's current version differs from
+  // the target. Reuses the existing restoreMutation so side effects (impression
+  // refresh, breakdown re-derive) stay consistent with the version-navigator UI.
+  // No-op when pendingVersionNumber is undefined (backward compat with Phase 36
+  // callers that don't carry the field).
+  useEffect(() => {
+    if (typeof pendingVersionNumber !== 'number') return;
+    if (!versions || versions.length === 0) return;
+    const targetVersion = versions.find((v) => v.versionNumber === pendingVersionNumber);
+    if (!targetVersion) return;
+    if (deliverable && deliverable.currentVersion !== pendingVersionNumber) {
+      restoreMutation.mutate(pendingVersionNumber);
+    }
+    // restoreMutation is stable across renders (created via useMutation); excluded
+    // from deps to avoid an infinite mutation loop on each onSuccess invalidation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingVersionNumber, versions, deliverable]);
 
   const handleCopy = async () => {
     if (!deliverable) return;
