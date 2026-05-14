@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { evaluateSafetyScore, AUTONOMOUS_SAFETY_THRESHOLDS } from '../../ai/safety.js';
 import { getJobQueue } from './jobQueue.js';
 import { BUDGETS, getTierBudgets } from '../config/policies.js';
@@ -11,6 +12,8 @@ import { getAdjustedThresholds } from '../trustScoring/trustAdapter.js';
 import { getRoleIntelligence } from '@shared/roleIntelligence';
 import type { IStorage } from '../../storage.js';
 import { recordUsage } from '../../billing/usageTracker.js';
+// Phase 37 — autonomy run tree writer (non-fatal step + run writes)
+import { ensureRunForTrace, startStep, completeStep, failStep } from '../runs/runTreeWriter.js';
 
 /**
  * Role-aware risk adjustment: some roles should escalate at lower thresholds
@@ -59,6 +62,23 @@ export interface ExecuteTaskInput {
   storage: IStorage;
   broadcastToConversation: (convId: string, payload: unknown) => void;
   generateText: (prompt: string, system: string, maxTokens?: number) => Promise<string>;
+  // Phase 37 — autonomy run tree lineage; optional so existing callers without
+  // run-tree wiring still compile. handleTaskJob populates these from pg-boss
+  // payload (or generates a fresh traceId for root invocations).
+  traceId?: string;
+  runId?: string;
+  parentStepId?: string | null;
+}
+
+/**
+ * Phase 37 — executeTask result extended with stepId so handleTaskJob can pass
+ * it into orchestrateHandoff as the source step (parent of the handoff step).
+ * Null when the writer's startStep call failed (graceful degradation: handoff
+ * step will be written as a root step instead of orphaning the chain).
+ */
+export interface ExecuteTaskResult {
+  status: 'completed' | 'pending_approval' | 'failed';
+  stepId?: string | null;
 }
 
 // ── 6.3: Background Task Batching ──
@@ -66,7 +86,7 @@ export interface ExecuteTaskInput {
 // System prompt is amortized across tasks, saving ~30-50% on batched calls.
 const BATCH_MAX = 3;
 const BATCH_WAIT_MS = 5_000; // Wait up to 5s to collect tasks
-type BatchResult = { status: 'completed' | 'pending_approval' | 'failed' };
+type BatchResult = ExecuteTaskResult;
 type PendingBatch = {
   agentId: string;
   tasks: ExecuteTaskInput[];
@@ -81,7 +101,7 @@ const pendingBatches = new Map<string, PendingBatch>();
  */
 export async function queueForBatch(
   input: ExecuteTaskInput,
-): Promise<{ status: 'completed' | 'pending_approval' | 'failed' }> {
+): Promise<ExecuteTaskResult> {
   const key = input.agent.id;
   const existing = pendingBatches.get(key);
 
@@ -90,7 +110,7 @@ export async function queueForBatch(
     existing.tasks.push(input);
     const idx = existing.tasks.length - 1;
 
-    return new Promise<{ status: 'completed' | 'pending_approval' | 'failed' }>((resolve) => {
+    return new Promise<ExecuteTaskResult>((resolve) => {
       existing.resolvers.push(resolve);
 
       if (existing.tasks.length >= BATCH_MAX) {
@@ -110,7 +130,7 @@ export async function queueForBatch(
   }
 
   // Start a new batch
-  return new Promise<{ status: 'completed' | 'pending_approval' | 'failed' }>((resolve) => {
+  return new Promise<ExecuteTaskResult>((resolve) => {
     const timer = setTimeout(async () => {
       const batch = pendingBatches.get(key);
       if (!batch) return;
@@ -138,7 +158,7 @@ export async function queueForBatch(
  */
 async function executeBatchedTasks(
   inputs: ExecuteTaskInput[],
-): Promise<Array<{ status: 'completed' | 'pending_approval' | 'failed' }>> {
+): Promise<Array<ExecuteTaskResult>> {
   if (inputs.length === 1) {
     return [await executeTask(inputs[0])];
   }
@@ -158,7 +178,7 @@ async function executeBatchedTasks(
     if (!Array.isArray(parsed) || parsed.length !== inputs.length) throw new Error('Batch size mismatch');
 
     // Process each task result through the normal safety pipeline
-    const results: Array<{ status: 'completed' | 'pending_approval' | 'failed' }> = [];
+    const results: Array<ExecuteTaskResult> = [];
     for (let i = 0; i < inputs.length; i++) {
       const taskOutput = parsed.find((p) => p.taskIndex === i + 1)?.output;
       if (!taskOutput?.trim()) {
@@ -185,73 +205,286 @@ async function executeBatchedTasks(
 async function executeTaskWithOutput(
   input: ExecuteTaskInput,
   output: string,
-): Promise<{ status: 'completed' | 'pending_approval' | 'failed' }> {
+): Promise<ExecuteTaskResult> {
   if (!output.trim()) return { status: 'failed' };
 
-  const safety = evaluateSafetyScore({
-    userMessage: input.task.description ?? input.task.title,
-    draftResponse: output,
-    conversationMode: 'project',
-    projectName: input.project.name,
-    executionContext: 'autonomous_task',
-  });
+  // Phase 37 — HOOK A: write the task step row. Non-fatal; stepId is null if writer fails.
+  const startedAtMs = Date.now();
+  const stepId =
+    input.runId !== undefined
+      ? await startStep(input.runId, input.parentStepId ?? null, {
+          traceId: input.traceId ?? '',
+          agentId: input.agent.id,
+          agentName: input.agent.name,
+          agentRole: input.agent.role,
+          stepType: 'task',
+          title: input.task.title.slice(0, 200),
+          status: 'running',
+        })
+      : null;
 
-  const agentTrustScore = getAgentTrustScore(input.agent.personality);
-  const thresholds = getAdjustedThresholds(agentTrustScore);
-  const roleMultiplier = getRoleRiskMultiplier(input.agent.role, input.task.description ?? input.task.title);
-  const adjustedExecutionRisk = Math.min(1.0, safety.executionRisk * roleMultiplier);
-  const adjustedScopeRisk = Math.min(1.0, safety.scopeRisk * roleMultiplier);
-  const adjustedHallucinationRisk = Math.min(1.0, safety.hallucinationRisk * roleMultiplier);
-
-  if (
-    adjustedExecutionRisk >= thresholds.clarificationRequiredRisk ||
-    adjustedScopeRisk >= thresholds.clarificationRequiredRisk ||
-    adjustedHallucinationRisk >= thresholds.clarificationRequiredRisk
-  ) {
-    await input.storage.updateTask(input.task.id, {
-      status: 'blocked',
-      metadata: { awaitingApproval: true, draftOutput: output } as any,
+  try {
+    const safety = evaluateSafetyScore({
+      userMessage: input.task.description ?? input.task.title,
+      draftResponse: output,
+      conversationMode: 'project',
+      projectName: input.project.name,
+      executionContext: 'autonomous_task',
     });
-    input.broadcastToConversation(input.conversationId, {
-      type: 'task_requires_approval',
-      taskId: input.task.id,
-      agentName: input.agent.name,
-      riskReasons: safety.reasons,
-    });
-    return { status: 'pending_approval' };
-  }
 
-  // Peer review gate for batched tasks (same as executeTask)
-  const maxRisk = Math.max(adjustedExecutionRisk, adjustedScopeRisk, adjustedHallucinationRisk);
-  let finalOutput = output;
-  let peerReviewed = false;
+    const agentTrustScore = getAgentTrustScore(input.agent.personality);
+    const thresholds = getAdjustedThresholds(agentTrustScore);
+    const roleMultiplier = getRoleRiskMultiplier(input.agent.role, input.task.description ?? input.task.title);
+    const adjustedExecutionRisk = Math.min(1.0, safety.executionRisk * roleMultiplier);
+    const adjustedScopeRisk = Math.min(1.0, safety.scopeRisk * roleMultiplier);
+    const adjustedHallucinationRisk = Math.min(1.0, safety.hallucinationRisk * roleMultiplier);
 
-  if (maxRisk >= thresholds.peerReviewTrigger) {
-    const projectAgents = await input.storage.getAgentsByProject(input.task.projectId);
-    const reviewers = projectAgents
-      .filter((a) => a.id !== input.agent.id)
-      .map((a) => ({ id: a.id, name: a.name, role: a.role }));
-
-    try {
-      const peerResult = await runPeerReview({
-        projectId: input.task.projectId,
-        conversationId: input.conversationId,
-        primaryHatchId: input.agent.id,
-        primaryHatchRole: input.agent.role,
-        reviewers,
-        provider: 'autonomous',
-        mode: 'autonomous',
-        confidence: 1.0 - maxRisk,
-        riskScore: maxRisk,
-        userMessage: input.task.description ?? input.task.title,
-        draftResponse: output,
-        projectName: input.project.name,
+    if (
+      adjustedExecutionRisk >= thresholds.clarificationRequiredRisk ||
+      adjustedScopeRisk >= thresholds.clarificationRequiredRisk ||
+      adjustedHallucinationRisk >= thresholds.clarificationRequiredRisk
+    ) {
+      await input.storage.updateTask(input.task.id, {
+        status: 'blocked',
+        metadata: { awaitingApproval: true, draftOutput: output } as any,
       });
+      input.broadcastToConversation(input.conversationId, {
+        type: 'task_requires_approval',
+        taskId: input.task.id,
+        agentName: input.agent.name,
+        riskReasons: safety.reasons,
+      });
+      // Phase 37 — HOOK B (pending_approval path): mark step complete (work surfaced; no LLM error)
+      await completeStep(stepId, {
+        deliverableId: undefined,
+        deliverableVersionId: undefined,
+        priorRubricTotal: null,
+        currentRubricTotal: null,
+      }, startedAtMs);
+      return { status: 'pending_approval', stepId };
+    }
 
-      if (peerResult?.clarificationRequired) {
+    // Peer review gate for batched tasks (same as executeTask)
+    const maxRisk = Math.max(adjustedExecutionRisk, adjustedScopeRisk, adjustedHallucinationRisk);
+    let finalOutput = output;
+    let peerReviewed = false;
+
+    if (maxRisk >= thresholds.peerReviewTrigger) {
+      const projectAgents = await input.storage.getAgentsByProject(input.task.projectId);
+      const reviewers = projectAgents
+        .filter((a) => a.id !== input.agent.id)
+        .map((a) => ({ id: a.id, name: a.name, role: a.role }));
+
+      try {
+        const peerResult = await runPeerReview({
+          projectId: input.task.projectId,
+          conversationId: input.conversationId,
+          primaryHatchId: input.agent.id,
+          primaryHatchRole: input.agent.role,
+          reviewers,
+          provider: 'autonomous',
+          mode: 'autonomous',
+          confidence: 1.0 - maxRisk,
+          riskScore: maxRisk,
+          userMessage: input.task.description ?? input.task.title,
+          draftResponse: output,
+          projectName: input.project.name,
+        });
+
+        if (peerResult?.clarificationRequired) {
+          await input.storage.updateTask(input.task.id, {
+            status: 'blocked',
+            metadata: { awaitingApproval: true, draftOutput: output, peerReviewBlocked: true, batched: true } as any,
+          });
+          input.broadcastToConversation(input.conversationId, {
+            type: 'task_requires_approval',
+            taskId: input.task.id,
+            agentName: input.agent.name,
+            riskReasons: peerResult.reason,
+          });
+          // Phase 37 — HOOK B (pending_approval after peer review): mark step complete
+          await completeStep(stepId, {
+            deliverableId: undefined,
+            deliverableVersionId: undefined,
+            priorRubricTotal: null,
+            currentRubricTotal: null,
+          }, startedAtMs);
+          return { status: 'pending_approval', stepId };
+        }
+
+        if (peerResult?.revisedContent) {
+          finalOutput = peerResult.revisedContent;
+        }
+        peerReviewed = true;
+      } catch {
+        console.warn(`[Pipeline] Peer review failed for batched task ${input.task.id} — proceeding without review`);
+      }
+    }
+
+    // Store and broadcast
+    const storedMsg = await input.storage.createMessage({
+      conversationId: input.conversationId,
+      content: finalOutput,
+      messageType: 'agent',
+      agentId: input.agent.id,
+      userId: null,
+      metadata: { isAutonomous: true, taskId: input.task.id, batched: true, peerReviewed } as any,
+    });
+
+    input.broadcastToConversation(input.conversationId, {
+      type: 'new_message',
+      conversationId: input.conversationId,
+      message: storedMsg,
+    });
+
+    await input.storage.updateTask(input.task.id, { status: 'completed' });
+
+    await logAutonomyEvent({
+      eventType: 'autonomous_task_execution',
+      projectId: input.task.projectId,
+      hatchId: input.agent.id,
+      conversationId: input.conversationId,
+      confidence: 1.0,
+      riskScore: maxRisk,
+      latencyMs: null,
+      mode: 'autonomous',
+      provider: null,
+      teamId: null,
+      payload: { taskId: input.task.id, taskTitle: input.task.title, agentName: input.agent.name, batched: true, peerReviewed },
+    });
+
+    input.broadcastToConversation(input.conversationId, {
+      type: 'task_execution_completed',
+      taskId: input.task.id,
+      agentId: input.agent.id,
+      agentName: input.agent.name,
+    });
+
+    await updateAgentTrustScore(input.storage, input.agent.id, true);
+    // Phase 37 — HOOK B (success path)
+    // D-06.1: live pipeline doesn't currently produce Phase 36 deliverables → scoreDelta resolves to null
+    await completeStep(stepId, {
+      deliverableId: undefined,
+      deliverableVersionId: undefined,
+      priorRubricTotal: null,
+      currentRubricTotal: null,
+    }, startedAtMs);
+    return { status: 'completed', stepId };
+  } catch (err) {
+    // Phase 37 — HOOK C: mark step failed, then re-raise to preserve existing error contract
+    await failStep(stepId, err as Error);
+    throw err;
+  }
+}
+
+export async function executeTask(
+  input: ExecuteTaskInput,
+): Promise<ExecuteTaskResult> {
+  // Phase 37 — HOOK A: write the task step row at function entry.
+  // stepId is null when (a) writer fails or (b) run-tree lineage absent (legacy callers).
+  const startedAtMs = Date.now();
+  const stepId =
+    input.runId !== undefined
+      ? await startStep(input.runId, input.parentStepId ?? null, {
+          traceId: input.traceId ?? '',
+          agentId: input.agent.id,
+          agentName: input.agent.name,
+          agentRole: input.agent.role,
+          stepType: 'task',
+          title: input.task.title.slice(0, 200),
+          status: 'running',
+        })
+      : null;
+
+  try {
+    const output = await input.generateText(
+      `Task: ${input.task.title}`,
+      `You are a ${input.agent.role}.`,
+    );
+
+    // Guard against empty LLM output — don't store blank messages
+    if (!output || !output.trim()) {
+      // Phase 37 — HOOK B (failed, empty-output path): mark step failed so the row doesn't hang as 'running'
+      await failStep(stepId, new Error('LLM returned empty output'));
+      return { status: 'failed', stepId };
+    }
+
+    const safety = evaluateSafetyScore({
+      userMessage: input.task.description ?? input.task.title,
+      draftResponse: output,
+      conversationMode: 'project',
+      projectName: input.project.name,
+      executionContext: 'autonomous_task',
+    });
+
+    // SAFE-04: Get trust-adjusted thresholds for this agent
+    const agentTrustScore = getAgentTrustScore(input.agent.personality);
+    const thresholds = getAdjustedThresholds(agentTrustScore);
+
+    // Role-aware risk adjustment: multiply risk by role-specific sensitivity
+    const roleMultiplier = getRoleRiskMultiplier(input.agent.role, input.task.description ?? input.task.title);
+    const adjustedExecutionRisk = Math.min(1.0, safety.executionRisk * roleMultiplier);
+    const adjustedScopeRisk = Math.min(1.0, safety.scopeRisk * roleMultiplier);
+    const adjustedHallucinationRisk = Math.min(1.0, safety.hallucinationRisk * roleMultiplier);
+
+    if (
+      adjustedExecutionRisk >= thresholds.clarificationRequiredRisk ||
+      adjustedScopeRisk >= thresholds.clarificationRequiredRisk ||
+      adjustedHallucinationRisk >= thresholds.clarificationRequiredRisk
+    ) {
+      await input.storage.updateTask(input.task.id, {
+        status: 'blocked',
+        metadata: { awaitingApproval: true, draftOutput: output } as any,
+      });
+      input.broadcastToConversation(input.conversationId, {
+        type: 'task_requires_approval',
+        taskId: input.task.id,
+        agentName: input.agent.name,
+        riskReasons: safety.reasons,
+      });
+      // Phase 37 — HOOK B (pending_approval path): mark step complete (work surfaced, awaiting human)
+      await completeStep(stepId, {
+        deliverableId: undefined,
+        deliverableVersionId: undefined,
+        priorRubricTotal: null,
+        currentRubricTotal: null,
+      }, startedAtMs);
+      return { status: 'pending_approval', stepId };
+    }
+
+    // SAFE-03: Mid-risk peer review gate (peerReviewTrigger <= risk < clarificationRequiredRisk)
+    const maxRisk = Math.max(adjustedExecutionRisk, adjustedScopeRisk, adjustedHallucinationRisk);
+    if (maxRisk >= thresholds.peerReviewTrigger) {
+      const projectAgents = await input.storage.getAgentsByProject(input.task.projectId);
+      const reviewers = projectAgents
+        .filter((a) => a.id !== input.agent.id)
+        .map((a) => ({ id: a.id, name: a.name, role: a.role }));
+
+      let peerResult: Awaited<ReturnType<typeof runPeerReview>> | null = null;
+      try {
+        peerResult = await runPeerReview({
+          projectId: input.task.projectId,
+          conversationId: input.conversationId,
+          primaryHatchId: input.agent.id,
+          primaryHatchRole: input.agent.role,
+          reviewers,
+          provider: 'autonomous',
+          mode: 'autonomous',
+          confidence: 1.0 - maxRisk,
+          riskScore: maxRisk,
+          userMessage: input.task.description ?? input.task.title,
+          draftResponse: output,
+          projectName: input.project.name,
+        });
+      } catch (peerReviewErr) {
+        // Peer review infrastructure failure — log and fall through to non-reviewed path
+        console.warn(`[Pipeline] Peer review failed for task ${input.task.id}:`, peerReviewErr);
+      }
+
+      if (peerResult && peerResult.clarificationRequired) {
         await input.storage.updateTask(input.task.id, {
           status: 'blocked',
-          metadata: { awaitingApproval: true, draftOutput: output, peerReviewBlocked: true, batched: true } as any,
+          metadata: { awaitingApproval: true, draftOutput: output, peerReviewBlocked: true } as any,
         });
         input.broadcastToConversation(input.conversationId, {
           type: 'task_requires_approval',
@@ -259,248 +492,132 @@ async function executeTaskWithOutput(
           agentName: input.agent.name,
           riskReasons: peerResult.reason,
         });
-        return { status: 'pending_approval' };
+        // Phase 37 — HOOK B (pending_approval after peer review): mark step complete
+        await completeStep(stepId, {
+          deliverableId: undefined,
+          deliverableVersionId: undefined,
+          priorRubricTotal: null,
+          currentRubricTotal: null,
+        }, startedAtMs);
+        return { status: 'pending_approval', stepId };
       }
 
-      if (peerResult?.revisedContent) {
-        finalOutput = peerResult.revisedContent;
+      // If peer review succeeded (not null), use its result
+      if (peerResult) {
+        const finalOutput = peerResult.revisedContent || output;
+
+        const peerMsg = await input.storage.createMessage({
+          conversationId: input.conversationId,
+          content: finalOutput,
+          messageType: 'agent',
+          agentId: input.agent.id,
+          userId: null,
+          metadata: { isAutonomous: true, taskId: input.task.id, peerReviewed: true } as any,
+        });
+
+        // Broadcast so users see the autonomous output in real-time chat
+        input.broadcastToConversation(input.conversationId, {
+          type: 'new_message',
+          conversationId: input.conversationId,
+          message: peerMsg,
+        });
+
+        await input.storage.updateTask(input.task.id, { status: 'completed' });
+
+        await logAutonomyEvent({
+          eventType: 'autonomous_task_execution',
+          projectId: input.task.projectId,
+          hatchId: input.agent.id,
+          conversationId: input.conversationId,
+          confidence: 1.0,
+          riskScore: maxRisk,
+          latencyMs: null,
+          mode: 'autonomous',
+          provider: null,
+          teamId: null,
+          payload: { taskId: input.task.id, taskTitle: input.task.title, agentName: input.agent.name, peerReviewed: true },
+        });
+
+        input.broadcastToConversation(input.conversationId, {
+          type: 'task_execution_completed',
+          taskId: input.task.id,
+          agentId: input.agent.id,
+          agentName: input.agent.name,
+        });
+
+        // SAFE-04: Peer-reviewed tasks also earn trust
+        await updateAgentTrustScore(input.storage, input.agent.id, true);
+
+        // Phase 37 — HOOK B (peer-reviewed success path)
+        // D-06.1: autonomy pipeline doesn't currently produce Phase 36 deliverables → scoreDelta null
+        await completeStep(stepId, {
+          deliverableId: undefined,
+          deliverableVersionId: undefined,
+          priorRubricTotal: null,
+          currentRubricTotal: null,
+        }, startedAtMs);
+        return { status: 'completed', stepId };
       }
-      peerReviewed = true;
-    } catch {
-      console.warn(`[Pipeline] Peer review failed for batched task ${input.task.id} — proceeding without review`);
+      // If peerResult is null (catch fired), fall through to non-reviewed path below
     }
-  }
 
-  // Store and broadcast
-  const storedMsg = await input.storage.createMessage({
-    conversationId: input.conversationId,
-    content: finalOutput,
-    messageType: 'agent',
-    agentId: input.agent.id,
-    userId: null,
-    metadata: { isAutonomous: true, taskId: input.task.id, batched: true, peerReviewed } as any,
-  });
-
-  input.broadcastToConversation(input.conversationId, {
-    type: 'new_message',
-    conversationId: input.conversationId,
-    message: storedMsg,
-  });
-
-  await input.storage.updateTask(input.task.id, { status: 'completed' });
-
-  await logAutonomyEvent({
-    eventType: 'autonomous_task_execution',
-    projectId: input.task.projectId,
-    hatchId: input.agent.id,
-    conversationId: input.conversationId,
-    confidence: 1.0,
-    riskScore: maxRisk,
-    latencyMs: null,
-    mode: 'autonomous',
-    provider: null,
-    teamId: null,
-    payload: { taskId: input.task.id, taskTitle: input.task.title, agentName: input.agent.name, batched: true, peerReviewed },
-  });
-
-  input.broadcastToConversation(input.conversationId, {
-    type: 'task_execution_completed',
-    taskId: input.task.id,
-    agentId: input.agent.id,
-    agentName: input.agent.name,
-  });
-
-  await updateAgentTrustScore(input.storage, input.agent.id, true);
-  return { status: 'completed' };
-}
-
-export async function executeTask(
-  input: ExecuteTaskInput,
-): Promise<{ status: 'completed' | 'pending_approval' | 'failed' }> {
-  const output = await input.generateText(
-    `Task: ${input.task.title}`,
-    `You are a ${input.agent.role}.`,
-  );
-
-  // Guard against empty LLM output — don't store blank messages
-  if (!output || !output.trim()) {
-    return { status: 'failed' };
-  }
-
-  const safety = evaluateSafetyScore({
-    userMessage: input.task.description ?? input.task.title,
-    draftResponse: output,
-    conversationMode: 'project',
-    projectName: input.project.name,
-    executionContext: 'autonomous_task',
-  });
-
-  // SAFE-04: Get trust-adjusted thresholds for this agent
-  const agentTrustScore = getAgentTrustScore(input.agent.personality);
-  const thresholds = getAdjustedThresholds(agentTrustScore);
-
-  // Role-aware risk adjustment: multiply risk by role-specific sensitivity
-  const roleMultiplier = getRoleRiskMultiplier(input.agent.role, input.task.description ?? input.task.title);
-  const adjustedExecutionRisk = Math.min(1.0, safety.executionRisk * roleMultiplier);
-  const adjustedScopeRisk = Math.min(1.0, safety.scopeRisk * roleMultiplier);
-  const adjustedHallucinationRisk = Math.min(1.0, safety.hallucinationRisk * roleMultiplier);
-
-  if (
-    adjustedExecutionRisk >= thresholds.clarificationRequiredRisk ||
-    adjustedScopeRisk >= thresholds.clarificationRequiredRisk ||
-    adjustedHallucinationRisk >= thresholds.clarificationRequiredRisk
-  ) {
-    await input.storage.updateTask(input.task.id, {
-      status: 'blocked',
-      metadata: { awaitingApproval: true, draftOutput: output } as any,
+    const storedMsg = await input.storage.createMessage({
+      conversationId: input.conversationId,
+      content: output,
+      messageType: 'agent',
+      agentId: input.agent.id,
+      userId: null,
+      metadata: { isAutonomous: true, taskId: input.task.id } as any,
     });
+
+    // Broadcast so users see the autonomous output in real-time chat
     input.broadcastToConversation(input.conversationId, {
-      type: 'task_requires_approval',
-      taskId: input.task.id,
-      agentName: input.agent.name,
-      riskReasons: safety.reasons,
+      type: 'new_message',
+      conversationId: input.conversationId,
+      message: storedMsg,
     });
-    return { status: 'pending_approval' };
+
+    await input.storage.updateTask(input.task.id, { status: 'completed' });
+
+    // Log autonomy event so cost cap counter increments (EXEC-03)
+    await logAutonomyEvent({
+      eventType: 'autonomous_task_execution',
+      projectId: input.task.projectId,
+      hatchId: input.agent.id,
+      conversationId: input.conversationId,
+      confidence: 1.0,
+      riskScore: null,
+      latencyMs: null,
+      mode: 'autonomous',
+      provider: null,
+      teamId: null,
+      payload: { taskId: input.task.id, taskTitle: input.task.title, agentName: input.agent.name },
+    });
+
+    input.broadcastToConversation(input.conversationId, {
+      type: 'task_execution_completed',
+      taskId: input.task.id,
+      agentId: input.agent.id,
+      agentName: input.agent.name,
+    });
+
+    // SAFE-04: Update agent trust score after successful completion
+    await updateAgentTrustScore(input.storage, input.agent.id, true);
+
+    // Phase 37 — HOOK B (non-reviewed success path)
+    // D-06.1: live pipeline doesn't currently produce Phase 36 deliverables → scoreDelta null
+    await completeStep(stepId, {
+      deliverableId: undefined,
+      deliverableVersionId: undefined,
+      priorRubricTotal: null,
+      currentRubricTotal: null,
+    }, startedAtMs);
+    return { status: 'completed', stepId };
+  } catch (err) {
+    // Phase 37 — HOOK C: mark step failed before re-raising to preserve existing error contract
+    await failStep(stepId, err as Error);
+    throw err;
   }
-
-  // SAFE-03: Mid-risk peer review gate (peerReviewTrigger <= risk < clarificationRequiredRisk)
-  const maxRisk = Math.max(adjustedExecutionRisk, adjustedScopeRisk, adjustedHallucinationRisk);
-  if (maxRisk >= thresholds.peerReviewTrigger) {
-    const projectAgents = await input.storage.getAgentsByProject(input.task.projectId);
-    const reviewers = projectAgents
-      .filter((a) => a.id !== input.agent.id)
-      .map((a) => ({ id: a.id, name: a.name, role: a.role }));
-
-    let peerResult: Awaited<ReturnType<typeof runPeerReview>> | null = null;
-    try {
-      peerResult = await runPeerReview({
-        projectId: input.task.projectId,
-        conversationId: input.conversationId,
-        primaryHatchId: input.agent.id,
-        primaryHatchRole: input.agent.role,
-        reviewers,
-        provider: 'autonomous',
-        mode: 'autonomous',
-        confidence: 1.0 - maxRisk,
-        riskScore: maxRisk,
-        userMessage: input.task.description ?? input.task.title,
-        draftResponse: output,
-        projectName: input.project.name,
-      });
-    } catch (peerReviewErr) {
-      // Peer review infrastructure failure — log and fall through to non-reviewed path
-      console.warn(`[Pipeline] Peer review failed for task ${input.task.id}:`, peerReviewErr);
-    }
-
-    if (peerResult && peerResult.clarificationRequired) {
-      await input.storage.updateTask(input.task.id, {
-        status: 'blocked',
-        metadata: { awaitingApproval: true, draftOutput: output, peerReviewBlocked: true } as any,
-      });
-      input.broadcastToConversation(input.conversationId, {
-        type: 'task_requires_approval',
-        taskId: input.task.id,
-        agentName: input.agent.name,
-        riskReasons: peerResult.reason,
-      });
-      return { status: 'pending_approval' };
-    }
-
-    // If peer review succeeded (not null), use its result
-    if (peerResult) {
-      const finalOutput = peerResult.revisedContent || output;
-
-      const peerMsg = await input.storage.createMessage({
-        conversationId: input.conversationId,
-        content: finalOutput,
-        messageType: 'agent',
-        agentId: input.agent.id,
-        userId: null,
-        metadata: { isAutonomous: true, taskId: input.task.id, peerReviewed: true } as any,
-      });
-
-      // Broadcast so users see the autonomous output in real-time chat
-      input.broadcastToConversation(input.conversationId, {
-        type: 'new_message',
-        conversationId: input.conversationId,
-        message: peerMsg,
-      });
-
-      await input.storage.updateTask(input.task.id, { status: 'completed' });
-
-      await logAutonomyEvent({
-        eventType: 'autonomous_task_execution',
-        projectId: input.task.projectId,
-        hatchId: input.agent.id,
-        conversationId: input.conversationId,
-        confidence: 1.0,
-        riskScore: maxRisk,
-        latencyMs: null,
-        mode: 'autonomous',
-        provider: null,
-        teamId: null,
-        payload: { taskId: input.task.id, taskTitle: input.task.title, agentName: input.agent.name, peerReviewed: true },
-      });
-
-      input.broadcastToConversation(input.conversationId, {
-        type: 'task_execution_completed',
-        taskId: input.task.id,
-        agentId: input.agent.id,
-        agentName: input.agent.name,
-      });
-
-      // SAFE-04: Peer-reviewed tasks also earn trust
-      await updateAgentTrustScore(input.storage, input.agent.id, true);
-
-      return { status: 'completed' };
-    }
-    // If peerResult is null (catch fired), fall through to non-reviewed path below
-  }
-
-  const storedMsg = await input.storage.createMessage({
-    conversationId: input.conversationId,
-    content: output,
-    messageType: 'agent',
-    agentId: input.agent.id,
-    userId: null,
-    metadata: { isAutonomous: true, taskId: input.task.id } as any,
-  });
-
-  // Broadcast so users see the autonomous output in real-time chat
-  input.broadcastToConversation(input.conversationId, {
-    type: 'new_message',
-    conversationId: input.conversationId,
-    message: storedMsg,
-  });
-
-  await input.storage.updateTask(input.task.id, { status: 'completed' });
-
-  // Log autonomy event so cost cap counter increments (EXEC-03)
-  await logAutonomyEvent({
-    eventType: 'autonomous_task_execution',
-    projectId: input.task.projectId,
-    hatchId: input.agent.id,
-    conversationId: input.conversationId,
-    confidence: 1.0,
-    riskScore: null,
-    latencyMs: null,
-    mode: 'autonomous',
-    provider: null,
-    teamId: null,
-    payload: { taskId: input.task.id, taskTitle: input.task.title, agentName: input.agent.name },
-  });
-
-  input.broadcastToConversation(input.conversationId, {
-    type: 'task_execution_completed',
-    taskId: input.task.id,
-    agentId: input.agent.id,
-    agentName: input.agent.name,
-  });
-
-  // SAFE-04: Update agent trust score after successful completion
-  await updateAgentTrustScore(input.storage, input.agent.id, true);
-
-  return { status: 'completed' };
 }
 
 /** Extract trust score from agent personality JSONB (defaults to 0.0). */
@@ -534,7 +651,15 @@ async function updateAgentTrustScore(
 }
 
 export async function handleTaskJob(
-  job: { data: { taskId: string; projectId: string; agentId: string } },
+  job: {
+    data: {
+      taskId: string;
+      projectId: string;
+      agentId: string;
+      traceId?: string;      // NEW (Phase 37) — propagated from upstream handoff or undefined for root invocations
+      parentStepId?: string; // NEW (Phase 37) — set by handoffOrchestrator to the handoff step id
+    };
+  },
   deps: {
     storage: IStorage;
     broadcastToConversation: (convId: string, payload: unknown) => void;
@@ -595,6 +720,19 @@ export async function handleTaskJob(
 
   const conversationId = `project:${job.data.projectId}`;
 
+  // Phase 37 — autonomy run tree: resolve trace lineage + lookup-or-create run.
+  // Root invocations (no upstream handoff) get a fresh traceId; downstream
+  // invocations propagate it via the pg-boss payload (only viable channel —
+  // AsyncLocalStorage cannot survive the worker process boundary).
+  const traceId: string = job.data.traceId ?? randomUUID();
+  const runId: string = await ensureRunForTrace(traceId, {
+    projectId: task.projectId,
+    userId: project.userId ?? undefined,
+    rootAgentId: agent.id,
+    rootGoal: task.title?.slice(0, 500),
+  });
+  const parentStepIdForThisInvocation: string | null = job.data.parentStepId ?? null;
+
   deps.broadcastToConversation(conversationId, {
     type: 'background_execution_started',
     projectId: job.data.projectId,
@@ -602,7 +740,7 @@ export async function handleTaskJob(
     agentName: agent.name,
   });
 
-  let result: { status: 'completed' | 'pending_approval' | 'failed' };
+  let result: ExecuteTaskResult;
   try {
     result = await queueForBatch({
       task: { id: task.id, title: task.title, description: task.description ?? null, assignee: task.assignee ?? null, projectId: task.projectId },
@@ -612,6 +750,10 @@ export async function handleTaskJob(
       storage: deps.storage,
       broadcastToConversation: deps.broadcastToConversation,
       generateText: deps.generateText,
+      // Phase 37 — propagate run tree lineage into executeTask scope
+      traceId,
+      runId,
+      parentStepId: parentStepIdForThisInvocation,
     });
   } catch (err) {
     // Release the reserved slot — task failed mid-execution. BUDG-02 idempotent release.

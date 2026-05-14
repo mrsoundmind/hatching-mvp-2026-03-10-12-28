@@ -38,6 +38,8 @@ export async function queueTaskExecution(data: {
   taskId: string;
   projectId: string;
   agentId: string;
+  traceId?: string;       // NEW (Phase 37) — survives pg-boss process boundary; AsyncLocalStorage cannot
+  parentStepId?: string;  // NEW (Phase 37) — handoff step id; null/undefined for run roots
 }): Promise<string | null> {
   const boss = await getJobQueue();
   if (!boss) {
