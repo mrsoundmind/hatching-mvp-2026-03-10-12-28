@@ -194,7 +194,12 @@ See archived roadmap: [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
   3. Activity-tab sidebar visualizes the run tree per project — collapsible nodes with score-delta badges (+1.2 / -0.8 / new) per step
   4. Clicking a step node opens the deliverable version it produced and its rubric breakdown
   5. Migration backfills existing `autonomy_events` rows so historical projects show meaningful trees (not empty for pre-migration runs)
-**Plans**: TBD (likely 3 plans)
+**Plans**: 4 plans (1/4 complete)
+
+  - [x] 37-01-PLAN.md — Foundation: autonomy_runs + autonomy_run_steps schemas + IStorage methods (Mem + DB) + Wave-1 unit tests **(shipped 2026-05-14; commits 2acd134, 819be29, c92d8bb — 4/4 tests PASS deterministic, 12 + 19 cols + 4 indexes confirmed via pg_indexes)**
+  - [ ] 37-02-PLAN.md — Server writer + instrumentation (runTreeWriter.ts, taskExecutionPipeline + handoffOrchestrator hooks, GET /api/projects/:id/runs endpoint)
+  - [ ] 37-03-PLAN.md — Client UI (RunTreeView + RunTreeNode, ActivityViewModeToggle, useAutonomyRunTree hook, ArtifactPanel versionNumber wiring) — visual checkpoint required
+  - [ ] 37-04-PLAN.md — Backfill (scripts/backfill-run-tree.ts) + Playwright 6-case spec + 37-VERIFICATION.md
 
 ### Phase 38: "Never Stop, Never Ask" Autonomy Prompt
 **Goal**: At max autonomy (level 4), Hatches commit to the chain — they finish what they started instead of pausing for clarification.

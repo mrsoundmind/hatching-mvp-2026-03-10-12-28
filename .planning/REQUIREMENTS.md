@@ -54,7 +54,7 @@
 
 **Theme:** `autonomy_runs` + `autonomy_run_steps` tables. Activity feed visualizes the tree with score deltas.
 
-- [ ] **TREE-01**: New `autonomy_runs` and `autonomy_run_steps` tables with parent-child relationships modeling autonomous execution as a DAG
+- [x] **TREE-01**: New `autonomy_runs` and `autonomy_run_steps` tables with parent-child relationships modeling autonomous execution as a DAG _(shipped 2026-05-14 via Phase 37-01; commits 2acd134, 819be29, c92d8bb)_
 - [ ] **TREE-02**: Every autonomous task and handoff writes a step row; rubric score deltas (from Phase 2) attach to step nodes
 - [ ] **TREE-03**: Activity feed sidebar visualizes the run tree per project — collapsible nodes, score-delta badges per step
 - [ ] **TREE-04**: User can click any step node to see the deliverable version produced and its score
@@ -213,7 +213,7 @@
 | RUBR-01..04 | 36 | Code-complete (awaiting deploy) |
 | FBK-01..04 | 36 | Code-complete (awaiting deploy; FBK-02 UI deferred) |
 | IMP-01..04 | 36.5 | Shipped 2026-05-13 (code-complete, bundled with 36 for deploy) |
-| TREE-01..05 | 37 | Pending |
+| TREE-01..05 | 37 | TREE-01 shipped 2026-05-14 (37-01); TREE-02..05 pending |
 | ALWY-01..03 | 38 | Pending |
 | READ-01..04 | 39 | Pending |
 | EVAL-01..04 | 40 | Pending |

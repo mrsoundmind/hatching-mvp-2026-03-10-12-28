@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Hatches That Self-Improve
-status: phase_37_context_gathered
-stopped_at: Phase 37 CONTEXT.md written via auto-mode discuss. 25 decisions captured across 7 gray areas (schema design, step writer integration, Activity tab toggle, click-to-deliverable wiring, backfill strategy, live updates policy, verification). 4 proposed plans (37-01..04). Ready for /gsd-plan-phase 37. Phase 36 + 36.5 still bundled awaiting fly deploy.
-last_updated: "2026-05-13T11:00:00.000Z"
-last_activity: 2026-05-13 — Phase 37 discuss complete (auto-mode). Created .planning/phases/37-git-style-run-tree/37-CONTEXT.md (25 decisions) + 37-DISCUSSION-LOG.md (reasoning audit trail). No code changes yet. Phase 36 + 36.5 remain code-complete bundled for next deploy.
+status: phase_37_plan_01_shipped
+stopped_at: Phase 37-01 (Foundation) SHIPPED 2026-05-14. autonomy_runs + autonomy_run_steps tables applied to dev DB (12 + 19 cols + 4 named indexes); IStorage gained createRun / createRunStep / updateRunStep / getRunsByProject (Mem + DB impls with parent-mismatch guard + Q4 timeout sweep); scripts/test-run-tree-writer.ts 4/4 PASS deterministic. Next plan 37-02 (server writer + instrumentation).
+last_updated: "2026-05-14T04:33:21.000Z"
+last_activity: 2026-05-14 — Phase 37-01 shipped (autonomous execute). 3 atomic commits (2acd134 schema, 819be29 storage, c92d8bb tests). 9 min duration. 3 deviations auto-fixed (db:push interactive bypass via direct SQL, Zod-inferred string vs $type literal cast, explicit type-imports in test file). Phase 36 + 36.5 still bundled awaiting fly deploy.
 progress:
   total_phases: 13
   completed_phases: 3
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 16
+  completed_plans: 13
   percent: 23
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-28)
 
 **Core value:** No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
-**Current focus:** v2.1 milestone in progress — Phase 35 SHIPPED to production 2026-05-11. Phase 36 + Phase 36.5 CODE-COMPLETE awaiting next `fly deploy`. Next phase: 37 (Git-Style Run Tree).
+**Current focus:** v2.1 milestone in progress — Phase 35 SHIPPED to production 2026-05-11. Phase 36 + Phase 36.5 CODE-COMPLETE awaiting next `fly deploy`. Phase 37-01 (Foundation) SHIPPED 2026-05-14. Next plan: 37-02 (server writer + instrumentation).
 
 ---
 
 ## Current Position
 
-Phase: 37 (Git-Style Run Tree) — CONTEXT GATHERED 2026-05-13
-Plans complete: 0/4 proposed (37-01 schema, 37-02 server writer + instrumentation, 37-03 client UI, 37-04 backfill + verification)
-Status: Auto-mode discuss complete. CONTEXT.md captures 25 decisions; researcher/planner have 4 open questions to resolve. Phase 36 + 36.5 remain code-complete, awaiting `fly deploy` (user-action). Next: `/gsd-plan-phase 37`.
-Last activity: 2026-05-13 — Phase 37 discuss (auto-mode). Created .planning/phases/37-git-style-run-tree/37-CONTEXT.md + 37-DISCUSSION-LOG.md. Server work begins after planning; UI step requires visual checkpoint per saved feedback rule.
+Phase: 37 (Git-Style Run Tree) — Plan 01 SHIPPED 2026-05-14
+Plans complete: 1/4 (37-01 SHIPPED 2026-05-14; 37-02 server writer pending; 37-03 client UI pending; 37-04 backfill + verification pending)
+Status: 37-01 Foundation complete — autonomy_runs + autonomy_run_steps tables in dev DB; IStorage + Mem + DB impls wired; Wave-1 tests 4/4 PASS deterministic. Next: 37-02 server writer + instrumentation (taskExecutionPipeline + handoffOrchestrator hooks + GET /api/projects/:id/runs endpoint).
+Last activity: 2026-05-14 — Phase 37-01 shipped (3 commits 2acd134..c92d8bb, 9 min). All 4 named indexes confirmed via pg_indexes. typecheck + build green.
 
 ### Phase 36.5 — also CODE-COMPLETE (shipped 2026-05-13, bundled with Phase 36 for same deploy)
 Hotfix from 2026-05-13 audit. Imperative shortcut parser fires create-agent / create-task / rename-project / set-brain-field on turn 1 (no LLM dance). Maya turn-count gate dropped. Probe spec is regression gate (2/2 PASS).
