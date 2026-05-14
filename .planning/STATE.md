@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Hatches That Self-Improve
-status: phase_37_plan_01_shipped
-stopped_at: Phase 37-01 (Foundation) SHIPPED 2026-05-14. autonomy_runs + autonomy_run_steps tables applied to dev DB (12 + 19 cols + 4 named indexes); IStorage gained createRun / createRunStep / updateRunStep / getRunsByProject (Mem + DB impls with parent-mismatch guard + Q4 timeout sweep); scripts/test-run-tree-writer.ts 4/4 PASS deterministic. Next plan 37-02 (server writer + instrumentation).
-last_updated: "2026-05-14T04:33:21.000Z"
-last_activity: 2026-05-14 — Phase 37-01 shipped (autonomous execute). 3 atomic commits (2acd134 schema, 819be29 storage, c92d8bb tests). 9 min duration. 3 deviations auto-fixed (db:push interactive bypass via direct SQL, Zod-inferred string vs $type literal cast, explicit type-imports in test file). Phase 36 + 36.5 still bundled awaiting fly deploy.
+status: phase_37_plan_02_shipped
+stopped_at: Phase 37-02 (Server writer + instrumentation) SHIPPED 2026-05-14. server/autonomy/runs/runTreeWriter.ts created (4 non-fatal async writers + W-4 inline deliverableVersionNumber lookup + Pitfall 4 Number.isFinite NaN-guard); pg-boss queueTaskExecution payload extended with traceId + parentStepId (the only cross-worker-boundary channel); 3-hook instrumentation wired into BOTH executeTask (line ~370) AND executeTaskWithOutput (line ~205) — Pitfall 6 defense; handleTaskJob entry block resolves traceId + ensureRunForTrace + parentStepId from job payload; handoffOrchestrator writes parent-linked handoff step + emits handoff_initiated event (D-07.1 forward-compat) + propagates traceId + parentStepId into downstream queueTaskExecution; GET /api/projects/:projectId/runs route (401/404 ownership, T-37-12); test-run-tree-writer.ts now 7/7 PASS deterministic. Next plan 37-03 (client UI tree view).
+last_updated: "2026-05-14T04:51:19.000Z"
+last_activity: 2026-05-14 — Phase 37-02 shipped (autonomous execute). 5 atomic commits (6aa50bb writer module, ef4ca1b jobQueue+pipeline, eda62db handoff, 30eef4a GET endpoint, 255a42c tests). 12 min duration. 3 deviations auto-fixed (Rule 1 runId-property type mismatch, Rule 3 caller-update deferred to Task 3, Rule 2 empty-output failStep added). Pitfall 6 defense verified: startStep called in BOTH executeTask AND executeTaskWithOutput. Phase 36 + 36.5 still bundled awaiting fly deploy.
 progress:
   total_phases: 13
   completed_phases: 3
   total_plans: 16
-  completed_plans: 13
-  percent: 23
+  completed_plans: 14
+  percent: 24
 ---
 
 # State: Hatchin
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-28)
 
 **Core value:** No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
-**Current focus:** v2.1 milestone in progress — Phase 35 SHIPPED to production 2026-05-11. Phase 36 + Phase 36.5 CODE-COMPLETE awaiting next `fly deploy`. Phase 37-01 (Foundation) SHIPPED 2026-05-14. Next plan: 37-02 (server writer + instrumentation).
+**Current focus:** v2.1 milestone in progress — Phase 35 SHIPPED to production 2026-05-11. Phase 36 + Phase 36.5 CODE-COMPLETE awaiting next `fly deploy`. Phase 37-01 (Foundation) SHIPPED 2026-05-14. Phase 37-02 (Server writer + instrumentation) SHIPPED 2026-05-14. Next plan: 37-03 (client UI tree view).
 
 ---
 
 ## Current Position
 
-Phase: 37 (Git-Style Run Tree) — Plan 01 SHIPPED 2026-05-14
-Plans complete: 1/4 (37-01 SHIPPED 2026-05-14; 37-02 server writer pending; 37-03 client UI pending; 37-04 backfill + verification pending)
-Status: 37-01 Foundation complete — autonomy_runs + autonomy_run_steps tables in dev DB; IStorage + Mem + DB impls wired; Wave-1 tests 4/4 PASS deterministic. Next: 37-02 server writer + instrumentation (taskExecutionPipeline + handoffOrchestrator hooks + GET /api/projects/:id/runs endpoint).
-Last activity: 2026-05-14 — Phase 37-01 shipped (3 commits 2acd134..c92d8bb, 9 min). All 4 named indexes confirmed via pg_indexes. typecheck + build green.
+Phase: 37 (Git-Style Run Tree) — Plan 02 SHIPPED 2026-05-14
+Plans complete: 2/4 (37-01 SHIPPED 2026-05-14; 37-02 SHIPPED 2026-05-14; 37-03 client UI pending; 37-04 backfill + verification pending)
+Status: 37-02 server writer + instrumentation complete — runTreeWriter.ts created with 4 non-fatal async writers (ensureRunForTrace / startStep / completeStep / failStep) + DEV-only __resetWriterForTests helper; pg-boss payload extended with traceId + parentStepId (Pitfall 1 defense — the only cross-worker channel); 3-hook contract instrumented in BOTH executeTask paths (Pitfall 6 defense — 12 total hook calls across both functions); handoffOrchestrator writes parent-linked handoff step + emits handoff_initiated event (D-07.1) + propagates lineage into downstream queueTaskExecution; GET /api/projects/:projectId/runs route added (401/404 ownership, T-37-12); 7/7 unit tests PASS deterministic. Live autonomy runs WILL now write step rows correctly (pre-37 history needs 37-04 backfill). Next: 37-03 client UI tree view (consumes the GET endpoint via TanStack Query refetchInterval).
+Last activity: 2026-05-14 — Phase 37-02 shipped (5 commits 6aa50bb..255a42c, 12 min). typecheck + build green. 7/7 tests deterministic ×2.
 
 ### Phase 36.5 — also CODE-COMPLETE (shipped 2026-05-13, bundled with Phase 36 for same deploy)
 Hotfix from 2026-05-13 audit. Imperative shortcut parser fires create-agent / create-task / rename-project / set-brain-field on turn 1 (no LLM dance). Maya turn-count gate dropped. Probe spec is regression gate (2/2 PASS).
@@ -135,10 +135,26 @@ fly deploy
 
 ## Session Continuity
 
-Last session: 2026-05-13 — Phase 36.5-01 execution complete. Imperative shortcut hotfix shipped in 6 atomic commits. Closes the 2026-05-13 audit gap; bundled with Phase 36 for next deploy.
-Stopped at: Phase 36 + Phase 36.5 CODE-COMPLETE. Awaiting `fly deploy` (user-action — auto-mode safety carve-out for production deploys).
+Last session: 2026-05-14 — Phase 37-02 execution complete (12 min, 5 atomic commits 6aa50bb..255a42c). runTreeWriter module + 3-hook instrumentation BOTH executeTask paths (Pitfall 6 defense) + handoff_initiated event (D-07.1) + GET /api/projects/:projectId/runs endpoint + 7/7 tests PASS deterministic.
+Stopped at: Phase 37-02 SHIPPED. Phase 37 plan-progress 2/4. Phase 36 + Phase 36.5 CODE-COMPLETE still awaiting `fly deploy`.
 
 Next action options (pick one):
+- Begin Phase 37-03 (Wave 3 — client UI tree view) — useAutonomyRunTree hook polling the new GET endpoint, sidebar tree component with rubric score-delta badges, version-navigation via W-4 deliverableVersionNumber
 - `fly deploy` — ship Phase 35 + Phase 36 + Phase 36.5 to production (user-driven; auto-mode does not deploy)
-- Begin Phase 37 (Git-Style Run Tree) — autonomy_runs + autonomy_run_steps schema + sidebar tree visualization with rubric score-delta badges
 - Address uncommitted `wip/pre-reset-2026-04-28` work (`ProjectTree.tsx` 5-line deletion + planning docs) if relevant to next phase
+
+## Performance Metrics
+
+| Plan | Duration | Tasks | Files | Commits |
+|---|---|---|---|---|
+| 37-01 Foundation | 9 min | 3 | 2 (+1 new) | 3 (2acd134, 819be29, c92d8bb) |
+| 37-02 Server writer + instrumentation | 12 min | 4 | 6 (+1 new) | 5 (6aa50bb, ef4ca1b, eda62db, 30eef4a, 255a42c) |
+
+## Decisions (Phase 37-02)
+
+- **Pipeline 3 hooks called via writer's null-safe API** — caller passes `input.runId !== undefined ? await startStep(...) : null`. Writer's stepId-null short-circuit means downstream completeStep/failStep are safe even if HOOK A failed.
+- **ExecuteTaskResult interface adds optional stepId** — least-disruptive way to carry stepId from executeTask back to handleTaskJob so it can pass it as sourceStepId into orchestrateHandoff.
+- **queueForBatch + executeBatchedTasks return types widened additively** — `{ status }` → `ExecuteTaskResult` (stepId optional).
+- **Cycle-detection task_failed event ('handoff_cycle' branch) preserved unchanged** — rejected handoffs intentionally don't write step rows because no real handoff occurred.
+- **orchestrateHandoff caller in handleTaskJob uses local-scope runId/traceId** — the caller is inside handleTaskJob (not inside executeTask), so the local variables are runId, traceId; used shorthand `runId, traceId` to satisfy the spirit of the plan's grep criterion.
+- **Empty-output path in executeTask now calls failStep** — without it, the early-return at the empty-output guard would leave the step row in 'running' state until the Q4 sweep at 30 min. Rule 2 auto-fix.
