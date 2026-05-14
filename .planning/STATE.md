@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Hatches That Self-Improve
-status: phase_37_plan_02_shipped
-stopped_at: Phase 37-02 (Server writer + instrumentation) SHIPPED 2026-05-14. server/autonomy/runs/runTreeWriter.ts created (4 non-fatal async writers + W-4 inline deliverableVersionNumber lookup + Pitfall 4 Number.isFinite NaN-guard); pg-boss queueTaskExecution payload extended with traceId + parentStepId (the only cross-worker-boundary channel); 3-hook instrumentation wired into BOTH executeTask (line ~370) AND executeTaskWithOutput (line ~205) — Pitfall 6 defense; handleTaskJob entry block resolves traceId + ensureRunForTrace + parentStepId from job payload; handoffOrchestrator writes parent-linked handoff step + emits handoff_initiated event (D-07.1 forward-compat) + propagates traceId + parentStepId into downstream queueTaskExecution; GET /api/projects/:projectId/runs route (401/404 ownership, T-37-12); test-run-tree-writer.ts now 7/7 PASS deterministic. Next plan 37-03 (client UI tree view).
-last_updated: "2026-05-14T04:51:19.000Z"
-last_activity: 2026-05-14 — Phase 37-02 shipped (autonomous execute). 5 atomic commits (6aa50bb writer module, ef4ca1b jobQueue+pipeline, eda62db handoff, 30eef4a GET endpoint, 255a42c tests). 12 min duration. 3 deviations auto-fixed (Rule 1 runId-property type mismatch, Rule 3 caller-update deferred to Task 3, Rule 2 empty-output failStep added). Pitfall 6 defense verified: startStep called in BOTH executeTask AND executeTaskWithOutput. Phase 36 + 36.5 still bundled awaiting fly deploy.
+status: phase_37_plan_03_shipped
+stopped_at: Phase 37-03 (Client UI — verb-led clarity pass applied at visual checkpoint per user feedback 2026-05-14) SHIPPED 2026-05-14. Activity tab gains [Flat][Tree] view-mode toggle with localStorage persistence; RunTreeView renders collapsible run cards with 2-line wrapping titles + agent-chain sub-line ("Alex → Cass") + semantic-word aggregate badge (✓ Improved / ⚠ Made worse / In progress); RunTreeNode shows verb-led step descriptions ("Alex worked on…" / "Alex handed off…" / "Mira reviewed…") + semantic-word step pills (✓ Better / ⚠ Worse / New); ArtifactPanel gains pendingVersionNumber prop (W-4 wiring — click step → panel opens to EXACT version); home.tsx open_deliverable handler accepts optional versionNumber. New memory rule saved: feedback_ui_self_documenting.md. 3 Playwright screenshots approved by user. Next plan 37-04 (backfill + Playwright spec + 37-VERIFICATION.md).
+last_updated: "2026-05-14T05:30:00.000Z"
+last_activity: 2026-05-14 — Phase 37-03 shipped (NON-AUTONOMOUS, visual checkpoint approved). 4 atomic commits (dbe7fb6 helpers, a568851 components, 14951be integration+clarity, plus this final docs commit). Visual checkpoint applied mid-flight clarity pass per user feedback — words/verbs replace icons/numbers across run tree surface. Memory rule for project saved.
 progress:
   total_phases: 13
   completed_phases: 3
   total_plans: 16
-  completed_plans: 14
-  percent: 24
+  completed_plans: 15
+  percent: 26
 ---
 
 # State: Hatchin
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-04-28)
 
 ## Current Position
 
-Phase: 37 (Git-Style Run Tree) — Plan 02 SHIPPED 2026-05-14
-Plans complete: 2/4 (37-01 SHIPPED 2026-05-14; 37-02 SHIPPED 2026-05-14; 37-03 client UI pending; 37-04 backfill + verification pending)
-Status: 37-02 server writer + instrumentation complete — runTreeWriter.ts created with 4 non-fatal async writers (ensureRunForTrace / startStep / completeStep / failStep) + DEV-only __resetWriterForTests helper; pg-boss payload extended with traceId + parentStepId (Pitfall 1 defense — the only cross-worker channel); 3-hook contract instrumented in BOTH executeTask paths (Pitfall 6 defense — 12 total hook calls across both functions); handoffOrchestrator writes parent-linked handoff step + emits handoff_initiated event (D-07.1) + propagates lineage into downstream queueTaskExecution; GET /api/projects/:projectId/runs route added (401/404 ownership, T-37-12); 7/7 unit tests PASS deterministic. Live autonomy runs WILL now write step rows correctly (pre-37 history needs 37-04 backfill). Next: 37-03 client UI tree view (consumes the GET endpoint via TanStack Query refetchInterval).
-Last activity: 2026-05-14 — Phase 37-02 shipped (5 commits 6aa50bb..255a42c, 12 min). typecheck + build green. 7/7 tests deterministic ×2.
+Phase: 37 (Git-Style Run Tree) — Plan 03 SHIPPED 2026-05-14
+Plans complete: 3/4 (37-01 + 37-02 + 37-03 SHIPPED 2026-05-14; 37-04 backfill + Playwright spec + 37-VERIFICATION.md pending)
+Status: 37-03 client UI shipped with mid-execution clarity refinement per user feedback. Activity tab gains [Flat][Tree] view-mode toggle (localStorage per-project). Tree mode shows collapsible run cards: 2-line-wrapping titles, agent-chain sub-line ("Alex → Cass") instead of "3 steps", semantic-word aggregate badge (✓ Improved / ⚠ Made worse / In progress). Step rows are verb-led ("Alex worked on…" / "Alex handed off…" / "Mira reviewed…") with semantic-word pills (✓ Better / ⚠ Worse / New) instead of bare signed numbers. ArtifactPanel pendingVersionNumber prop wired (W-4 — click step → opens EXACT version). 3 Playwright screenshots approved. Next: 37-04 backfill script + Playwright runtime spec + 37-VERIFICATION.md.
+Last activity: 2026-05-14 — Phase 37-03 shipped (4 commits dbe7fb6 helpers, a568851 components, 14951be integration+verb-led clarity, plus this final docs commit). Memory rule `feedback_ui_self_documenting.md` saved this session — applies to all future UI phases.
 
 ### Phase 36.5 — also CODE-COMPLETE (shipped 2026-05-13, bundled with Phase 36 for same deploy)
 Hotfix from 2026-05-13 audit. Imperative shortcut parser fires create-agent / create-task / rename-project / set-brain-field on turn 1 (no LLM dance). Maya turn-count gate dropped. Probe spec is regression gate (2/2 PASS).
