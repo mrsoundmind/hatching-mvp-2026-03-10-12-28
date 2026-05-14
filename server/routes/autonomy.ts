@@ -781,6 +781,25 @@ export function registerAutonomyRoutes(app: Express): void {
     }
   });
 
+  // Phase 37 (TREE-03) — autonomy run tree per project.
+  // Returns runs + their step rows for client-side tree assembly (37-03 useAutonomyRunTree hook).
+  // Ownership-checked; 401 on no session, 404 on mismatch (NOT 403 — T-37-12: 403 leaks resource existence).
+  app.get('/api/projects/:projectId/runs', async (req: Request, res) => {
+    try {
+      const userId = getSessionUserId(req);
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+      const project = await requireOwnedProject(req.params.projectId, userId);
+      if (!project) return res.status(404).json({ error: 'Project not found' });
+
+      const tree = await storage.getRunsByProject(project.id, { limit: 20 });
+      return res.json({ runs: tree.runs, steps: tree.steps });
+    } catch (error) {
+      console.error('Autonomy run tree read error:', error);
+      return res.status(500).json({ error: 'Failed to read autonomy run tree' });
+    }
+  });
+
   app.get('/api/autonomy/evidence-pack', async (req, res) => {
     try {
       const snapshotResult = await writeConfigSnapshot('evidence_export');
