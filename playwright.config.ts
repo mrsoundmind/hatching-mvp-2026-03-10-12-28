@@ -47,6 +47,7 @@ export default defineConfig({
         /chat-redesign\.spec\.ts/,
         /v3-local-gap-audit\.spec\.ts/,
         /stop-button\.spec\.ts/,
+        /resilience\.spec\.ts/,
       ],
     },
     // AI-heavy authenticated tests — send messages, wait for LLM responses
