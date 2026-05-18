@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Hatches That Self-Improve
-status: phase_37_plan_03_shipped
-stopped_at: Phase 37-03 (Client UI — verb-led clarity pass applied at visual checkpoint per user feedback 2026-05-14) SHIPPED 2026-05-14. Activity tab gains [Flat][Tree] view-mode toggle with localStorage persistence; RunTreeView renders collapsible run cards with 2-line wrapping titles + agent-chain sub-line ("Alex → Cass") + semantic-word aggregate badge (✓ Improved / ⚠ Made worse / In progress); RunTreeNode shows verb-led step descriptions ("Alex worked on…" / "Alex handed off…" / "Mira reviewed…") + semantic-word step pills (✓ Better / ⚠ Worse / New); ArtifactPanel gains pendingVersionNumber prop (W-4 wiring — click step → panel opens to EXACT version); home.tsx open_deliverable handler accepts optional versionNumber. New memory rule saved: feedback_ui_self_documenting.md. 3 Playwright screenshots approved by user. Next plan 37-04 (backfill + Playwright spec + 37-VERIFICATION.md).
-last_updated: "2026-05-14T05:30:00.000Z"
-last_activity: 2026-05-14 — Phase 37-03 shipped (NON-AUTONOMOUS, visual checkpoint approved). 4 atomic commits (dbe7fb6 helpers, a568851 components, 14951be integration+clarity, plus this final docs commit). Visual checkpoint applied mid-flight clarity pass per user feedback — words/verbs replace icons/numbers across run tree surface. Memory rule for project saved.
+status: phase_37_complete
+stopped_at: Phase 37 (Git-Style Run Tree) COMPLETE 2026-05-15. All 4 plans shipped — 37-01 foundation, 37-02 server writer, 37-03 client UI (verb-led clarity pass per visual checkpoint), 37-04 backfill module + CLI + DEV seed endpoints + Playwright spec (6/6 PASS 2x) + 37-VERIFICATION.md (PASS-WITH-NOTES — 2 acknowledged limitations + forward-compat). Commits: bdbd075 (runTreeBackfill module + CLI), d3b78a4 (4-case unit suite), 864bff9 (DEV seed endpoints + Playwright spec), 0992831 (37-VERIFICATION.md). Pre-deploy audit (Phases 36 + 36.5 + 37) IN PROGRESS — Layer A deploy-gate re-run executing against healthy Neon to confirm earlier ~50/57 failures were Neon DB cascade, not real bugs.
+last_updated: "2026-05-18T00:00:00.000Z"
+last_activity: 2026-05-18 — Pre-deploy audit running (Layer A re-run on healthy Neon → Layer B mobile → Layer C resilience → manual OAuth smoke → fly deploy → Layer D production smoke). Layer B + C specs already authored (tests/e2e/mobile-golden-path.spec.ts, tests/e2e/resilience.spec.ts). STATE.md rolled forward this session to reflect Phase 37 reality.
 progress:
   total_phases: 13
   completed_phases: 3
   total_plans: 16
-  completed_plans: 15
-  percent: 26
+  completed_plans: 16
+  percent: 27
 ---
 
 # State: Hatchin
