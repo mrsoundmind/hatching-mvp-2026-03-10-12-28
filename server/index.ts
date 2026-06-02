@@ -159,7 +159,7 @@ const sessionOptions: session.SessionOptions = {
   },
 };
 
-if (process.env.DATABASE_URL) {
+if (process.env.DATABASE_URL && STORAGE_MODE === 'db') {
   sessionOptions.store = new PostgresqlStore({
     pool: pool,
     createTableIfMissing: true,
@@ -261,8 +261,10 @@ app.use((req, res, next) => {
 
 (async () => {
   // Storage mode is announced by createStorage() in storage.ts on startup
-  await ensureSessionTableExists();
-  await ensureAuthSchemaCompatibility();
+  if (STORAGE_MODE === 'db') {
+    await ensureSessionTableExists();
+    await ensureAuthSchemaCompatibility();
+  }
   await hydrateCacheStore();
   const snapshotResult = await writeConfigSnapshot('baseline_snapshot');
   const diagnostics = await runRuntimeStartupChecks();
@@ -309,7 +311,7 @@ app.use((req, res, next) => {
   });
 
   // P7: Background autonomy runner (opt-in via env flag, default off)
-  if (process.env.BACKGROUND_AUTONOMY_ENABLED === 'true') {
+  if (process.env.BACKGROUND_AUTONOMY_ENABLED === 'true' && STORAGE_MODE === 'db') {
     try {
       const { backgroundRunner } = await import('./autonomy/background/backgroundRunner.js');
       const { generateChatWithRuntimeFallback } = await import('./llm/providerResolver.js');
