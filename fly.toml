@@ -13,7 +13,10 @@ primary_region = "bom"
   force_https = true
   auto_stop_machines = "stop"
   auto_start_machines = true
-  min_machines_running = 1
+  # min=0 → machine fully stops when idle, saves ~$6.48/mo while pre-public.
+  # Cold start adds ~3-5s for the first visitor after an idle window.
+  # Flip back to 1 once we start driving real public traffic.
+  min_machines_running = 0
   processes = ["app"]
 
   [http_service.concurrency]
