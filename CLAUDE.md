@@ -17,15 +17,26 @@ Hatchin is an **AI-powered collaborative project execution platform**. Think of 
 - Execute tasks autonomously in the background and hand off work between specialists
 - Self-review quality via peer review gates and progressive trust scoring
 
-**Current Phase**: Post-v2.0 — production hardening + next milestone planning. v2.0 shipped (2026-03-30). v1.3 shipped (23/23). v1.2 shipped (16/16). v1.1 shipped (17/17). v1.0 shipped (31/31). Post-v1.1: World-class agent intelligence upgrade shipped (30 roles, 294 new tests). Smart Task Detection rewrite complete (7/7 phases).
+**Current Phase**: v2.1 in progress (Phases 35, 36, 36.5 shipped of 12). v3.0 closed partial 2026-04-28 (Phase 22 atomic budget + Phase 28 Maya bug fix shipped, remaining 11 phases re-scoped into V3). v2.0 shipped 2026-03-30. v1.3 / v1.2 / v1.1 / v1.0 all shipped.
 
-**Latest Milestone**: v2.0 — Hatches That Deliver (shipped 2026-03-30). Cross-agent deliverable chains, artifact panel, PDF export, 15 deliverable types, 3 package templates (launch/content-sprint/research), organic detection, zero-friction onboarding.
+**Latest Milestone in flight**: **v2.1 — Hatches That Self-Improve** (5–7w, 12 phases per ROADMAP-V3). Shipped so far:
+- Phase 35 — Production Hotfix Pass (2026-05-11, Fly v19; re-verified 2026-06-03 on Supabase, 7/7 Playwright PASS): legal modal + deep-link hybrid (Privacy/Terms), PROVIDER_DEGRADED toast banner, AUDIT-01 Playwright spec
+- Phase 36 — Frozen-Rubric Deliverable Iteration (2026-05-11/13; re-verified 2026-06-03 on Supabase, 4/4 Playwright PASS): 15 frozen rubrics, auto-revert on score regression, FBK schema columns, per-criterion breakdown UI, agent-prompt feedback signal injection. FBK-02 deferred per user simplification (server endpoints persist; no UI surface in v2.1).
+- Phase 36.5 — Imperative Action Shortcuts hotfix (2026-05-13): regex-based imperative-command parser fires actions BEFORE LLM call; lowers Maya's turn-count gate
+- Phase 37 — Git-Style Run Tree (2026-05-14): `autonomy_runs` + `autonomy_run_steps` schema, run-tree writer hooks into both executeTask paths, handoff_initiated event + parent-link, GET endpoint, Activity-tab tree visualization with **semantic-word badges** (✓ Improved / ⚠ Made worse — per `feedback_ui_self_documenting.md`), click-step opens exact deliverable version. TREE-05 backfill vacuously satisfied (Neon data abandoned during 2026-06-02 migration; no historical rows to backfill).
+
+Pending: Phases 38 (Never Stop Never Ask), 39 (Reader Testing Peer Review), 40 (promptfoo migration), 41 (Phase Machine + Blueprint), 42 (MVB Gate), 43 (Skip-Maya), 44 (Per-Run Cost Visibility), 45 (Maya 3-Stage Interrogation), 46 (AI Slop Detection). **True next phase: 38.**
+
+**Mid-milestone infrastructure changes** (off-roadmap, no scope creep — tracked as quick tasks per `feedback_no_decimal_hotfixes.md`):
+- **Phase A — DeepSeek migration** (shipped 2026-05-04): DeepSeek V4-Flash inserted as primary LLM provider; Gemini demoted to hot fallback; OpenAI removed from default prod chain (escape hatch only via `LLM_PRIMARY=openai`); cache-friendly prompt restructure (staticPrefix/dynamicSuffix) for 50× cheaper input on cache hit
+- **quick-260601-ojf — Supabase migration** (shipped 2026-06-02): Neon over compute quota → migrated to Supabase Postgres (Singapore region); `server/db.ts` driver swap from `@neondatabase/serverless` to `pg` (node-postgres); Supavisor session-mode pooler; pg-boss + connect-pg-simple unchanged
+- **quick-260427-ojf — DB-CRASH-01 hotfix** (shipped 2026-04-27): uncaughtException/unhandledRejection handlers for Neon idle-in-transaction recovery + traceStore.ts transaction-leak fix (handlers retained post-Supabase as defensive)
 
 **Previous Milestones**:
-- v1.3 — Autonomy Visibility & Right Sidebar Revamp (shipped, 23/23 requirements). Tabbed right sidebar (Activity/Brain & Docs/Approvals), live autonomy feed, handoff visualization, agent working avatar state, approvals hub, task pipeline, project brain file upload, autonomy settings dial, work output viewer.
-- v1.2 — Billing + LLM Intelligence (shipped 2026-03-23). Stripe monetization (Free/Pro tiers, $19/mo), smart LLM routing (Gemini Flash/Pro + Groq free tier), token tracking, usage capping, conversation compaction, reasoning cache, background task batching.
+- v1.3 — Autonomy Visibility & Right Sidebar Revamp (shipped 2026-03-29, 23/23). Tabbed right sidebar, live autonomy feed, handoff visualization, agent working-avatar state, approvals hub, task pipeline, project brain file upload, autonomy settings dial.
+- v1.2 — Billing + LLM Intelligence (shipped 2026-03-23, 16/16). Stripe Free/Pro tiers ($19/mo), smart LLM routing, token tracking, usage capping, conversation compaction, reasoning cache, task batching.
 
-**Current Branch**: `main` (production).
+**Current Branch**: `wip/pre-reset-2026-04-28` (active dev; ahead of `main` by the v2.1 + infra migration commits). v2.1 close-out will merge this back to `main`.
 
 ### v1.1 — Autonomous Execution Loop
 
@@ -183,11 +194,15 @@ Replaced broken task detection with intent-classified pipeline. Zero-LLM pattern
 | Concern | Library | Version | Notes |
 |---------|---------|---------|-------|
 | Server | Express | 4.21.2 | With Helmet security middleware |
-| Database ORM | Drizzle ORM | 0.39.1 | Type-safe, migration-based |
-| Database | PostgreSQL (Neon) | serverless | `@neondatabase/serverless` |
-| LLM Primary | Google Gemini 2.5-Flash | — | `@google/generative-ai` 0.24.1 |
-| LLM Fallback | OpenAI GPT-4o-mini | — | `openai` 5.21.0 |
-| LLM Local | Ollama (llama3.1:8b) | — | Testing only |
+| Database ORM | Drizzle ORM | 0.39.1 | Type-safe, migration-based; uses `drizzle-orm/node-postgres` adapter |
+| Database | PostgreSQL via Supabase | 17.6 | `pg` 8.21 (node-postgres) — was Neon serverless until 2026-06-02 |
+| DB Pooler | Supavisor session mode | — | `aws-1-ap-southeast-1.pooler.supabase.com:5432`; pg-boss requires session mode, never transaction (6543) |
+| LLM Primary | DeepSeek V4-Flash | — | `openai` SDK 5.21.0 with custom `baseURL` (was Gemini 2.5-Flash until Phase A 2026-05-04) |
+| LLM Fallback (hot) | Google Gemini 2.5-Flash/Pro | — | `@google/genai` 1.50.x (migrated from `@google/generative-ai` in Phase 28) |
+| LLM Tier (Pro) | DeepSeek V4-Pro / Gemini 2.5-Pro | — | Premium routing via `resolveModelForTier('premium')` |
+| LLM Free workloads | Groq Llama 3.3-70B | — | `groq-sdk` — simple chat, task extraction, compaction |
+| LLM Local | Ollama (llama3.1:8b) | — | Test only (hard-blocked in providerResolver.ts:62 for prod) |
+| LLM Escape hatch | OpenAI GPT-4o-mini | — | `openai` 5.21.0 — REMOVED from default prod chain in commit `34c8f23`; only used when `LLM_PRIMARY=openai` is explicitly set |
 | AI Orchestration | LangChain + LangGraph | 0.3.74 + 0.4.9 | Multi-agent state machine |
 | Auth | OpenID Connect (Google) | — | `openid-client` 6.6.2 + PKCE |
 | Session | express-session + pg-store | — | PostgreSQL-backed, 7-day TTL |
@@ -338,39 +353,54 @@ hatching-mvp-5th-march/
 
 ### Required (app will crash without these)
 ```bash
-DATABASE_URL=postgresql://user:pass@*.neon.tech/db?sslmode=require
+# Database — Supabase since 2026-06-02 (was Neon). Use Supavisor session-mode (5432), NOT transaction (6543)
+DATABASE_URL=postgresql://postgres.<project-ref>:<password>@aws-1-<region>.pooler.supabase.com:5432/postgres
 SESSION_SECRET=<strong-random-secret-min-32-chars>
-GEMINI_API_KEY=AIzaSy...
+DEEPSEEK_API_KEY=sk-...                 # Primary LLM since Phase A 2026-05-04
+GEMINI_API_KEY=AIzaSy...                # Hot fallback (was primary pre-Phase A)
+GROQ_API_KEY=gsk_...                    # Free-tier workloads (simple chat, task extraction, compaction)
 GOOGLE_CLIENT_ID=681006596933-....apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=GOCSPX-...
 ```
 
 ### Important Optional
 ```bash
-NODE_ENV=development|production          # Affects security settings
-GEMINI_MODEL=gemini-2.5-flash           # Default: gemini-2.5-flash
-OPENAI_API_KEY=sk-...                   # Fallback provider
-OPENAI_MODEL=gpt-4o-mini               # Default: gpt-4o-mini
-LLM_MODE=prod|test                      # Switch provider chain
-TEST_LLM_PROVIDER=openai|ollama|mock   # Used when LLM_MODE=test
+NODE_ENV=development|production          # Affects security settings; gates DEV-only routes
+STORAGE_MODE=db|memory                   # db = Postgres (default), memory = MemStorage; Gemini's 2026-06-02 gate skips DB-only boot steps in memory mode
+LLM_MODE=prod|test                       # Switch provider chain
+LLM_PRIMARY=deepseek|openai|gemini       # Escape hatch override; default unset = deepseek primary per Phase A
+TEST_LLM_PROVIDER=mock|groq|ollama|openai # Used when LLM_MODE=test
 TEST_OLLAMA_BASE_URL=http://localhost:11434
 TEST_OLLAMA_MODEL=llama3.1:8b
+
+# LLM model selection
+DEEPSEEK_MODEL=deepseek-v4-flash         # Default primary model
+DEEPSEEK_PRO_MODEL=deepseek-v4-pro       # Premium routing (PROMO pricing through 2026-05-31; re-evaluate post-promo)
+DEEPSEEK_MIN_MAX_TOKENS=2000             # Floor enforced — V4 emits hidden reasoning tokens BEFORE content; <2000 returns empty (commit 31c0dc5)
+GEMINI_MODEL=gemini-2.5-flash            # Hot fallback default
+GEMINI_PRO_MODEL=gemini-2.5-pro          # Premium fallback for Pro tier
+OPENAI_API_KEY=sk-...                    # Optional escape hatch only — NOT in default prod chain (removed in commit 34c8f23)
+OPENAI_MODEL=gpt-4o-mini                 # Default if LLM_PRIMARY=openai
+
+# OAuth + app routing
 GOOGLE_OAUTH_REDIRECT_URI=http://localhost:5001/api/auth/google/callback
 APP_BASE_URL=http://localhost:5001
 ALLOWED_ORIGIN=http://localhost:5001
-LANGSMITH_API_KEY=ls_...               # Optional LLM tracing
+LANGSMITH_API_KEY=ls_...                 # Optional LLM tracing
 LANGSMITH_PROJECT=hatchin-chat
-STORAGE_MODE=db|memory                 # db = PostgreSQL, memory = MemStorage
 
-# v1.2 Billing & LLM Optimization
-GROQ_API_KEY=gsk_...                   # Free tier at console.groq.com
-GEMINI_PRO_MODEL=gemini-2.5-pro       # Premium model for autonomy (Pro users)
-STRIPE_SECRET_KEY=sk_...               # Stripe billing
-STRIPE_WEBHOOK_SECRET=whsec_...        # Stripe webhook signature
-STRIPE_PRO_MONTHLY_PRICE_ID=price_...  # Stripe price ID
-STRIPE_PRO_ANNUAL_PRICE_ID=price_...   # Stripe annual price ID
-FEATURE_BILLING_GATES=true|false       # Kill switch for tier gating (default: true in prod)
-FEATURE_CONVERSATION_COMPACTION=false  # Context compaction (default: off)
+# Billing (Stripe) — v1.2
+STRIPE_SECRET_KEY=sk_...                 # Stripe billing
+STRIPE_WEBHOOK_SECRET=whsec_...          # Stripe webhook signature
+STRIPE_PRO_MONTHLY_PRICE_ID=price_...    # Stripe price ID
+STRIPE_PRO_ANNUAL_PRICE_ID=price_...     # Stripe annual price ID
+FEATURE_BILLING_GATES=true|false         # Kill switch for tier gating (default: true in prod)
+FEATURE_CONVERSATION_COMPACTION=false    # Context compaction (default: off)
+
+# Autonomy (v3.0 + v2.1 — solo-dev safety)
+BACKGROUND_AUTONOMY_ENABLED=true|false   # pg-boss task worker (default: off in dev; gated on STORAGE_MODE=db)
+DAILY_COST_CAP_CENTS_DEV=500             # Per-day LLM spend cap for solo-dev safety (Phase A)
+DEV_COST_CAP_ENABLED=true|false          # Activate dev cap
 ```
 
 > **RULE**: Never hardcode secrets. Never commit `.env`. Always read from `process.env`.
@@ -567,19 +597,29 @@ Client connects to: ws://host/ws  (upgraded from HTTP)
 
 ### LLM Provider Chain
 ```
-Production (v1.2 — shipped, final routing):
-  Simple messages         → Groq llama-3.3-70b (FREE) → [fallback] → Gemini Pro
-  Standard/Complex chat   → Gemini 2.5-Pro (all users, same quality)
-  Task extraction         → Groq llama-3.3-70b (FREE) → [fallback] → Gemini Pro
+Production (Phase A — DeepSeek migration shipped 2026-05-04):
+  Standard/Complex chat   → DeepSeek V4-Flash → [hot fallback] → Gemini 2.5-Flash
+  Simple messages         → Groq llama-3.3-70b (FREE) → [fallback] → DeepSeek V4-Flash → Gemini 2.5-Flash
+  Task extraction         → Groq llama-3.3-70b (FREE) → [fallback] → DeepSeek V4-Flash
   Conversation compaction → Groq (FREE)
-  Autonomy tasks          → Gemini 2.5-Pro (Pro users only)
+  Autonomy / Pro tier     → DeepSeek V4-Pro → [fallback] → Gemini 2.5-Pro (resolveModelForTier('premium'))
+
+  Removed from default chain (commit 34c8f23): OpenAI — escape hatch only via LLM_PRIMARY=openai
+  Reasoning-token floor (commit 31c0dc5): DEEPSEEK_MIN_MAX_TOKENS=2000 — V4 emits hidden reasoning before content
+  Cross-provider model fallback (commit ee57ce0): applyModelDefaults() rewrites model name when falling
+    across provider boundaries (e.g. deepseek-v4-pro → gemini-2.5-pro)
+  Cache-friendly prompts: staticPrefix (cacheable role identity + 14 response rules) + dynamicSuffix
+    (per-turn data) for DeepSeek's 50× cheaper cache-hit input pricing
 
 Test Mode (LLM_MODE=test):
+  TEST_LLM_PROVIDER=groq    → Groq llama-3.3-70b
   TEST_LLM_PROVIDER=openai  → GPT-4o-mini
-  TEST_LLM_PROVIDER=ollama  → Ollama llama3.1:8b
+  TEST_LLM_PROVIDER=ollama  → Ollama llama3.1:8b (loop-back, no real API cost)
   TEST_LLM_PROVIDER=mock    → Mock (deterministic, zero-cost)
   default                   → Mock
 ```
+
+**Eval gate status (Phase A acceptance):** smoke:deepseek 6/6 · test:tone PASS · test:voice 8/8 · test:pushback 46/46 · test:reasoning 240/240 · eval:routing 93.33% · eval:bench 29.00/35 vs Groq baseline 26.83 (+8.1%) · gate:safety PASS · gate:conductor 10/10 improved-or-equal, 0 regressions · gate:performance pending live traffic.
 
 ### Core AI Flow (Per Message)
 ```
@@ -1200,5 +1240,5 @@ class HatchinGraphError extends Error {
 
 ---
 
-*Last updated: 2026-04-01 | Branch: main | v2.0 shipped | v1.3 shipped | Smart Task Detection complete | Author: Claude Code*
+*Last updated: 2026-06-03 | Branch: wip/pre-reset-2026-04-28 | v2.1 in progress (Phase 35/36/36.5 shipped of 12) | Phase A DeepSeek migration shipped 2026-05-04 | Supabase migration shipped 2026-06-02 | Phase 35+36 Playwright 12/12 PASS on Supabase | Author: Claude Code*
 *This file should be updated whenever a significant architectural change is made.*

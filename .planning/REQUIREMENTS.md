@@ -16,11 +16,11 @@
 
 ### Production Polish (LEGAL, LLMUX)
 
-- [ ] **LEGAL-01**: User can click "Privacy" and "Terms" links from the landing footer (and login page) and reach actual page content — `/legal/privacy` and `/legal/terms` are registered routes that render production-ready legal copy (not 404)
-- [ ] **LLMUX-01**: When all LLM providers fail simultaneously, server emits a typed `PROVIDER_DEGRADED` WS event (no raw HTTP 500 leaks to the client) — 429 rate limits do NOT trigger this state because they route to the next provider
-- [ ] **LLMUX-02**: Client shows a non-blocking banner ("Agents are slow right now, hang tight") when `PROVIDER_DEGRADED` is received — never a blocking modal
-- [ ] **LLMUX-03**: Banner auto-dismisses within 5 seconds of the next successful streamed response (recovery signal)
-- [ ] **AUDIT-01**: Runtime verification spec (Playwright) confirms Phase 1 work end-to-end — clicking landing footer Privacy/Terms loads non-404 content; simulated provider outage shows banner; recovery dismisses it
+- [x] **LEGAL-01**: User can click "Privacy" and "Terms" links from the landing footer (and login page) and reach actual page content — `/legal/privacy` and `/legal/terms` are registered routes that render production-ready legal copy (not 404) (Phase 35 — Fly v19, 2026-05-11)
+- [x] **LLMUX-01**: When all LLM providers fail simultaneously, server emits a typed `PROVIDER_DEGRADED` WS event (no raw HTTP 500 leaks to the client) — 429 rate limits do NOT trigger this state because they route to the next provider (Phase 35 — Fly v19, 2026-05-11)
+- [x] **LLMUX-02**: Client shows a non-blocking banner ("Agents are slow right now, hang tight") when `PROVIDER_DEGRADED` is received — never a blocking modal (Phase 35 — Fly v19, 2026-05-11)
+- [x] **LLMUX-03**: Banner auto-dismisses within 5 seconds of the next successful streamed response (recovery signal) (Phase 35 — Fly v19, 2026-05-11; 248ms latency 2026-06-03 re-verified on Supabase)
+- [x] **AUDIT-01**: Runtime verification spec (Playwright) confirms Phase 1 work end-to-end — clicking landing footer Privacy/Terms loads non-404 content; simulated provider outage shows banner; recovery dismisses it (Phase 35 — 7/7 Playwright cases PASS 2026-05-11; re-PASS 2026-06-03 on Supabase)
 
 ---
 
@@ -28,14 +28,14 @@
 
 **Theme:** Every refinement scored 0–10 on locked, type-specific rubrics. Auto-revert if a new version scores lower than the previous one. Rubric explains "what a 10 looks like."
 
-- [ ] **RUBR-01**: Each of the 15 deliverable types has a frozen rubric with explicit 0–10 scoring criteria (rubric content schema-validated; immutable per type version)
-- [ ] **RUBR-02**: Every iteration request scores both old and new versions against the rubric; if new < old, system auto-reverts and surfaces a "Refinement made it worse, kept previous version" message
-- [ ] **RUBR-03**: Rubric scores persist on `deliverable_versions` rows with breakdown per criterion
-- [ ] **RUBR-04**: User can see rubric scoring for any version in the artifact panel; "Why this scored X" explanation is visible per criterion
-- [ ] **FBK-01**: Deliverables table gains `userAcceptedAt` timestamp, `editsCount` int, `dismissedAt` timestamp, `impressionCount` int columns
-- [ ] **FBK-02**: User can Accept or Dismiss a deliverable from the artifact panel — actions populate the corresponding columns
-- [ ] **FBK-03**: System auto-increments `impressionCount` when a deliverable is opened in the artifact panel
-- [ ] **FBK-04**: Agent prompts include recent feedback signal for that role ("your last 3 PRDs were accepted, 1 dismissed") so quality compounds with use
+- [x] **RUBR-01**: Each of the 15 deliverable types has a frozen rubric with explicit 0–10 scoring criteria (rubric content schema-validated; immutable per type version) (Phase 36-01 — registry-shape + Object.freeze invariant, 2026-05-11)
+- [x] **RUBR-02**: Every iteration request scores both old and new versions against the rubric; if new < old, system auto-reverts and surfaces a "Refinement made it worse, kept previous version" message (Phase 36-02 + 36-03, 2026-05-13; re-verified 2026-06-03)
+- [x] **RUBR-03**: Rubric scores persist on `deliverable_versions` rows with breakdown per criterion (Phase 36-01 schema + 36-02 persistence, 2026-05-13)
+- [x] **RUBR-04**: User can see rubric scoring for any version in the artifact panel; "Why this scored X" explanation is visible per criterion (Phase 36-03 RubricBreakdown, visual-approved 2026-05-13)
+- [x] **FBK-01**: Deliverables table gains `userAcceptedAt` timestamp, `editsCount` int, `dismissedAt` timestamp, `impressionCount` int columns (Phase 36-01 schema, 2026-05-11)
+- [⚠] **FBK-02**: User can Accept or Dismiss a deliverable from the artifact panel — actions populate the corresponding columns — **DEFERRED** per user simplification 2026-05-13 (server endpoints persist; no UI surface in v2.1; may resurface via Phase 37 run-tree)
+- [x] **FBK-03**: System auto-increments `impressionCount` when a deliverable is opened in the artifact panel (Phase 36-02 + 36-03 useEffect + Playwright case 4, 2026-05-13; re-PASS 2026-06-03)
+- [x] **FBK-04**: Agent prompts include recent feedback signal for that role ("your last 3 PRDs were accepted, 1 dismissed") so quality compounds with use (Phase 36-04 aggregator + injection + prompt-snapshot test, 2026-05-11)
 
 ---
 
@@ -58,7 +58,7 @@
 - [x] **TREE-02**: Every autonomous task and handoff writes a step row; rubric score deltas (from Phase 2) attach to step nodes _(shipped 2026-05-14 via Phase 37-02; commits 6aa50bb writer module, ef4ca1b 3-hook BOTH executeTask paths, eda62db handoffOrchestrator parent-link + handoff_initiated event, 30eef4a GET endpoint, 255a42c writer tests; D-06.1 acknowledged: scoreDelta resolves to null in ~100% of live calls because autonomy pipeline doesn't currently produce Phase 36 deliverables — bridge work tracked as Phase 47 backlog #2)_
 - [x] **TREE-03**: Activity feed sidebar visualizes the run tree per project — collapsible nodes, **semantic-word badges** (✓ Improved / ⚠ Made worse / In progress for runs; ✓ Better / ⚠ Worse / New for steps) _(shipped 2026-05-14 via Phase 37-03; commits dbe7fb6 helpers + hook, a568851 RunTreeView+RunTreeNode, 14951be integration+verb-led clarity pass. User feedback during visual checkpoint upgraded from bare numbers/icons to verbs/words per `feedback_ui_self_documenting.md` rule — Activity tab now reads as a sentence.)_
 - [x] **TREE-04**: User can click any step node to see the deliverable version produced and its score _(shipped 2026-05-14 via Phase 37-03; W-4 wiring — pendingVersionNumber prop on ArtifactPanel + open_deliverable event extension on home.tsx; click step → panel opens to EXACT version via existing restoreMutation, not most-recent)_
-- [ ] **TREE-05**: Migration backfills existing `autonomy_events` rows into the run tree for historical projects
+- [x] **TREE-05**: Migration backfills existing `autonomy_events` rows into the run tree for historical projects _(vacuously satisfied 2026-06-03: Neon data abandoned during quick-260601-ojf Supabase migration; no historical autonomy_events rows exist to backfill — fresh Supabase DB will accumulate run-tree data going forward via Phase 37-02 writer hooks)_
 
 ---
 
