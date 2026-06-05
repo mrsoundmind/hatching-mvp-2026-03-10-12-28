@@ -29,8 +29,15 @@ export function TasksTab({ projectId }: TasksTabProps) {
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
     queryKey: ['/api/tasks', `?projectId=${projectId}`],
-    queryFn: () =>
-      fetch(`/api/tasks?projectId=${projectId}`).then(r => r.json()),
+    queryFn: async () => {
+      const r = await fetch(`/api/tasks?projectId=${projectId}`);
+      // 404 returns {error: "..."} — never cache non-array shapes since this
+      // queryKey is shared with RightSidebar/ApprovalsTab/ActivityTab/WorkOutput
+      // and they all assume the data is Task[]. Caching an error object would
+      // crash every consumer with "(allTasks ?? []).some is not a function".
+      if (!r.ok) return [];
+      return r.json();
+    },
     enabled: !!projectId,
     staleTime: 15_000,
     refetchInterval: 30_000,

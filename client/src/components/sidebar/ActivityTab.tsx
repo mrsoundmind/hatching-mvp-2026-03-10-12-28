@@ -55,7 +55,11 @@ export function ActivityTab({ projectId, agents }: ActivityTabProps) {
   // Fetch tasks to surface pending approvals here in Activity
   const { data: tasks } = useQuery<Task[]>({
     queryKey: ['/api/tasks', `?projectId=${projectId}`],
-    queryFn: () => fetch(`/api/tasks?projectId=${projectId}`).then(r => r.json()),
+    queryFn: async () => {
+      const r = await fetch(`/api/tasks?projectId=${projectId}`);
+      if (!r.ok) return []; // see TasksTab — shared queryKey must always cache Task[]
+      return r.json();
+    },
     enabled: !!projectId,
     staleTime: 15_000,
     refetchInterval: 30_000,

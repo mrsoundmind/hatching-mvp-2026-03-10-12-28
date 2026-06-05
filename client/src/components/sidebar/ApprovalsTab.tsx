@@ -29,8 +29,11 @@ export function ApprovalsTab({ projectId }: ApprovalsTabProps) {
   const { data: tasks, isLoading } = useQuery<Task[]>({
     // MUST match RightSidebar.tsx queryKey exactly — TanStack deduplication is key-format-sensitive
     queryKey: ['/api/tasks', `?projectId=${projectId}`],
-    queryFn: () =>
-      fetch(`/api/tasks?projectId=${projectId}`).then(r => r.json()),
+    queryFn: async () => {
+      const r = await fetch(`/api/tasks?projectId=${projectId}`);
+      if (!r.ok) return []; // see TasksTab — shared queryKey must always cache Task[]
+      return r.json();
+    },
     enabled: !!projectId,
     staleTime: 15_000,
     refetchInterval: 30_000,
