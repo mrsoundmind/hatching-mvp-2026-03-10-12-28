@@ -70,7 +70,7 @@ interface LeftSidebarProps {
   onCreateProject?: (name: string, description?: string) => Promise<any> | void;
   onCreateProjectFromTemplate?: (pack: StarterPack, name: string, description?: string) => Promise<any> | void;
   onCreateIdeaProject?: (name: string, description?: string) => Promise<any> | void;
-  onCreateTeam?: (name: string, projectId: string) => Promise<any> | void;
+  onCreateTeam?: (name: string, projectId: string, emoji?: string) => Promise<any> | void;
   onCreateAgent?: (agentData: Omit<Agent, 'id'>) => Promise<any> | void;
   onDeleteTeam?: (teamId: string) => void;
   onDeleteAgent?: (agentId: string) => void;
@@ -414,13 +414,18 @@ export function LeftSidebar({
         // Small delay to ensure project is created before restoring teams and agents
         await new Promise(resolve => setTimeout(resolve, 200));
 
-        // Restore teams with the NEW project ID and track new team IDs
+        // Restore teams with the NEW project ID and track new team IDs.
+        // Pass emoji explicitly — server requires it (insertTeamSchema).
         const teamIdMap = new Map(); // Map old team IDs to new team IDs
         if (deletedEntityData.relatedData?.teams && onCreateTeam) {
           devLog('🔄 Restoring teams...');
           for (const team of deletedEntityData.relatedData.teams) {
             try {
-              const newTeam = await onCreateTeam(team.name, newProject?.id || team.projectId);
+              const newTeam = await onCreateTeam(
+                team.name,
+                newProject?.id || team.projectId,
+                team.emoji || '🚀',
+              );
               if (newTeam) {
                 teamIdMap.set(team.id, newTeam.id);
                 devLog(`✅ Team "${team.name}" restored with new ID: ${newTeam.id}`);
@@ -434,19 +439,36 @@ export function LeftSidebar({
         // Small delay before restoring agents
         await new Promise(resolve => setTimeout(resolve, 200));
 
-        // Restore agents with the NEW project ID and NEW team IDs
+        // Restore agents with the NEW project ID and NEW team IDs.
+        // Skip Maya (isSpecialAgent) — the new project already auto-created her
+        // via storage.initializeIdeaProject(); POST /api/agents would reject her
+        // anyway because that route requires a valid teamId and Maya has none.
         if (deletedEntityData.relatedData?.agents && onCreateAgent) {
           devLog('🔄 Restoring agents...');
           for (const agent of deletedEntityData.relatedData.agents) {
+            if (agent.isSpecialAgent) {
+              devLog(`⏭️  Skipping special agent "${agent.name}" — auto-created by project init`);
+              continue;
+            }
             try {
-              // Get the new team ID if the agent belonged to a team
+              // Get the new team ID if the agent belonged to a team. If the old
+              // team failed to restore, fall back to the original projectId which
+              // will route the agent to the project-level scope (still rejected
+              // by POST /api/agents which requires teamId, but logged at least).
               const newTeamId = agent.teamId ? teamIdMap.get(agent.teamId) : undefined;
+              if (!newTeamId) {
+                console.warn(`⚠️ Cannot restore agent "${agent.name}" — its team failed to restore`);
+                continue;
+              }
+              // Server overrides userId from session + projectId from team — see
+              // server/routes/agents.ts POST handler. We pass id-less agentData
+              // and the server resolves the rest.
               const { id, ...agentData } = agent;
 
               await onCreateAgent({
                 ...agentData,
                 projectId: newProject?.id || agent.projectId,
-                teamId: newTeamId || null
+                teamId: newTeamId,
               });
               devLog(`✅ Agent "${agent.name}" restored`);
             } catch (error) {
@@ -458,25 +480,34 @@ export function LeftSidebar({
         devLog('✅ Project fully restored with all teams and agents');
 
       } else if (deletedEntityData.type === 'team' && onCreateTeam) {
-        // Restore team
+        // Restore team — pass emoji (server requires it)
+        const teamEntity = deletedEntityData.entity as Team;
         const newTeam = await onCreateTeam(
-          (deletedEntityData.entity as Team).name,
-          (deletedEntityData.entity as Team).projectId
+          teamEntity.name,
+          teamEntity.projectId,
+          teamEntity.emoji || '🚀',
         );
 
         // Small delay to ensure team is created before restoring agents
         await new Promise(resolve => setTimeout(resolve, 100));
 
-        // Restore team's agents
+        // Restore team's agents — skip Maya, skip if team creation failed.
         if (deletedEntityData.relatedData?.agents && onCreateAgent) {
           for (const agent of deletedEntityData.relatedData.agents) {
+            if (agent.isSpecialAgent) {
+              devLog(`Skipping special agent "${agent.name}"`);
+              continue;
+            }
+            if (!newTeam?.id) {
+              console.warn(`Cannot restore agent "${agent.name}" — team failed to restore`);
+              continue;
+            }
             try {
-              const teamIdToUse = newTeam?.id || null; // Don't use old teamId — it was deleted
               const { id, ...agentData } = agent;
               await onCreateAgent({
                 ...agentData,
                 projectId: agent.projectId,
-                teamId: teamIdToUse
+                teamId: newTeam.id,
               });
               devLog(`Agent "${agent.name}" restored`);
             } catch (error) {

@@ -327,9 +327,13 @@ function HomeInner() {
         // Auto-expand the new project and close others
         setExpandedProjects(new Set([newProject.id]));
 
-        // Optimistically update the projects cache so the UI updates immediately
+        // Optimistically update the projects cache so the UI updates immediately.
+        // Dedupe by id — defensive against undo-restore double-insert and any race
+        // where the parallel invalidate-refetch also adds the same project.
         queryClient.setQueryData(["/api/projects"], (oldData: any) => {
-          return oldData ? [...oldData, newProject] : [newProject];
+          if (!Array.isArray(oldData)) return [newProject];
+          const filtered = oldData.filter((p: any) => p?.id !== newProject.id);
+          return [...filtered, newProject];
         });
 
         // Trigger data refresh just in case
@@ -619,16 +623,17 @@ function HomeInner() {
     }
   };
 
-  // Team creation handler
-  const handleCreateTeam = async (name: string, projectId: string) => {
+  // Team creation handler — emoji optional (defaults to 🚀 server-side default if absent;
+  // explicit value required by undo-restore path to preserve original team emoji).
+  const handleCreateTeam = async (name: string, projectId: string, emoji: string = '🚀') => {
     try {
-      devLog('Creating team with data:', { name, projectId });
+      devLog('Creating team with data:', { name, projectId, emoji });
       const response = await fetch('/api/teams', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name, projectId }),
+        body: JSON.stringify({ name, projectId, emoji }),
       });
 
       if (response.ok) {
