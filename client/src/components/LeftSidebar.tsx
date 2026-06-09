@@ -4,6 +4,7 @@ import { ProjectTree } from "@/components/ProjectTree";
 import { ChevronDown, Search, LogOut, X, CreditCard } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsFetching } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import type { Project, Team, Agent } from "@shared/schema";
 
 /** Skeleton placeholder shown while project data is loading */
@@ -296,6 +297,24 @@ export function LeftSidebar({
     setSelectedTemplate(null);
   };
 
+  // Helper — hard-delete (purge) a soft-deleted project. Called when the undo
+  // window closes without the user clicking Undo. Idempotent + best-effort: if
+  // the request fails (network blip, browser closing), the server-side cron
+  // safety net in server/index.ts cleans up within 10 min.
+  // - 409 = project was restored before purge fired (Undo clicked)
+  // - 404 = project already purged (e.g., ✕ click + auto-hide timer both fired)
+  // Both are benign no-ops; only warn on truly unexpected statuses.
+  const purgeSoftDeletedProject = async (projectId: string) => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/purge`, { method: 'POST' });
+      if (!res.ok && res.status !== 409 && res.status !== 404) {
+        console.warn(`Purge of ${projectId} returned ${res.status} — cron will retry`);
+      }
+    } catch (err) {
+      console.warn('Purge request failed; cron will retry', err);
+    }
+  };
+
   // Enhanced undo functionality for all entities
   const handleDeleteProjectWithUndo = async (projectId: string) => {
     // Find the project and all its related data
@@ -315,12 +334,17 @@ export function LeftSidebar({
     }
 
     if (onDeleteProject) {
-      await onDeleteProject(projectId);
+      await onDeleteProject(projectId); // server soft-deletes (sets deletedAt)
     }
     setShowUndoPopup(true);
 
-    // Auto-hide popup after 5 seconds
+    // Auto-hide popup after 5 seconds. Fire purge BEFORE clearing entity data so
+    // we still have the projectId. The /restore path (Undo click) cancels this
+    // implicitly by closing the popup before this timer fires — but if the user
+    // already clicked Undo, the project is no longer soft-deleted and purge will
+    // 409 (handled silently inside purgeSoftDeletedProject).
     setTimeout(() => {
+      void purgeSoftDeletedProject(projectId);
       setShowUndoPopup(false);
       setDeletedEntityData(null);
     }, 5000);
@@ -400,84 +424,23 @@ export function LeftSidebar({
     if (!deletedEntityData) return;
 
     try {
-      if (deletedEntityData.type === 'project' && onCreateProject) {
-        devLog('🔄 Starting project restoration...');
-
-        // Restore project first and get the new project ID
-        const newProject = await onCreateProject(
-          (deletedEntityData.entity as Project).name,
-          (deletedEntityData.entity as Project).description || undefined
-        );
-
-        devLog('🔄 Project created with new ID:', newProject?.id);
-
-        // Small delay to ensure project is created before restoring teams and agents
-        await new Promise(resolve => setTimeout(resolve, 200));
-
-        // Restore teams with the NEW project ID and track new team IDs.
-        // Pass emoji explicitly — server requires it (insertTeamSchema).
-        const teamIdMap = new Map(); // Map old team IDs to new team IDs
-        if (deletedEntityData.relatedData?.teams && onCreateTeam) {
-          devLog('🔄 Restoring teams...');
-          for (const team of deletedEntityData.relatedData.teams) {
-            try {
-              const newTeam = await onCreateTeam(
-                team.name,
-                newProject?.id || team.projectId,
-                team.emoji || '🚀',
-              );
-              if (newTeam) {
-                teamIdMap.set(team.id, newTeam.id);
-                devLog(`✅ Team "${team.name}" restored with new ID: ${newTeam.id}`);
-              }
-            } catch (error) {
-              console.error(`❌ Failed to restore team "${team.name}":`, error);
-            }
-          }
+      if (deletedEntityData.type === 'project') {
+        // Soft-delete-aware undo: just POST /restore. Server unsets deletedAt on the
+        // SAME row, so all teams/agents/conversations/messages/deliverables that
+        // referenced this project ID stay attached — chat history is preserved.
+        const entity = deletedEntityData.entity as Project;
+        devLog('🔄 Restoring project (server-side undelete)…', entity.id);
+        const res = await fetch(`/api/projects/${entity.id}/restore`, { method: 'POST' });
+        if (!res.ok) {
+          console.error('❌ Project restore failed', res.status, await res.text());
+          throw new Error(`Restore failed: ${res.status}`);
         }
-
-        // Small delay before restoring agents
-        await new Promise(resolve => setTimeout(resolve, 200));
-
-        // Restore agents with the NEW project ID and NEW team IDs.
-        // Skip Maya (isSpecialAgent) — the new project already auto-created her
-        // via storage.initializeIdeaProject(); POST /api/agents would reject her
-        // anyway because that route requires a valid teamId and Maya has none.
-        if (deletedEntityData.relatedData?.agents && onCreateAgent) {
-          devLog('🔄 Restoring agents...');
-          for (const agent of deletedEntityData.relatedData.agents) {
-            if (agent.isSpecialAgent) {
-              devLog(`⏭️  Skipping special agent "${agent.name}" — auto-created by project init`);
-              continue;
-            }
-            try {
-              // Get the new team ID if the agent belonged to a team. If the old
-              // team failed to restore, fall back to the original projectId which
-              // will route the agent to the project-level scope (still rejected
-              // by POST /api/agents which requires teamId, but logged at least).
-              const newTeamId = agent.teamId ? teamIdMap.get(agent.teamId) : undefined;
-              if (!newTeamId) {
-                console.warn(`⚠️ Cannot restore agent "${agent.name}" — its team failed to restore`);
-                continue;
-              }
-              // Server overrides userId from session + projectId from team — see
-              // server/routes/agents.ts POST handler. We pass id-less agentData
-              // and the server resolves the rest.
-              const { id, ...agentData } = agent;
-
-              await onCreateAgent({
-                ...agentData,
-                projectId: newProject?.id || agent.projectId,
-                teamId: newTeamId,
-              });
-              devLog(`✅ Agent "${agent.name}" restored`);
-            } catch (error) {
-              console.error(`❌ Failed to restore agent "${agent.name}":`, error);
-            }
-          }
-        }
-
-        devLog('✅ Project fully restored with all teams and agents');
+        // Invalidate everything that the deleted project touched so the UI rehydrates.
+        queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/teams'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/agents'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+        devLog('✅ Project restored with chat history intact');
 
       } else if (deletedEntityData.type === 'team' && onCreateTeam) {
         // Restore team — pass emoji (server requires it)
@@ -745,6 +708,10 @@ export function LeftSidebar({
               </button>
               <button
                 onClick={() => {
+                  // Explicit dismiss = permanent. Same purge path as auto-hide.
+                  if (deletedEntityData?.type === 'project') {
+                    void purgeSoftDeletedProject((deletedEntityData.entity as Project).id);
+                  }
                   setShowUndoPopup(false);
                   setDeletedEntityData(null);
                 }}

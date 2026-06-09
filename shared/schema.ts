@@ -1,7 +1,18 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, jsonb, timestamp, index, uniqueIndex, doublePrecision } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, jsonb, timestamp, index, uniqueIndex, doublePrecision, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// Express session store table — managed at runtime by connect-pg-simple, NOT by Drizzle.
+// Declared here only so `drizzle-kit push` recognizes it and leaves it alone instead of
+// trying to drop it. Column shape mirrors connect-pg-simple's stock CREATE TABLE.
+export const session = pgTable("session", {
+  sid: varchar("sid").primaryKey(),
+  sess: json("sess").notNull(),
+  expire: timestamp("expire", { precision: 6, mode: "date" }).notNull(),
+}, (table) => ({
+  expireIdx: index("IDX_session_expire").on(table.expire),
+}));
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -33,6 +44,9 @@ export const projects = pgTable("projects", {
   name: text("name").notNull(),
   emoji: text("emoji").notNull().default("🚀"),
   description: text("description"),
+  // Soft-delete window for "Undo Delete" UX. NULL = visible; non-NULL = hidden
+  // pending purge. Cron in server/index.ts purges rows with deletedAt < NOW() - 10min.
+  deletedAt: timestamp("deleted_at"),
   color: text("color").notNull().default("blue"),
   isExpanded: boolean("is_expanded").notNull().default(true),
   progress: integer("progress").notNull().default(0),

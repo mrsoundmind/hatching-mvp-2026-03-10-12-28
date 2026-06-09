@@ -102,12 +102,19 @@ export interface IStorage {
   upsertOAuthUser(input: OAuthUserInput): Promise<User>;
 
   // Projects
+  // Soft-delete model: deleteProject sets deletedAt; restoreProject clears it;
+  // purgeProject does the hard cascade. List methods (getProjects/getProjectsByUserId)
+  // filter out soft-deleted rows; getProject returns soft-deleted rows so restore/purge
+  // endpoints can find their target.
   getProjects(): Promise<Project[]>;
   getProjectsByUserId(userId: string): Promise<Project[]>;
   getProject(id: string): Promise<Project | undefined>;
   createProject(project: InsertProject): Promise<Project>;
   updateProject(id: string, updates: Partial<Project>): Promise<Project | undefined>;
   deleteProject(id: string): Promise<boolean>;
+  restoreProject(id: string): Promise<boolean>;
+  purgeProject(id: string): Promise<boolean>;
+  getProjectsNeedingPurge(olderThanMs: number): Promise<Array<{ id: string }>>;
 
   // Teams
   getTeams(): Promise<Team[]>;
@@ -337,6 +344,7 @@ export class MemStorage implements IStorage {
       emoji: "🚀",
       description: "Building the next generation SaaS platform",
       color: "blue",
+      deletedAt: null,
       isExpanded: true,
       progress: 45,
       timeSpent: "32h 15m",
@@ -557,14 +565,15 @@ export class MemStorage implements IStorage {
 
   // Project methods
   async getProjects(): Promise<Project[]> {
-    return Array.from(this.projects.values());
+    return Array.from(this.projects.values()).filter(p => !(p as any).deletedAt);
   }
 
   async getProjectsByUserId(userId: string): Promise<Project[]> {
-    return Array.from(this.projects.values()).filter(p => p.userId === userId);
+    return Array.from(this.projects.values()).filter(p => p.userId === userId && !(p as any).deletedAt);
   }
 
   async getProject(id: string): Promise<Project | undefined> {
+    // Unfiltered — matches DatabaseStorage so restore/purge endpoints can find soft-deleted rows.
     return this.projects.get(id);
   }
 
@@ -581,6 +590,7 @@ export class MemStorage implements IStorage {
       description: insertProject.description || null,
       emoji: insertProject.emoji || "🚀",
       color: insertProject.color || "blue",
+      deletedAt: null,
       isExpanded: insertProject.isExpanded ?? true,
       progress: insertProject.progress || 0,
       timeSpent: insertProject.timeSpent || "0h 0m",
@@ -605,7 +615,33 @@ export class MemStorage implements IStorage {
   }
 
   async deleteProject(id: string): Promise<boolean> {
-    // Fix 8: Cascade delete — teams → agents → conversations → messages → memories → tasks
+    // Soft-delete — mark the project as deleted; purgeProject does the real cascade.
+    const project = this.projects.get(id);
+    if (!project) return false;
+    this.projects.set(id, { ...project, deletedAt: new Date() } as Project);
+    return true;
+  }
+
+  async restoreProject(id: string): Promise<boolean> {
+    const project = this.projects.get(id);
+    if (!project) return false;
+    const restored = { ...project, deletedAt: null } as Project;
+    this.projects.set(id, restored);
+    return true;
+  }
+
+  async getProjectsNeedingPurge(olderThanMs: number): Promise<Array<{ id: string }>> {
+    const cutoff = Date.now() - olderThanMs;
+    const out: Array<{ id: string }> = [];
+    for (const [id, p] of this.projects) {
+      const d = (p as any).deletedAt;
+      if (d && new Date(d).getTime() < cutoff) out.push({ id });
+    }
+    return out;
+  }
+
+  async purgeProject(id: string): Promise<boolean> {
+    // Hard cascade — teams → agents → conversations → messages → memories → tasks → project.
     const teamsToDelete = Array.from(this.teams.values()).filter(t => t.projectId === id);
     for (const team of teamsToDelete) {
       // Delete agents in this team
@@ -1723,7 +1759,7 @@ export class MemStorage implements IStorage {
 // ============================================================
 import { db } from "./db";
 import * as schema from "@shared/schema";
-import { eq, and, sql, desc, inArray } from "drizzle-orm";
+import { eq, and, sql, desc, inArray, isNull, lt } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
   // Users
@@ -1787,12 +1823,16 @@ export class DatabaseStorage implements IStorage {
 
   // Projects
   async getProjects(): Promise<Project[]> {
-    return db.select().from(schema.projects);
+    // List excludes soft-deleted. Use getProject(id) directly when you need a soft-deleted row.
+    return db.select().from(schema.projects).where(isNull(schema.projects.deletedAt));
   }
   async getProjectsByUserId(userId: string): Promise<Project[]> {
-    return db.select().from(schema.projects).where(eq(schema.projects.userId, userId));
+    return db.select().from(schema.projects)
+      .where(and(eq(schema.projects.userId, userId), isNull(schema.projects.deletedAt)));
   }
   async getProject(id: string): Promise<Project | undefined> {
+    // Intentionally NOT filtered by deletedAt — restore/purge endpoints need to find
+    // soft-deleted projects, and the route layer already validates ownership.
     const [proj] = await db.select().from(schema.projects).where(eq(schema.projects.id, id));
     return proj;
   }
@@ -1807,6 +1847,39 @@ export class DatabaseStorage implements IStorage {
     return proj;
   }
   async deleteProject(id: string): Promise<boolean> {
+    // Soft-delete: mark the row with deletedAt = NOW(). The Undo popup gets the chance
+    // to fire restoreProject within its window; if dismissed, the client (or the cron
+    // safety net in server/index.ts) calls purgeProject for the hard cascade.
+    const result = await db.update(schema.projects)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(schema.projects.id, id), isNull(schema.projects.deletedAt)))
+      .returning({ id: schema.projects.id });
+    return result.length > 0;
+  }
+
+  async restoreProject(id: string): Promise<boolean> {
+    const result = await db.update(schema.projects)
+      .set({ deletedAt: null })
+      .where(eq(schema.projects.id, id))
+      .returning({ id: schema.projects.id });
+    return result.length > 0;
+  }
+
+  async getProjectsNeedingPurge(olderThanMs: number): Promise<Array<{ id: string }>> {
+    // Returns soft-deleted projects whose deletedAt is older than the cutoff. Used by
+    // the cron safety net to clean up rows where the client failed to call /purge
+    // (browser close, network drop, etc.).
+    const cutoff = new Date(Date.now() - olderThanMs);
+    return db.select({ id: schema.projects.id })
+      .from(schema.projects)
+      .where(and(
+        sql`${schema.projects.deletedAt} IS NOT NULL`,
+        lt(schema.projects.deletedAt, cutoff),
+      ));
+  }
+
+  async purgeProject(id: string): Promise<boolean> {
+    // Hard cascade — permanently removes the project and ALL associated data.
     // Single transaction; uses IN (subquery) so each table is one statement instead of
     // a N+1 select-then-loop. Cuts wall-clock from ~seconds to <1s on typical projects.
     // Order respects FK constraints:

@@ -8,7 +8,7 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { registerRoutes, getGlobalBroadcast } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { getStorageModeInfo, STORAGE_MODE } from "./storage";
+import { getStorageModeInfo, STORAGE_MODE, storage } from "./storage";
 import { assertProductionStorageMode } from "./productionGuard";
 import { pool } from "./db";
 import {
@@ -309,6 +309,30 @@ app.use((req, res, next) => {
   }, () => {
     log(`serving on port ${port}`);
   });
+
+  // Soft-delete purge safety net: every 60s, hard-delete any project whose
+  // deletedAt is older than 10 minutes. Generous buffer past the 5s client undo
+  // window so we never purge while a user is mid-decision. Catches the cases
+  // where the client failed to POST /purge (browser close, network drop, etc.).
+  if (STORAGE_MODE === 'db') {
+    const PURGE_INTERVAL_MS = 60_000;
+    const PURGE_OLDER_THAN_MS = 10 * 60 * 1000; // 10 minutes
+    setInterval(async () => {
+      try {
+        const stragglers = await storage.getProjectsNeedingPurge(PURGE_OLDER_THAN_MS);
+        for (const { id } of stragglers) {
+          try {
+            await storage.purgeProject(id);
+            log(`[purge-cron] hard-deleted soft-deleted project ${id}`);
+          } catch (err) {
+            console.error(`[purge-cron] failed to purge ${id}:`, err);
+          }
+        }
+      } catch (err) {
+        console.error('[purge-cron] sweep failed:', err);
+      }
+    }, PURGE_INTERVAL_MS);
+  }
 
   // P7: Background autonomy runner (opt-in via env flag, default off)
   if (process.env.BACKGROUND_AUTONOMY_ENABLED === 'true' && STORAGE_MODE === 'db') {

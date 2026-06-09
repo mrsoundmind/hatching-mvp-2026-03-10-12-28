@@ -210,27 +210,67 @@ export function registerProjectRoutes(app: Express, deps: RegisterProjectDeps): 
     }
   });
 
-  // Delete project
+  // Delete project (soft-delete — marks deletedAt; client must call /purge after the
+  // undo window expires, or the cron in server/index.ts cleans up stragglers).
   app.delete("/api/projects/:id", async (req, res) => {
-    devLog('DELETE /api/projects/:id called with id:', req.params.id);
+    devLog('DELETE /api/projects/:id (soft) called with id:', req.params.id);
     try {
       const ownedProject = await getOwnedProject(req.params.id, getSessionUserId(req));
       if (!ownedProject) {
         return res.status(404).json({ error: "Project not found" });
       }
-      devLog('Calling storage.deleteProject with id:', req.params.id);
       const success = await storage.deleteProject(req.params.id);
-      devLog('Storage deleteProject result:', success);
-
       if (!success) {
-        devLog('Project not found in storage');
         return res.status(404).json({ error: "Project not found" });
       }
-      devLog('Project deleted successfully from storage');
-      res.status(200).json({ message: "Project deleted successfully" });
+      res.status(200).json({ message: "Project soft-deleted (undo window open)" });
     } catch (error) {
       console.error('Error in delete project endpoint:', error);
       res.status(500).json({ error: "Failed to delete project" });
+    }
+  });
+
+  // Restore a soft-deleted project (called when user clicks Undo within the popup window).
+  // Idempotent — restoring an already-active project is a no-op success.
+  app.post("/api/projects/:id/restore", async (req, res) => {
+    try {
+      const ownedProject = await getOwnedProject(req.params.id, getSessionUserId(req));
+      if (!ownedProject) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      const success = await storage.restoreProject(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      res.status(200).json({ message: "Project restored" });
+    } catch (error) {
+      console.error('Error in restore project endpoint:', error);
+      res.status(500).json({ error: "Failed to restore project" });
+    }
+  });
+
+  // Hard-delete (purge) a project — client triggers this after the undo window expires
+  // or user explicitly dismisses the popup. Cascades through teams/agents/conversations/
+  // messages/etc. Server only purges projects already soft-deleted (deletedAt IS NOT NULL).
+  app.post("/api/projects/:id/purge", async (req, res) => {
+    try {
+      const ownedProject = await getOwnedProject(req.params.id, getSessionUserId(req));
+      if (!ownedProject) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      // Guard: only purge soft-deleted rows. If the user clicked Undo first the row is
+      // already active again — purging would silently destroy their restored project.
+      if (!(ownedProject as any).deletedAt) {
+        return res.status(409).json({ error: "Project is not soft-deleted; restore first or wait" });
+      }
+      const success = await storage.purgeProject(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      res.status(200).json({ message: "Project permanently deleted" });
+    } catch (error) {
+      console.error('Error in purge project endpoint:', error);
+      res.status(500).json({ error: "Failed to purge project" });
     }
   });
 
