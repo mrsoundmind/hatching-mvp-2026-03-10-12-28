@@ -43,6 +43,7 @@ At `project.executionRules.autonomyLevel === 'autonomous'` (the rightmost dial p
   5. **Offer correction after, not permission before.** "I went with X. If you want a different angle, let me know." (post-hoc), not "Should I do X?" (pre-hoc).
   6. **When truly stuck, frame as a real binary with options.** Not "what do you want?" but "Going with X unless you prefer Y — here's why X for the moment."
   7. **Inline justification.** Brief because-clause attached to each non-obvious choice.
+  8. **Surface load-bearing assumptions structurally, not just inline** (added 2026-06-09 after verification audit). For any deliverable-producing output (PRD, brief, spec, plan), lead with a brief "Assumptions" section — 1–3 bullets at the top — listing premises that, if wrong, would invalidate the work. The inline-statement principle (#2) still applies to minor choices; structured surfacing applies to major ones. This mitigates the "wrong assumption shipped silently" failure mode that strict autonomous mode otherwise risks (see `<specifics>` below).
 - **D-05:** Rule must be wrapped in clearly-delimited XML tags (`<autonomous_directive>...</autonomous_directive>`) so prompt-snapshot tests can assert presence/absence verbatim.
 - **D-06:** Rule text MUST NOT contradict the staticPrefix's existing 14 response rules (e.g., "no markdown headers in chat", "no bullet point lists", "max 1 question per reply") — autonomous mode doesn't override prose quality rules, only the clarification permission.
 
@@ -71,6 +72,7 @@ At `project.executionRules.autonomyLevel === 'autonomous'` (the rightmost dial p
 - "Do how Claude does it" — user direction 2026-06-04. The 7 principles in D-04 are lifted from observed Claude/Anthropic behavior patterns on autonomous coding tasks. Future readers: if you're tempted to soften these (e.g., add an escape hatch), check the user's intent first — the explicit choice was the strict version, not the soft one.
 - The autonomy-rule placement decision (hybrid) chose maintenance-clarity over absolute cache economics. For an MVP at single-user scale, the few-cent cost increase per thousand messages is well below the value of having one easy-to-reason-about prompt-builder.
 - The "no safety-gate relaxation" decision is load-bearing for Phase 28's SAFE-01..04 invariants. Don't touch the safety thresholds without re-opening that scope explicitly.
+- **The "wrong assumption shipped silently" failure mode** (flagged 2026-06-09 push-back, mitigated via D-04 principle #8). Strict autonomous-mode language ("Never ask; assume and continue") means a Hatch can make a wrong assumption (e.g., pick "enterprise pricing" when user meant "SMB"), state it cleanly in prose, and ship — and the user may not catch it until much later because the assumption-note is buried in inline text. This is the load-bearing risk of going strict instead of soft. The structured-assumptions principle (D-04 #8) forces a top-of-output "Assumptions" section that's harder to miss than inline prose. Known trade-off, not a hidden trap — documented here so future readers (and planner) understand why the principle list grew from 7 to 8.
 
 </specifics>
 
@@ -85,7 +87,11 @@ At `project.executionRules.autonomyLevel === 'autonomous'` (the rightmost dial p
 
 ### Existing code to modify
 - `server/ai/promptTemplate.ts` — `buildSystemPrompt()` at line 37; staticPrefix at line 88; dynamicSuffix concat at line 171. Add `autonomyLevel` prop to PromptBuilderProps; append `<autonomous_directive>` block to dynamicSuffix when level === 'autonomous'.
-- `server/ai/openaiService.ts` — line 208 (enhancedPrompt build) and line 619 (second basePrompt site); these call `buildSystemPrompt` and need to thread `autonomyLevel` snapshot from upstream. Line 726 has the existing "Ask at most one clarification question" — that rule stays for non-autonomous levels; autonomous level gets a NEW directive that supersedes it (the new block sits AFTER the existing rule in dynamicSuffix, so the model reads the autonomous override last).
+- `server/ai/openaiService.ts` — **TWO clarification surfaces exist; the autonomous-mode directive must supersede BOTH**:
+  - **Site 1 — generic agent prompt (line 726):** "Ask at most one clarification question" in the INSTRUCTIONS block. Applies to all non-Maya agents.
+  - **Site 2 — Maya's team-suggestion grammar (line 293-301):** comment says "she'll naturally ask one clarifying question first" + `mayaTeamSuggestionInstructions` at line 294. Maya-specific clarification permission baked into the team-suggestion intelligence prompt.
+  - Both sites also trace through `buildSystemPrompt` at line 208 (enhancedPrompt build) and line 619 (second basePrompt site) — these need to thread `autonomyLevel` snapshot from upstream so the new `<autonomous_directive>` block lands AFTER both existing rules in dynamicSuffix (model reads the autonomous override last).
+  - **Phase 38 omission found during 2026-06-09 verification audit:** Original CONTEXT.md (2026-06-04) only flagged Site 1. Updated 2026-06-09 to capture both. If planner only handles Site 1, Maya will still ask clarification questions about team composition at autonomous level even though generic agents are fixed — partial regression.
 - `server/autonomy/execution/taskExecutionPipeline.ts` — task entry point where the snapshot is taken. DO NOT modify lines 243-245, 431-433, 484 (clarification-required risk gates) per D-11.
 
 ### Existing schema (no changes)
@@ -123,7 +129,7 @@ At `project.executionRules.autonomyLevel === 'autonomous'` (the rightmost dial p
 ### Integration Points
 - 1 new prop on `PromptBuilderProps`: `autonomyLevel?: 'observe' | 'propose' | 'confirm' | 'autonomous'`
 - 1 new prop on `openaiService` request shapes — threaded from `taskExecutionPipeline` or chat handler
-- 1 new conditional block in `dynamicSuffix` (when level === 'autonomous')
+- 1 new conditional block in `dynamicSuffix` of `buildSystemPrompt()` (when level === 'autonomous') — single insertion point downstream because both Site 1 (generic agent) and Site 2 (Maya team-suggestion) ultimately flow through this builder; the `<autonomous_directive>` block lands after BOTH existing clarification rules in the final assembled prompt
 - 1 new snapshot read in `taskExecutionPipeline.ts` at task entry (and equivalent in chat handler)
 - 1 prompt-snapshot test in `scripts/` (`test-autonomous-directive.ts`?)
 - 1 conversation-flow integration test in `tests/e2e/` (likely `phase-38-never-stop-never-ask.spec.ts`)
