@@ -432,4 +432,87 @@ export function registerProjectRoutes(app: Express, deps: RegisterProjectDeps): 
       res.status(500).json({ error: 'Failed to delete document' });
     }
   });
+
+  // ---------------------------------------------------------------------
+  // Phase 38 (ALWY-02) — DEV-only endpoints for Playwright runtime assertions.
+  //
+  // Pattern mirrors Phase 36-02's /api/dev/force-judge-score and Phase 37's
+  // /api/dev/seed-run-tree: double-guard (conditional registration AND
+  // in-handler production throw). NEVER exposed in production.
+  //
+  // - POST /api/dev/set-autonomy-level: flips a project's autonomyLevel for
+  //   the snapshot-at-boundary test (T-38-06 mitigation: ownership-checked,
+  //   400 on missing fields).
+  // - GET  /api/dev/captured-prompts: returns the module-level captureProvider
+  //   buffer. Only active when LLM_MODE=test TEST_LLM_PROVIDER=capture; in any
+  //   other env the buffer stays empty.
+  // - POST /api/dev/clear-captured-prompts: resets the buffer between tests.
+  //
+  // The capture buffer is in-memory only — never persisted — and evaporates
+  // on server restart (T-38-07 mitigation).
+  // ---------------------------------------------------------------------
+  if (process.env.NODE_ENV !== 'production') {
+    const setAutonomyLevelSchema = z.object({
+      projectId: z.string().min(1),
+      autonomyLevel: z.enum(['observe', 'propose', 'confirm', 'autonomous']),
+    });
+
+    app.post('/api/dev/set-autonomy-level', async (req, res) => {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('FATAL: /api/dev/set-autonomy-level called in production. DEV-only endpoint must not run in a production code path.');
+      }
+      try {
+        const parsed = setAutonomyLevelSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({ error: 'projectId and autonomyLevel required', detail: parsed.error.format() });
+        }
+        const { projectId, autonomyLevel } = parsed.data;
+        const userId = getSessionUserId(req);
+        // T-38-06 mitigation: ownership check even under NODE_ENV gate
+        const project = await getOwnedProject(projectId, userId);
+        if (!project) {
+          return res.status(404).json({ error: 'Project not found or not owned by session user' });
+        }
+        const existing = (project.executionRules ?? {}) as Record<string, unknown>;
+        const updated = await storage.updateProject(projectId, {
+          executionRules: { ...existing, autonomyLevel } as any,
+        });
+        if (!updated) {
+          return res.status(500).json({ error: 'Project update returned no row' });
+        }
+        return res.json({ ok: true, autonomyLevel, projectId: updated.id });
+      } catch (error) {
+        console.error('[dev] set-autonomy-level error:', error);
+        return res.status(500).json({ error: 'Failed to set autonomy level', detail: (error as Error).message });
+      }
+    });
+
+    app.get('/api/dev/captured-prompts', async (_req, res) => {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('FATAL: /api/dev/captured-prompts called in production. DEV-only endpoint must not run in a production code path.');
+      }
+      try {
+        // Dynamic import so the captureProvider module is only loaded in dev/test
+        const { getCapturedPrompts } = await import('../llm/providers/captureProvider.js');
+        return res.json({ prompts: getCapturedPrompts() });
+      } catch (error) {
+        console.error('[dev] captured-prompts error:', error);
+        return res.status(500).json({ error: 'Failed to read captured prompts', detail: (error as Error).message });
+      }
+    });
+
+    app.post('/api/dev/clear-captured-prompts', async (_req, res) => {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('FATAL: /api/dev/clear-captured-prompts called in production. DEV-only endpoint must not run in a production code path.');
+      }
+      try {
+        const { clearCapturedPrompts } = await import('../llm/providers/captureProvider.js');
+        clearCapturedPrompts();
+        return res.json({ ok: true });
+      } catch (error) {
+        console.error('[dev] clear-captured-prompts error:', error);
+        return res.status(500).json({ error: 'Failed to clear captured prompts', detail: (error as Error).message });
+      }
+    });
+  }
 }

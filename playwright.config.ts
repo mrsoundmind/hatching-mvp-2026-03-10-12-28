@@ -111,6 +111,28 @@ export default defineConfig({
       testMatch: /phase-37-run-tree\.spec\.ts/,
       timeout: 120000,
     },
+    // Phase 38 "Never Stop, Never Ask" autonomy prompt —
+    // ALWY-01 (prompt change reaches wire), ALWY-02 (no clarification at level 4 —
+    // via captured-prompt assertions), ALWY-03 (snapshot-at-task-boundary).
+    // Uses 3 DEV-only endpoints (/api/dev/set-autonomy-level, /api/dev/captured-prompts,
+    // /api/dev/clear-captured-prompts) and a "capture" LLM provider that records the
+    // assembled wire-level prompt onto a module-scope in-memory buffer.
+    // Per saved memory rule feedback_verify_in_runtime, the spec runs against a
+    // LIVE FRESHLY-RESTARTED dev server. Run order:
+    //   1. Ctrl-C any running dev server
+    //   2. LLM_MODE=test TEST_LLM_PROVIDER=capture npm run dev
+    //   3. npx playwright test --project=phase-38
+    // 2-min budget mirrors phase-37.
+    {
+      name: 'phase-38',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/e2e/.auth/session.json',
+      },
+      dependencies: ['setup'],
+      testMatch: /phase-38-never-stop-never-ask\.spec\.ts/,
+      timeout: 120000,
+    },
     // Agent-action probe — diagnostic, not a regression gate. Records whether
     // imperative chat commands trigger real DB side effects or just clarifying Qs.
     {

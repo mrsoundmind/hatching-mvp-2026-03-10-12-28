@@ -15,6 +15,8 @@ import { MockProvider } from './providers/mockProvider.js';
 import { GeminiProvider } from './providers/geminiProvider.js';
 import { GroqProvider } from './providers/groqProvider.js';
 import { DeepSeekProvider } from './providers/deepseekProvider.js';
+// Phase 38 — DEV-only "capture" provider for Playwright wire-level prompt assertions
+import { CaptureProvider } from './providers/captureProvider.js';
 import {
   recordFailure,
   recordSuccess,
@@ -27,6 +29,7 @@ const groqProvider = new GroqProvider();
 const deepseekProvider = new DeepSeekProvider();
 const ollamaProvider = new OllamaTestProvider();
 const mockProvider = new MockProvider();
+const captureProvider = new CaptureProvider();
 
 export const providerRegistry: Record<ProviderId, LLMProvider> = {
   openai: openaiProvider,
@@ -35,6 +38,7 @@ export const providerRegistry: Record<ProviderId, LLMProvider> = {
   deepseek: deepseekProvider,
   'ollama-test': ollamaProvider,
   mock: mockProvider,
+  capture: captureProvider,
 };
 
 // ─── Phase 35-02: Provider health broadcaster registry ────────────────────────
@@ -106,12 +110,13 @@ function toMode(raw: string | undefined): RuntimeMode {
   return raw?.toLowerCase() === 'test' ? 'test' : 'prod';
 }
 
-function parseTestProvider(raw: string | undefined): 'openai' | 'groq' | 'ollama' | 'mock' | 'deepseek' {
+function parseTestProvider(raw: string | undefined): 'openai' | 'groq' | 'ollama' | 'mock' | 'deepseek' | 'capture' {
   const normalized = (raw || '').trim().toLowerCase();
   if (normalized === 'openai') return 'openai';
   if (normalized === 'groq') return 'groq';
   if (normalized === 'ollama') return 'ollama';
   if (normalized === 'deepseek') return 'deepseek';
+  if (normalized === 'capture') return 'capture';
   return 'mock';
 }
 
@@ -191,6 +196,19 @@ export function resolveRuntimeConfig(env = process.env): RuntimeConfig {
       testProvider: 'ollama',
       model: env.TEST_OLLAMA_MODEL || 'llama3.1:8b',
       ollamaBaseUrl: env.TEST_OLLAMA_BASE_URL || 'http://localhost:11434',
+    };
+  }
+
+  // Phase 38 (ALWY-02) — capture provider for Playwright wire-level prompt
+  // assertions. Records the assembled prompt onto a module-level buffer and
+  // returns a canned response. Test-only; production has its own assertion
+  // (assertRuntimeGuardrails below) that ensures only the prod chain ships.
+  if (testProvider === 'capture') {
+    return {
+      mode,
+      provider: 'capture',
+      testProvider: 'capture',
+      model: env.TEST_CAPTURE_MODEL || 'capture-v1',
     };
   }
 
@@ -310,6 +328,7 @@ const MODEL_PREFIX: Record<ProviderId, RegExp> = {
   groq: /^(llama-|mixtral|gemma)/i,
   'ollama-test': /^(llama|mistral|phi|qwen|gemma)/i,
   mock: /^mock-/i,
+  capture: /^capture-/i,
 };
 
 function modelBelongsToProvider(model: string, provider: ProviderId): boolean {
@@ -675,7 +694,7 @@ export async function streamWithPreferredProvider(
 export async function getProviderHealthSummary(): Promise<Record<ProviderId, ProviderHealth>> {
   const config = resolveRuntimeConfig();
 
-  const [openai, gemini, groq, deepseek, ollama, mock] = await Promise.all([
+  const [openai, gemini, groq, deepseek, ollama, mock, capture] = await Promise.all([
     openaiProvider.healthCheck?.(process.env.OPENAI_MODEL || 'gpt-4o-mini') || Promise.resolve({ status: 'down', details: 'Unavailable' } as ProviderHealth),
     geminiProvider.healthCheck?.(process.env.GEMINI_MODEL || 'gemini-2.5-flash') || Promise.resolve({ status: 'down', details: 'Unavailable' } as ProviderHealth),
     groqProvider.healthCheck?.(process.env.GROQ_MODEL || 'llama-3.3-70b-versatile') || Promise.resolve({ status: 'down', details: 'Unavailable' } as ProviderHealth),
@@ -684,6 +703,7 @@ export async function getProviderHealthSummary(): Promise<Record<ProviderId, Pro
       : Promise.resolve({ status: 'down', details: 'DEEPSEEK_API_KEY not set' } as ProviderHealth),
     ollamaProvider.healthCheck?.(process.env.TEST_OLLAMA_MODEL || 'llama3.1:8b') || Promise.resolve({ status: 'down', details: 'Unavailable' } as ProviderHealth),
     mockProvider.healthCheck?.() || Promise.resolve({ status: 'ok', details: 'Deterministic mock available' } as ProviderHealth),
+    captureProvider.healthCheck?.() || Promise.resolve({ status: 'ok', details: 'Capture provider available' } as ProviderHealth),
   ]);
 
   return {
@@ -693,5 +713,6 @@ export async function getProviderHealthSummary(): Promise<Record<ProviderId, Pro
     deepseek,
     'ollama-test': ollama,
     mock,
+    capture,
   };
 }
