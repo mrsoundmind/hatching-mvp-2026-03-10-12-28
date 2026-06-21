@@ -1,5 +1,6 @@
 import { Client } from "langsmith";
 import { roleProfiles } from './roleProfiles.js';
+import { AUTONOMOUS_DIRECTIVE_BLOCK } from './promptTemplate.js';
 import { trainingSystem } from './trainingSystem.js';
 import { executeColleagueLogic } from './colleagueLogic.js';
 import { UserBehaviorAnalyzer, type UserBehaviorProfile, type MessageAnalysis } from './userBehaviorAnalyzer.js';
@@ -65,6 +66,8 @@ interface ChatContext {
   handoffFrom?: string | null;
   // P3: Injected by routes.ts to enable real memory storage (fire-and-forget)
   createConversationMemory?: (data: { conversationId: string; memoryType: string; content: string; importance: number; agentId?: string | null }) => Promise<unknown>;
+  // NEW: Phase 38
+  autonomyLevel?: 'observe' | 'propose' | 'confirm' | 'autonomous';
 }
 
 interface ColleagueResponse {
@@ -198,7 +201,8 @@ export async function* generateStreamingResponse(
         chatMode: context.mode,
         projectName: context.projectName,
         teamName: context.teamName,
-        recentMessages: context.conversationHistory.slice(-15) // P3: extended from 5 → 15
+        recentMessages: context.conversationHistory.slice(-15), // P3: extended from 5 → 15
+        autonomyLevel: context.autonomyLevel
       },
       roleProfile,
       userBehaviorProfile,
@@ -291,13 +295,7 @@ export async function* generateStreamingResponse(
     // idea and want to see a team proposal immediately. Maya's prompt still
     // requires "when you have enough context" — if context is thin she'll naturally
     // ask one clarifying question first.
-    const mayaTeamSuggestionInstructions = isMaya ? `
---- MAYA TEAM INTELLIGENCE ---
-When you have enough context, suggest a team. Mention it in text first ("I'd suggest adding X, Y, Z — should I?"), then append at the very end:
-<!--HATCH_SUGGESTION:{"teams":[{"name":"Core Team","emoji":"⭐","agents":[{"name":"Alex","role":"Product Designer","color":"orange"}]}],"trigger":"user_agreement"}-->
-Max 3-4 agents. Use realistic roles matching the idea.
---- END MAYA TEAM INTELLIGENCE ---
-` : '';
+    const mayaTeamSuggestionInstructions = getMayaTeamSuggestionInstructions(isMaya, context.autonomyLevel);
 
     const hatchTaskInstructions = !isMaya ? `
 --- HATCH TASK INTELLIGENCE ---
@@ -429,7 +427,7 @@ ${hardFormatRules}
 ${mayaTeamSuggestionInstructions}
 ${hatchTaskInstructions}
 
-Respond as this specific role with appropriate expertise and personality. Keep responses concise and actionable.`;
+Respond as this specific role with appropriate expertise and personality. Keep responses concise and actionable.${context.autonomyLevel === 'autonomous' ? AUTONOMOUS_DIRECTIVE_BLOCK : ''}`;
 
     const messageComplexity = classifyMessageComplexity(basePrompt.userPrompt);
     const isFirstMsg = (context.conversationHistory?.length ?? 0) <= 1;
@@ -608,7 +606,8 @@ export async function generateIntelligentResponse(
         chatMode: context.mode,
         projectName: context.projectName,
         teamName: context.teamName,
-        recentMessages: context.conversationHistory.slice(-15) // P3: extended from 5 → 15
+        recentMessages: context.conversationHistory.slice(-15), // P3: extended from 5 → 15
+        autonomyLevel: context.autonomyLevel
       },
       roleProfile,
       userBehaviorProfile,
@@ -623,7 +622,7 @@ export async function generateIntelligentResponse(
       messages: [
         {
           role: 'system',
-          content: `${enhancedPrompt}\n\n--- ROLE BRAIN ---\n${roleBrainContext}\n--- END ROLE BRAIN ---`
+          content: `${enhancedPrompt}\n\n--- ROLE BRAIN ---\n${roleBrainContext}\n--- END ROLE BRAIN ---${context.autonomyLevel === 'autonomous' ? AUTONOMOUS_DIRECTIVE_BLOCK : ''}`
         },
         {
           role: 'user',
@@ -692,7 +691,34 @@ export async function generateIntelligentResponse(
 }
 
 // Enhanced prompt template creation
-function createPromptTemplate(params: {
+export function getMayaTeamSuggestionInstructions(isMaya: boolean, autonomyLevel?: string): string {
+  return isMaya ? (
+    autonomyLevel === 'autonomous'
+      ? `\n--- MAYA TEAM INTELLIGENCE ---\nWhen you have enough context, propose a team — declaratively. State the team in text first ("Here's the team: X, Y, Z — adding them now."), then append at the very end:\n<!--HATCH_SUGGESTION:{"teams":[{"name":"Core Team","emoji":"⭐","agents":[{"name":"Alex","role":"Product Designer","color":"orange"}]}],"trigger":"user_agreement"}-->\nMax 3-4 agents. Use realistic roles matching the idea. Do NOT frame as a question — commit, state assumptions per autonomous_directive, offer correction after.\n--- END MAYA TEAM INTELLIGENCE ---\n`
+      : `\n--- MAYA TEAM INTELLIGENCE ---\nWhen you have enough context, suggest a team. Mention it in text first ("I'd suggest adding X, Y, Z — should I?"), then append at the very end:\n<!--HATCH_SUGGESTION:{"teams":[{"name":"Core Team","emoji":"⭐","agents":[{"name":"Alex","role":"Product Designer","color":"orange"}]}],"trigger":"user_agreement"}-->\nMax 3-4 agents. Use realistic roles matching the idea.\n--- END MAYA TEAM INTELLIGENCE ---\n`
+  ) : '';
+}
+
+export function getInstructionsBlock(agentDisplayName: string, autonomyLevel?: string): string {
+  const baseInstructions = [
+    `- Respond as ${agentDisplayName} with your specific expertise and personality`,
+    `- Keep responses concise (2-3 sentences max)`,
+    `- Be helpful and actionable based on your role`,
+    `- Match the conversational tone`,
+    `- Never say "As a [Role]" or announce your role in the first sentence`,
+    `- Don't mention you're an AI - you're a colleague`,
+  ];
+  const clarificationLine = autonomyLevel === 'autonomous'
+    ? null  // Phase 38 D-04: autonomous_directive in dynamicSuffix supersedes per-turn clarification permission
+    : `- Ask at most one clarification question`;
+  const closingLine = autonomyLevel === 'autonomous'
+    ? `- End by stating what you're doing next (declarative, not interrogative)`
+    : `- End with a clear next step line`;
+  return [...baseInstructions, clarificationLine, closingLine].filter(Boolean).join('\n');
+}
+
+// Enhanced prompt template creation
+export function createPromptTemplate(params: {
   role: string;
   userMessage: string;
   context: any;
@@ -703,6 +729,7 @@ function createPromptTemplate(params: {
   const { role, userMessage, context, roleProfile, userBehaviorProfile, messageAnalysis } = params;
 
   const agentDisplayName = roleProfile.characterName || role;
+  const instructions = getInstructionsBlock(agentDisplayName, context.autonomyLevel);
   const systemPrompt = `You are ${agentDisplayName}, a ${role} working on the "${context.projectName}" project.
 
 PERSONALITY: ${roleProfile.personality}
@@ -718,14 +745,7 @@ CONVERSATION HISTORY:
 ${context.recentMessages.map((msg: any) => `${msg.role}: ${msg.content}`).join('\n')}
 
 INSTRUCTIONS:
-- Respond as ${agentDisplayName} with your specific expertise and personality
-- Keep responses concise (2-3 sentences max)
-- Be helpful and actionable based on your role
-- Match the conversational tone
-- Never say "As a [Role]" or announce your role in the first sentence
-- Ask at most one clarification question
-- End with a clear next step line
-- Don't mention you're an AI - you're a colleague
+${instructions}
 
 ${userBehaviorProfile && messageAnalysis ? `
 USER COMMUNICATION PROFILE (Confidence: ${(userBehaviorProfile.confidence * 100).toFixed(0)}%):

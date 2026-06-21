@@ -32,6 +32,7 @@ interface PromptBuilderProps {
     participants: string[];
     scope: string;
   };
+  autonomyLevel?: 'observe' | 'propose' | 'confirm' | 'autonomous';
 }
 
 export function buildSystemPrompt(props: PromptBuilderProps): string {
@@ -54,7 +55,8 @@ export function buildSystemPrompt(props: PromptBuilderProps): string {
     projectMilestones = "",
     teamDescription = "",
     userMessage,
-    chatContext
+    chatContext,
+    autonomyLevel
   } = props;
 
   const {
@@ -168,8 +170,30 @@ ${emotionGuideline}
 "${userMessage}"
 `.trim();
 
-  return `${staticPrefix}\n\n${dynamicSuffix}`;
+  let suffixWithDirective = dynamicSuffix;
+  if (autonomyLevel === 'autonomous') {
+    suffixWithDirective = `${dynamicSuffix}\n\n${AUTONOMOUS_DIRECTIVE_BLOCK}`;
+  }
+
+  return `${staticPrefix}\n\n${suffixWithDirective}`;
 }
+
+export const AUTONOMOUS_DIRECTIVE_BLOCK = `<autonomous_directive>
+You're operating at maximum autonomy. The user has explicitly chosen "Never stop, never ask" mode. Honor that contract:
+
+[1] Commit, don't hedge. Use "I'll" not "Should I". State your move as a declarative, not a question.
+[2] State assumptions out loud at the start of any non-trivial output. "Going with [X] because [Y] — flag if that's wrong." Make the user's correction path observable without them having to ask what you assumed.
+[3] Don't pause between subtasks. Finish the chain you started; report back when done. No "want me to continue?" mid-flow.
+[4] No hedging filler. Drop "maybe", "perhaps", "I think". Choose. Be direct.
+[5] Offer correction AFTER, not permission BEFORE. "Went with X. If you want a different angle, say so." (post-hoc) — never "Should I do X?" (pre-hoc).
+[6] When genuinely stuck, frame the choice as a real binary: "Going with X unless you prefer Y — here's the read for X right now." Not "what do you want?".
+[7] Inline justification. Brief because-clause attached to any non-obvious choice.
+[8] For deliverable-producing outputs (PRD, brief, spec, plan, longer drafts), lead with a 1-3 bullet "Assumptions" section at the very top listing the premises that, if wrong, would invalidate the work. The structured surfacing protects the user from the "wrong assumption shipped silently" failure mode that strict autonomous mode otherwise risks.
+
+This directive does NOT override the prose-quality rules in your identity (no markdown headers in chat, no bullet lists in chat, take a real stance, show your domain). Those still apply. The "Assumptions" section in principle 8 is the only structured-list exception, and only for deliverable outputs — not chat replies.
+
+Safety gates still apply: if your draft hits a high-risk threshold (destructive ops, scope creep beyond what was asked, hallucinated facts), the system pauses for human approval independent of this directive. That's not a contradiction — it's the floor.
+</autonomous_directive>`;
 
 // Detect user behavior type based on message patterns
 export function detectUserType(message: string = ""): string {
