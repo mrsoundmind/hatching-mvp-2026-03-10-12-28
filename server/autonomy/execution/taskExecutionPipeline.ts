@@ -14,6 +14,8 @@ import type { IStorage } from '../../storage.js';
 import { recordUsage } from '../../billing/usageTracker.js';
 // Phase 37 — autonomy run tree writer (non-fatal step + run writes)
 import { ensureRunForTrace, startStep, completeStep, failStep } from '../runs/runTreeWriter.js';
+// Phase 38 — autonomous-mode directive block (appended to system prompt when level === 'autonomous')
+import { AUTONOMOUS_DIRECTIVE_BLOCK } from '../../ai/promptTemplate.js';
 
 /**
  * Role-aware risk adjustment: some roles should escalate at lower thresholds
@@ -68,6 +70,26 @@ export interface ExecuteTaskInput {
   traceId?: string;
   runId?: string;
   parentStepId?: string | null;
+  // Phase 38: autonomyLevel snapshot
+  autonomyLevel?: 'observe' | 'propose' | 'confirm' | 'autonomous';
+}
+
+/**
+ * Phase 38 (D-07..D-10): snapshot the autonomyLevel from a project object at
+ * task entry. Pure function over the already-fetched project — DOES NOT call
+ * the DB (caller already paid for the project fetch). Returns undefined when
+ * executionRules.autonomyLevel is unset; the prompt builder treats undefined
+ * as "no directive appended", preserving D-03 byte-identity for legacy paths.
+ *
+ * Invariant: this helper is the ONLY autonomyLevel snapshot site within a
+ * single handleTaskJob invocation. The plan's Case 16 enforces exactly-one
+ * storage.getProject call per handleTaskJob — the snapshot piggy-backs on
+ * the existing project fetch and never triggers an extra DB round-trip.
+ */
+export function snapshotAutonomyLevel(
+  project: { executionRules?: { autonomyLevel?: 'observe' | 'propose' | 'confirm' | 'autonomous' } | null } | null | undefined
+): 'observe' | 'propose' | 'confirm' | 'autonomous' | undefined {
+  return project?.executionRules?.autonomyLevel ?? undefined;
 }
 
 /**
@@ -165,7 +187,13 @@ async function executeBatchedTasks(
 
   const firstInput = inputs[0];
   const taskList = inputs.map((inp, i) => `TASK_${i + 1}: ${inp.task.title}`).join('\n');
-  const systemPrompt = `You are a ${firstInput.agent.role}. Complete each task below and return your response as a JSON array with exactly ${inputs.length} objects, each having a "taskIndex" (1-based) and "output" (string) field. Example: [{"taskIndex":1,"output":"..."},{"taskIndex":2,"output":"..."}]`;
+  // Phase 38 — append the autonomous_directive when batch's first input is at
+  // autonomous level. In practice batched tasks share an agent and a project,
+  // so the autonomyLevel is uniform across the batch (no mixed-level batches).
+  const baseBatchSystem = `You are a ${firstInput.agent.role}. Complete each task below and return your response as a JSON array with exactly ${inputs.length} objects, each having a "taskIndex" (1-based) and "output" (string) field. Example: [{"taskIndex":1,"output":"..."},{"taskIndex":2,"output":"..."}]`;
+  const systemPrompt = firstInput.autonomyLevel === 'autonomous'
+    ? `${baseBatchSystem}\n\n${AUTONOMOUS_DIRECTIVE_BLOCK}`
+    : baseBatchSystem;
 
   try {
     const raw = await firstInput.generateText(taskList, systemPrompt, 800);
@@ -397,9 +425,18 @@ export async function executeTask(
       : null;
 
   try {
+    // Phase 38 — append the autonomous_directive to the system prompt when the
+    // task's snapshot says level === 'autonomous'. This is the autonomous-execution
+    // path (background pg-boss jobs); the chat path is handled in chat.ts via
+    // ChatContext.autonomyLevel. Option B from the plan (embed directive in the
+    // system arg) keeps generateText's signature stable.
+    const baseSystem = `You are a ${input.agent.role}.`;
+    const systemWithDirective = input.autonomyLevel === 'autonomous'
+      ? `${baseSystem}\n\n${AUTONOMOUS_DIRECTIVE_BLOCK}`
+      : baseSystem;
     const output = await input.generateText(
       `Task: ${input.task.title}`,
-      `You are a ${input.agent.role}.`,
+      systemWithDirective,
     );
 
     // Guard against empty LLM output — don't store blank messages
@@ -740,6 +777,14 @@ export async function handleTaskJob(
     agentName: agent.name,
   });
 
+  // Phase 38 (D-07, D-08, D-10) — snapshot autonomyLevel ONCE at task entry from
+  // the already-fetched project (no extra DB call). This snapshot persists
+  // through every LLM call in this task. Mid-task dial moves don't apply —
+  // they kick in on the next task boundary (next pg-boss job OR next foreground
+  // message OR next handoff continuation). Case 16 enforces exactly-one
+  // storage.getProject call per handleTaskJob invocation.
+  const autonomyLevelSnapshot = snapshotAutonomyLevel(project);
+
   let result: ExecuteTaskResult;
   try {
     result = await queueForBatch({
@@ -754,6 +799,8 @@ export async function handleTaskJob(
       traceId,
       runId,
       parentStepId: parentStepIdForThisInvocation,
+      // Phase 38 — propagate autonomyLevel snapshot into executeTask scope
+      autonomyLevel: autonomyLevelSnapshot,
     });
   } catch (err) {
     // Release the reserved slot — task failed mid-execution. BUDG-02 idempotent release.

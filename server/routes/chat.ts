@@ -2101,6 +2101,14 @@ export function registerChatRoutes(
       }));
       const { history: conversationHistory } = await getCompactedContext(conversationId, allMapped, storage);
 
+      // Phase 38 (D-10) — foreground chat is treated as a NEW task per user message.
+      // Snapshot autonomyLevel ONCE per message before any LLM call. Mid-streaming
+      // dial moves don't apply to the in-flight reply (D-10 explicit: applies to
+      // the NEXT message). The project was already fetched at line ~1767, so this
+      // is a pure field-read with no extra DB round-trip.
+      const autonomyLevelSnapshot = (project.executionRules as any)?.autonomyLevel as
+        | 'observe' | 'propose' | 'confirm' | 'autonomous' | undefined;
+
       // Create chat context for AI
       const chatContext = {
         mode: mode as 'project' | 'team' | 'agent',
@@ -2112,6 +2120,10 @@ export function registerChatRoutes(
         agentId: respondingAgent.id,
         conversationHistory,
         userId: userMessage.userId || 'user',
+        // Phase 38 — autonomyLevel snapshot threads into createPromptTemplate
+        // (Site 1 instructions block + Site 2 Maya team-suggestion grammar) and into
+        // the final systemPrompt assembly where AUTONOMOUS_DIRECTIVE_BLOCK lands.
+        autonomyLevel: autonomyLevelSnapshot,
         // P3: Project direction + team + memories injected for richer context
         projectDirection: (project.coreDirection as any) ?? null,
         teamMembers: respondingAgent ? await storage.getAgentsByProject(projectId!).then(
