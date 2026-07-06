@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Hatches That Self-Improve
-status: phase_37_complete
-stopped_at: Phase 37 (Git-Style Run Tree) COMPLETE 2026-05-15. All 4 plans shipped — 37-01 foundation, 37-02 server writer, 37-03 client UI (verb-led clarity pass per visual checkpoint), 37-04 backfill module + CLI + DEV seed endpoints + Playwright spec (6/6 PASS 2x) + 37-VERIFICATION.md (PASS-WITH-NOTES — 2 acknowledged limitations + forward-compat). Commits: bdbd075 (runTreeBackfill module + CLI), d3b78a4 (4-case unit suite), 864bff9 (DEV seed endpoints + Playwright spec), 0992831 (37-VERIFICATION.md). Pre-deploy audit (Phases 36 + 36.5 + 37) IN PROGRESS — Layer A deploy-gate re-run executing against healthy Neon to confirm earlier ~50/57 failures were Neon DB cascade, not real bugs.
-last_updated: "2026-05-18T00:00:00.000Z"
-last_activity: 2026-05-18 — Pre-deploy audit running (Layer A re-run on healthy Neon → Layer B mobile → Layer C resilience → manual OAuth smoke → fly deploy → Layer D production smoke). Layer B + C specs already authored (tests/e2e/mobile-golden-path.spec.ts, tests/e2e/resilience.spec.ts). STATE.md rolled forward this session to reflect Phase 37 reality.
+status: phase_38_code_shipped_awaiting_human_verify
+stopped_at: Phase 38 ("Never Stop, Never Ask" Autonomy Prompt) Tasks 1-4 SHIPPED 2026-06-21 (3 commits e676e37, b218021, d904768). Task 5 (human-verify checkpoint, blocking gate) OPEN since 2026-06-21 — user must vibe-check level-4 behavior on live server before SUMMARY.md is written and ALWY-01..03 are marked ✓ in REQUIREMENTS.md. Prior work still on stack — Neon compute quota triggered migration → Supabase (Singapore) shipped 2026-06-02 as quick-260601-ojf. Prior phases in this milestone all shipped: Phase 35 (Fly v19 2026-05-11), Phase 36 (2026-05-13, FBK-02 deferred), Phase 36.5 hotfix (2026-05-13), Phase 37 (2026-05-15, VERIFICATION PASS-WITH-NOTES).
+last_updated: "2026-07-06T00:00:00.000Z"
+last_activity: 2026-07-06 — session-continuity audit + HANDOFF.md created at repo root as any-IDE resume doc + CLAUDE.md footer bumped + this STATE.md rolled forward from stale 2026-05-18 state. No code changes this session — pure documentation refresh. Phase 38 execution status unchanged: Task 5 human-verify still awaited.
 progress:
   total_phases: 13
-  completed_phases: 3
-  total_plans: 16
-  completed_plans: 16
-  percent: 27
+  completed_phases: 4
+  total_plans: 20
+  completed_plans: 20
+  percent: 35
 ---
 
 # State: Hatchin
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-28)
 
 **Core value:** No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
-**Current focus:** v2.1 milestone in progress — Phase 35 SHIPPED to production 2026-05-11. Phase 36 + Phase 36.5 CODE-COMPLETE awaiting next `fly deploy`. Phase 37-01 (Foundation) SHIPPED 2026-05-14. Phase 37-02 (Server writer + instrumentation) SHIPPED 2026-05-14. Next plan: 37-03 (client UI tree view).
+**Current focus:** v2.1 milestone — Phase 38 code shipped 2026-06-21, Task 5 human-verify checkpoint OPEN. Phase 35 SHIPPED to Fly v19 2026-05-11. Phase 36 + Phase 36.5 shipped 2026-05-13 (bundled for next `fly deploy`). Phase 37 (Git-Style Run Tree) VERIFIED 2026-05-15 (PASS-WITH-NOTES). Infra: Neon exceeded compute quota → migrated to Supabase Singapore 2026-06-02 (quick-260601-ojf); DeepSeek V4-Flash inserted as LLM primary 2026-05-04 (Phase A).
 
 ---
 
 ## Current Position
 
-Phase: 37 (Git-Style Run Tree) — Plan 03 SHIPPED 2026-05-14
-Plans complete: 3/4 (37-01 + 37-02 + 37-03 SHIPPED 2026-05-14; 37-04 backfill + Playwright spec + 37-VERIFICATION.md pending)
-Status: 37-03 client UI shipped with mid-execution clarity refinement per user feedback. Activity tab gains [Flat][Tree] view-mode toggle (localStorage per-project). Tree mode shows collapsible run cards: 2-line-wrapping titles, agent-chain sub-line ("Alex → Cass") instead of "3 steps", semantic-word aggregate badge (✓ Improved / ⚠ Made worse / In progress). Step rows are verb-led ("Alex worked on…" / "Alex handed off…" / "Mira reviewed…") with semantic-word pills (✓ Better / ⚠ Worse / New) instead of bare signed numbers. ArtifactPanel pendingVersionNumber prop wired (W-4 — click step → opens EXACT version). 3 Playwright screenshots approved. Next: 37-04 backfill script + Playwright runtime spec + 37-VERIFICATION.md.
-Last activity: 2026-05-14 — Phase 37-03 shipped (4 commits dbe7fb6 helpers, a568851 components, 14951be integration+verb-led clarity, plus this final docs commit). Memory rule `feedback_ui_self_documenting.md` saved this session — applies to all future UI phases.
+Phase: 38 ("Never Stop, Never Ask" Autonomy Prompt) — Tasks 1-4 SHIPPED 2026-06-21, Task 5 human-verify OPEN
+Plans complete: 0.8 / 1 (single-plan phase, 4 of 5 tasks executed with automated checks green; blocking human-verify checkpoint prevents SUMMARY.md write)
+Status: Autonomous-mode prompt directive shipped as XML-delimited `<autonomous_directive>` block appended to dynamicSuffix only when `autonomyLevel === 'autonomous'`. 8 D-04 principles embodied (commit-don't-hedge, state-assumptions, don't-pause, no-hedging, correction-after, binary-when-stuck, inline-justification, structured-Assumptions-section). BOTH clarification surfaces overridden — Site 1 (line 726 generic INSTRUCTIONS) + Site 2 (Maya team-suggestion grammar) — verified by Case 13b byte-index placement invariant test. autonomyLevel snapshotted at task entry (pipeline + per-message chat) per D-07..D-10. Safety-gate floor D-11..D-13 preserved: `grep -c clarificationRequiredRisk taskExecutionPipeline.ts` = 7 (unchanged). Playwright spec at `tests/e2e/phase-38-never-stop-never-ask.spec.ts` uses deterministic wire-level captureProvider (server/llm/providers/captureProvider.ts) + 3 DEV endpoints double-guarded on NODE_ENV + ownership.
+Last activity: 2026-07-06 — session-continuity audit + HANDOFF.md created + this STATE.md refresh. Prior in-session work: 2026-06-23 Supabase resumed from auto-pause via Management API; 2026-06-21 Phase 38 Tasks 1-4 shipped (3 commits e676e37, b218021, d904768). Task 5 human-verify still awaited.
 
 ### Phase 36.5 — also CODE-COMPLETE (shipped 2026-05-13, bundled with Phase 36 for same deploy)
 Hotfix from 2026-05-13 audit. Imperative shortcut parser fires create-agent / create-task / rename-project / set-brain-field on turn 1 (no LLM dance). Maya turn-count gate dropped. Probe spec is regression gate (2/2 PASS).
@@ -135,13 +135,14 @@ fly deploy
 
 ## Session Continuity
 
-Last session: 2026-05-14 — Phase 37-02 execution complete (12 min, 5 atomic commits 6aa50bb..255a42c). runTreeWriter module + 3-hook instrumentation BOTH executeTask paths (Pitfall 6 defense) + handoff_initiated event (D-07.1) + GET /api/projects/:projectId/runs endpoint + 7/7 tests PASS deterministic.
-Stopped at: Phase 37-02 SHIPPED. Phase 37 plan-progress 2/4. Phase 36 + Phase 36.5 CODE-COMPLETE still awaiting `fly deploy`.
+Last session: 2026-07-06 — session-continuity audit. Discovered no commits since d904768 (2026-06-21); Phase 38 Task 5 human-verify still open; STATE.md stale from 2026-05-18; CLAUDE.md footer stale from 2026-06-09. Created HANDOFF.md at repo root for any-IDE session log. Bumped CLAUDE.md footer. Rolled this STATE.md forward from stale phase_37_complete to phase_38_code_shipped_awaiting_human_verify. Selective commit of docs only — parallel-session in-flight files (ROADMAP.md, ProjectTree.tsx, roleIntelligence.ts, etc.) left alone per saved feedback_parallel_work_safety.md rule.
+Stopped at: Phase 38 Task 5 human-verify checkpoint still awaiting user vibe-check of level-4 autonomy behavior on live server. Code in git at commits e676e37 (ALWY-01 prompt + threading), b218021 (ALWY-03 snapshot), d904768 (ALWY-02 Playwright spec). Server currently DOWN (port 5001 unbound). Supabase project may be auto-paused again if >7 days since last connect (was resumed 2026-06-23).
 
 Next action options (pick one):
-- Begin Phase 37-03 (Wave 3 — client UI tree view) — useAutonomyRunTree hook polling the new GET endpoint, sidebar tree component with rubric score-delta badges, version-navigation via W-4 deliverableVersionNumber
-- `fly deploy` — ship Phase 35 + Phase 36 + Phase 36.5 to production (user-driven; auto-mode does not deploy)
-- Address uncommitted `wip/pre-reset-2026-04-28` work (`ProjectTree.tsx` 5-line deletion + planning docs) if relevant to next phase
+- **Resume Phase 38 finalization** — start server (`npm run dev`; if Supabase paused, dashboard-restore or Management-API resume per HANDOFF.md playbook), run vibe-check protocol from HANDOFF.md, tell AI "approved" → continuation writes 38-01-SUMMARY.md + updates STATE.md/REQUIREMENTS.md/ROADMAP.md.
+- **Optionally also run the Playwright spec** — `LLM_MODE=test TEST_LLM_PROVIDER=capture npm run dev` then `npx playwright test --project=phase-38` for deterministic runtime evidence (~3 min).
+- **Skip Phase 38 close-out**, jump to `/gsd-discuss-phase 39` (Reader Testing Peer Review Mode) — leaves ALWY-01..03 unchecked; not recommended per feedback_verify_in_runtime.md rule.
+- **fly deploy** — Phase 35 already shipped 2026-05-11 as Fly v19; Phase 36 + 36.5 + 37 + partial 38 all bundled for next deploy pending human-verify + pre-deploy audit close-out.
 
 ## Performance Metrics
 

@@ -651,9 +651,17 @@ Two-file architecture designed for 200+ roles:
 
 Adding role #31+ requires only adding entries to these two arrays — no other code changes.
 
-**LLM prompt injection** (in `openaiService.ts`): Two sections injected after CHARACTER VOICE:
-- `PROFESSIONAL DEPTH` — domain depth, critical thinking, pushback style, collaboration style
-- `DOMAIN INTELLIGENCE` — reasoning pattern, output standards
+**LLM prompt injection** (in `openaiService.ts` at line 214): single merged `ROLE EXPERTISE` section injected after CHARACTER VOICE. Combines six fields into one block:
+- `Domain:` ← roleProfile.domainDepth
+- `Reasoning:` ← roleIntelligence.reasoningPattern
+- `Output standard:` ← roleIntelligence.outputStandards
+- `Critical thinking:` ← roleProfile.criticalThinking
+- `Pushback:` ← characterProfile.negativeHandling
+- `Collaboration:` ← characterProfile.collaborationStyle
+
+The older `PROFESSIONAL DEPTH` + `DOMAIN INTELLIGENCE` two-section layout (pre-Phase A) was merged to reduce prompt overhead. `peerReviewLens` and `handoffProtocol` are NOT chat-injected — they're consumed by `peerReviewRunner.ts` and `handoffOrchestrator.ts` downstream.
+
+**Marketing role tactical depth** (Wren, Kai, Robin — updated 2026-06-09): `reasoningPattern` / `outputStandards` / `peerReviewLens` for these three roles were enriched with frameworks adapted from [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) (MIT, © 2025 Corey Haines). Append-only edit — original frameworks preserved; tactical layer (banned-word lists, CRO impact ordering, audit attack order, schema-detection caveats, hreflang reciprocity) added. Other 27 roles untouched.
 
 **30 roles (character names):**
 Product Manager (Alex), Business Analyst (Morgan), Backend Developer (Dev), Software Engineer (Coda), Technical Lead (Jordan), AI Developer (Nyx), DevOps Engineer (Remy), Product Designer (Cleo), UX Designer (Lumi), UI Engineer (Finn), UI Designer (Arlo), Designer (Roux), Creative Director (Zara), Brand Strategist (Cass), QA Lead (Sam), Content Writer (Mira), Copywriter (Wren), Growth Marketer (Kai), Marketing Specialist (Nova), Social Media Manager (Pixel), SEO Specialist (Robin), Email Specialist (Drew), Data Analyst (Rio), Data Scientist (Sage), Operations Manager (Quinn), Business Strategist (Blake), HR Specialist (Taylor), Instructional Designer (Lee), Audio Editor (Vince), Maya (Idea Partner)
@@ -1240,5 +1248,105 @@ class HatchinGraphError extends Error {
 
 ---
 
-*Last updated: 2026-06-03 | Branch: wip/pre-reset-2026-04-28 | v2.1 in progress (Phase 35/36/36.5 shipped of 12) | Phase A DeepSeek migration shipped 2026-05-04 | Supabase migration shipped 2026-06-02 | Phase 35+36 Playwright 12/12 PASS on Supabase | Author: Claude Code*
-*This file should be updated whenever a significant architectural change is made.*
+## 23. AUTO-ROUTING DIRECTIVE (always on, approval-first)
+
+> **Principle**: When the user texts a freeform request — an idea, a bug, a feature, a question, or a note — DO NOT ask which slash command to use and DO NOT enumerate the GSD menu. Detect intent, **propose** the right Skill via an `AskUserQuestion` popup, and invoke **only after explicit approval**. NEVER fire any skill on your own. The user wants the Hatchin/Maya UX with a brake pedal: clear proposal, single-click approval, always in control.
+>
+> Full matrix lives in [AUTO-ROUTING.md](./AUTO-ROUTING.md) at project root. The fast-path below covers ~80% of cases. For edge cases, collisions, chained intents, Hatchin-specific overrides, or new skills — defer to AUTO-ROUTING.md.
+
+### Approval protocol (every routing decision requires approval — no auto-fire)
+
+For every freeform user message that implies action, fire an `AskUserQuestion` popup BEFORE invoking any skill. Format:
+
+**Question**: "Proposed: `<skill>` — approve?"
+**Header**: short skill name (≤12 chars)
+**Body must include**:
+- Skill name
+- Detected intent
+- Why (one-clause reason)
+- Confidence (HIGH | MED | LOW + 0.xx score)
+- What will happen if approved (one line)
+- For chains: full chain (`A → B → C`) — one approval covers ALL stages
+- For extra-warning skills: cost/scope/irreversibility note
+
+**Options (max 4)**:
+1. **Approve** (Recommended for HIGH confidence) — proceed with proposed skill
+2. **Different skill** — user describes alternative or picks runner-up
+3. **Just answer, no skill** — chat-only response, skip routing
+4. **Cancel** — drop the action
+
+**After approval**, narrate progress:
+```
+[<skill>] <current step>
+```
+
+**After completion**:
+```
+✓ <skill> done: <one-line outcome>  ·  Next: <suggested next step>
+```
+
+**Chain rules**: one approval covers the entire chain. Narrate transitions between stages (`→ Continuing: <next-skill>`). User can abort anytime by typing `stop` / `pause` / `wait` — route to `gsd-pause-work`.
+
+### Confidence thresholds (affect popup CONTENT, not WHETHER to ask)
+
+All routes ask via popup. Confidence shapes the body:
+
+- **HIGH (≥0.8)** — single proposed skill, "Approve" pre-marked Recommended
+- **MED (0.5–0.8)** — single proposed skill + runner-up listed in body, user can pick via "Different skill"
+- **LOW (<0.5)** — top 2 candidates both surfaced as options (Approve = top-1, Different skill = top-2 named)
+- **No match** — propose `gsd-do` (built-in router) as the fallback
+
+Confidence bumps (+): verbatim skill name (+0.5), strong intent verb (+0.3), Hatchin domain noun (+0.2), file path / URL match (+0.4), prior-turn continuation (inherit), project state implies it like `PLAN.md` exists → execute-ready (+0.2).
+
+### Top-15 fast-path (covers ~80% of cases)
+
+| You say... | Propose |
+|---|---|
+| "fix bug X" / "Y is broken" / "why isn't Z working?" | `gsd-debug` |
+| "trivial — fix this typo" / "one-liner" | `gsd-fast` |
+| "quick task: X" / "small fix" / "while we're here..." | `gsd-quick` |
+| "let's explore X" / "what if..." / "I have an idea" | `gsd-explore` |
+| "let's add phase X" / new scope work | `gsd-add-phase` → `gsd-discuss-phase` |
+| "plan phase X" / "make PLAN.md" | `gsd-plan-phase` |
+| "execute phase X" / "run the plan" | `gsd-execute-phase` |
+| "verify it works" / "validate" | `gsd-verify-work` |
+| "ship it" / "open PR" / "merge ready" | `gsd-ship` |
+| "where are we?" / "project state" | `gsd-progress` |
+| "what's next?" | `gsd-next` |
+| "note: X" / random thought | `gsd-note` |
+| "park this for later" / "backlog this" | `gsd-add-backlog` |
+| "review my changes" / "review the diff" | `gsd-code-review` |
+| "review the UI" / "audit the design" | `gsd-ui-review` |
+
+### Always-manual (refuse to propose — user must invoke explicitly)
+
+- **Destructive**: `gsd-undo`, `gsd-remove-phase`, `gsd-remove-workspace`, `gsd-cleanup`, `gsd-from-gsd2`, `gsd-reapply-patches`
+- **Settings / install**: `gsd-set-profile`, `gsd-settings*`, `gsd-update`, `gsd-sync-skills`, `init`, `update-config`, `fewer-permission-prompts`, `keybindings-help`
+- **Paid services**: `gsd-ultraplan-phase`
+
+For these, do NOT show a routing popup. Tell the user the skill is on the always-manual list and ask them to invoke it explicitly via slash command.
+
+### Extra-warning routes (popup body MUST flag the risk before approval)
+
+`gsd-autonomous` · `gsd-new-milestone` · `gsd-complete-milestone` · `gsd-new-project` · `gsd-new-workspace` · `loop` · `schedule`
+
+For these, the popup body must include estimated cost / scope / irreversibility — make sure the user sees the risk before clicking Approve.
+
+### Hatchin-specific overrides (layered on top of the matrix)
+
+These come from durable user preferences in `~/.claude/projects/.../memory/`:
+
+- **No mid-milestone decimal hotfixes** (`feedback_no_decimal_hotfixes.md`) — block auto-routing to `gsd-insert-phase`; redirect to `gsd-add-backlog` with "Accumulated Upgrades" tag and narrate the redirect
+- **Verify in runtime** (`feedback_verify_in_runtime.md`) — after any "fix shipped" / `gsd-execute-phase` claim, auto-chain `playwright-tester` or `verify` against the live restarted server before reporting done
+- **UI change approval** (`feedback_ui_change_protocol.md`) — before any skill that edits `client/src/`, narrate `→ UI change detected. Showing current state via Playwright before edit.` and wait for explicit approval (server-side changes skip this gate)
+- **Self-documenting UI** (`feedback_ui_self_documenting.md`) — when invoking `gsd-ui-phase` or `gsd-ui-review`, inject self-documenting rules into the spec/audit criteria
+- **Always update CLAUDE.md** — when architecture, conventions, or system surface changes, refresh this file (and bump the "Last updated" footer line)
+
+### Reference
+
+See [AUTO-ROUTING.md](./AUTO-ROUTING.md) for: confidence-math details, full skill inventory (~111 usable), all chains, collision tiebreakers, concept-skill loading rules, and the update procedure for adding new skills to the matrix.
+
+---
+
+*Last updated: 2026-07-06 | Branch: wip/pre-reset-2026-04-28 | v2.1 in progress: Phase 35/36/36.5/37 shipped + Phase 38 CODE shipped 2026-06-21 (Task 5 human-verify checkpoint still OPEN, ALWY-01..03 code in git at d904768 but not yet marked ✓ in REQUIREMENTS.md) of 12 | Phase A DeepSeek migration shipped 2026-05-04 | Supabase migration shipped 2026-06-02 | Phase 35+36 Playwright 12/12 PASS on Supabase | Section 23 (Auto-Routing, approval-first) added 2026-06-04 — every skill requires popup approval before firing; see AUTO-ROUTING.md for full matrix | 2026-06-09: marketing role tactical depth (Wren/Kai/Robin) enriched from coreyhaines31/marketingskills (MIT); injection note corrected — old PROFESSIONAL DEPTH+DOMAIN INTELLIGENCE pair has been merged into single ROLE EXPERTISE section | 2026-07-06: HANDOFF.md added at repo root — read that first for session-continuity log (what shipped, what stalled, resume commands, do-not-touch list); CLAUDE.md stays as architecture-of-record | Author: Claude Code*
+*This file should be updated whenever a significant architectural change is made. For session-by-session progress and daily-log style continuity, see HANDOFF.md at repo root.*
