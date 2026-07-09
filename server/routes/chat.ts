@@ -2651,7 +2651,7 @@ export function registerChatRoutes(
             });
           }
 
-          const toneGuard = applyTeammateToneGuard(accumulatedContent || "", userMessage?.content || "");
+          const toneGuard = applyTeammateToneGuard(accumulatedContent || "", userMessage?.content || "", autonomyLevelSnapshot);
           if (toneGuard.changed) {
             accumulatedContent = toneGuard.content;
             ws.send(JSON.stringify({

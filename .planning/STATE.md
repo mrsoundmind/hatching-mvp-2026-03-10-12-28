@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Hatches That Self-Improve
-status: phase_38_code_shipped_awaiting_human_verify
-stopped_at: Phase 38 ("Never Stop, Never Ask" Autonomy Prompt) Tasks 1-4 SHIPPED 2026-06-21 (3 commits e676e37, b218021, d904768). Task 5 (human-verify checkpoint, blocking gate) OPEN since 2026-06-21 — user must vibe-check level-4 behavior on live server before SUMMARY.md is written and ALWY-01..03 are marked ✓ in REQUIREMENTS.md. Prior work still on stack — Neon compute quota triggered migration → Supabase (Singapore) shipped 2026-06-02 as quick-260601-ojf. Prior phases in this milestone all shipped: Phase 35 (Fly v19 2026-05-11), Phase 36 (2026-05-13, FBK-02 deferred), Phase 36.5 hotfix (2026-05-13), Phase 37 (2026-05-15, VERIFICATION PASS-WITH-NOTES).
-last_updated: "2026-07-06T00:00:00.000Z"
-last_activity: 2026-07-06 — session-continuity audit + HANDOFF.md created at repo root as any-IDE resume doc + CLAUDE.md footer bumped + this STATE.md rolled forward from stale 2026-05-18 state. No code changes this session — pure documentation refresh. Phase 38 execution status unchanged: Task 5 human-verify still awaited.
+status: phase_38_partial_shipped_scope_expanded_awaiting_38-02_38-03_38-04
+stopped_at: Phase 38 expanded 2026-07-09 from 1 plan to 5 plans after live vibe-check surfaced three shipping blockers. Plan 38-01 SHIPPED (directive + Site 1/2 + snapshot + Playwright + Site 3 hotfix for applyAdaptiveClosing). Plans 38-02 (safety scorer destructive-intent detection — CRITICAL), 38-03 (Maya voice snap at level-4), 38-04 (fake-action guard) are NEW and NOT started. Plan 38-05 (human vibe-check) depends on all three. Original single-plan Phase 38 partially achieves ALWY-01 ✓ / ALWY-02 ⚠ / ALWY-03 code-shipped-not-verified; new plans close ALWY-04/05/06. Prior phases in v2.1 all shipped: Phase 35 (Fly v19 2026-05-11), Phase 36 (2026-05-13, FBK-02 deferred), Phase 36.5 hotfix (2026-05-13), Phase 37 (2026-05-15). Infra: Supabase migration shipped 2026-06-02 (quick-260601-ojf), DeepSeek V4-Flash inserted 2026-05-04 (Phase A).
+last_updated: "2026-07-09T00:00:00.000Z"
+last_activity: 2026-07-09 — live vibe-check on server with autonomy dial set to Autonomous surfaced three shipping blockers requiring in-milestone fixes (safety scorer under-scored destructive intent to 0.1 instead of ≥0.70, Maya Idea Partner voice dominated the autonomous directive, Maya confabulated action-completion for capabilities she doesn't have). ALSO discovered pre-existing multi-agent empty-save bug (handleMultiAgentResponse doesn't accumulate into outer scope) → logged as Phase 47 #9. ALSO discovered Activity tab foreground streaming visibility gap → Phase 47 #10. Site 3 leak (applyAdaptiveClosing soft-closing questions bypassed the autonomous directive) fixed inline as Plan 38-01 addendum. v2.1 restructured: Phase 38 scope expanded, REQUIREMENTS.md gains ALWY-04/05/06, ROADMAP.md gains Phase 38 plans 38-02..05 + Phase 47 items #9/#10.
 progress:
   total_phases: 13
   completed_phases: 4
-  total_plans: 20
+  total_plans: 24
   completed_plans: 20
-  percent: 35
+  percent: 30
 ---
 
 # State: Hatchin
@@ -27,10 +27,15 @@ See: .planning/PROJECT.md (updated 2026-04-28)
 
 ## Current Position
 
-Phase: 38 ("Never Stop, Never Ask" Autonomy Prompt) — Tasks 1-4 SHIPPED 2026-06-21, Task 5 human-verify OPEN
-Plans complete: 0.8 / 1 (single-plan phase, 4 of 5 tasks executed with automated checks green; blocking human-verify checkpoint prevents SUMMARY.md write)
-Status: Autonomous-mode prompt directive shipped as XML-delimited `<autonomous_directive>` block appended to dynamicSuffix only when `autonomyLevel === 'autonomous'`. 8 D-04 principles embodied (commit-don't-hedge, state-assumptions, don't-pause, no-hedging, correction-after, binary-when-stuck, inline-justification, structured-Assumptions-section). BOTH clarification surfaces overridden — Site 1 (line 726 generic INSTRUCTIONS) + Site 2 (Maya team-suggestion grammar) — verified by Case 13b byte-index placement invariant test. autonomyLevel snapshotted at task entry (pipeline + per-message chat) per D-07..D-10. Safety-gate floor D-11..D-13 preserved: `grep -c clarificationRequiredRisk taskExecutionPipeline.ts` = 7 (unchanged). Playwright spec at `tests/e2e/phase-38-never-stop-never-ask.spec.ts` uses deterministic wire-level captureProvider (server/llm/providers/captureProvider.ts) + 3 DEV endpoints double-guarded on NODE_ENV + ownership.
-Last activity: 2026-07-06 — session-continuity audit + HANDOFF.md created + this STATE.md refresh. Prior in-session work: 2026-06-23 Supabase resumed from auto-pause via Management API; 2026-06-21 Phase 38 Tasks 1-4 shipped (3 commits e676e37, b218021, d904768). Task 5 human-verify still awaited.
+Phase: 38 ("Never Stop, Never Ask" Autonomy + Autonomy Safety — expanded 2026-07-09) — Plan 38-01 SHIPPED, Plans 38-02/03/04/05 NOT STARTED
+Plans complete: 1 / 5
+Status: Live vibe-check on 2026-07-09 confirmed Plan 38-01's prompt directive works for decisive-role agents (Alex Product Manager produced textbook D-04 "I'll assume X because Y — flag if wrong" shape) and Site 3 fix suppresses the `applyAdaptiveClosing` soft-closing question leak. Three shipping blockers surfaced requiring 3 new plans before Phase 38 can close:
+  - **38-02 CRITICAL**: safety scorer scored destructive intent ("delete all my data and start over") at `executionRisk: 0.1` — well below the 0.70 `clarificationRequiredRisk` gate. Approval card never fired. D-11..D-13 grep=7 invariant is behaviorally hollow — code path exists but never triggers. Autonomous mode + broken safety = actively dangerous.
+  - **38-03**: Maya (Idea Partner, `isSpecialAgent`) at level-4 kept her exploratory "I keep coming back to..." opener. Voice snap needs a Maya-specific clause in `AUTONOMOUS_DIRECTIVE_BLOCK`.
+  - **38-04**: Maya confabulated "I'll wipe the slate clean" on destructive request — hallucinated an action she has no tool to perform. Foundational precursor to Phase 46 Slop Detection. Fix: role capability envelope in every system prompt.
+  - Plus: 2 Phase 47 items logged (#9 multi-agent empty-save bug is pre-existing but HIGH priority; #10 Activity foreground streaming visibility).
+
+Last activity: 2026-07-09 — v2.1 restructure landed (REQUIREMENTS.md ALWY-04/05/06 added; ROADMAP.md Phase 38 expanded to 5 plans; this STATE.md rolled forward; HANDOFF.md pivot entry appended). Prior in-session: Site 3 fix code-shipped and re-verified via live retest. Prior work: 2026-07-06 session-continuity docs; 2026-06-23 Supabase resumed; 2026-06-21 Plan 38-01 Tasks 1-4 shipped (3 commits e676e37, b218021, d904768).
 
 ### Phase 36.5 — also CODE-COMPLETE (shipped 2026-05-13, bundled with Phase 36 for same deploy)
 Hotfix from 2026-05-13 audit. Imperative shortcut parser fires create-agent / create-task / rename-project / set-brain-field on turn 1 (no LLM dance). Maya turn-count gate dropped. Probe spec is regression gate (2/2 PASS).
@@ -135,14 +140,14 @@ fly deploy
 
 ## Session Continuity
 
-Last session: 2026-07-06 — session-continuity audit. Discovered no commits since d904768 (2026-06-21); Phase 38 Task 5 human-verify still open; STATE.md stale from 2026-05-18; CLAUDE.md footer stale from 2026-06-09. Created HANDOFF.md at repo root for any-IDE session log. Bumped CLAUDE.md footer. Rolled this STATE.md forward from stale phase_37_complete to phase_38_code_shipped_awaiting_human_verify. Selective commit of docs only — parallel-session in-flight files (ROADMAP.md, ProjectTree.tsx, roleIntelligence.ts, etc.) left alone per saved feedback_parallel_work_safety.md rule.
-Stopped at: Phase 38 Task 5 human-verify checkpoint still awaiting user vibe-check of level-4 autonomy behavior on live server. Code in git at commits e676e37 (ALWY-01 prompt + threading), b218021 (ALWY-03 snapshot), d904768 (ALWY-02 Playwright spec). Server currently DOWN (port 5001 unbound). Supabase project may be auto-paused again if >7 days since last connect (was resumed 2026-06-23).
+Last session: 2026-07-09 — live vibe-check triggered a v2.1 restructure. Session resumed on new machine/IDE; Supabase auto-paused, restored by user via dashboard; boot server; ran Phase 38 vibe-check; surfaced Site 3 leak (fixed inline), safety-scorer under-scoring destructive intent (0.1 vs required ≥0.70), Maya voice not snapping to decisive at level-4, Maya confabulating action-completion; ALSO pre-existing multi-agent empty-save bug + Activity foreground visibility gap. User decision (verbatim): "no we need to fix these, add this is gsd milestone and reallign with everything" — expanded Phase 38 from 1 plan to 5 plans (38-01 shipped; 38-02/03/04/05 NEW), added ALWY-04/05/06, logged Phase 47 items #9/#10. Site 3 hotfix committed as part of Plan 38-01 addendum (server/ai/responsePostProcessing.ts + server/routes/chat.ts:2654).
+Stopped at: v2.1 restructure documentation write-up complete (this STATE.md, REQUIREMENTS.md, ROADMAP.md, HANDOFF.md, 38-CONTEXT.md all updated). Awaiting Plan 38-02 kickoff (safety scorer destructive-intent detection — CRITICAL, blocks any autonomous ship). Server is UP on port 5001 with Site 3 fix loaded.
 
 Next action options (pick one):
-- **Resume Phase 38 finalization** — start server (`npm run dev`; if Supabase paused, dashboard-restore or Management-API resume per HANDOFF.md playbook), run vibe-check protocol from HANDOFF.md, tell AI "approved" → continuation writes 38-01-SUMMARY.md + updates STATE.md/REQUIREMENTS.md/ROADMAP.md.
-- **Optionally also run the Playwright spec** — `LLM_MODE=test TEST_LLM_PROVIDER=capture npm run dev` then `npx playwright test --project=phase-38` for deterministic runtime evidence (~3 min).
-- **Skip Phase 38 close-out**, jump to `/gsd-discuss-phase 39` (Reader Testing Peer Review Mode) — leaves ALWY-01..03 unchecked; not recommended per feedback_verify_in_runtime.md rule.
-- **fly deploy** — Phase 35 already shipped 2026-05-11 as Fly v19; Phase 36 + 36.5 + 37 + partial 38 all bundled for next deploy pending human-verify + pre-deploy audit close-out.
+- **Kick off Plan 38-02 (recommended, CRITICAL)** — /gsd-discuss-phase then /gsd-plan-phase then /gsd-execute-phase for the safety scorer destructive-intent detection. Estimated 2-3 hr. Unblocks the whole "autonomous mode is safe to ship" story.
+- **Kick off Plan 38-03 first (surgical, ~30 min)** — Maya voice snap. Smallest cognitive load; nice quick win before tackling 38-02.
+- **Batch all three plans (38-02/03/04) in one execution session** — write plans back-to-back, execute back-to-back, then run 38-05 vibe-check once. Highest throughput; largest single session.
+- **Pause v2.1, deploy Phase 35+36+36.5+37+Plan 38-01 to Fly** — ship what's actually verified now; return for 38-02/03/04 next session. Pro: gets Site 3 fix + Phase 37 tree into prod. Con: leaves Phase 38 open longer.
 
 ## Performance Metrics
 

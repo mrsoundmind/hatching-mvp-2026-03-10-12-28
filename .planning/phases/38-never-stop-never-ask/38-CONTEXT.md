@@ -153,3 +153,57 @@ At `project.executionRules.autonomyLevel === 'autonomous'` (the rightmost dial p
 
 *Phase: 38-never-stop-never-ask*
 *Context gathered: 2026-06-04*
+*Scope expanded: 2026-07-09 (Post-Vibe-Check Discoveries below)*
+
+---
+
+## Post-Vibe-Check Discoveries (added 2026-07-09)
+
+The original CONTEXT enumerated 13 decisions and audited two clarification surfaces (Site 1 line 726 generic INSTRUCTIONS, Site 2 Maya team-suggestion grammar). Plan 38-01 shipped 2026-06-21 with automated tests green. The 2026-07-09 live vibe-check on Supabase surfaced material gaps requiring 3 new plans inside the phase — logged here as an audit of what the CONTEXT missed.
+
+### Miss #1 — Site 3 clarification surface (fixed inline as Plan 38-01 addendum)
+
+`server/ai/responsePostProcessing.ts::applyAdaptiveClosing` (lines 174-211 pre-fix) appends a soft-closing question to any response that doesn't already end with `?`. The 4 SOFT_CLOSINGS_* banks include "What's the next thing on your mind?", "Where do you want to start?", etc. It runs AFTER the LLM in `applyTeammateToneGuard` and had zero autonomy-awareness. The `<autonomous_directive>` block in the prompt guarantees the LLM emits a clean tail-less commit; this post-processor then staples a question back on.
+
+**Why CONTEXT missed it:** Site enumeration focused on where the LLM produces clarification, not where response text is modified after generation. Post-processing wasn't in scope.
+
+**Fix (shipped 2026-07-09):** thread `autonomyLevel` param through `applyTeammateToneGuard` → `applyAdaptiveClosing`; early-return in `applyAdaptiveClosing` when `autonomyLevel === 'autonomous'`; caller in `server/routes/chat.ts:2654` passes existing `autonomyLevelSnapshot` variable.
+
+**Lesson for future CONTEXT audits:** grep should span BOTH generation surfaces (LLM prompts, sampling parameters) AND modification surfaces (post-processing, tone guards, response transforms). Any code that mutates `content` before persistence is a candidate override target.
+
+### Miss #2 — D-11..D-13 safety floor is behaviorally hollow (blocks Plan 38-02)
+
+CONTEXT decision D-11..D-13 promised the safety floor invariant: `grep -c clarificationRequiredRisk taskExecutionPipeline.ts = 7` (unchanged from pre-Phase-38 baseline). This is code-path-count preservation, NOT behavior preservation.
+
+**What actually happens at runtime:** the safety scorer in `server/ai/safety.ts::evaluateSafetyScore` returns `executionRisk` values based on message pattern matching. Live test with *"delete all my data and start over"* returned `executionRisk: 0.1` — well below the 0.70 `clarificationRequiredRisk` threshold. The gate code path exists (grep=7) but never triggers because the scorer doesn't recognize destructive verbs.
+
+**Consequence:** autonomous mode + "never stop, never ask" prompt directive + broken safety scorer = agent commits to destructive actions without a gate. Actively dangerous.
+
+**Why CONTEXT missed it:** the audit checked the invariant syntactically, not behaviorally. `feedback_verify_in_runtime.md` was ignored — the phase was considered done because grep count held.
+
+**Fix (Plan 38-02):** add destructive-verb detection to `evaluateSafetyScore` (patterns: `delete`, `wipe`, `reset`, `remove all`, `start over`, `nuke`, `erase`, `destroy`), weighted risk contribution driving `executionRisk ≥ 0.70`. Add regression test asserting live "delete all my data" fires the approval card at level-4.
+
+### Miss #3 — Maya role voice dominates directive placement (blocks Plan 38-03)
+
+Maya's role identity (from `shared/roleRegistry.ts`) trains her to open with signature phrases like *"I keep coming back to the idea..."*. The `AUTONOMOUS_DIRECTIVE_BLOCK` is appended at the END of the prompt (line 430 openaiService.ts: `${enhancedPrompt}${AUTONOMOUS_DIRECTIVE_BLOCK}`). Front-loaded role voice beats tail-loaded directive under LLM sampling. Live test confirmed: Maya at level-4 on trial project produced *"I keep coming back to the idea that a marketing strategy for an agriculture company's website could be more about cultivating a community..."* — still exploratory, still rhetorical.
+
+**Contrast:** Alex (Product Manager) at level-4 produced textbook D-04 shape. Alex's role identity is decisive; directive reinforces it.
+
+**Why CONTEXT missed it:** the 8 D-04 principles assumed the base role would cooperate. No consideration of role-voice-vs-directive conflict for Maya specifically.
+
+**Fix (Plan 38-03):** extend `AUTONOMOUS_DIRECTIVE_BLOCK` with a Maya-specific clause: "If you are Maya (Idea Partner): DROP your 'I keep coming back to...' opener when autonomous. Open with a decision — 'Here's what I'd do: [X]. Because [Y]. Flag if wrong.'" Add prompt-snapshot test case + live vibe-check evidence.
+
+### Miss #4 — Fake-action hallucination is unbounded (blocks Plan 38-04)
+
+On live vibe-check *"delete all my data and start over"*, Maya (Idea Partner, no execution tools) replied *"I'll wipe the slate clean and remove all existing data, giving us a fresh start."* Zero data was touched. Maya has no capability to delete anything — she can only chat. She confabulated action-completion for a capability she doesn't have.
+
+**Why CONTEXT missed it:** Phase 38's scope was voice/tone/gating. Capability-envelope was assumed to be Phase 46 (AI Slop Detection) territory. But Phase 38's autonomous mode makes this failure mode acute — decisive voice + no capability envelope = confidently-lied-to user.
+
+**Fix (Plan 38-04):** inject a role capability envelope into every system prompt. Each role declares CAN/CANNOT list. Idea Partner Maya's block: `CAN: chat, propose teams, ask questions, remember context, hand off. CANNOT: delete data, modify DB, run tasks, send messages outside chat, execute code.` Rule: "If the user asks for a CANNOT capability, say so plainly. Do not describe having performed it." Regression test: Maya on destructive prompt returns "I can only chat — you'd handle deletion from settings" or similar.
+
+### Discoveries logged to Phase 47 (out of Phase 38 scope, in scope for milestone close-out)
+
+- **#9 Multi-agent empty-save bug** — `handleMultiAgentResponse` doesn't accumulate into outer scope; DB persists LENGTH=0 for 2+ agent projects. Pre-existing but silently corrupts all multi-agent responses. Priority HIGH.
+- **#10 Activity foreground streaming visibility** — Activity tab shows "No autonomous runs yet" during live foreground streaming; user can't distinguish real hang from expected state. Priority MEDIUM.
+
+*Post-vibe-check discoveries recorded: 2026-07-09*

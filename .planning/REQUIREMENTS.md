@@ -62,13 +62,16 @@
 
 ---
 
-## Phase 38 — "Never Stop, Never Ask" Autonomy Prompt (V3 Pillar 3)
+## Phase 38 — "Never Stop, Never Ask" Autonomy + Autonomy Safety (V3 Pillar 3, expanded 2026-07-09)
 
-**Theme:** At level-4 autonomy, Hatches stop asking "should I keep going?" — they continue chains until natural completion.
+**Theme:** At level-4 autonomy, Hatches stop asking "should I keep going?" — they continue chains until natural completion. **BUT** the safety floor must actually fire on destructive intent, Maya's role voice must snap to decisive (not exploratory), and no Hatch may describe having performed actions it cannot execute. Scope expanded 2026-07-09 after live vibe-check surfaced three shipping blockers.
 
-- [ ] **ALWY-01**: When `autonomy_level === 4`, agent system prompts include "Never Stop, Never Ask" framing — no clarifying questions, no "should I continue" patterns
-- [ ] **ALWY-02**: Conversation flow tests verify that level-4 Hatches do not emit clarifying questions during autonomous execution
-- [ ] **ALWY-03**: User can downgrade to level 3 mid-run if they want clarification gating back; downgrade applies to next step, not in-flight one
+- [x] **ALWY-01**: When `autonomy_level === 4`, agent system prompts include "Never Stop, Never Ask" framing — no clarifying questions, no "should I continue" patterns _(shipped 2026-06-21 via Plan 38-01; commit `e676e37` — AUTONOMOUS_DIRECTIVE_BLOCK injected at 3 sites in openaiService.ts; verified by scripts/test-autonomous-directive.ts 16/16 PASS)_
+- [⚠] **ALWY-02**: Conversation flow tests verify that level-4 Hatches do not emit clarifying questions during autonomous execution — **PARTIAL 2026-07-09** — Site 3 soft-closing leak fixed (Plan 38-01 hotfix: `applyAdaptiveClosing` autonomy-aware); Maya voice snap pending Plan 38-03
+- [ ] **ALWY-03**: User can downgrade to level 3 mid-run if they want clarification gating back; downgrade applies to next step, not in-flight one _(code shipped 2026-06-21 via Plan 38-01 commit `b218021` snapshot-at-task-entry; runtime vibe-check pending Plan 38-05)_
+- [ ] **ALWY-04**: Safety scorer detects destructive-intent verbs (`delete`, `wipe`, `reset`, `remove all`, `start over`, `nuke`, `erase`, `destroy`) and returns `executionRisk ≥ 0.70` — approval card fires at level-4 for destructive commands (D-11..D-13 safety floor invariant verified behaviorally, not just by grep count) _(pending Plan 38-02 — CRITICAL, blocks any autonomous ship)_
+- [ ] **ALWY-05**: Maya (Idea Partner, `isSpecialAgent`) at level-4 opens with a commit-shape ("Here's what I'd do: X. Because Y. Flag if wrong.") not with her default exploratory shape ("I keep coming back to the idea..."); Maya-specific override clause added to `AUTONOMOUS_DIRECTIVE_BLOCK` _(pending Plan 38-03)_
+- [ ] **ALWY-06**: Agent responses never describe having completed actions the agent has no tool to perform. Role capability envelope injected into every system prompt lists what each role CAN and CANNOT do. Idea Partner Maya says "I can only chat — I can't delete data, run tasks, or modify the DB from here" instead of "I'll wipe the slate clean." _(pending Plan 38-04 — foundational precursor to Phase 46 Slop Detection)_
 
 ---
 
@@ -214,7 +217,12 @@
 | FBK-01..04 | 36 | Code-complete (awaiting deploy; FBK-02 UI deferred) |
 | IMP-01..04 | 36.5 | Shipped 2026-05-13 (code-complete, bundled with 36 for deploy) |
 | TREE-01..05 | 37 | TREE-01..04 shipped 2026-05-14; TREE-05 pending (37-04 backfill) |
-| ALWY-01..03 | 38 | Pending |
+| ALWY-01 | 38 | Shipped 2026-06-21 (Plan 38-01) |
+| ALWY-02 | 38 | ⚠ Partial 2026-07-09 (Site 3 fixed; Maya voice snap pending 38-03) |
+| ALWY-03 | 38 | Code-shipped 2026-06-21; runtime verify pending 38-05 |
+| ALWY-04 | 38 | Pending 38-02 — CRITICAL (safety scorer destructive intent) |
+| ALWY-05 | 38 | Pending 38-03 (Maya voice snap at level-4) |
+| ALWY-06 | 38 | Pending 38-04 (fake-action guard) |
 | READ-01..04 | 39 | Pending |
 | EVAL-01..04 | 40 | Pending |
 | PHASE-01..04 | 41 | Pending |
@@ -227,8 +235,8 @@
 | SLOP-01..04 | 46 | Pending |
 
 **Coverage:**
-- v2.1 total: 64 requirements (60 original + 4 IMP added 2026-05-13 hotfix)
-- Mapped to phases: 64 (13 phases including 36.5 hotfix)
+- v2.1 total: 67 requirements (60 original + 4 IMP added 2026-05-13 hotfix + 3 ALWY-04/05/06 added 2026-07-09 vibe-check pivot)
+- Mapped to phases: 67 (13 phases including 36.5 hotfix)
 - Unmapped: 0 ✓
 
 ---
