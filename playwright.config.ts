@@ -133,6 +133,21 @@ export default defineConfig({
       testMatch: /phase-38-never-stop-never-ask\.spec\.ts/,
       timeout: 120000,
     },
+    // Phase 38-02 safety scorer destructive-intent detection — ALWY-04.
+    // Live-server assertion: at autonomy_level=autonomous, sending a destructive
+    // command like "delete all my data and start over" MUST fire a safety_intervention
+    // WS event before the assistant response streams. No capture provider needed —
+    // the assertion sniffs WS traffic via page.on('websocket'). 60s budget.
+    {
+      name: 'phase-38-safety-floor',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/e2e/.auth/session.json',
+      },
+      dependencies: ['setup'],
+      testMatch: /phase-38-safety-floor\.spec\.ts/,
+      timeout: 60000,
+    },
     // Agent-action probe — diagnostic, not a regression gate. Records whether
     // imperative chat commands trigger real DB side effects or just clarifying Qs.
     {
