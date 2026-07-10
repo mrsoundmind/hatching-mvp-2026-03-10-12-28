@@ -313,6 +313,13 @@ function buildProviderOrder(config: RuntimeConfig, priorError?: any): ProviderId
     return ['ollama-test', 'mock'];
   }
 
+  // Phase 38 (ALWY-02, hardened in 38-03) — capture must be selectable via
+  // buildProviderOrder or streamChatWithRuntimeFallback falls through to 'mock'
+  // and never touches the capture buffer, silently breaking phase-38 Playwright.
+  if (config.provider === 'capture') {
+    return ['capture', 'mock'];
+  }
+
   return ['mock'];
 }
 

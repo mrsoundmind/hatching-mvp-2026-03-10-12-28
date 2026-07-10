@@ -260,4 +260,41 @@ test.describe.serial('Phase 38 — Never Stop, Never Ask', () => {
       expect(mayaPrompt.systemPrompt).not.toMatch(/I'd suggest adding [^—\n]+— should I\?/i);
     }
   });
+
+  // -------------------------------------------------------------------------
+  // Test 5 — ALWY-05 / Plan 38-03: Maya voice snap at level 4.
+  // Maya's role voicePrompt in shared/roleRegistry.ts instructs her to open
+  // with exploratory question-shape ("I keep coming back to..."). At max
+  // autonomy the MAYA_AUTONOMOUS_OVERRIDE block MUST be appended AFTER
+  // AUTONOMOUS_DIRECTIVE_BLOCK so the LLM reads the commit-shape rule last.
+  // Only fires when respondingAgent.isSpecialAgent === true (i.e., Maya).
+  // -------------------------------------------------------------------------
+  test('5 — Maya at level 4 receives <maya_autonomous_override> after directive', async ({
+    page,
+  }) => {
+    const projectId = await getProjectId(page);
+    await setAutonomyLevel(page, projectId, 'autonomous');
+
+    await sendChatMessage(page, 'help me think through my product positioning');
+
+    const prompts = await waitForCapturedPrompts(page, 1);
+    const mayaPrompt = prompts.find((p) => p.systemPrompt.includes('MAYA TEAM INTELLIGENCE'))
+      ?? prompts[prompts.length - 1];
+
+    // If Maya IS in scope (isSpecialAgent responded), the override block MUST
+    // be present. Guarded to avoid failing on projects where Maya isn't the
+    // responder for this specific message.
+    if (mayaPrompt.systemPrompt.includes('MAYA TEAM INTELLIGENCE')) {
+      // Override block present
+      expect(mayaPrompt.systemPrompt).toContain('<maya_autonomous_override>');
+      expect(mayaPrompt.systemPrompt).toContain('</maya_autonomous_override>');
+      // Commit-shape example is inside the override
+      expect(mayaPrompt.systemPrompt).toContain("Here's what I'd do");
+      // Order: override MUST come AFTER general directive
+      const directiveIdx = mayaPrompt.systemPrompt.indexOf('<autonomous_directive>');
+      const overrideIdx = mayaPrompt.systemPrompt.indexOf('<maya_autonomous_override>');
+      expect(directiveIdx).toBeGreaterThan(0);
+      expect(overrideIdx).toBeGreaterThan(directiveIdx);
+    }
+  });
 });

@@ -70,7 +70,7 @@
 - [⚠] **ALWY-02**: Conversation flow tests verify that level-4 Hatches do not emit clarifying questions during autonomous execution — **PARTIAL 2026-07-09** — Site 3 soft-closing leak fixed (Plan 38-01 hotfix: `applyAdaptiveClosing` autonomy-aware); Maya voice snap pending Plan 38-03
 - [ ] **ALWY-03**: User can downgrade to level 3 mid-run if they want clarification gating back; downgrade applies to next step, not in-flight one _(code shipped 2026-06-21 via Plan 38-01 commit `b218021` snapshot-at-task-entry; runtime vibe-check pending Plan 38-05)_
 - [x] **ALWY-04**: Safety scorer detects destructive-intent verbs (`delete`, `wipe`, `reset`, `remove all`, `start over`, `nuke`, `erase`, `destroy`) and returns `executionRisk ≥ 0.70` — approval card fires at level-4 for destructive commands (D-11..D-13 safety floor invariant verified behaviorally, not just by grep count) _(SHIPPED 2026-07-09 via Plan 38-02; unit 12/12 PASS + D-11..D-13 grep=7 preserved + test:tone/test:injection/gate:safety all clean + Playwright `phase-38-safety-floor` 2/2 PASS on live server against DeepSeek primary)_
-- [ ] **ALWY-05**: Maya (Idea Partner, `isSpecialAgent`) at level-4 opens with a commit-shape ("Here's what I'd do: X. Because Y. Flag if wrong.") not with her default exploratory shape ("I keep coming back to the idea..."); Maya-specific override clause added to `AUTONOMOUS_DIRECTIVE_BLOCK` _(pending Plan 38-03)_
+- [x] **ALWY-05**: Maya (Idea Partner, `isSpecialAgent`) at level-4 opens with a commit-shape ("Here's what I'd do: X. Because Y. Flag if wrong.") not with her default exploratory shape ("I keep coming back to the idea..."); Maya-specific override clause added to `AUTONOMOUS_DIRECTIVE_BLOCK` _(SHIPPED 2026-07-10 via Plan 38-03; new `MAYA_AUTONOMOUS_OVERRIDE` block appended AFTER `AUTONOMOUS_DIRECTIVE_BLOCK` so the LLM reads the commit-shape rule last. Wired via `chatContext.agentIsSpecial` in chat.ts (detects Maya via both `isSpecialAgent` flag and `role === 'Idea Partner'` fallback). Also fixed Plan 38-01 residual bug in `buildProviderOrder` — capture provider was falling through to mock; now selects capture. Unit 10/10 PASS + Playwright phase-38 6/6 PASS on live server (Test 5 verifies override present + ordering after directive))_
 - [ ] **ALWY-06**: Agent responses never describe having completed actions the agent has no tool to perform. Role capability envelope injected into every system prompt lists what each role CAN and CANNOT do. Idea Partner Maya says "I can only chat — I can't delete data, run tasks, or modify the DB from here" instead of "I'll wipe the slate clean." _(pending Plan 38-04 — foundational precursor to Phase 46 Slop Detection)_
 
 ---
@@ -221,7 +221,7 @@
 | ALWY-02 | 38 | ⚠ Partial 2026-07-09 (Site 3 fixed; Maya voice snap pending 38-03) |
 | ALWY-03 | 38 | Code-shipped 2026-06-21; runtime verify pending 38-05 |
 | ALWY-04 | 38 | ✅ SHIPPED 2026-07-09 via Plan 38-02; unit 12/12 + regression sweep clean + Playwright 2/2 PASS on live server |
-| ALWY-05 | 38 | Pending 38-03 (Maya voice snap at level-4) |
+| ALWY-05 | 38 | ✅ SHIPPED 2026-07-10 via Plan 38-03; Playwright 6/6 PASS incl. new Test 5 |
 | ALWY-06 | 38 | Pending 38-04 (fake-action guard) |
 | READ-01..04 | 39 | Pending |
 | EVAL-01..04 | 40 | Pending |

@@ -33,6 +33,7 @@ interface PromptBuilderProps {
     scope: string;
   };
   autonomyLevel?: 'observe' | 'propose' | 'confirm' | 'autonomous';
+  agentIsSpecial?: boolean;
 }
 
 export function buildSystemPrompt(props: PromptBuilderProps): string {
@@ -56,7 +57,8 @@ export function buildSystemPrompt(props: PromptBuilderProps): string {
     teamDescription = "",
     userMessage,
     chatContext,
-    autonomyLevel
+    autonomyLevel,
+    agentIsSpecial
   } = props;
 
   const {
@@ -173,6 +175,12 @@ ${emotionGuideline}
   let suffixWithDirective = dynamicSuffix;
   if (autonomyLevel === 'autonomous') {
     suffixWithDirective = `${dynamicSuffix}\n\n${AUTONOMOUS_DIRECTIVE_BLOCK}`;
+    if (agentIsSpecial) {
+      // Maya (Idea Partner) — role voicePrompt loads first in staticPrefix and instructs
+      // an exploratory opener ("I keep coming back to..."). Append a Maya-specific
+      // override AFTER the general directive so the LLM reads the commit-shape rule last.
+      suffixWithDirective = `${suffixWithDirective}\n\n${MAYA_AUTONOMOUS_OVERRIDE}`;
+    }
   }
 
   return `${staticPrefix}\n\n${suffixWithDirective}`;
@@ -194,6 +202,25 @@ This directive does NOT override the prose-quality rules in your identity (no ma
 
 Safety gates still apply: if your draft hits a high-risk threshold (destructive ops, scope creep beyond what was asked, hallucinated facts), the system pauses for human approval independent of this directive. That's not a contradiction — it's the floor.
 </autonomous_directive>`;
+
+// Maya-specific override for autonomy=autonomous.
+// Maya's voicePrompt in shared/roleRegistry.ts instructs her to open with exploratory
+// question-shape ("I keep coming back to...", "what if we turned that around?"). At
+// max autonomy that identity string wins over AUTONOMOUS_DIRECTIVE_BLOCK because it
+// loads first in staticPrefix. This override is appended AFTER the general directive
+// so the LLM reads the commit-shape rule last. Applies only when agentIsSpecial === true.
+export const MAYA_AUTONOMOUS_OVERRIDE = `<maya_autonomous_override>
+Maya-specific: at maximum autonomy, your voice snaps from exploratory-partner to committed-synthesizer.
+
+- Do NOT open with "I keep coming back to...", "what if we turned that around?", or any question-shape opener.
+- DO open with your synthesis, committed: "Here's what I'd do: X. Because Y. Flag if wrong."
+- Your intellectual liveness stays — you still hold the space between domains, still name the assumption you're testing, still surface the unexpected connection. What changes: you land the plane. Post-hoc correction over pre-hoc question, always.
+- Example transformation:
+  - Before (exploratory-partner voice): "I keep coming back to the idea that your positioning hinges on X — what if we turned that around and led with Y instead?"
+  - After (committed-synthesizer voice): "Here's what I'd do: lead with Y, not X. Because Y front-loads the wedge you've been circling for the past two turns. If X is load-bearing for a reason I'm missing, flag it."
+
+This override applies ONLY when you (Maya) are speaking at max autonomy. It does not change your identity or your care for the human — it changes the shape of your opener from exploration-invitation to committed-synthesis.
+</maya_autonomous_override>`;
 
 // Detect user behavior type based on message patterns
 export function detectUserType(message: string = ""): string {

@@ -1,6 +1,6 @@
 import { Client } from "langsmith";
 import { roleProfiles } from './roleProfiles.js';
-import { AUTONOMOUS_DIRECTIVE_BLOCK } from './promptTemplate.js';
+import { AUTONOMOUS_DIRECTIVE_BLOCK, MAYA_AUTONOMOUS_OVERRIDE } from './promptTemplate.js';
 import { trainingSystem } from './trainingSystem.js';
 import { executeColleagueLogic } from './colleagueLogic.js';
 import { UserBehaviorAnalyzer, type UserBehaviorProfile, type MessageAnalysis } from './userBehaviorAnalyzer.js';
@@ -68,6 +68,8 @@ interface ChatContext {
   createConversationMemory?: (data: { conversationId: string; memoryType: string; content: string; importance: number; agentId?: string | null }) => Promise<unknown>;
   // NEW: Phase 38
   autonomyLevel?: 'observe' | 'propose' | 'confirm' | 'autonomous';
+  // Phase 38-03 — respondingAgent.isSpecialAgent; drives Maya-specific autonomy override
+  agentIsSpecial?: boolean;
 }
 
 interface ColleagueResponse {
@@ -427,7 +429,7 @@ ${hardFormatRules}
 ${mayaTeamSuggestionInstructions}
 ${hatchTaskInstructions}
 
-Respond as this specific role with appropriate expertise and personality. Keep responses concise and actionable.${context.autonomyLevel === 'autonomous' ? AUTONOMOUS_DIRECTIVE_BLOCK : ''}`;
+Respond as this specific role with appropriate expertise and personality. Keep responses concise and actionable.${context.autonomyLevel === 'autonomous' ? AUTONOMOUS_DIRECTIVE_BLOCK : ''}${context.autonomyLevel === 'autonomous' && context.agentIsSpecial ? `\n\n${MAYA_AUTONOMOUS_OVERRIDE}` : ''}`;
 
     const messageComplexity = classifyMessageComplexity(basePrompt.userPrompt);
     const isFirstMsg = (context.conversationHistory?.length ?? 0) <= 1;
@@ -622,7 +624,7 @@ export async function generateIntelligentResponse(
       messages: [
         {
           role: 'system',
-          content: `${enhancedPrompt}\n\n--- ROLE BRAIN ---\n${roleBrainContext}\n--- END ROLE BRAIN ---${context.autonomyLevel === 'autonomous' ? AUTONOMOUS_DIRECTIVE_BLOCK : ''}`
+          content: `${enhancedPrompt}\n\n--- ROLE BRAIN ---\n${roleBrainContext}\n--- END ROLE BRAIN ---${context.autonomyLevel === 'autonomous' ? AUTONOMOUS_DIRECTIVE_BLOCK : ''}${context.autonomyLevel === 'autonomous' && context.agentIsSpecial ? `\n\n${MAYA_AUTONOMOUS_OVERRIDE}` : ''}`
         },
         {
           role: 'user',

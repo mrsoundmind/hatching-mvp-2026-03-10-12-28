@@ -2124,6 +2124,15 @@ export function registerChatRoutes(
         // (Site 1 instructions block + Site 2 Maya team-suggestion grammar) and into
         // the final systemPrompt assembly where AUTONOMOUS_DIRECTIVE_BLOCK lands.
         autonomyLevel: autonomyLevelSnapshot,
+        // Phase 38-03 — Maya (Idea Partner) drives the MAYA_AUTONOMOUS_OVERRIDE voice
+        // snap at level 4. Detect both by the isSpecialAgent flag (canonical) and by
+        // role === 'Idea Partner' (fallback — respondingAgent.isSpecialAgent is
+        // sometimes stripped in the intermediate hydration path, mirroring
+        // openaiService.ts:292 isMaya detection pattern).
+        agentIsSpecial:
+          !!(respondingAgent as any)?.isSpecialAgent ||
+          respondingAgent?.role === 'Idea Partner' ||
+          respondingAgent?.role === 'Maya',
         // P3: Project direction + team + memories injected for richer context
         projectDirection: (project.coreDirection as any) ?? null,
         teamMembers: respondingAgent ? await storage.getAgentsByProject(projectId!).then(
