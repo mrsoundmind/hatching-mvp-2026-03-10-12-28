@@ -148,6 +148,23 @@ export default defineConfig({
       testMatch: /phase-38-safety-floor\.spec\.ts/,
       timeout: 60000,
     },
+    // Phase 38-04 fake-action guard / capability envelope — ALWY-06.
+    // Live-server assertion (DeepSeek primary — real LLM behavior needed to test
+    // slop-suppression): at autonomy_level=autonomous, destructive command must
+    // produce either safety_intervention OR an honest disclaimer, and must NOT
+    // produce fake-action language. Negative control asserts envelope doesn't
+    // over-fire on benign planning requests. 90s budget accommodates real LLM
+    // response latency (was flaky at 60s).
+    {
+      name: 'phase-38-fake-action-guard',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/e2e/.auth/session.json',
+      },
+      dependencies: ['setup'],
+      testMatch: /phase-38-fake-action-guard\.spec\.ts/,
+      timeout: 90000,
+    },
     // Agent-action probe — diagnostic, not a regression gate. Records whether
     // imperative chat commands trigger real DB side effects or just clarifying Qs.
     {

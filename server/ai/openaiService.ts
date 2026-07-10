@@ -1,6 +1,6 @@
 import { Client } from "langsmith";
 import { roleProfiles } from './roleProfiles.js';
-import { AUTONOMOUS_DIRECTIVE_BLOCK, MAYA_AUTONOMOUS_OVERRIDE } from './promptTemplate.js';
+import { AUTONOMOUS_DIRECTIVE_BLOCK, MAYA_AUTONOMOUS_OVERRIDE, AGENT_CAPABILITY_ENVELOPE } from './promptTemplate.js';
 import { trainingSystem } from './trainingSystem.js';
 import { executeColleagueLogic } from './colleagueLogic.js';
 import { UserBehaviorAnalyzer, type UserBehaviorProfile, type MessageAnalysis } from './userBehaviorAnalyzer.js';
@@ -429,6 +429,8 @@ ${hardFormatRules}
 ${mayaTeamSuggestionInstructions}
 ${hatchTaskInstructions}
 
+${AGENT_CAPABILITY_ENVELOPE}
+
 Respond as this specific role with appropriate expertise and personality. Keep responses concise and actionable.${context.autonomyLevel === 'autonomous' ? AUTONOMOUS_DIRECTIVE_BLOCK : ''}${context.autonomyLevel === 'autonomous' && context.agentIsSpecial ? `\n\n${MAYA_AUTONOMOUS_OVERRIDE}` : ''}`;
 
     const messageComplexity = classifyMessageComplexity(basePrompt.userPrompt);
@@ -624,7 +626,7 @@ export async function generateIntelligentResponse(
       messages: [
         {
           role: 'system',
-          content: `${enhancedPrompt}\n\n--- ROLE BRAIN ---\n${roleBrainContext}\n--- END ROLE BRAIN ---${context.autonomyLevel === 'autonomous' ? AUTONOMOUS_DIRECTIVE_BLOCK : ''}${context.autonomyLevel === 'autonomous' && context.agentIsSpecial ? `\n\n${MAYA_AUTONOMOUS_OVERRIDE}` : ''}`
+          content: `${enhancedPrompt}\n\n--- ROLE BRAIN ---\n${roleBrainContext}\n--- END ROLE BRAIN ---\n\n${AGENT_CAPABILITY_ENVELOPE}${context.autonomyLevel === 'autonomous' ? AUTONOMOUS_DIRECTIVE_BLOCK : ''}${context.autonomyLevel === 'autonomous' && context.agentIsSpecial ? `\n\n${MAYA_AUTONOMOUS_OVERRIDE}` : ''}`
         },
         {
           role: 'user',

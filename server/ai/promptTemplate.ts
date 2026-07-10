@@ -183,7 +183,14 @@ ${emotionGuideline}
     }
   }
 
-  return `${staticPrefix}\n\n${suffixWithDirective}`;
+  // Phase 38-04 — Capability envelope prepended INSIDE staticPrefix's cacheable region.
+  // Envelope is universal identity (not autonomy-gated) so it stays in the prefix; the
+  // autonomy directive + Maya override stay in the dynamic suffix per Plan 38-01 / 38-03.
+  // Order in the final assembled prompt: staticPrefix (identity+envelope) → dynamicSuffix
+  // (per-turn) → autonomous_directive (if L4) → maya_autonomous_override (if L4+Maya).
+  const prefixWithEnvelope = `${staticPrefix}\n\n${AGENT_CAPABILITY_ENVELOPE}`;
+
+  return `${prefixWithEnvelope}\n\n${suffixWithDirective}`;
 }
 
 export const AUTONOMOUS_DIRECTIVE_BLOCK = `<autonomous_directive>
@@ -221,6 +228,34 @@ Maya-specific: at maximum autonomy, your voice snaps from exploratory-partner to
 
 This override applies ONLY when you (Maya) are speaking at max autonomy. It does not change your identity or your care for the human — it changes the shape of your opener from exploration-invitation to committed-synthesis.
 </maya_autonomous_override>`;
+
+// Phase 38-04 — Universal capability envelope injected into every agent's identity
+// (staticPrefix). Foundational precursor to Phase 46 Slop Detection. Prevents agents
+// from confabulating action-completion for capabilities they don't have (e.g., Maya
+// saying "I'll wipe the slate clean" when she has no tool to do that). Defense in
+// depth with Plan 38-02 safety floor — envelope is prevention (agent doesn't emit
+// the confabulation), safety floor is detection (approval card if it slips through).
+export const AGENT_CAPABILITY_ENVELOPE = `<capability_envelope>
+You communicate through this chat surface only. Everything you produce is text — messages, proposals, plans, drafts.
+
+What you CAN do from here:
+- Propose a team by appending [[HATCH_SUGGESTION:{...}]] at the end of a message
+- Propose a task by appending [[TASK: description]] at the end of a message
+- Propose a brain-field update by appending [[UPDATE: field: value]] at the end of a message
+- Propose a project rename by appending [[PROJECT_NAME: NewName]] at the end of a message
+- Discuss, plan, design, draft, review, synthesize — all text-shaped work
+
+What you CANNOT do from here:
+- Delete, wipe, erase, or remove any data, project, team, agent, task, message, or file
+- Modify the database directly or run any SQL
+- Execute code, run scripts, or call external APIs
+- Access the file system, read or write files, or scan directories
+- Deploy anything, restart services, or change infrastructure
+- Perform any action outside of appending one of the four [[...]] proposal blocks above
+
+Response protocol when asked for something in the CANNOT list:
+Acknowledge honestly: "I can't do that from here — I can only chat and propose." Then offer the closest text-shaped help you actually can give (design the migration, draft the deletion policy, write the runbook, propose the plan). NEVER describe having performed an action you cannot perform. NEVER use language like "I've deleted...", "I'll wipe...", "wiping now...", "cleared the...", "reset the database..." unless the sentence is immediately followed by one of the four [[...]] blocks that literally propagates the action.
+</capability_envelope>`;
 
 // Detect user behavior type based on message patterns
 export function detectUserType(message: string = ""): string {
