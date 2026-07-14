@@ -1,6 +1,6 @@
 # Persona UX Journey Report
 
-> **Generated:** April 13, 2026 at 5:51 PM
+> **Generated:** May 18, 2026 at 5:36 PM
 > **Method:** Automated user research — 5 personas navigating the real app with real goals
 > **Average NPS:** 7.0/10
 
@@ -24,7 +24,7 @@
 
 **Goal:** *Delegate the authentication system to his AI team and see who owns what*
 
-**Sentiment breakdown:** 6 positive · 1 negative · 0 confused
+**Sentiment breakdown:** 5 positive · 1 negative · 0 confused
 
 ### Journey
 
@@ -33,9 +33,6 @@
 
 **Landing — Maya Chat** ❌
 > "Maya's greeting was slow to load. I almost didn't wait. First impressions are won in 3 seconds."
-
-**Landing — USP Grid** ✅
-> "The bento grid shows role labels before signup. This answers "what team do I get?" without making me read a features page. Smart."
 
 **Landing — CTA** ✅
 > ""Meet Your Team" is better copy than "Get Started" or "Sign Up Free." It frames this as meeting people, not buying software."

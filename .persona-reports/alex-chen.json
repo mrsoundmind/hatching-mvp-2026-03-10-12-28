@@ -15,11 +15,6 @@
       "sentiment": "negative"
     },
     {
-      "section": "Landing — USP Grid",
-      "quote": "The bento grid shows role labels before signup. This answers \"what team do I get?\" without making me read a features page. Smart.",
-      "sentiment": "positive"
-    },
-    {
       "section": "Landing — CTA",
       "quote": "\"Meet Your Team\" is better copy than \"Get Started\" or \"Sign Up Free.\" It frames this as meeting people, not buying software.",
       "sentiment": "positive"
