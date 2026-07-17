@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { evaluateSafetyScore, AUTONOMOUS_SAFETY_THRESHOLDS } from '../../ai/safety.js';
-import { getJobQueue } from './jobQueue.js';
+import { getJobQueue, QUEUE_TASK_EXECUTION } from './jobQueue.js';
 import { BUDGETS, getTierBudgets } from '../config/policies.js';
 import { reserveBudgetSlot, releaseBudgetSlot } from './budgetLedger.js';
 import { logAutonomyEvent } from '../events/eventLogger.js';
@@ -908,7 +908,13 @@ export async function startTaskWorker(deps: {
 }): Promise<void> {
   const boss = await getJobQueue();
   if (!boss) return;
-  await boss.work('autonomous_task_execution', async (job) => {
-    await handleTaskJob(job as any, deps);
+  // pg-boss v10 delivers an ARRAY of jobs to the work handler (batch semantics), a breaking change
+  // from v9's single-job callback. Iterate so each job's `.data` reaches handleTaskJob; passing the
+  // array straight through left `job.data` undefined. This handler had never actually run while the
+  // queue was dead (#95), so the incompatibility stayed hidden until createQueue revived the path.
+  await boss.work(QUEUE_TASK_EXECUTION, async (jobs) => {
+    for (const job of jobs) {
+      await handleTaskJob(job as any, deps);
+    }
   });
 }

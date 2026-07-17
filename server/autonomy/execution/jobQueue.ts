@@ -1,6 +1,14 @@
 import PgBoss from 'pg-boss';
 import { FEATURE_FLAGS } from '../config/policies.js';
 
+/**
+ * Canonical pg-boss queue name for autonomous task execution. Single source of truth shared by
+ * createQueue (here), send (queueTaskExecution below), and work (taskExecutionPipeline.startTaskWorker).
+ * A mismatch between any two silently breaks execution: send/work no-op against a queue that does not
+ * exist. Keeping one constant removes that failure mode.
+ */
+export const QUEUE_TASK_EXECUTION = 'autonomous_task_execution';
+
 let _boss: PgBoss | null = null;
 
 /**
@@ -25,6 +33,15 @@ export async function getJobQueue(): Promise<PgBoss | null> {
     console.error('[Hatchin][JobQueue] pg-boss error (non-fatal):', err);
   });
   await _boss.start();
+
+  // pg-boss v10 requires an explicit createQueue() before send()/work() — a breaking change from v9,
+  // which auto-created queues on first use. Without this, boss.send() silently no-ops (its INSERT joins
+  // the queue table, which yields zero rows for a non-existent queue) so the worker never receives jobs
+  // and the "Team is working…" banner never clears. create_queue() is ON CONFLICT DO NOTHING, so this is
+  // idempotent and safe on every boot. Created in the singleton factory so the queue exists for ALL
+  // producers (chat trigger, backgroundRunner, handoff), not just the worker boot path.
+  await _boss.createQueue(QUEUE_TASK_EXECUTION);
+
   return _boss;
 }
 
@@ -46,7 +63,7 @@ export async function queueTaskExecution(data: {
     return null;
   }
 
-  const jobId = await boss.send('autonomous_task_execution', data, {
+  const jobId = await boss.send(QUEUE_TASK_EXECUTION, data, {
     retryLimit: 3,
     retryDelay: 30,
     expireInMinutes: 30,
