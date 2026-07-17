@@ -1341,9 +1341,12 @@ export function registerChatRoutes(
         if (!currentProject) throw new Error('project not found');
         const currentBrain = (currentProject.brain as any) || {};
         let updates: Partial<Project> = {};
-        if (intent.field === 'coreDirection') {
-          // Map "audience"-style intent into the JSONB `whoFor` slot; everything else
-          // lands on `whatBuilding` so the value survives in projects.coreDirection.
+        if (intent.field === 'coreDirection' || intent.field === 'goals') {
+          // #158 fix: a "goal" is part of the project's direction, so route it to the VISIBLE
+          // coreDirection (whatBuilding) too — previously "set the project goal" landed on
+          // project.brain.goals and coreDirection stayed {} so the Brain UI showed nothing.
+          // Map "audience"-style intent into the JSONB `whoFor` slot; everything else lands on
+          // `whatBuilding` so the value survives in projects.coreDirection.
           const existingDirection = (currentProject.coreDirection as any) || {};
           const isAudienceish = /audience|customer|user|buyer|reader|founder/i.test(intent.value);
           const newDirection = isAudienceish
@@ -2146,6 +2149,8 @@ export function registerChatRoutes(
           respondingAgent?.role === 'Maya',
         // P3: Project direction + team + memories injected for richer context
         projectDirection: (project.coreDirection as any) ?? null,
+        // Wave 3 (#79) — inject uploaded brain documents so agents can actually reference them
+        brainDocuments: ((project.brain as any)?.documents as Array<{ title?: string; content?: string; type?: string }>) ?? null,
         teamMembers: respondingAgent ? await storage.getAgentsByProject(projectId!).then(
           (agents: any[]) => agents.filter((a: any) => !a.isSpecialAgent).map((a: any) => ({ name: a.name, role: a.role }))
         ).catch(() => []) : [],
