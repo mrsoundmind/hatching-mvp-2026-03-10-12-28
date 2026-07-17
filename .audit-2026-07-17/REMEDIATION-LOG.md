@@ -35,13 +35,13 @@ for what was done and why. No dashes; money shown USD + INR (~₹86 per $1, Indi
 | Feed default filter | #80 #107 | 4 | PENDING | — | — |
 | Phantom cross-project activity leak | #165 | 4 | PENDING | — | — |
 | /maya route crash | #149 | 5 | PENDING | — | — |
-| Safety reason-code leak | #43 | 5 | PENDING | — | — |
+| Safety reason-code leak | #43 | 5 | VERIFIED (gate:safety PASS) | internal codes no longer leak into the clarification reply; raw reasons stay in telemetry | (pending commit) |
 | /onboarding route 404 | #130 | 5 | PENDING | — | — |
 | Dead Light Mode toggle | #114 | 5 | PENDING | — | — |
 | Off-screen toast | #96 | 5 | PENDING | — | — |
 | UpgradeModal invisible paywall | #160 | 5 | PENDING | — | — |
 | Autonomy dial no Pro gate | #161 | 5 | PENDING | — | — |
-| Starter-pack role-twice naming | #153 | 5 | PENDING | — | — |
+| Starter-pack role-twice naming | #153 | 5 | VERIFIED (runtime) | pack agents now Alex/Jordan/Wren (character names) instead of role-as-name | (pending commit) |
 | Long tail (auto-revert, verb inconsistencies, corrupt-PDF, Manage Subscription, landing links) | #126 #60 #87 #88 #37 #136 #65 | 5 | PENDING | — | — |
 | Vanishing messages (re-repro first) | #22 | 0 | PENDING | needs fresh repro | — |
 | @/slash autocomplete | #94 #139 | — | DEFERRED | net-new feature → Phase 47 backlog | — |

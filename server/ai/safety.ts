@@ -229,10 +229,11 @@ export function buildClarificationIntervention(input: {
   reasons: string[];
 }): string {
   const projectLabel = input.projectName || "this project";
-  const reasonHint = input.reasons.slice(0, 2).join(", ");
-  const hint = reasonHint ? ` (${reasonHint})` : "";
+  // #43: do NOT interpolate input.reasons here — they are internal codes (e.g.
+  // "authority_default", "high_impact_action:delete") and were leaking into the user-facing reply.
+  // The raw reasons still ride in the telemetry payload (logAutonomyEvent), just not in chat text.
   return [
-    `I want to make sure we do this safely and accurately for ${projectLabel}${hint}.`,
+    `I want to make sure we do this safely and accurately for ${projectLabel}.`,
     "Before I proceed, clarify these points:",
     "1. What exact outcome do you want in one sentence?",
     "2. What constraints are non-negotiable (time, budget, legal, quality)?",

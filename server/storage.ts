@@ -1,5 +1,12 @@
 import { type User, type InsertUser, type Project, type InsertProject, type Team, type InsertTeam, type Agent, type InsertAgent, type Conversation, type InsertConversation, type Message, type InsertMessage, type MessageReaction, type InsertMessageReaction, type TypingIndicator, type InsertTypingIndicator, type Task, type InsertTask, type UsageDailySummary, type Deliverable, type InsertDeliverable, type DeliverableVersion, type InsertDeliverableVersion, type DeliverablePackage, type InsertDeliverablePackage, type AutonomyRun, type InsertAutonomyRun, type AutonomyRunStep, type InsertAutonomyRunStep } from "@shared/schema";
 import { starterPacksByCategory, allHatchTemplates } from "@shared/templates";
+import { ROLE_DEFINITIONS } from "@shared/roleRegistry";
+
+// #153: starter-pack templates use role-as-name (name === role), so pack agents showed the role
+// twice ("Product Manager" / "Product Manager"). Resolve the character name (Alex, Coda…) from the
+// role registry the same way the idea-path AddHatch flow does; fall back to the template name.
+const CHARACTER_NAME_BY_ROLE = new Map(ROLE_DEFINITIONS.map((r) => [r.role, r.characterName]));
+const packAgentName = (role: string, fallback: string): string => CHARACTER_NAME_BY_ROLE.get(role) || fallback;
 import { parseConversationId } from "@shared/conversationId";
 import { randomUUID } from "crypto";
 
@@ -918,7 +925,7 @@ export class MemStorage implements IStorage {
           const agent: Agent = {
             id: randomUUID(),
             userId: project.userId,
-            name: hatchTemplate.name,
+            name: packAgentName(hatchTemplate.role, hatchTemplate.name),
             role: hatchTemplate.role,
             color: hatchTemplate.color,
             teamId: team.id,
@@ -927,7 +934,7 @@ export class MemStorage implements IStorage {
               traits: hatchTemplate.skills?.slice(0, 3) || [],
               communicationStyle: hatchTemplate.description,
               expertise: hatchTemplate.skills || [],
-              welcomeMessage: `Hi! I'm ${hatchTemplate.name}, your ${hatchTemplate.role}. ${hatchTemplate.description}`
+              welcomeMessage: `Hi! I'm ${packAgentName(hatchTemplate.role, hatchTemplate.name)}, your ${hatchTemplate.role}. ${hatchTemplate.description}`
             },
             isSpecialAgent: false,
           };
@@ -2076,7 +2083,7 @@ export class DatabaseStorage implements IStorage {
         const [team] = await db.insert(schema.teams).values({ userId: project.userId, name: teamData[tKey].name, emoji: teamData[tKey].emoji, projectId, isExpanded: true }).returning();
         teamMap[tKey] = team.id;
       }
-      await db.insert(schema.agents).values({ userId: project.userId, name: (tpl as any).name, role: (tpl as any).role, color: (tpl as any).color, teamId: teamMap[tKey], projectId, isSpecialAgent: false, personality: { traits: (tpl as any).skills?.slice(0, 3) || [], communicationStyle: (tpl as any).description, expertise: (tpl as any).skills || [], welcomeMessage: `Hi! I'm ${(tpl as any).name}, your ${(tpl as any).role}.` } });
+      await db.insert(schema.agents).values({ userId: project.userId, name: packAgentName((tpl as any).role, (tpl as any).name), role: (tpl as any).role, color: (tpl as any).color, teamId: teamMap[tKey], projectId, isSpecialAgent: false, personality: { traits: (tpl as any).skills?.slice(0, 3) || [], communicationStyle: (tpl as any).description, expertise: (tpl as any).skills || [], welcomeMessage: `Hi! I'm ${packAgentName((tpl as any).role, (tpl as any).name)}, your ${(tpl as any).role}.` } });
     }
   }
 
