@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { FeedEvent } from '@/hooks/useAutonomyFeed';
+import AgentAvatar from '@/components/avatars/AgentAvatar';
 
 function formatRelativeTime(isoString: string): string {
   const now = Date.now();
@@ -92,7 +93,6 @@ export function ActivityFeedItem({ event }: ActivityFeedItemProps) {
   const [expanded, setExpanded] = useState(false);
   const accent = getCategoryAccent(event.category);
   const palette = avatarPalette(event.agentName);
-  const initial = event.agentName ? event.agentName.charAt(0).toUpperCase() : '·';
   const isAgentEvent = event.eventType.startsWith('agent_') || event.eventType.startsWith('hatch_') || !!event.agentId;
   const displayName = event.agentName || (isAgentEvent ? 'Hatch' : 'System');
   const humanSummary = buildHumanSummary(event);
@@ -111,13 +111,10 @@ export function ActivityFeedItem({ event }: ActivityFeedItemProps) {
         onClick={() => hasDetail && setExpanded(!expanded)}
         aria-expanded={expanded}
       >
-        {/* Agent avatar — letter bubble, no icon */}
-        <div
-          className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-[11px] font-bold"
-          style={{ backgroundColor: palette.bg, color: palette.text }}
-          aria-hidden
-        >
-          {initial}
+        {/* Agent avatar — same DiceBear avatar the chat uses (seeded by agent name) so the feed
+            matches the conversation; AgentAvatar falls back to a colored bubble for agentless events. */}
+        <div className="shrink-0 mt-0.5">
+          <AgentAvatar agentName={event.agentName} size={28} />
         </div>
 
         <div className="flex-1 min-w-0">

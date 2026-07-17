@@ -220,7 +220,9 @@ export function useAutonomyFeed(projectId: string | undefined) {
   // State for real-time events
   const [realtimeEvents, setRealtimeEvents] = useState<FeedEvent[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [activeFilter, setActiveFilter] = useState<FilterCategory>('task');
+  // #80: default to "all" — the previous "task" default hid every review/synthesis/conductor event,
+  // so an active project's feed looked empty ("Your team is ready") despite 50+ events.
+  const [activeFilter, setActiveFilter] = useState<FilterCategory>('all');
   const [agentFilter, setAgentFilter] = useState<string | null>(null);
   const [timeFilter] = useState<TimeFilter>('today');
 
@@ -353,26 +355,18 @@ export function useAutonomyFeed(projectId: string | undefined) {
   // Combine historical + realtime and filter strictly by active projectId
   const allEvents = useMemo(() => {
     const historical = (historicalData?.events || []).map(mapAutonomyEventToFeedEvent);
-    const combined = [...historical, ...realtimeEvents];
-    
-    // Strict isolation: only show events for the currently selected project
-    if (projectId) {
-      return combined.filter(event => {
-        // FeedEvent doesn't explicitly guarantee a top-level projectId property on the object 
-        // because it comes from the API route. The API does include it in RawApiEvent but 
-        // we should verify both top-level and payload.
-        const eventProjectId = event.expandableData?.projectId;
-        
-        // If the backend strictly filtered historical events, we trust them, but 
-        // validating payload.projectId if it exists is safer.
-        if (eventProjectId && eventProjectId !== projectId) {
-          return false;
-        }
-        return true;
-      });
-    }
-    
-    return combined;
+
+    // #165 fix: historical events are already filtered server-side by projectId, so trust them.
+    // Realtime events, however, can arrive for a project you just switched away from (in-flight WS
+    // frames) or carry no projectId at all — under the old mismatch-only filter, a realtime event
+    // WITHOUT a projectId leaked into ANY project's feed and flickered in an empty project. Require
+    // realtime events to positively match the selected project; anything ambiguous is dropped from
+    // the live view (it still appears after the next historical refetch, which is projectId-scoped).
+    const scopedRealtime = projectId
+      ? realtimeEvents.filter(event => event.expandableData?.projectId === projectId)
+      : realtimeEvents;
+
+    return [...historical, ...scopedRealtime];
   }, [historicalData, realtimeEvents, projectId]);
 
   // Apply filters

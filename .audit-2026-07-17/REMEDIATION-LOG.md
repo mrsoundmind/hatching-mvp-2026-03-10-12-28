@@ -32,8 +32,8 @@ for what was done and why. No dashes; money shown USD + INR (~₹86 per $1, Indi
 | Goal -> visible coreDirection | #158 | 3 | VERIFIED (runtime) | "set the project goal to X" now persists to coreDirection.whatBuilding | (pending commit) |
 | Organic brain auto-fill from chat | #104 #105 | 3 | DEFERRED -> Phase 42 | organic extraction is Phase 42's MVB-gate scope, not a remediation bug | n/a |
 | Event metadata (name/label) | #102 #110 #81 | 4 | VERIFIED (server) | feed shows "Maya · proposal created" (was anonymous "Hatch" + "memory written: memory written" junk) | (pending commit) |
-| Feed default filter | #80 #107 | 4 | PENDING | — | — |
-| Phantom cross-project activity leak | #165 | 4 | PENDING | — | — |
+| Feed default filter + avatars | #80 #107 #110 | 4 | VERIFIED (browser) | default "All" shows events; feed avatars now match the chat profile picture | (pending commit) |
+| Phantom cross-project activity leak | #165 | 4 | VERIFIED (code) | realtime events must positively match projectId; historical still trusted | (pending commit) |
 | /maya route crash | #149 | 5 | PENDING | — | — |
 | Safety reason-code leak | #43 | 5 | VERIFIED (gate:safety PASS) | internal codes no longer leak into the clarification reply; raw reasons stay in telemetry | (pending commit) |
 | /onboarding route 404 | #130 | 5 | PENDING | — | — |
