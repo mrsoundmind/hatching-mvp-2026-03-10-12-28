@@ -1,0 +1,186 @@
+<title>Hatchin Feature Audit Map — 2026-07-17</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --text:#e7e9ee; --muted:#9aa3b2;
+    --line:#2a2f3a; --working:#2ecc71; --partial:#f5b13d; --broken:#e5484d;
+    --carried:#b06cf0; --config:#6b7280; --notimpl:#4a90d9; --inconc:#7a8290; --accent:#8b7bf0;
+  }
+  @media (prefers-color-scheme: light){ :root{ --bg:#f6f7f9; --panel:#fff; --panel2:#f0f2f5; --text:#1a1d24; --muted:#5b6472; --line:#e2e5ea; } }
+  :root[data-theme="dark"]{ --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --text:#e7e9ee; --muted:#9aa3b2; --line:#2a2f3a; }
+  :root[data-theme="light"]{ --bg:#f6f7f9; --panel:#fff; --panel2:#f0f2f5; --text:#1a1d24; --muted:#5b6472; --line:#e2e5ea; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1120px;margin:0 auto;padding:32px 20px 80px}
+  h1{font-size:27px;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 22px;font-size:14px}
+  .verdict-line{font-size:15px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--broken);border-radius:8px;padding:12px 16px;margin:0 0 20px}
+  .healthbar{display:flex;height:34px;border-radius:8px;overflow:hidden;border:1px solid var(--line);margin:12px 0 8px}
+  .healthbar span{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#0b0d10}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:12px 0 26px;font-size:13px;color:var(--muted)}
+  .legend b{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:middle}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .card h3{margin:0 0 2px;font-size:15px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .pct{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
+  .card ul{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+  .card li{display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:1.35}
+  .dot{flex:none;width:9px;height:9px;border-radius:50%;margin-top:5px}
+  .w{background:var(--working)} .p{background:var(--partial)} .b{background:var(--broken)}
+  .c{background:var(--carried)} .cfg{background:var(--config)} .ni{background:var(--notimpl)} .inc{background:var(--inconc)}
+  .tag{font-size:10px;font-weight:700;letter-spacing:.03em;padding:1px 5px;border-radius:4px;margin-left:4px}
+  .tag.b{background:rgba(229,72,77,.18);color:var(--broken)} .tag.p{background:rgba(245,177,61,.18);color:var(--partial)}
+  .rootcause{background:linear-gradient(180deg,rgba(229,72,77,.12),transparent);border:1px solid var(--broken);border-radius:12px;padding:16px 18px;margin:24px 0 0}
+  .rootcause h2{margin:0 0 8px;font-size:17px;color:var(--broken)}
+  .rootcause code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-size:12px}
+  .bugs{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:20px 0 0}
+  .bugs h2{margin:0 0 4px;font-size:18px}
+  .tiername{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 6px}
+  .bugs ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:7px}
+  .bugs li{font-size:13.5px}
+  .sev{font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-right:6px}
+  .sev.b{background:rgba(229,72,77,.18);color:var(--broken)} .sev.c{background:rgba(176,108,240,.2);color:var(--carried)}
+  .foot{color:var(--muted);font-size:12px;margin-top:24px;border-top:1px solid var(--line);padding-top:14px}
+</style>
+<div class="wrap">
+  <h1>Hatchin Feature Audit Map</h1>
+  <p class="sub">Exhaustive live audit, button-by-button. ~140 features + 130 controls across every page, panel & modal. 2026-07-17.</p>
+
+  <div class="verdict-line"><b>The plumbing works; the reason-for-existing does not.</b> Standard UI is solid. The four things that make Hatchin <i>Hatchin</i> — knowledge grounding, multi-agent collaboration, autonomous execution, activity visibility — are broken, and the app gives almost no feedback.</div>
+
+  <div class="healthbar" title="verdict distribution">
+    <span style="width:65.2%;background:var(--working)">107 Working</span>
+    <span style="width:14.6%;background:var(--partial)">24 Partial</span>
+    <span style="width:14.6%;background:var(--broken)">24 Broken</span>
+    <span style="width:5.6%;background:var(--inconc)">9</span>
+  </div>
+  <div class="legend">
+    <span><b class="w"></b>Working (107)</span>
+    <span><b class="p"></b>Partial (24)</span>
+    <span><b class="b"></b>Broken (24)</span>
+    <span><b class="cfg"></b>Config-gated (1)</span>
+    <span><b class="inc"></b>Inconclusive / not-testable (~8)</span>
+  </div>
+  <p class="sub" style="margin-top:-14px">164 features + controls tested, incl. Wave 7 gap-closing + re-verification on the real DeepSeek chain. ~72% work — but that flatters the product: WORKING items are mostly UI controls, BROKEN ones are load-bearing AI features. Routing update: agents DO reply in 1-on-1 &amp; team scope; only project-scope @mention is broken. Deliverable packages DO work (3 coordinated docs). New: /maya route crashes; tier cap works but UpgradeModal never shows.</p>
+
+  <div class="rootcause">
+    <h2>Root cause of the headline failure</h2>
+    <b>Autonomous execution is dead because the pg-boss queue is never created.</b> pg-boss v10 requires <code>createQueue()</code> before send/work; the repo has zero. DB proof: the job table is empty and the <code>autonomous_task_execution</code> queue doesn't exist. So "Team is working..." shows forever and nothing runs. One-line fix in <code>taskExecutionPipeline.ts:909</code>. This single gap disables background execution, handoffs, approval cards, the run tree, and peer-review-on-execution.
+  </div>
+
+  <div class="bugs">
+    <h2>The 22 broken things, ranked</h2>
+    <div class="tiername">Tier 1 — kills the core value proposition</div>
+    <ol>
+      <li><span class="sev b">BROKEN</span><b>Autonomous execution never runs</b> (pg-boss queue never created; "Team is working" forever).</li>
+      <li><span class="sev b">BROKEN</span><b>Knowledge base ignored + false grounding</b> — agent fabricates facts and claims to have "reviewed" the uploaded doc.</li>
+      <li><span class="sev b">BROKEN</span><b>Multi-agent replies save empty</b> → blank chat bubbles whenever 2+ Hatches answer.</li>
+      <li><span class="sev b">BROKEN</span><b>Calling a specific agent doesn't reach it</b> — @Coda → Maya answers, Coda silent.</li>
+      <li><span class="sev b">BROKEN</span><b>Agents don't hand off</b> — button just types "@name"; autonomous handoff dead.</li>
+      <li><span class="sev b">BROKEN</span><b>Peer review / policing is hollow</b> — 21 events, all empty payloads + junk labels.</li>
+    </ol>
+    <div class="tiername">Tier 2 — makes the product feel broken</div>
+    <ol start="7">
+      <li><span class="sev b">BROKEN</span><b>Activity feed looks dead</b> — default filter hides all 50 events; 3 of 5 filters empty.</li>
+      <li><span class="sev b">BROKEN</span><b>Feed shows anonymous "Hatch" + blank avatar</b> instead of the real agent (agentName null).</li>
+      <li><span class="sev b">BROKEN</span><b>Project Knowledge Base empty</b>; project brain never populates from chat.</li>
+      <li><span class="sev b">BROKEN</span><b>No visible confirmation</b> for create/update/delete (off-screen toast).</li>
+      <li><span class="sev b">BROKEN</span><b>Messages vanish</b> after the organic task-approval flow (until reload).</li>
+    </ol>
+    <div class="tiername">Tier 3 — dead controls / polish</div>
+    <ol start="12">
+      <li><span class="sev b">BROKEN</span><b>"Light Mode" toggle is a dead no-op</b> (FORCE_DARK_MODE).</li>
+      <li><span class="sev b">BROKEN</span><b>@mention & /route have no discovery menu</b>.</li>
+      <li><span class="sev b">BROKEN</span><b>/onboarding route 404s</b> (orphaned page file).</li>
+      <li><span class="sev c">+8 more</span>reason-code leak · task-delete trips safety gate · corrupt-PDF silent-empty · auto-revert didn't fire · landing markets broken features · Manage Subscription silent-fail · "called X"≠"to X" · 88 unlabeled a11y buttons.</li>
+    </ol>
+  </div>
+
+  <h2 style="font-size:18px;margin:26px 0 4px">Coverage by area</h2>
+  <div class="grid">
+
+    <div class="card"><h3>Auth &amp; Onboarding <span class="pct">~85%</span></h3><ul>
+      <li><span class="dot w"></span>Dev login, session, 404 page</li>
+      <li><span class="dot w"></span>WelcomeModal → 4 steps → PathSelection full flow</li>
+      <li><span class="dot w"></span>StarterPacks (8 categories, ~33 packs)</li>
+      <li><span class="dot b"></span>/onboarding route 404s (orphaned)<span class="tag b">DEAD</span></li>
+      <li><span class="dot p"></span>Onboarding promises "AI remembers everything" (it doesn't)</li>
+    </ul></div>
+
+    <div class="card"><h3>Projects / Teams / Tree <span class="pct">100%</span></h3><ul>
+      <li><span class="dot w"></span>Create (idea) + egg anim + Maya welcome</li>
+      <li><span class="dot w"></span>Modals + validation; soft-delete/restore</li>
+      <li><span class="dot w"></span>Team/agent from packs; tree + Maya hidden</li>
+      <li><span class="dot w"></span>Context menu (Rename/Delete), search</li>
+      <li><span class="dot inc"></span>Undo popup (endpoint works; UI automation-limited)</li>
+    </ul></div>
+
+    <div class="card"><h3>Chat &amp; Messaging <span class="pct">~55%</span></h3><ul>
+      <li><span class="dot w"></span>Streaming, tone guard, persistence, stop</li>
+      <li><span class="dot w"></span>Enter/Shift+Enter, markdown, reply, reactions</li>
+      <li><span class="dot b"></span>Multi-agent replies save empty (blank bubbles)<span class="tag b">BROKEN</span></li>
+      <li><span class="dot b"></span>@mention wrong agent + no autocomplete</li>
+      <li><span class="dot b"></span>Messages vanish after task-approval</li>
+      <li><span class="dot p"></span>Copy no feedback; /route no menu</li>
+    </ul></div>
+
+    <div class="card"><h3>Tasks <span class="pct">~80%</span></h3><ul>
+      <li><span class="dot w"></span>4 creation paths, lifecycle cmds, delete</li>
+      <li><span class="dot w"></span>Pipeline, section collapse, work output</li>
+      <li><span class="dot b"></span>No visible create confirmation (off-screen toast)<span class="tag b">BROKEN</span></li>
+      <li><span class="dot p"></span>Duplicate suggestion surfaces; "called X"≠"to X"</li>
+      <li><span class="dot p"></span>"delete task" trips the safety gate</li>
+    </ul></div>
+
+    <div class="card"><h3>Autonomy &amp; Multi-agent <span class="pct">~25%</span></h3><ul>
+      <li><span class="dot w"></span>Dial (toggle + 4 levels + inactivity) persists</li>
+      <li><span class="dot w"></span>Destructive-intent safety gate (ALWY-04 fixed)</li>
+      <li><span class="dot b"></span>Background execution never completes (queue bug)<span class="tag b">BROKEN</span></li>
+      <li><span class="dot b"></span>Agents don't reply-as-called / hand off</li>
+      <li><span class="dot b"></span>Peer review hollow (empty payloads)</li>
+      <li><span class="dot p"></span>Safety reply leaks internal reason codes</li>
+    </ul></div>
+
+    <div class="card"><h3>Activity Visibility <span class="pct">~30%</span></h3><ul>
+      <li><span class="dot w"></span>Flat feed renders (under "All" filter)</li>
+      <li><span class="dot b"></span>Default "Tasks" filter hides everything<span class="tag b">BROKEN</span></li>
+      <li><span class="dot b"></span>Events show anonymous "Hatch" + blank avatar</li>
+      <li><span class="dot p"></span>Junk event copy ("memory written: memory written")</li>
+      <li><span class="dot p"></span>Tree always empty; stats stuck 0/0</li>
+    </ul></div>
+
+    <div class="card"><h3>Brain &amp; Files <span class="pct">~50%</span></h3><ul>
+      <li><span class="dot w"></span>Upload/delete endpoints + validation (400/413/404)</li>
+      <li><span class="dot w"></span>Doc cards + upload zone render</li>
+      <li><span class="dot b"></span>Knowledge NOT adhered to + false grounding<span class="tag b">BROKEN</span></li>
+      <li><span class="dot b"></span>Project Knowledge Base empty; brain never fills</li>
+      <li><span class="dot p"></span>Corrupt PDF uploads silently empty</li>
+    </ul></div>
+
+    <div class="card"><h3>Deliverables <span class="pct">~85%</span></h3><ul>
+      <li><span class="dot w"></span>Generate, rubric breakdown, iterate, versions</li>
+      <li><span class="dot w"></span>PDF/.md export, artifact panel, refine</li>
+      <li><span class="dot p"></span>Auto-revert didn't fire on score regression</li>
+      <li><span class="dot p"></span>"@Alex write PRD" classified as task</li>
+      <li><span class="dot inc"></span>Version-nav prev inconclusive</li>
+    </ul></div>
+
+    <div class="card"><h3>Billing / Settings <span class="pct">~80%</span></h3><ul>
+      <li><span class="dot w"></span>Billing status + account page (Pro)</li>
+      <li><span class="dot w"></span>User menu (Account/Sign Out)</li>
+      <li><span class="dot b"></span>"Light Mode" toggle dead no-op<span class="tag b">BROKEN</span></li>
+      <li><span class="dot p"></span>Manage Subscription silent-fail</li>
+      <li><span class="dot cfg"></span>Checkout/portal 503 (Stripe off, by design)</li>
+    </ul></div>
+
+    <div class="card"><h3>Layout / Landing / Resilience <span class="pct">~90%</span></h3><ul>
+      <li><span class="dot w"></span>3-panel + mobile Sheet drawer</li>
+      <li><span class="dot w"></span>Landing renders (USP + 106 SVGs)</li>
+      <li><span class="dot w"></span>Provider-degraded banner</li>
+      <li><span class="dot p"></span>Landing markets 4 broken features</li>
+      <li><span class="dot p"></span>Footer dead links; 88 unlabeled buttons</li>
+    </ul></div>
+
+  </div>
+
+  <p class="foot">Positive: the destructive-intent safety gate that scored 0.1 and did nothing on the 2026-07-09 vibe-check now fires correctly. Not reachable via automation (still untested): timed undo-delete popup, "load earlier" pagination (needs 50+ msgs), error boundaries (need induced crash). Full per-feature log: findings.md (143 entries). Coverage cross-reference: COVERAGE-MAP.md.</p>
+</div>
