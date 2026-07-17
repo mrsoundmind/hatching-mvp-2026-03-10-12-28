@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-28)
 
 **Core value:** No one should ever feel alone with their idea, have to start from scratch, or need to know how to prompt AI — just have a conversation and your team takes it from there.
-**Current focus:** v2.1 milestone — Phase 38 code shipped 2026-06-21, Task 5 human-verify checkpoint OPEN. Phase 35 SHIPPED to Fly v19 2026-05-11. Phase 36 + Phase 36.5 shipped 2026-05-13 (bundled for next `fly deploy`). Phase 37 (Git-Style Run Tree) VERIFIED 2026-05-15 (PASS-WITH-NOTES). Infra: Neon exceeded compute quota → migrated to Supabase Singapore 2026-06-02 (quick-260601-ojf); DeepSeek V4-Flash inserted as LLM primary 2026-05-04 (Phase A).
+**Current focus:** v2.1 milestone — Phase 38 code-complete 2026-07-10 (Plans 01/02/03/04 all shipped with unit + Playwright green on live server), only Plan 38-05 human vibe-check + `38-VERIFICATION.md` write-up remaining. Phase 35 SHIPPED to Fly v19 2026-05-11. Phase 36 + Phase 36.5 shipped 2026-05-13 (bundled for next `fly deploy`). Phase 37 (Git-Style Run Tree) VERIFIED 2026-05-15 (PASS-WITH-NOTES). Infra: Neon exceeded compute quota → migrated to Supabase Singapore 2026-06-02 (quick-260601-ojf); DeepSeek V4-Flash inserted as LLM primary 2026-05-04 (Phase A). Marketing role tactical enrichment (Wren/Kai/Robin) shipped 2026-07-10 (5b9e674) with A/B eval validation (7/9 → 9/9 markers, +22pp).
 
 ---
 

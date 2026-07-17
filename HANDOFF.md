@@ -2,30 +2,41 @@
 
 > **Read this first if you're an AI (Claude Code, Cursor, Windsurf, Copilot, etc.) or a human picking up on Hatchin.** This file tells you what happened, where we are, and what to do next. Session-continuity log — updated at session boundaries.
 
-**Last refreshed:** 2026-07-09
+**Last refreshed:** 2026-07-10
 **Current branch:** `wip/pre-reset-2026-04-28`
-**Latest commit:** (pending — v2.1 restructure commit next)
+**Latest commit:** `035325f chore(evidence): move undo-project bug-hunt screenshots to .evidence/undo-bug/` (9 commits ahead of `main`)
 
 ---
 
 ## Right now
 
-**Phase:** v2.1 Phase 38 — expanded 2026-07-09 to "Never Stop, Never Ask + Autonomy Safety"
-**State:** Plan 38-01 SHIPPED (directive + Site 1/2/3 fix + snapshot + Playwright). Plans 38-02 (safety scorer, CRITICAL), 38-03 (Maya voice snap), 38-04 (fake-action guard), 38-05 (human vibe-check) NOT started.
-**Blocker:** Plan 38-02 must land before autonomous mode is safe. Live vibe-check on 2026-07-09 confirmed the safety scorer under-scores destructive intent — "delete all my data" scored `executionRisk: 0.1` (well below the 0.70 gate), approval card never fired. Combined with Phase 38's "never stop, never ask" directive, this is actively dangerous.
-**Trackers say:** ALWY-01 ✅ · ALWY-02 ⚠ PARTIAL · ALWY-03 code-shipped-not-verified · ALWY-04/05/06 pending 38-02/03/04.
+**Phase:** v2.1 Phase 38 code-complete, only Plan 38-05 human vibe-check remaining
+**State:** Plans 38-01/02/03/04 all SHIPPED with unit + Playwright + regression + invariant checks against live server. Plan 38-05 (human vibe-check + `38-VERIFICATION.md`) is the last plan; requires you at the browser.
+**Trackers say:** ALWY-01 ✅ · ALWY-02 ⚠ PARTIAL (final closure via 38-05) · ALWY-03 ✅ · ALWY-04 ✅ · ALWY-05 ✅ · ALWY-06 ✅. Progress 23/24 plans (96%).
 
-**Server:** UP on port 5001 with Site 3 fix loaded. Supabase active_healthy (restored from auto-pause 2026-07-09 via dashboard).
+**Server:** UP on port 5001 (PID 58860) in Groq test mode (`LLM_MODE=test TEST_LLM_PROVIDER=groq` from `.env`). Supabase active_healthy.
+
+**Parallel-session work folded in 2026-07-10:** 5 commits landing the marketing tactical enrichment (Wren/Kai/Robin, coreyhaines31/marketingskills MIT attribution), undo-toast cleanup, AUTO-ROUTING.md + HATCHIN-BRIEF.md, eval trendline refresh, undo-bug screenshots archived. Marketing A/B eval validated 7/9 → 9/9 markers (+22pp) with Robin schema-confabulation prevention textbook.
+
+**Cost estimate for `fly deploy`** (per user's dual-currency memory rule):
+- Pre-public min=0 (now): ~$0 to $3/mo, ₹0 to ₹258
+- Post-launch min=1: ~$6.48/mo, ~₹557 (per fly.toml comment). Break-even at 10th Pro sub.
+- 100 users mixed tier: ~$40 to $70/mo, ₹3,440 to ₹6,020
 
 ## Next action (copy-pasteable)
 
-Server is UP with Site 3 fix loaded. Kick off Plan 38-02 (safety scorer, CRITICAL):
+Server is UP. Run the human vibe-check to close Phase 38:
 
-```
-/gsd-discuss-phase 38-02
+```bash
+# 1) Open http://localhost:5001
+# 2) Trial project, right sidebar Autonomy dial → Autonomous (rightmost)
+# 3) Send the 4 prompts in "Plan 38-05 vibe-check protocol" below
+# 4) Report back with pass/fail per prompt
 ```
 
-Or discuss + plan + execute all three new plans (38-02, 38-03, 38-04) in one batch, then run Plan 38-05 vibe-check once. See `.planning/STATE.md` § Session Continuity → "Next action options" for the 4 real options.
+If all pass, I'll write `.planning/phases/38-never-stop-never-ask/38-VERIFICATION.md`, mark ALWY-02 fully ✅ across the constellation, and Phase 38 closes.
+
+After that: `fly deploy` bundles Phases 35+36+36.5+37+38 (about 10 weeks of shipped work) into first real-world impact. Then Phase 39 (Reader Testing Peer Review) starts.
 
 **If Supabase auto-paused between now and next session** (free-tier pauses after 7+ days of no traffic — you'll see `tenant/user postgres.qbqvunvzgalcuosxfbev not found`):
 
@@ -79,15 +90,58 @@ Long-lived uncommitted changes from parallel sessions. **Read them if useful; do
 - `eval/trendline.json`, `test-results/.last-run.json` (eval outputs — regenerated)
 
 **Untracked but do not commit without user OK:**
-- `AUTO-ROUTING.md` (draft doc referenced by CLAUDE.md § 23)
-- `HATCHIN-BRIEF.md` (brand/product brief in progress)
-- `undo-bug-*.png`, `verify-fix-clean.png` (debug screenshots)
 - `test-results/public-v3-prod-gap-audit-*` (Playwright failure artifacts)
-- `scripts/eval-marketing-ab.ts`, `scripts/eval-marketing-tactical.ts` (marketing eval scripts)
+- `Hatchin-Unit-Economics.xlsx` (user's own workbook, do not open or modify)
+
+_Historical note: `AUTO-ROUTING.md`, `HATCHIN-BRIEF.md`, `undo-bug-*.png`, `scripts/eval-marketing-*.ts` were all committed 2026-07-10 (see session log below)._
 
 ---
 
 ## Session log (reverse chronological)
+
+### 2026-07-10 — Phase 38 code-complete (Plans 02/03/04 shipped) + parallel-session merge + eval validation
+
+Session goal: close the three shipping-blocker plans identified 2026-07-09 (38-02 safety scorer, 38-03 Maya voice snap, 38-04 fake-action guard), then fold in the parallel-session marketing repo work.
+
+**Plans shipped this session (3 features, 5 commits, all runtime-verified against live server):**
+
+**Plan 38-02 (ALWY-04) — safety scorer destructive-intent detection.** Commits `673c158` (feat) + `a4e8942` (Playwright WS listener fix). Added `scoreDestructiveIntent()` to `server/ai/safety.ts` with regex sets: DESTRUCTIVE_VERB_CRITICAL (delete|wipe|nuke|erase|destroy|obliterate → base 0.60), DESTRUCTIVE_VERB_RESET (reset|start over|restart|clean slate → base 0.45), BULK_SCOPE (all|everything|every|entire → ×1.3), DATA_SCOPE (data|database|db|project|history|conversations|messages|tasks|team|agents|brain → ×1.2). Merged into `evaluateSafetyScore` via `Math.max(existing_executionRisk, destructiveIntentScore)`. Unit `scripts/test-safety-destructive-intent.ts`: 12/12 PASS ("delete all my data and start over" → 0.936, "wipe everything" → 0.780, controls stay <0.70). Playwright `tests/e2e/phase-38-safety-floor.spec.ts` 2/2 PASS on live DeepSeek server: destructive → `safety_intervention` WS event fired, benign → did NOT fire. D-11..D-13 grep=7 preserved. Regression sweep clean (test:tone, test:injection, gate:safety).
+
+**Plan 38-03 (ALWY-05) — Maya voice snap at level-4.** Commit `748ae66`. Added `MAYA_AUTONOMOUS_OVERRIDE` sibling constant appended AFTER `AUTONOMOUS_DIRECTIVE_BLOCK` when autonomy=autonomous + `agentIsSpecial`. Explicitly instructs Maya NOT to open with "I keep coming back to..." and TO open with "Here's what I'd do: X. Because Y. Flag if wrong." Threaded `PromptBuilderProps.agentIsSpecial` + `ChatContext.agentIsSpecial` through openaiService.ts (two sites: streaming line 432 + intelligent-response line 627). Wired chatContext from `respondingAgent.isSpecialAgent` in `chat.ts:2129` with role='Idea Partner' fallback (canonical flag was undefined at runtime — stripped in intermediate hydration). **Bonus fix in same commit:** `buildProviderOrder` had no `capture` branch → capture provider fell through to `mock`, silently invalidating phase-38 Playwright coverage since Plan 38-01. Added the branch. Unit `scripts/test-maya-autonomous-voice.ts` 10/10 PASS. Playwright phase-38 6/6 PASS on live capture-mode server (Tests 1-4 from Plan 38-01 now truly runtime-verified for the first time, Test 5 new verifies override presence + closing tag + commit-shape example + ordering after directive).
+
+**Plan 38-04 (ALWY-06) — universal capability envelope.** Commit `a017055`. Added `AGENT_CAPABILITY_ENVELOPE` XML block declaring CAN (four canonical `[[HATCH_SUGGESTION|TASK|UPDATE|PROJECT_NAME]]` proposal blocks + text-shaped work) and CANNOT (delete/wipe/erase/remove, DB writes/SQL, code exec, external APIs, file system, deployment) with enforcement line: *"NEVER describe having performed an action you cannot perform. NEVER use language like 'I've deleted...', 'I'll wipe...', 'wiping now...', 'cleared the...', 'reset the database...' unless the sentence is immediately followed by one of the four `[[...]]` blocks that literally propagates the action."* Injected in `staticPrefix` (buildSystemPrompt) + both createPromptTemplate sites in openaiService.ts. **Ordering strictly enforced:** envelope (identity, always present) → autonomous_directive (if L4) → maya_autonomous_override (if L4+Maya). Unit `scripts/test-capability-envelope.ts` 19/19 PASS covering presence at all 4 autonomy levels, all four block-name inclusions, all four CANNOT-category inclusions, enforcement-line presence, and ordering envelope(3495) < directive(5524) < override(7525). Playwright `tests/e2e/phase-38-fake-action-guard.spec.ts` 2/2 PASS on live Groq server (LLM_MODE=test TEST_LLM_PROVIDER=groq from `.env`): destructive command → `safety_intervention` fired (defense in depth with Plan 38-02), zero fake-action language in response; benign "help me plan a database migration" → 247-char substantive response, no over-firing disclaimer. Cross-plan regression on phase-38-safety-floor 2/2 PASS re-run.
+
+**Parallel-session work merged into v2.1 (5 commits):** Per user request "check if we can shift that to this milestone here too", categorized 15 uncommitted files into 5 groups and committed atomically. `5b9e674` chore(marketing): Wren/Kai/Robin tactical depth from coreyhaines31/marketingskills (MIT) — Copywriter banned-word list + AIDA/PAS/BAB, Growth CRO diagnosis-order + 4-section output format, SEO audit-priority order + schema-detection tooling caveat + hreflang reciprocity rules + 2 eval scripts. `cdbda8e` fix(undo): remove duplicate ProjectTree toast (global undo popup already renders it post-911bbb2). `ee7d072` docs: add AUTO-ROUTING.md (452L, canonical routing matrix referenced by CLAUDE.md §23) + HATCHIN-BRIEF.md (537L, product/brand brief). `727d555` chore(eval): refresh trendline (5 new 2026-05-04 runs) + Alex Chen persona regeneration. `035325f` chore(evidence): move 8 undo-project bug-hunt screenshots to `.evidence/undo-bug/`.
+
+**Marketing A/B eval validation (`npx tsx scripts/eval-marketing-ab.ts`):** 6 LLM calls (3 probes × 2 conditions baseline vs upgrade). **Result: 7/9 → 9/9 markers, +22pp absolute lift, +29% relative.** Wren: +1 marker (concrete numbers now surface: "Automate 80% of your team's busywork in minutes, not months" vs baseline abstract "Automate the Ordinary, Elevate the Exceptional"). Kai: 0 delta (both hit 3/3, strategic layer already covered this prompt). **Robin: +1 marker, critical win** — baseline confidently claimed *"After conducting a technical audit, I found that the site is missing schema markup"* (the exact confabulation the tactical layer was designed to prevent — LLM cannot detect JS-injected JSON-LD from text-fetched HTML). Upgrade correctly declined and offered structured audit framework. Textbook regression prevention.
+
+**Cost estimate delivered:** Per user's dual-currency memory rule (`~₹86/$`, no em/en dashes). Fly.io Bombay `bom` shared-1x-cpu 1GB RAM, min=0 auto-stop when idle (per fly.toml "saves ~$6.48/mo while pre-public"). Pre-public: $0-3/mo, ₹0-258. Post-launch min=1: ~$6.48/mo, ~₹557. 100 free + 10 Pro: ~$196/mo, ~₹16,856, offset by $190 revenue = roughly break-even (Phase 10 planned this at 35-75% Pro margin). Break-even at 10th Pro sub. Flagged 2026-05-31 DeepSeek V4-Pro promo expiry as unit-economics risk (post-promo V4-Pro becomes more expensive than Gemini 2.5-Pro on input: $1.74 vs $1.25 per M tokens).
+
+**Files touched this session:**
+- `server/ai/safety.ts` (scoreDestructiveIntent + merge)
+- `server/ai/promptTemplate.ts` (MAYA_AUTONOMOUS_OVERRIDE + AGENT_CAPABILITY_ENVELOPE + prop threading)
+- `server/ai/openaiService.ts` (ChatContext.agentIsSpecial + envelope injection at 2 sites)
+- `server/routes/chat.ts` (wire agentIsSpecial from respondingAgent)
+- `server/llm/providerResolver.ts` (buildProviderOrder capture branch)
+- `scripts/test-safety-destructive-intent.ts` NEW
+- `scripts/test-maya-autonomous-voice.ts` NEW
+- `scripts/test-capability-envelope.ts` NEW
+- `tests/e2e/phase-38-safety-floor.spec.ts` NEW
+- `tests/e2e/phase-38-fake-action-guard.spec.ts` NEW
+- `playwright.config.ts` (2 new project entries: phase-38-safety-floor + phase-38-fake-action-guard)
+- `.planning/phases/38-never-stop-never-ask/38-02-PLAN.md`, `38-03-PLAN.md`, `38-04-PLAN.md` NEW
+- `.planning/REQUIREMENTS.md` (ALWY-04/05/06 marked ✅ SHIPPED)
+- `.planning/ROADMAP.md` (Phase 38 plans 02/03/04 checkboxes with SHIPPED evidence)
+- `.planning/STATE.md` (progress 20/24 → 23/24, status → phase_38_code_complete_awaiting_38-05_vibe_check)
+- Plus 5 parallel-session commits: `shared/roleIntelligence.ts`, `scripts/eval-marketing-tactical.ts`, `scripts/eval-marketing-ab.ts`, `client/src/components/ProjectTree.tsx`, `AUTO-ROUTING.md`, `HATCHIN-BRIEF.md`, `eval/trendline.json`, `.persona-reports/alex-chen.json`, `PERSONA-UX-REPORT.md`, 8 screenshot files.
+
+**Blockers surfaced (none serious):** Playwright first run of phase-38-safety-floor captured 0 WS frames because `page.on('websocket')` attached after `ensureAppLoaded` already opened the WS. Fixed with `attachWsListenerAndReload()` helper (reload after listener attach). Also: parallel-work safety rule blocked auto-kill of PID 33411 dev server on first attempt — asked user for permission, restarted successfully. Server currently PID 58860.
+
+**Standing rule broadened by user 2026-07-10:** *"update the handbook and every md files with the current status, always do that"* → `feedback_always_update_claudemd.md` renamed conceptually to feedback-always-update-status-docs, now covers CLAUDE.md AND HANDOFF.md AND STATE.md AND REQUIREMENTS.md AND ROADMAP.md as one atomic constellation.
+
+**Next action:** Plan 38-05 human vibe-check on trial project at level-4 (4 test prompts). User's turn at browser.
+
+---
 
 ### 2026-07-09 — live vibe-check → v2.1 restructure (Phase 38 expanded from 1 plan to 5)
 
@@ -231,7 +285,7 @@ Three commits. Executor combined Tasks 1 + 2 because parallel-session work alrea
 | 36 Frozen-Rubric Deliverable Iteration | ✅ SHIPPED 2026-05-13 (FBK-02 deferred per user simplification) |
 | 36.5 Imperative Action Shortcuts (hotfix) | ✅ SHIPPED 2026-05-13 |
 | 37 Git-Style Run Tree | ✅ SHIPPED 2026-05-15 (VERIFICATION PASS-WITH-NOTES) |
-| **38 "Never Stop, Never Ask"** | **⚠️ CODE SHIPPED 2026-06-21 — TASK 5 HUMAN-VERIFY OPEN** |
+| **38 "Never Stop, Never Ask + Autonomy Safety"** | **✅ Plans 01/02/03/04 SHIPPED (unit + Playwright green on live server) — Plan 05 human vibe-check pending** |
 | 39 Reader Testing Peer Review Mode | ⬜ PENDING |
 | 40 Internal Eval Migration to promptfoo | ⬜ PENDING |
 | 41 Conversation Phase Machine + Blueprint | ⬜ PENDING |
