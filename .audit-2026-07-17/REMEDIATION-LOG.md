@@ -31,7 +31,7 @@ for what was done and why. No dashes; money shown USD + INR (~₹86 per $1, Indi
 | Knowledge grounding + honesty | #79 #144 | 3 | VERIFIED (DeepSeek) | agent quotes uploaded doc facts (Saffron / 14 Aug 2027 / Nusantara), no fabrication | (pending commit) |
 | Goal -> visible coreDirection | #158 | 3 | VERIFIED (runtime) | "set the project goal to X" now persists to coreDirection.whatBuilding | (pending commit) |
 | Organic brain auto-fill from chat | #104 #105 | 3 | DEFERRED -> Phase 42 | organic extraction is Phase 42's MVB-gate scope, not a remediation bug | n/a |
-| Event metadata (name/label/avatar) | #102 #110 #81 | 4 | PENDING | — | — |
+| Event metadata (name/label) | #102 #110 #81 | 4 | VERIFIED (server) | feed shows "Maya · proposal created" (was anonymous "Hatch" + "memory written: memory written" junk) | (pending commit) |
 | Feed default filter | #80 #107 | 4 | PENDING | — | — |
 | Phantom cross-project activity leak | #165 | 4 | PENDING | — | — |
 | /maya route crash | #149 | 5 | PENDING | — | — |

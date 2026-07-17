@@ -667,14 +667,42 @@ export function registerAutonomyRoutes(app: Express): void {
         traceGroups.set(event.traceId, existing);
       }
 
+      // #110/#102: resolve agentId -> name at read time. Events carry hatchId but rarely agentName,
+      // so the feed rendered an anonymous "Hatch" with a blank avatar. Build a name map once from the
+      // relevant project(s); this also fixes history (old rows) since it resolves at read, not write.
+      const agentNameById = new Map<string, string>();
+      const nameLookupProjectIds = projectId
+        ? [projectId]
+        : Array.from(new Set(rawEvents.map((e) => e.projectId).filter((id): id is string => !!id)));
+      for (const pid of nameLookupProjectIds) {
+        try {
+          const agents = await storage.getAgentsByProject(pid);
+          for (const a of agents) agentNameById.set(a.id, a.name);
+        } catch {
+          // best-effort; falls back to a friendly generic below
+        }
+      }
+
       const feedEvents = [];
       for (const [traceId, group] of traceGroups) {
         const latest = group.reduce((a, b) =>
           new Date(a.timestamp) > new Date(b.timestamp) ? a : b
         );
-        const agentName = (latest.payload?.agentName as string) || null;
-        const taskTitle = (latest.payload?.taskTitle as string) || latest.eventType.replace(/_/g, ' ');
+        // #110: prefer an explicit payload name, else resolve from hatchId, else a friendly fallback.
+        const agentName =
+          (latest.payload?.agentName as string) ||
+          (latest.hatchId ? agentNameById.get(latest.hatchId) : undefined) ||
+          null;
+        const readableType = latest.eventType.replace(/_/g, ' ');
+        const rawTaskTitle = (latest.payload?.taskTitle as string) || '';
         const category = mapEventTypeToCategory(latest.eventType);
+
+        // #102: self-documenting label — agent name + verb phrase, no duplicated "peer review
+        // feedback: peer review feedback" junk (only append the task title when there is a real one).
+        const displayName = agentName || 'A Hatch';
+        const label = rawTaskTitle
+          ? `${displayName} · ${readableType}: ${rawTaskTitle}`
+          : `${displayName} · ${readableType}`;
 
         feedEvents.push({
           id: latest.requestId || `${traceId}-${latest.eventType}`,
@@ -682,7 +710,7 @@ export function registerAutonomyRoutes(app: Express): void {
           eventType: latest.eventType,
           agentId: latest.hatchId || null,
           agentName,
-          label: `${agentName || 'Agent'} ${latest.eventType.replace(/_/g, ' ')}: ${taskTitle}`,
+          label,
           category,
           timestamp: latest.timestamp,
           count: group.length,
