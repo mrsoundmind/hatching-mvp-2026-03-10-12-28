@@ -1422,7 +1422,7 @@ export function registerChatRoutes(
     conversationId: string,
     ws: WebSocket,
     abortController: AbortController
-  ) {
+  ): Promise<string> {
     devLog('🤝 Handling multi-agent team response with', selectedAgents.length, 'agents');
 
     // Parse conversationId to get canonical projectId for memory retrieval
@@ -1609,6 +1609,10 @@ export function registerChatRoutes(
       }
 
       devLog('✅ Multi-agent team response completed');
+      // Return the streamed content so the caller can persist it. The single-agent path mutates the
+      // outer accumulator directly; this path streamed into a LOCAL var, so without returning it the
+      // DB saved content length 0 → blank team bubbles (the #74/#98/#111 multi-agent empty-save bug).
+      return accumulatedContent;
 
     } catch (error) {
       console.error('❌ Error in multi-agent response:', error);
@@ -1634,6 +1638,8 @@ export function registerChatRoutes(
           accumulatedContent: fallbackContent
         }));
       }
+      // Persist the fallback content too — same empty-save trap otherwise.
+      return fallbackContent;
     }
   }
 
@@ -2024,10 +2030,15 @@ export function registerChatRoutes(
       if (
         !isPmFallback &&
         !isSystemFallback &&
+        !hasExplicitMention &&
+        !authorityIsDefinitive &&
         respondingAgent &&
         conductorResult.decision.reviewRequired &&
         mode !== "agent"
       ) {
+        // When the user explicitly @mentions a specialist (or speaking authority is definitive),
+        // do NOT expand into a review team — that buries the addressed agent behind PM/Maya
+        // (the #97 "@Coda gets answered by Maya" bug). The mentioned agent responds alone.
         const mergedAgents = [respondingAgent, ...potentialMultiAgents, ...conductorResult.fallbackMatches];
         const uniqueAgents = mergedAgents.filter(
           (agent, index, arr) => arr.findIndex((candidate) => candidate.id === agent.id) === index
@@ -2322,7 +2333,8 @@ export function registerChatRoutes(
         } else if (selectedAgents.length > 1) {
           // E2.1: Handle multi-agent responses for team dynamics
           devLog('🤝 Generating multi-agent team response...');
-          await handleMultiAgentResponse(selectedAgents, userMessage, chatContext, sharedMemory, responseMessageId, conversationId, ws, abortController);
+          // Capture the returned content into the outer accumulator so it persists (fixes empty-save).
+          accumulatedContent = await handleMultiAgentResponse(selectedAgents, userMessage, chatContext, sharedMemory, responseMessageId, conversationId, ws, abortController);
         } else if (respondingAgent && !isPmFallback && !isSystemFallback) {
           // Single agent response (existing logic)
           devLog('🔄 Generating single agent streaming response...');

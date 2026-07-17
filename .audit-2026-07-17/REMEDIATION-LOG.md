@@ -26,8 +26,8 @@ for what was done and why. No dashes; money shown USD + INR (~₹86 per $1, Indi
 | Fix | Finding(s) | Wave | Status | Outcome | Commit |
 |---|---|---|---|---|---|
 | pg-boss queue revival | #95 #90 #54 #166 | 1 | VERIFIED (E2E, real output) | task todo→completed with a fresh 622-char agent message in ~9s; +2 second-order bugs fixed (v10 array handler, pooler drops) | (pending commit) |
-| Multi-agent empty-save | #74 #98 #111 | 2 | PENDING | — | — |
-| Project-scope @mention guard | #97 #145 | 2 | PENDING | — | — |
+| Multi-agent empty-save | #74 #98 #111 | 2 | VERIFIED (runtime) | multi-agent reply now saves 482 chars (was len 0 blank bubble) | (pending commit) |
+| @mention routing (parser regex + expansion guard) | #97 #145 | 2 | VERIFIED (runtime) | "@Coda give me your take" now routes to Coda (was Maya); real cause was the mention-parser regex | (pending commit) |
 | Knowledge grounding + honesty | #79 #144 | 3 | PENDING | — | — |
 | Brain auto-fill + coreDirection visible | #104 #105 #158 | 3 | PENDING | — | — |
 | Event metadata (name/label/avatar) | #102 #110 #81 | 4 | PENDING | — | — |
@@ -99,3 +99,34 @@ non-fatal (it reconnects + retries).
 **Files:** `server/autonomy/execution/jobQueue.ts`, `server/autonomy/execution/taskExecutionPipeline.ts`,
 `server/db.ts`. Typecheck: PASS. Verification tooling: `.audit-2026-07-17/verify-jobqueue.ts`,
 `enqueue-task.ts`, `verify-execution.ts`, `check-pgboss.mjs`.
+
+### Wave 2 — multi-agent empty-save (#74/#98/#111) + @mention routing (#97/#145) — VERIFIED
+
+**#74 empty-save — root cause (verified):** `handleMultiAgentResponse` (chat.ts) streamed the team
+reply into a LOCAL `accumulatedContent` and never returned it; the caller discarded the void return,
+so the outer accumulator that gets persisted stayed empty → 2+ agent replies saved with content
+length 0 (blank bubbles). Fix: the function now returns the streamed content (success and fallback
+paths) and the caller assigns it into the outer accumulator.
+
+**#97 @mention — REAL root cause found by runtime verification (differs from audit AND the plan's
+Explore analysis):** the mention parser's `extractAtMention` regex `/@([A-Za-z][A-Za-z0-9 _-]*)/`
+included a SPACE in the character class, so "@Coda give me your take" captured "Coda give me your
+take" (everything up to punctuation) and matched no agent. @mentions only resolved when the @name sat
+at the END of the message. Because the audit's exact phrasing starts with "@Coda …", the mention
+never resolved and `resolveSpeakingAuthority` fell back to `project_scope_maya_authority` → Maya
+answered. Fix: removed the space from the character class (`/@([A-Za-z][A-Za-z0-9_-]*)/`) so a single
+@name token is captured regardless of trailing text. Isolated parser test: all four "@Coda …" variants
+now resolve (were `none`). Secondary defense retained: the multi-agent expansion block in chat.ts now
+carries `!hasExplicitMention && !authorityIsDefinitive`, so a resolved mention is not diluted into a
+PM/Maya team (the audit's "answered as a team" symptom).
+
+**Verification (runtime, dev_tester multi-agent project, Groq chain):**
+- #97: sent "@Coda give me your engineering take: Postgres or MongoDB?" at project scope →
+  `agentName=Coda`, saved 602/475 chars across runs (was: Maya).
+- #74: sent a 3-domain message at team scope → server logged "Handling multi-agent team response with
+  2 agents" + "Building team consensus from 2 responses" → saved content **482 chars** (was: 0/blank).
+
+**Files:** `server/ai/mentionParser.ts`, `server/routes/chat.ts`. Typecheck: PASS. Verification tool:
+`.audit-2026-07-17/verify-chat-wave2.ts`. Note: the CLAUDE.md API doc lists snake_case
+(`project_id`/`team_id`); the live DTO is camelCase (`projectId`/`teamId`) — a doc drift to fix at
+milestone close.
