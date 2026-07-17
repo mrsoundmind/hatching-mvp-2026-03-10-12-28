@@ -64,19 +64,21 @@ Approve or list what felt off.
 
 ---
 
-## The 4 files that carry state
+## The 6 files that carry state (constellation, broadened 2026-07-10)
 
 | File | Purpose | Update cadence |
 |---|---|---|
 | **CLAUDE.md** | Architecture, tech stack, conventions, agent rules. *What Hatchin is.* | When arch/conventions change |
+| **HATCHIN-COMPLETE-GUIDE.md** | Full product & feature catalog: every feature, every agent, peer review, learning tracks, capability envelope. *What Hatchin does.* | When features/agents/behavior change |
 | **.planning/STATE.md** | Official GSD phase state — what's shipped, what's in progress. | Every phase transition |
 | **.planning/REQUIREMENTS.md** | Per-phase requirement IDs + checkboxes. Source of truth for "did this ship?" | When a REQ ships |
+| **.planning/ROADMAP.md** | Per-phase plans checkboxes with SHIPPED evidence. | When a plan ships |
 | **HANDOFF.md** (this) | Session log — what happened when, what to do next, safety warnings. *Where we are today.* | Every session boundary |
 
 **Others worth knowing:**
-- `.planning/ROADMAP.md` — phase index across all milestones (partially maintained across parallel sessions — treat as read-mostly)
 - `.planning/ROADMAP-V3.md` — the canonical post-v2.0 12-milestone plan (v2.1 → v4.0)
 - `.planning/phases/<N>-<slug>/` — per-phase directory (CONTEXT / PLAN / SUMMARY / VERIFICATION)
+- `AUTO-ROUTING.md` — canonical routing matrix referenced by CLAUDE.md §23
 
 ## Do NOT touch
 
