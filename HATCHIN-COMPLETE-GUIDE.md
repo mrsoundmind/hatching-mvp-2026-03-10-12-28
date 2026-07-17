@@ -37,6 +37,7 @@ Kept in sync with reality per [feedback_always_update_claudemd.md](https://claud
 25. [Project Structure](#25-project-structure)
 26. [Version History](#26-version-history)
 27. [Roadmap](#27-roadmap)
+28. [Feature → UI Location Matrix](#28-feature--ui-location-matrix)
 
 ---
 
@@ -231,10 +232,13 @@ The main app uses a three-panel layout with responsive breakpoints:
 ### 3.3 Chat Features
 
 **Streaming & Real-Time**
-- WebSocket to `/ws`
+- WebSocket to `/ws` with **exponential backoff reconnect** (`min(1000 × 2^retryCount, 30_000)`, max 10 retries)
 - Token-by-token streaming with accumulated content display
+- **20-second stream watchdog** auto-resets stuck streams
 - Typing indicators with agent names and estimated duration
 - Real-time autonomy events pushed to sidebar
+- Autonomy feed batches at 3 seconds per `traceId` and caps at 200 events
+- Unread counts persist in `sessionStorage` (`hatchin:unreadCounts`)
 - **Prompt cache friendly split** (Phase A DeepSeek migration): `staticPrefix` (identity + rules, ~5,000 tokens, cacheable at 50× cheaper input) + `dynamicSuffix` (per-turn variables)
 
 **Message Types**
@@ -1809,9 +1813,11 @@ DEV_COST_CAP=true|false                  # Activate dev cap
 
 ### Monitoring (optional)
 ```bash
-LANGSMITH_API_KEY=ls_...
+LANGSMITH_API_KEY=ls_...                 # LLM tracing, if enabled
 LANGSMITH_PROJECT=hatchin-chat
 ```
+
+When `LANGSMITH_API_KEY` is set, every LLM call is traced to LangSmith for latency, token, and prompt debugging. Optional. When unset, tracing is a no-op.
 
 **Rule**: Never hardcode secrets. Never commit `.env`. Always read from `process.env`.
 
@@ -2116,6 +2122,236 @@ Pending: Plan 38-05, then Phases 39-46 per ROADMAP-V3.
 
 ---
 
-*This document is one of five files in the status-doc constellation. When features, architecture, or agent behavior change, this file MUST be refreshed atomically per the memory rule. Its constellation partners are [CLAUDE.md](CLAUDE.md), [HANDOFF.md](HANDOFF.md), [.planning/STATE.md](.planning/STATE.md), [.planning/REQUIREMENTS.md](.planning/REQUIREMENTS.md), and [.planning/ROADMAP.md](.planning/ROADMAP.md).*
+## 28. Feature → UI Location Matrix
 
-*Last refreshed 2026-07-10 covering v2.0 shipped + v2.1 Phases 35 through 38 (Plans 01-04) shipped. Plan 38-05 vibe-check pending. Author: Claude Code.*
+Every user-facing feature mapped to the file, component, route, or tab that renders it. When you land in the app and something is happening on screen, this table tells you where the code lives.
+
+### 28.1 Public / Auth Pages
+
+| Feature | Route | Component / File | Notes |
+|---|---|---|---|
+| Public marketing landing | `/` (logged out) | [pages/LandingPage.tsx](client/src/pages/LandingPage.tsx) | 8 USP panels with animated SVG previews via `InlineSVG` + SMIL; responsive carousel + swipe |
+| SEO meta tags | `<head>` | [client/index.html](client/index.html) | Description, OG, Twitter card |
+| Google OAuth login | `/login` | [pages/login.tsx](client/src/pages/login.tsx) | Framer Motion parallax + auto-rotate 4s carousel; `sanitizeNextPath()` rejects `/api/auth/...` redirects |
+| Legal Privacy page | `/legal/privacy` | Route in [App.tsx](client/src/App.tsx) | Phase 35 (2026-05-11); legal modal + deep-link hybrid |
+| Legal Terms page | `/legal/terms` | Same as above | Phase 35 |
+| 404 | `*` | [pages/not-found.tsx](client/src/pages/not-found.tsx) | Static error card |
+
+### 28.2 Onboarding & Welcome
+
+| Feature | UI location | Component / File |
+|---|---|---|
+| First-login welcome | Modal overlay (`/`) | [components/WelcomeModal.tsx](client/src/components/WelcomeModal.tsx) — animated egg + "Your AI team just woke up" |
+| Egg hatching animation | Inside WelcomeModal + project creation | [components/EggHatchingAnimation.tsx](client/src/components/EggHatchingAnimation.tsx) — 3-stage: floating → cracking → hatched |
+| 4-step onboarding walkthrough | Modal overlay | [components/OnboardingSteps.tsx](client/src/components/OnboardingSteps.tsx) + [OnboardingManager.tsx](client/src/components/OnboardingManager.tsx) — TypingText animator + ChatPreview + AgentHatch + BrainFill |
+| First Maya visit coachmark | Maya chat header | [pages/MayaChat.tsx](client/src/pages/MayaChat.tsx) — localStorage `hatchin_maya_visited` gates the tooltip |
+| Post-signup onboarding page | `/onboarding` (deprecated) | [pages/onboarding.tsx](client/src/pages/onboarding.tsx) |
+
+### 28.3 Project Creation Flows
+
+| Feature | UI location | Component / File |
+|---|---|---|
+| "New Project" button | LeftSidebar top | [components/LeftSidebar.tsx](client/src/components/LeftSidebar.tsx) |
+| QuickStart (idea path) modal | Modal overlay | [components/QuickStartModal.tsx](client/src/components/QuickStartModal.tsx) |
+| StarterPacks modal | Modal overlay | [components/StarterPacksModal.tsx](client/src/components/StarterPacksModal.tsx) — 38 templates × 7 categories |
+| Project name confirmation | Modal overlay | [components/ProjectNameModal.tsx](client/src/components/ProjectNameModal.tsx) — required, ≤100 chars, dirty state tracking, FocusTrap-fixed |
+| Egg hatching loading state | Overlay during creation | [components/EggHatchingAnimation.tsx](client/src/components/EggHatchingAnimation.tsx) |
+| Maya greeting seed | First message in chat | [server/routes/projects.ts](server/routes/projects.ts) — server-side insert on project creation |
+| `teams_auto_hatched` WS event | Real-time push to sidebar | [server/routes/chat.ts](server/routes/chat.ts) → useRealTimeUpdates listener |
+
+### 28.4 Left Sidebar (Projects / Teams / Agents Tree)
+
+| Feature | UI location | Component / File |
+|---|---|---|
+| Hatchin logo + branding | Top of left sidebar | [LeftSidebar.tsx](client/src/components/LeftSidebar.tsx) |
+| Project search (Cmd/Ctrl+K) | Search input top of sidebar | [LeftSidebar.tsx](client/src/components/LeftSidebar.tsx) — regex highlighting, fuzzy/exact match |
+| Theme toggle | User dropdown | [components/ThemeProvider.tsx](client/src/components/ThemeProvider.tsx) — dark mode forced (`FORCE_DARK_MODE = true`) |
+| User dropdown menu | Top-right of sidebar | [LeftSidebar.tsx](client/src/components/LeftSidebar.tsx) — profile, settings, billing, logout |
+| Project tree | Main sidebar body | [components/ProjectTree.tsx](client/src/components/ProjectTree.tsx) — hierarchical Projects → Teams → Agents |
+| Maya hidden from tree | Inside ProjectTree filter | `ProjectTree.tsx` filters `!a.isSpecialAgent` on both team + agent lists |
+| Agent working state (pulsing avatar) | Inside ProjectTree per-agent | [hooks/useAgentWorkingState.ts](client/src/hooks/useAgentWorkingState.ts) + [avatars/AgentAvatar.tsx](client/src/components/avatars/AgentAvatar.tsx) — ring animation |
+| Inline rename | Double-click project/team/agent | [ProjectTree.tsx](client/src/components/ProjectTree.tsx) |
+| Context menu (edit, delete, pin) | Right-click | [ProjectTree.tsx](client/src/components/ProjectTree.tsx) |
+| **Delete undo popup** (3s recovery) | Global toast at bottom | Post-`911bbb2` global undo bar; ProjectTree fires `onDeleteProject`, no local toast (Plan 2026-07-10 cleanup removed duplicate) |
+
+### 28.5 Center Panel (Chat)
+
+| Feature | UI location | Component / File |
+|---|---|---|
+| Chat header | Top of center panel | [CenterPanel.tsx](client/src/components/CenterPanel.tsx) — project/team/agent name + WS status |
+| WebSocket connection status | Header banner | [CenterPanel.tsx](client/src/components/CenterPanel.tsx) — inline reconnect indicator |
+| **PROVIDER_DEGRADED banner** (Phase 35) | Below header | [CenterPanel.tsx](client/src/components/CenterPanel.tsx) — surfaces when primary LLM is failing over |
+| Legal modal | First visit, overlay | [CenterPanel.tsx](client/src/components/CenterPanel.tsx) — Privacy/Terms deep-link hybrid (Phase 35) |
+| "Team is working..." indicator | Below header when active | [CenterPanel.tsx](client/src/components/CenterPanel.tsx) — fed by `useAgentWorkingState` |
+| Pause / cancel autonomy | Header buttons | [CenterPanel.tsx](client/src/components/CenterPanel.tsx) |
+| User message bubble | Right-aligned | [components/MessageBubble.tsx](client/src/components/MessageBubble.tsx) — plain text |
+| Agent message bubble | Left-aligned | [MessageBubble.tsx](client/src/components/MessageBubble.tsx) — ReactMarkdown + remark-gfm + rehype-highlight, role-colored avatar |
+| System message | Full-width gray | [MessageBubble.tsx](client/src/components/MessageBubble.tsx) |
+| Streaming cursor | Inside agent bubble | [MessageBubble.tsx](client/src/components/MessageBubble.tsx) — token-by-token accumulate |
+| **20s stream watchdog** | Auto-reset stuck streams | [pages/MayaChat.tsx](client/src/pages/MayaChat.tsx) + [CenterPanel.tsx](client/src/components/CenterPanel.tsx) |
+| Handoff card | Inline chat message | [components/chat/HandoffCard.tsx](client/src/components/chat/HandoffCard.tsx) — from-agent → arrow → to-agent + task title |
+| Deliberation card | Inline chat message | [components/chat/DeliberationCard.tsx](client/src/components/chat/DeliberationCard.tsx) — agent names, round counter, summary |
+| **AutonomousApprovalCard** | Inline chat message | [components/AutonomousApprovalCard.tsx](client/src/components/AutonomousApprovalCard.tsx) — one-click Approve/Reject for ≥0.70 risk |
+| DeliverableChatCard (v2.0) | Inline chat message | [components/DeliverableChatCard.tsx](client/src/components/DeliverableChatCard.tsx) — inline preview + open in ArtifactPanel |
+| ProposalCard (v2.0) | Inline chat message | [components/ProposalCard.tsx](client/src/components/ProposalCard.tsx) — organic "Draft a PRD?" prompt with Accept/Dismiss |
+| Message actions (react, reply, copy) | Hover on message | [MessageBubble.tsx](client/src/components/MessageBubble.tsx) — reactions (agent only), threading, copy |
+| @mentions autocomplete | Inline in composer | [CenterPanel.tsx](client/src/components/CenterPanel.tsx) |
+| Composer auto-resize | Chat input at bottom | [CenterPanel.tsx::resizeComposer()](client/src/components/CenterPanel.tsx) |
+| Send gating (tier limits) | Composer state | [CenterPanel.tsx::determineSendGating()](client/src/components/CenterPanel.tsx) — Free tier caps, autonomy disabled etc. |
+| Task suggestion trigger | AI detects tasks | [components/TaskSuggestionModal.tsx](client/src/components/TaskSuggestionModal.tsx) — checkbox list + batch approve |
+| Empty state (new project) | Center panel when zero messages | [CenterPanel.tsx](client/src/components/CenterPanel.tsx) |
+| Cursor-based message pagination | "Load earlier" button | [CenterPanel.tsx](client/src/components/CenterPanel.tsx) — `nextCursor` from API |
+
+### 28.6 Right Sidebar (Tabbed)
+
+| Feature | Tab | Component / File |
+|---|---|---|
+| Tabbed layout with badges | All tabs | [components/sidebar/SidebarTabBar.tsx](client/src/components/sidebar/SidebarTabBar.tsx) — Framer Motion animated indicator |
+| **Activity tab shell** | Activity | [components/sidebar/ActivityTab.tsx](client/src/components/sidebar/ActivityTab.tsx) |
+| Autonomy stats card | Activity | [components/sidebar/AutonomyStatsCard.tsx](client/src/components/sidebar/AutonomyStatsCard.tsx) — tasks completed, handoffs, cost |
+| Feed filters | Activity | [components/sidebar/FeedFilters.tsx](client/src/components/sidebar/FeedFilters.tsx) — category chips + agent dropdown + time filter |
+| Activity feed items | Activity | [components/sidebar/ActivityFeedItem.tsx](client/src/components/sidebar/ActivityFeedItem.tsx) — event label + timestamp + expandable data |
+| **Git-style run tree (Phase 37)** | Activity | Inside ActivityTab — semantic-word badges (✓ Improved / ⚠ Made worse), click-step opens exact deliverable version |
+| Handoff chain timeline | Activity | [components/sidebar/HandoffChainTimeline.tsx](client/src/components/sidebar/HandoffChainTimeline.tsx) — animated connectors |
+| **Brain & Docs tab shell** | Brain & Docs | [components/sidebar/BrainDocsTab.tsx](client/src/components/sidebar/BrainDocsTab.tsx) |
+| Core direction editor | Brain & Docs | Inside BrainDocsTab — `whatBuilding`, `whyMatters`, `whoFor` fields |
+| Execution rules editor | Brain & Docs | Inside BrainDocsTab |
+| Team culture editor | Brain & Docs | Inside BrainDocsTab |
+| **Auto-save on blur** | All Brain fields | Debounced PATCH `/api/projects/:id/brain` |
+| **"Recently saved" 2.5s badge** | Green checkmark on save | [hooks/useRightSidebarState.ts](client/src/hooks/useRightSidebarState.ts) |
+| Document upload zone | Brain & Docs | [components/sidebar/DocumentUploadZone.tsx](client/src/components/sidebar/DocumentUploadZone.tsx) — drag-drop, 10MB max, PDF/DOCX/TXT/MD |
+| Document cards | Brain & Docs | [components/sidebar/DocumentCard.tsx](client/src/components/sidebar/DocumentCard.tsx) — type badges (PDF blue, DOCX orange, MD green, TXT muted), optimistic delete with rollback |
+| **Autonomy settings panel** | Brain & Docs | [components/sidebar/AutonomySettingsPanel.tsx](client/src/components/sidebar/AutonomySettingsPanel.tsx) — 4-level dial (Observe/Propose/Confirm/Autonomous) + inactivity trigger + debounced 800ms PATCH + flash-save animation |
+| Work output section | Brain & Docs | [components/sidebar/WorkOutputSection.tsx](client/src/components/sidebar/WorkOutputSection.tsx) — completed task outputs, one-open-at-a-time accordion |
+| **Approvals tab shell** | Approvals | [components/sidebar/ApprovalsTab.tsx](client/src/components/sidebar/ApprovalsTab.tsx) |
+| Approval items | Approvals | [components/sidebar/ApprovalItem.tsx](client/src/components/sidebar/ApprovalItem.tsx) — Approve/Reject buttons + risk badge + expiry |
+| **Approval TTL expiry check** | Approval items | [components/sidebar/approvalUtils.ts::isApprovalExpired()](client/src/components/sidebar/approvalUtils.ts) |
+| Task pipeline (Kanban) | Approvals | [components/sidebar/TaskPipelineView.tsx](client/src/components/sidebar/TaskPipelineView.tsx) — Queued → Assigned → In Progress → Review → Done |
+| Approvals empty state | Approvals | [components/sidebar/ApprovalsEmptyState.tsx](client/src/components/sidebar/ApprovalsEmptyState.tsx) |
+| **Unread count badges on tabs** | All tabs | [hooks/useUnreadCounts.ts](client/src/hooks/useUnreadCounts.ts) — sessionStorage persistence `hatchin:unreadCounts` |
+
+### 28.7 ArtifactPanel (v2.0 Deliverable Viewer)
+
+| Feature | UI location | Component / File |
+|---|---|---|
+| Split-panel viewer | Right-side overlay | [components/ArtifactPanel.tsx](client/src/components/ArtifactPanel.tsx) |
+| Markdown section navigation | ArtifactPanel body | Inside ArtifactPanel |
+| Version history panel | ArtifactPanel side | Inside ArtifactPanel — restore any prior version |
+| "Refine" input | Bottom of ArtifactPanel | Inside ArtifactPanel — section-level iteration |
+| **Score chip** (Phase 36) | ArtifactPanel header | Score with rubric breakdown popover |
+| **RubricBreakdown card** (Phase 36) | Below score chip | "Why this scored X / 10" per-criterion breakdown |
+| **AutoRevertBanner** (Phase 36) | Above content when triggered | Amber non-blocking indicator on regression |
+| PDF export button | ArtifactPanel header | Downloads via `/api/deliverables/:id/download` |
+| Package progress | Progress indicator during chain | [components/PackageProgress.tsx](client/src/components/PackageProgress.tsx) |
+
+### 28.8 Task Manager
+
+| Feature | UI location | Component / File |
+|---|---|---|
+| Task list | Right sidebar or dedicated panel | [components/TaskManager.tsx](client/src/components/TaskManager.tsx) |
+| Task sections (Urgent / InProgress / Backlog / Done) | Collapsible | Inside TaskManager |
+| **Hierarchical subtasks** | Nested under parent | Inside TaskManager — `parent_task_id` self-ref |
+| Status toggles + filters | TaskManager header | Inside TaskManager |
+| AI task suggestion trigger | TaskSuggestionModal | [components/TaskSuggestionModal.tsx](client/src/components/TaskSuggestionModal.tsx) |
+| Progress timeline | Explore → Build → Launch | [components/ProgressTimeline.tsx](client/src/components/ProgressTimeline.tsx) |
+
+### 28.9 Modals
+
+| Feature | UI location | Component / File |
+|---|---|---|
+| Welcome (first login) | Modal overlay | [components/WelcomeModal.tsx](client/src/components/WelcomeModal.tsx) |
+| QuickStart (new project) | Modal overlay | [components/QuickStartModal.tsx](client/src/components/QuickStartModal.tsx) |
+| StarterPacks | Modal overlay | [components/StarterPacksModal.tsx](client/src/components/StarterPacksModal.tsx) |
+| Project name | Modal overlay | [components/ProjectNameModal.tsx](client/src/components/ProjectNameModal.tsx) |
+| Add Hatch (agent) | Modal overlay | [components/AddHatchModal.tsx](client/src/components/AddHatchModal.tsx) — Pro tier gated |
+| Task suggestion | Modal overlay | [components/TaskSuggestionModal.tsx](client/src/components/TaskSuggestionModal.tsx) |
+| Upgrade (tier gate) | Modal overlay | [components/UpgradeModal.tsx](client/src/components/UpgradeModal.tsx) — context-aware (project_limit / autonomy / daily_cap) |
+
+### 28.10 Billing UI
+
+| Feature | UI location | Component / File |
+|---|---|---|
+| Account & billing dashboard | `/account` | [pages/AccountPage.tsx](client/src/pages/AccountPage.tsx) |
+| Plan tier + subscription status | AccountPage | Inside AccountPage |
+| Usage metrics | AccountPage | Inside AccountPage |
+| Upgrade to Pro button | AccountPage | Calls `/api/billing/checkout` |
+| Manage subscription button | AccountPage | Calls `/api/billing/portal` |
+| Grace period detection | AccountPage | Inside AccountPage — reads `graceExpiresAt` |
+| **Usage bar** in chat header | Center panel header | [components/UsageBar.tsx](client/src/components/UsageBar.tsx) |
+| **Upgrade modal (tier hit)** | Modal | [components/UpgradeModal.tsx](client/src/components/UpgradeModal.tsx) |
+
+### 28.11 Autonomy Prompts (Phase 38 Behavior in UI)
+
+| Feature | UI location | Component / Behavior |
+|---|---|---|
+| **Autonomy dial** (4 levels) | Right sidebar Brain & Docs tab | [components/sidebar/AutonomySettingsPanel.tsx](client/src/components/sidebar/AutonomySettingsPanel.tsx) |
+| Committed-shape agent replies at L4 | Chat responses | Server-side `AUTONOMOUS_DIRECTIVE_BLOCK` injection — no separate UI, but visible in reply shape |
+| Maya voice snap at L4 | Maya replies | `MAYA_AUTONOMOUS_OVERRIDE` block — "Here's what I'd do: X. Because Y." shape |
+| **Safety intervention on destructive command** | Inline in chat + AutonomousApprovalCard | `safety_intervention` WS event → `AutonomousApprovalCard` renders |
+| **Fake-action prevention** | Agent replies | `AGENT_CAPABILITY_ENVELOPE` in prompt suppresses "I'll wipe the slate clean" language; visible as honest "I can't do that from here" text |
+
+### 28.12 Real-Time / Background
+
+| Feature | Hook / Client | Server counterpart |
+|---|---|---|
+| WebSocket connection | [lib/websocket.ts::useWebSocket](client/src/lib/websocket.ts) | `/ws` route |
+| **Exponential backoff reconnect** | Inside useWebSocket | `min(1000 * 2^retryCount, 30000)`, max 10 retries |
+| Zod validation on outbound WS | Inside useWebSocket | Runs before send |
+| Conversation join replay after reconnect | Inside useWebSocket | Rebuild subscription set |
+| Real-time updates hook | [hooks/useRealTimeUpdates.ts](client/src/hooks/useRealTimeUpdates.ts) | Debounce 500ms metric batching |
+| Autonomy feed | [hooks/useAutonomyFeed.ts](client/src/hooks/useAutonomyFeed.ts) | Dual source REST (30s stale) + CustomEvent real-time; 3s traceId flush; 200-event cap |
+| Agent working state | [hooks/useAgentWorkingState.ts](client/src/hooks/useAgentWorkingState.ts) | Listens for `AUTONOMY_EVENTS.AGENT_WORKING_STATE` |
+| Unread counts | [hooks/useUnreadCounts.ts](client/src/hooks/useUnreadCounts.ts) | sessionStorage `hatchin:unreadCounts` |
+
+### 28.13 Mobile
+
+| Feature | Behavior | Component / File |
+|---|---|---|
+| Breakpoint at `< 1024px` | CSS media query | [pages/home.tsx](client/src/pages/home.tsx) |
+| Left sidebar → Sheet drawer | Hamburger menu | [pages/home.tsx](client/src/pages/home.tsx) — Shadcn Sheet |
+| Right sidebar → Sheet drawer | Panel toggle button | Same |
+| Mobile header bar | Above center panel | Inside home.tsx |
+| Swipe gestures on drawers | Native Sheet component | Shadcn Sheet default |
+
+### 28.14 Dev-Only UI
+
+| Feature | Route | Component / File |
+|---|---|---|
+| Autonomy debug dashboard | `/dev/autonomy` | [client/src/devtools/autonomyDashboard/](client/src/devtools/autonomyDashboard/) |
+| Storage mode indicator | `/api/system/storage-status` | Dev endpoint only |
+| Captured prompts buffer | `/api/dev/captured-prompts` | For Playwright wire-level assertions |
+
+### 28.15 Not Rendered (Server-Only, No UI Surface)
+
+Features that exist entirely server-side and have no direct UI:
+
+- Conductor decision routing (visible only via `conductor_decision` WS event; no UI card)
+- Peer review runner (visible only via `peer_review_started/completed/revision` WS events; no dedicated tab)
+- Trust scoring (used internally by trust adapter; not surfaced to user)
+- Reasoning cache (server memory; no UI)
+- Autonomous knowledge loop / update cards (server persistence; agent responses reflect them)
+- Personality evolution (`adaptedTraits` in `agents.personality` JSONB; not user-editable, only shows through changed agent tone)
+- Frozen rubric governance (Zod-validated, Object.freeze — infrastructure)
+- Prompt injection layout (staticPrefix + dynamicSuffix; visible only in dev capture mode)
+- Task complexity classifier (adjusts maxTokens invisibly)
+- Conversation compaction (feature-flagged, off by default)
+- Background task batching (30-50% cost savings, invisible to user)
+- Uncaught exception handlers (defensive layer; only visible if server would otherwise crash)
+
+### 28.16 Finding a Feature
+
+If you know the feature name and want to find where it lives:
+
+1. Search this table (Ctrl+F for the feature name)
+2. If not here, feature is likely server-only → check §21 LLM Provider or §22 Knowledge System
+3. If it's a Phase 38 behavior, check §10 AI Slop Prevention
+4. If it's a deliverable-related feature, check §11 Deliverable System
+5. If none of those, it may not be built yet → check `.planning/ROADMAP.md`
+
+Fine-grained implementation inventory (file-by-file function catalog) lives in [.planning/HATCHIN-COMPLETE-INVENTORY.md](.planning/HATCHIN-COMPLETE-INVENTORY.md). That inventory is **dated 2026-03-26** and does not reflect Phases 35-38 or the v2.0 deliverable system. Treat it as historical reference, not current source of truth.
+
+---
+
+*This document is one of six files in the status-doc constellation. When features, architecture, or agent behavior change, this file MUST be refreshed atomically per the memory rule. Its constellation partners are [CLAUDE.md](CLAUDE.md), [HANDOFF.md](HANDOFF.md), [.planning/STATE.md](.planning/STATE.md), [.planning/REQUIREMENTS.md](.planning/REQUIREMENTS.md), and [.planning/ROADMAP.md](.planning/ROADMAP.md).*
+
+*Last refreshed 2026-07-10 covering v2.0 shipped + v2.1 Phases 35 through 38 (Plans 01-04) shipped. Plan 38-05 vibe-check pending. Feature → UI location matrix added §28. Author: Claude Code.*
