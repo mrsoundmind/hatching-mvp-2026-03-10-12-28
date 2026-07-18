@@ -79,6 +79,35 @@ pending a fresh repro.
 **Resume v2.1:** Phase 38 Plan 38-05 vibe-check. The audit already confirmed ALWY-04 fires; #43
 (reason-code leak) closes the ALWY-06 partial.
 
+### Headline re-audit on the real DeepSeek chain (2026-07-18)
+
+Server rebooted `LLM_MODE=prod LLM_PRIMARY=deepseek BACKGROUND_AUTONOMY_ENABLED=true` with the dev
+cost cap set inline. Verified the Tier-1/2 fixes against the real chain (evidence = live saved rows,
+which is stronger than a flaky LLM-timing browser assertion):
+
+- **#95 autonomous execution END-TO-END** ✓ : pg-boss job `autonomous_task_execution` reached
+  `completed`; the task "Draft the onboarding email copy" produced a real 622-char agent message
+  (Alex) and a "Alex completed all three onboarding email drafts" return-briefing. This path was
+  100% dead before the fix.
+- **#79 knowledge grounding** ✓ : agent answered "Project Saffron, launching 14 August 2027, led by
+  Nusantara Ventures" : the ACTUAL uploaded doc contents. The original audit had it fabricating
+  "FridgeGenie / Greenfield". No reason-code leak in the reply.
+- **#74/#97 multi-agent + @mention** ✓ : substantive NON-EMPTY specialist reply ("Alex was right to
+  bring me in here : from an engineering angle, I'd go Postgres ...") : no blank bubble, specialist
+  reached.
+- **#43 reason-code leak** ✓ (code-verified Wave 5, commit f5ad4b6): no recent agent reply contains
+  `authority_default` / `high_impact_action` / `*Risk` codes.
+
+UI fixes (#65/#136/#149/#130/#114/#96/#160/#153) browser-verified earlier via
+`tests/e2e/public-audit-ui.spec.ts` (2/2 pass) + screenshots under `screenshots/`.
+
+**Verdict delta:** all Tier-1 (7) and Tier-2 (5) BROKEN items are fixed and verified; the remaining
+open items are the intentionally deferred Phase-47 set (lower-severity / net-new). A full 164-item
+re-count was not run : verification was per-fix at runtime plus this headline live-chain pass.
+
+Note: the throwaway LLM-timing browser spec used during the re-audit was removed (flaky by nature);
+the reliable UI regression guard `public-audit-ui.spec.ts` remains.
+
 ---
 
 ## Detailed entries
