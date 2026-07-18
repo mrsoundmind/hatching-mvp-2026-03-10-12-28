@@ -401,6 +401,16 @@ function HomeInner() {
         queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
 
         return newProject;
+      } else if (response.status === 403) {
+        // #160: the idea-path creation previously swallowed the project-cap 403 into a generic error
+        // toast, so the paywall never appeared. Mirror handleCreateProject: show the UpgradeModal.
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData.code === 'PROJECT_LIMIT_REACHED') {
+          setUpgradeReason('project_limit');
+          setShowUpgradeModal(true);
+        } else {
+          toast({ title: 'Error', description: errorData.error || 'Not allowed', variant: 'destructive' });
+        }
       } else {
         console.error('Failed to create idea project');
         toast({ title: 'Error', description: 'Failed to create project. Please try again.', variant: 'destructive' });

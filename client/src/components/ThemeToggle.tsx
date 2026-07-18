@@ -1,8 +1,12 @@
 import { Sun, Moon } from "lucide-react";
-import { useTheme } from "./ThemeProvider";
+import { useTheme, FORCE_DARK_MODE } from "./ThemeProvider";
 
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
+
+  // #114: while light mode is disabled the toggle does nothing — hide it rather than render a dead
+  // control that silently ignores clicks.
+  if (FORCE_DARK_MODE) return null;
 
   return (
     <button

@@ -37,10 +37,10 @@ for what was done and why. No dashes; money shown USD + INR (~₹86 per $1, Indi
 | /maya route crash | #149 | 5 | VERIFIED (browser) | /maya/:id renders the chat instead of crashing (paginated messages shape normalized) | (pending commit) |
 | Safety reason-code leak | #43 | 5 | VERIFIED (gate:safety PASS) | internal codes no longer leak into the clarification reply; raw reasons stay in telemetry | (pending commit) |
 | /onboarding orphan page | #130 | 5 | RESOLVED (deleted) | removed the orphaned standalone onboarding.tsx; the modal flow is the real onboarding (user decision) | (pending commit) |
-| Dead Light Mode toggle | #114 | 5 | PENDING | — | — |
-| Off-screen toast | #96 | 5 | PENDING | — | — |
-| UpgradeModal invisible paywall | #160 | 5 | PENDING | — | — |
-| Autonomy dial no Pro gate | #161 | 5 | PENDING | — | — |
+| Dead Light Mode toggle | #114 | 5 | VERIFIED (browser) | menu no longer shows "Light Mode"; toggle self-hides while FORCE_DARK_MODE | (pending commit) |
+| Off-screen toast | #96 | 5 | VERIFIED (computed CSS) | toast viewport now position:fixed bottom:0 right:0 + safe-area inset (was top:0 base) | (pending commit) |
+| UpgradeModal invisible paywall | #160 | 5 | FIXED (code, gate-dependent) | idea-path 403 now shows UpgradeModal (mirrors verified handleCreateProject); live trigger needs FEATURE_BILLING_GATES=true + cap | (pending commit) |
+| Autonomy dial no Pro gate | #161 | 5 | DEFERRED -> Phase 47 | a Pro gate is only correct when billing gates are ON (MVP deploy has them off); needs client gates-state awareness | n/a |
 | Starter-pack role-twice naming | #153 | 5 | VERIFIED (runtime) | pack agents now Alex/Jordan/Wren (character names) instead of role-as-name | (pending commit) |
 | Long tail (auto-revert, verb inconsistencies, corrupt-PDF, Manage Subscription, landing links) | #126 #60 #87 #88 #37 #136 #65 | 5 | PENDING | — | — |
 | Vanishing messages (re-repro first) | #22 | 0 | PENDING | needs fresh repro | — |
