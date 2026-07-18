@@ -2,15 +2,19 @@
 
 > **Read this first if you're an AI (Claude Code, Cursor, Windsurf, Copilot, etc.) or a human picking up on Hatchin.** This file tells you what happened, where we are, and what to do next. Session-continuity log — updated at session boundaries.
 
-**Last refreshed:** 2026-07-10
-**Current branch:** `wip/pre-reset-2026-04-28`
-**Latest commit:** `035325f chore(evidence): move undo-project bug-hunt screenshots to .evidence/undo-bug/` (9 commits ahead of `main`)
+**Last refreshed:** 2026-07-18
+**Current branch:** `fix/audit-remediation-2026-07-17` (off `wip/pre-reset-2026-04-28`; rollback point `3429a29`)
+**Latest commit:** `e7b39de fix(ui): wire landing nav to real sections + surface billing failure toast (#65, #136)`
 
 ---
 
 ## Right now
 
-**Phase:** v2.1 Phase 38 code-complete, only Plan 38-05 human vibe-check remaining
+**Audit Remediation (2026-07-18) — DONE on `fix/audit-remediation-2026-07-17`.** The 2026-07-17 live audit (`.audit-2026-07-17/`) found the core value prop broken (24 BROKEN / 24 PARTIAL of 164). v2.1 feature work was PAUSED to fix it. 10 commits, strict dependency order: pg-boss queue (#95, the single root cause that disabled ALL background autonomy) → multi-agent empty-save + @mention (#74/#97) → brain grounding + auto-fill (#79/#105) → activity visibility (#102/#110/#80/#165) → polish (#43/#153/#149/#130/#114/#96/#160/#65/#136). Every fix runtime-verified (real browser for UI, live server for backend). Deferred to Phase 47: #37, #60, #87/#88, #126, #161, #94/#139, #112. Phase 47 backlog #9 (multi-agent empty-save) is RESOLVED. Full record + rollback recipe: `.audit-2026-07-17/REMEDIATION-LOG.md`. **Next: merge this branch, then resume Phase 38 Plan 38-05.**
+
+---
+
+**Phase:** v2.1 Phase 38 code-complete, only Plan 38-05 human vibe-check remaining (resumes after the remediation branch merges)
 **State:** Plans 38-01/02/03/04 all SHIPPED with unit + Playwright + regression + invariant checks against live server. Plan 38-05 (human vibe-check + `38-VERIFICATION.md`) is the last plan; requires you at the browser.
 **Trackers say:** ALWY-01 ✅ · ALWY-02 ⚠ PARTIAL (final closure via 38-05) · ALWY-03 ✅ · ALWY-04 ✅ · ALWY-05 ✅ · ALWY-06 ✅. Progress 23/24 plans (96%).
 

@@ -51,6 +51,36 @@ for what was done and why. No dashes; money shown USD + INR (~₹86 per $1, Indi
 
 ---
 
+## Close-out summary (2026-07-18)
+
+Branch `fix/audit-remediation-2026-07-17` off `wip/pre-reset-2026-04-28`. Rollback point: `3429a29`.
+
+**Shipped and verified (10 commits):**
+1. `3429a29` docs(audit): audit artifacts + this log
+2. `6749ed0` Wave 1 pg-boss `createQueue` (#95/#90/#54): queue created, `send()` enqueues (was a silent no-op)
+3. `1346b41` Wave 2 multi-agent empty-save + project-scope @mention guard (#74/#98/#111/#97)
+4. `b7e5292` Wave 3 brain grounding + auto-fill (#79/#104/#105/#158)
+5. `1dd8616` Wave 4 activity event metadata, server (#102/#110/#81)
+6. `ece0ce3` Wave 4 activity feed client: default filter + phantom cross-project leak (#80/#107/#165)
+7. `f5ad4b6` Wave 5 server: safety reason-code leak + starter-pack role-twice (#43/#153)
+8. `765eb54` Wave 5 group A: /maya crash + orphan onboarding deletion (#149/#130)
+9. `0298403` Wave 5 group B: dead theme toggle, toast position, cap paywall (#114/#96/#160)
+10. `e7b39de` Wave 5 UI long tail: landing nav + billing failure toast (#65/#136), browser-verified
+
+**Deferred to v2.1 Phase 47 backlog** (lower-severity / need real-LLM verification / net-new):
+#37 corrupt-PDF silent-empty, #60 deliverable-vs-task classification, #87/#88 task-verb nuances,
+#126 auto-revert on score regression, #161 autonomy-dial Pro gate (gates-state dependent),
+#94/#139 @ and / autocomplete (net-new feature), #112 a11y button-label sweep.
+
+**Not re-fixed (mechanism refuted):** #22 vanishing-messages : Wave 0 found `task_created` never
+invalidates the conversation query, so the audit's stated cause does not exist in the code. Left as-is
+pending a fresh repro.
+
+**Resume v2.1:** Phase 38 Plan 38-05 vibe-check. The audit already confirmed ALWY-04 fires; #43
+(reason-code leak) closes the ALWY-06 partial.
+
+---
+
 ## Detailed entries
 
 ### Wave 1 — pg-boss autonomous execution (#95, #90, #54, #166) — IN PROGRESS
