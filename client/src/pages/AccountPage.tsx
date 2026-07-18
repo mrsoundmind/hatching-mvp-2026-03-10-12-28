@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
 import {
   ArrowLeft,
   CreditCard,
@@ -37,27 +38,41 @@ async function fetchBillingStatus(): Promise<BillingStatus> {
 }
 
 async function redirectToPortal() {
-  const res = await fetch("/api/billing/portal", {
-    method: "POST",
-    credentials: "include",
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to create portal session: ${res.status}`);
+  // #136: on failure (e.g. Stripe unconfigured -> 503) this used to throw into an unhandled
+  // promise rejection, so the button did nothing with no feedback. Surface a clear toast instead.
+  try {
+    const res = await fetch("/api/billing/portal", {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error(`portal ${res.status}`);
+    const { url } = await res.json();
+    window.location.href = url;
+  } catch {
+    toast({
+      title: "Subscription management unavailable",
+      description: "We couldn't open the billing portal right now. Please try again in a bit.",
+      variant: "destructive",
+    });
   }
-  const { url } = await res.json();
-  window.location.href = url;
 }
 
 async function redirectToCheckout() {
-  const res = await fetch("/api/billing/checkout", {
-    method: "POST",
-    credentials: "include",
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to create checkout session: ${res.status}`);
+  try {
+    const res = await fetch("/api/billing/checkout", {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error(`checkout ${res.status}`);
+    const { url } = await res.json();
+    window.location.href = url;
+  } catch {
+    toast({
+      title: "Checkout unavailable",
+      description: "We couldn't start checkout right now. Please try again in a bit.",
+      variant: "destructive",
+    });
   }
-  const { url } = await res.json();
-  window.location.href = url;
 }
 
 function formatDate(dateStr: string | null): string {

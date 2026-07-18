@@ -42,7 +42,9 @@ for what was done and why. No dashes; money shown USD + INR (~₹86 per $1, Indi
 | UpgradeModal invisible paywall | #160 | 5 | FIXED (code, gate-dependent) | idea-path 403 now shows UpgradeModal (mirrors verified handleCreateProject); live trigger needs FEATURE_BILLING_GATES=true + cap | (pending commit) |
 | Autonomy dial no Pro gate | #161 | 5 | DEFERRED -> Phase 47 | a Pro gate is only correct when billing gates are ON (MVP deploy has them off); needs client gates-state awareness | n/a |
 | Starter-pack role-twice naming | #153 | 5 | VERIFIED (runtime) | pack agents now Alex/Jordan/Wren (character names) instead of role-as-name | (pending commit) |
-| Long tail (auto-revert, verb inconsistencies, corrupt-PDF, Manage Subscription, landing links) | #126 #60 #87 #88 #37 #136 #65 | 5 | PENDING | — | — |
+| Landing dead nav links | #65 | 5 | VERIFIED (browser) | nav Product/Pricing/FAQ scroll to real sections; contentless "About" replaced by real "FAQ"; Playwright spec 1/1 (click Pricing -> #pricing in viewport) | (pending commit) |
+| Manage Subscription silent-fail | #136 | 5 | VERIFIED (browser) | portal/checkout failure now shows a clear toast ("Checkout unavailable ...") bottom-right; also re-confirms #96 toast position; Playwright spec 1/1 | (pending commit) |
+| Deferred long tail | #126 #60 #87 #88 #37 | 5 -> Phase 47 | DEFERRED | lower-severity backend/AI items needing real-LLM verification (auto-revert, deliverable-vs-task, task-verb nuances, corrupt-PDF) | n/a |
 | Vanishing messages (re-repro first) | #22 | 0 | PENDING | needs fresh repro | — |
 | @/slash autocomplete | #94 #139 | — | DEFERRED | net-new feature → Phase 47 backlog | — |
 | a11y button labels | #112 | — | DEFERRED | a11y sweep → Phase 47 backlog | — |
