@@ -34,9 +34,9 @@ for what was done and why. No dashes; money shown USD + INR (~₹86 per $1, Indi
 | Event metadata (name/label) | #102 #110 #81 | 4 | VERIFIED (server) | feed shows "Maya · proposal created" (was anonymous "Hatch" + "memory written: memory written" junk) | (pending commit) |
 | Feed default filter + avatars | #80 #107 #110 | 4 | VERIFIED (browser) | default "All" shows events; feed avatars now match the chat profile picture | (pending commit) |
 | Phantom cross-project activity leak | #165 | 4 | VERIFIED (code) | realtime events must positively match projectId; historical still trusted | (pending commit) |
-| /maya route crash | #149 | 5 | PENDING | — | — |
+| /maya route crash | #149 | 5 | VERIFIED (browser) | /maya/:id renders the chat instead of crashing (paginated messages shape normalized) | (pending commit) |
 | Safety reason-code leak | #43 | 5 | VERIFIED (gate:safety PASS) | internal codes no longer leak into the clarification reply; raw reasons stay in telemetry | (pending commit) |
-| /onboarding route 404 | #130 | 5 | PENDING | — | — |
+| /onboarding orphan page | #130 | 5 | RESOLVED (deleted) | removed the orphaned standalone onboarding.tsx; the modal flow is the real onboarding (user decision) | (pending commit) |
 | Dead Light Mode toggle | #114 | 5 | PENDING | — | — |
 | Off-screen toast | #96 | 5 | PENDING | — | — |
 | UpgradeModal invisible paywall | #160 | 5 | PENDING | — | — |
