@@ -151,10 +151,19 @@ Three commits: `cdbdd9b` (counters + `completeRun()` in runTreeWriter + shared `
 `ccfa905` (time-window control, sidebar responsiveness 288/320/352, hover-delete as a 44px icon button),
 `f2b6885` (descriptions that say what the agent did instead of echoing the heading; "Timeline"/"By task"
 instead of "Flat"/"Tree"; two value-free counter cards removed; three control rows collapsed to one).
-All runtime-verified in a real browser. Approvals and Handoffs confirmed correct-empty (risk gate >=0.70
-never trips on low-risk work; no task has ever carried `dependsOn`). **Open on this branch:** 3 commits
-unpushed so PR #2 is stale; Work Outputs still shows "Hatch" instead of the agent name; the handoff chain
-is still unproven end to end. Prior session below.
+All runtime-verified in a real browser. Close-out then landed three more: `1a3b979` (deleted orphaned
+ApprovalsEmptyState, dead since its parent tab was removed), `dadb686` (Work Outputs recorded neither the
+executing agent nor the produced output, so it showed "Hatch" over the task *description*; one
+`markTaskCompleted` helper fixes all three completion paths and 6 of 8 historical rows were recovered by
+joining the output messages that already carry `metadata.taskId`), `c549f9c` (handoff labels). The handoff
+chain is now **proven end to end**, not assumed: a seeded `dependsOn` pair triggered a real handoff, the
+live worker executed it, and the receiving agent produced 688 chars using the upstream scope, 11/11 checks.
+Doing so exposed two label bugs no code reading had found: the label read a flat `toAgentName` while
+`handoff_initiated` nests `toAgent.name`, so *every* real handoff rendered anonymously, and self-handoffs
+(the conductor often re-picks the same agent on a small team) claimed a handoff that never happened.
+Approvals remains correct-empty (gate only fires at risk >=0.70). **Open:** the handoff label is
+server-rendered, so a dev-server restart is needed before it shows the new string; the running server is
+PID 67815 and was not restarted (parallel-work safety). Prior session below.
 
 Last session: 2026-07-18 — **Audit Remediation Waves 1 to 5** (2026-07-17 live audit). v2.1 feature work PAUSED to fix the audit's core-value blocks first (user decision: "do this separately using gsd, pause the other ongoing gsd, once we fix the current blocks then move on"). Ran on branch `fix/audit-remediation-2026-07-17` off `wip/pre-reset-2026-04-28` (10 commits, rollback point `3429a29`). Fixed, in strict dependency order: pg-boss queue never created (#95, the root cause disabling ALL background autonomy) → multi-agent empty-save + project-scope @mention (#74/#97) → brain grounding + auto-fill (#79/#105) → activity feed metadata/filter/phantom-leak (#102/#110/#80/#165) → polish (#43/#153/#149/#130/#114/#96/#160/#65/#136). Each fix runtime-verified (real browser for UI via `tests/e2e/public-audit-ui.spec.ts`, live server for backend). Deferred to Phase 47: #37, #60, #87/#88, #126, #161, #94/#139, #112. Phase 47 backlog #9 (multi-agent empty-save) RESOLVED here. Full record: `.audit-2026-07-17/REMEDIATION-LOG.md`. **Resume: merge/rebase this branch, then Phase 38 Plan 38-05 vibe-check** (audit already confirmed ALWY-04 fires; #43 closes the ALWY-06 partial). Prior session below.
 
