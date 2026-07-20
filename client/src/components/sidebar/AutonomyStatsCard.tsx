@@ -1,15 +1,29 @@
 import { motion } from 'framer-motion';
-import type { FeedStats } from '@/hooks/useAutonomyFeed';
+import type { FeedStats, TimeFilter } from '@/hooks/useAutonomyFeed';
 
 interface AutonomyStatsCardProps {
   stats: FeedStats | undefined;
   isLoading: boolean;
+  timeFilter: TimeFilter;
 }
 
-export function AutonomyStatsCard({ stats, isLoading }: AutonomyStatsCardProps) {
+// The counters are scoped to the selected window, so the label has to say which
+// one — "0 tasks done" next to a busy feed reads as broken, "0 tasks done today"
+// reads as true (feedback_ui_self_documenting).
+const RANGE_SUFFIX: Record<TimeFilter, string> = {
+  today: 'today',
+  '7days': 'this week',
+  all: 'all time',
+};
+
+export function AutonomyStatsCard({ stats, isLoading, timeFilter }: AutonomyStatsCardProps) {
+  const suffix = RANGE_SUFFIX[timeFilter];
+  const tasks = stats?.tasksCompleted ?? 0;
+  const handoffs = stats?.handoffs ?? 0;
   const values = [
-    { value: stats?.tasksCompleted ?? 0, label: 'tasks done', color: 'var(--hatchin-green)' },
-    { value: stats?.handoffs ?? 0, label: 'handoffs', color: 'var(--hatchin-blue)' },
+    // Singular/plural so it never reads "1 tasks done".
+    { value: tasks, label: `${tasks === 1 ? 'task' : 'tasks'} done ${suffix}`, color: 'var(--hatchin-green)' },
+    { value: handoffs, label: `${handoffs === 1 ? 'handoff' : 'handoffs'} ${suffix}`, color: 'var(--hatchin-blue)' },
   ];
 
   if (isLoading) {

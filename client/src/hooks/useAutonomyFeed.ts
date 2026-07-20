@@ -47,7 +47,7 @@ const DEBOUNCE_MS = 3000;
 // --- Helpers ---
 
 type FilterCategory = 'all' | 'task' | 'handoff' | 'review' | 'approval';
-type TimeFilter = 'today' | '7days' | 'all';
+export type TimeFilter = 'today' | '7days' | 'all';
 
 function mapEventTypeToCategory(eventType: string): FeedEvent['category'] {
   switch (eventType) {
@@ -226,7 +226,12 @@ export function useAutonomyFeed(projectId: string | undefined) {
   // so an active project's feed looked empty ("Your team is ready") despite 50+ events.
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('all');
   const [agentFilter, setAgentFilter] = useState<string | null>(null);
-  const [timeFilter] = useState<TimeFilter>('today');
+  // Was hardcoded to 'today' with NO setter, so the feed and both stat counters
+  // silently reset to empty every midnight and nothing in the UI said why or let
+  // you widen the window — an active project read as a dead one the next morning.
+  // Defaults to 'all' (the events query is already capped at 50) so the panel can
+  // never look falsely empty; the user narrows it deliberately.
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
 
   // Debounce batching refs
   const pendingBatch = useRef<FeedEvent[]>([]);
@@ -250,7 +255,8 @@ export function useAutonomyFeed(projectId: string | undefined) {
 
   // REST: fetch stats
   const { data: statsData, isLoading: isLoadingStats } = useQuery<FeedStats>({
-    queryKey: ['/api/autonomy/stats', `?projectId=${projectId}&period=today`],
+    // Period follows the visible time filter so the card can never disagree with the feed below it.
+    queryKey: ['/api/autonomy/stats', `?projectId=${projectId}&period=${timeFilter}`],
     enabled: !!projectId,
     staleTime: 60_000,
   });
@@ -392,5 +398,7 @@ export function useAutonomyFeed(projectId: string | undefined) {
     setActiveFilter,
     agentFilter,
     setAgentFilter,
+    timeFilter,
+    setTimeFilter,
   };
 }

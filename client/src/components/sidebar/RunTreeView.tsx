@@ -30,6 +30,50 @@ interface RunTreeViewProps {
   projectId: string | undefined;
 }
 
+/**
+ * Badge for a run that produced no measurable quality delta.
+ *
+ * Previously this always rendered "In progress" because it keyed off
+ * aggregateScoreDelta (null for ~every live run — Phase 47 #2, the pipeline
+ * rarely produces scored deliverables), so finished runs looked permanently
+ * unfinished. Reading run.status tells the truth in plain words.
+ */
+function runStatusBadge(status: string | null): {
+  label: string;
+  color: string;
+  bg?: string;
+  border: string;
+} {
+  switch (status) {
+    case 'complete':
+      return {
+        label: '✓ Done',
+        color: 'var(--hatchin-green)',
+        bg: 'hsla(158, 66%, 47%, 0.12)',
+        border: '1px solid hsla(158, 66%, 47%, 0.45)',
+      };
+    case 'failed':
+      return {
+        label: '⚠ Stopped',
+        color: 'var(--hatchin-orange)',
+        bg: 'hsla(25, 100%, 60%, 0.12)',
+        border: '1px solid hsla(25, 100%, 60%, 0.45)',
+      };
+    case 'cancelled':
+      return {
+        label: 'Cancelled',
+        color: 'var(--hatchin-text-muted)',
+        border: '1px solid var(--hatchin-border-subtle)',
+      };
+    default:
+      return {
+        label: 'In progress',
+        color: 'var(--hatchin-text-muted)',
+        border: '1px solid var(--hatchin-border-subtle)',
+      };
+  }
+}
+
 export function RunTreeView({ projectId }: RunTreeViewProps) {
   const { runs, steps, isLoading } = useAutonomyRunTree(projectId);
 
@@ -122,6 +166,7 @@ export function RunTreeView({ projectId }: RunTreeViewProps) {
         const rootSteps = runSteps.filter((s) => s.parentStepId === null);
         const aggDelta = formatScoreDelta(run.aggregateScoreDelta);
         const aggWord = formatScoreDeltaWord(run.aggregateScoreDelta, 'aggregate');
+        const statusBadge = runStatusBadge(run.status);
         const meta = (run.metadata ?? {}) as Record<string, unknown>;
         const isFlatHistorical = meta.flatHistorical === true;
 
@@ -155,7 +200,7 @@ export function RunTreeView({ projectId }: RunTreeViewProps) {
               onClick={() => toggleRun(run.id)}
               className="w-full flex items-start gap-2 px-3 py-2.5 hover:bg-[var(--hatchin-surface)]/40 transition-colors text-left"
               aria-expanded={isOpen}
-              aria-label={`Run ${run.rootGoal ?? 'untitled'} — ${aggWord.label}`}
+              aria-label={`Run ${run.rootGoal ?? 'untitled'} — ${aggWord.tone === 'new' ? statusBadge.label.replace(/^[^\w]+\s*/, '') : aggWord.label}`}
               title={aggDelta.label && aggDelta.label !== 'new' ? `Quality change: ${aggDelta.label} (raw)` : undefined}
             >
               {isOpen ? (
@@ -210,13 +255,14 @@ export function RunTreeView({ projectId }: RunTreeViewProps) {
               )}
               {aggWord.tone === 'new' && (
                 <span
-                  className="text-[10px] font-medium shrink-0 px-2 py-0.5 rounded-full whitespace-nowrap mt-0.5"
+                  className="text-[10px] font-semibold shrink-0 px-2 py-0.5 rounded-full whitespace-nowrap mt-0.5"
                   style={{
-                    color: 'var(--hatchin-text-muted)',
-                    border: '1px solid var(--hatchin-border-subtle)',
+                    color: statusBadge.color,
+                    backgroundColor: statusBadge.bg,
+                    border: statusBadge.border,
                   }}
                 >
-                  In progress
+                  {statusBadge.label}
                 </span>
               )}
             </button>

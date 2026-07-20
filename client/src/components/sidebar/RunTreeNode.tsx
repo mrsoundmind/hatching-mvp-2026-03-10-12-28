@@ -41,6 +41,53 @@ function stepVerb(stepType: AutonomyRunStep['stepType']): string {
   }
 }
 
+// Human duration. "Finished in 1.3s" beats a bare millisecond count
+// (feedback_ui_self_documenting).
+function formatDuration(ms: number | null | undefined): string | null {
+  if (typeof ms !== 'number' || !Number.isFinite(ms) || ms <= 0) return null;
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  const seconds = ms / 1000;
+  if (seconds < 60) return `${seconds.toFixed(1)}s`;
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}m ${Math.round(seconds % 60)}s`;
+}
+
+/**
+ * What this step actually did / is doing / will do.
+ *
+ * The row used to render "{agent} worked on {step.title}", but step.title IS the
+ * run's rootGoal — i.e. the card heading directly above it — so the line carried
+ * zero new information. Now a completed step shows a one-line summary of the text
+ * the agent really produced (captured server-side into metadata.summary), and
+ * non-terminal states say plainly what is happening instead.
+ *
+ * Steps written before the summary existed fall back to the old phrasing rather
+ * than rendering blank.
+ */
+function stepDescription(
+  status: string | null,
+  agentName: string,
+  verb: string,
+  title: string,
+  summaryText: string | null,
+  errorText: string | null,
+): { lead: string; body: string | null } {
+  switch (status) {
+    case 'failed':
+      return { lead: `${agentName} stopped`, body: errorText ?? 'this step did not finish' };
+    case 'running':
+      return { lead: `${agentName} is working on this now`, body: null };
+    case 'pending':
+      return { lead: 'Queued, not started yet', body: null };
+    case 'skipped':
+      return { lead: `${agentName} skipped this step`, body: null };
+    default:
+      return summaryText
+        ? { lead: agentName, body: summaryText }
+        : { lead: `${agentName} ${verb}`, body: title };
+  }
+}
+
 // Deterministic agent-name → palette mapping (mirrors ActivityFeedItem.tsx avatar palette)
 const AVATAR_PALETTES = [
   { bg: '#1d4ed8', text: '#bfdbfe' },
@@ -83,6 +130,12 @@ export function RunTreeNode({ step, allSteps, depth, onClick }: RunTreeNodeProps
   const verb = stepVerb(step.stepType);
   const agentName = step.agentName ?? 'Unknown';
 
+  const meta = (step.metadata ?? {}) as Record<string, unknown>;
+  const summaryText = typeof meta.summary === 'string' && meta.summary.trim() ? meta.summary : null;
+  const errorText = typeof meta.error === 'string' && meta.error.trim() ? meta.error : null;
+  const { lead, body } = stepDescription(step.status, agentName, verb, step.title ?? '(untitled)', summaryText, errorText);
+  const duration = step.status === 'complete' ? formatDuration(step.latencyMs) : null;
+
   const handleClick = () => {
     if (hasDeliverable) {
       onClick(step);
@@ -97,7 +150,7 @@ export function RunTreeNode({ step, allSteps, depth, onClick }: RunTreeNodeProps
         type="button"
         onClick={handleClick}
         className="w-full flex items-start gap-2 px-2 py-2 rounded-lg hover:bg-[var(--hatchin-surface)] text-left transition-colors"
-        aria-label={`${agentName} ${verb}: ${step.title ?? step.stepType} — ${step.status}`}
+        aria-label={body ? `${lead}: ${body}` : lead}
         data-testid={`run-tree-step-${step.id}`}
         title={delta.label && delta.label !== 'new' ? `Quality change: ${delta.label}` : undefined}
       >
@@ -110,16 +163,20 @@ export function RunTreeNode({ step, allSteps, depth, onClick }: RunTreeNodeProps
           {initial}
         </span>
 
-        {/* Verb-led description (wraps to 2 lines naturally — no truncation) */}
-        <span
-          className="text-[11px] leading-snug flex-1 min-w-0"
-          style={{ color: 'var(--hatchin-text)' }}
-        >
-          <span className="font-semibold">{agentName}</span>{' '}
-          <span className="hatchin-text-muted">{verb}</span>{' '}
+        {/* What happened, in words (wraps naturally — no truncation) */}
+        <span className="text-[11px] leading-snug flex-1 min-w-0 flex flex-col gap-0.5">
           <span style={{ color: 'var(--hatchin-text)' }}>
-            {step.title ?? '(untitled)'}
+            <span className="font-semibold">{lead}</span>
+            {body && (
+              <>
+                <span className="hatchin-text-muted">{' · '}</span>
+                <span className="hatchin-text-muted">{body}</span>
+              </>
+            )}
           </span>
+          {duration && (
+            <span className="text-[10px] hatchin-text-muted">Finished in {duration}</span>
+          )}
         </span>
 
         {/* Semantic-word delta badge: "Better" (green) / "Worse" (amber) / "New" (muted pill) */}

@@ -85,6 +85,23 @@ export async function startStep(
   }
 }
 
+/**
+ * Condense an agent's produced text into a single readable line for the run tree.
+ * The step row used to echo the task title, which told the user nothing they
+ * couldn't already read in the card heading — this gives it real substance
+ * (feedback_ui_self_documenting). Pure string work: no extra LLM call, no cost.
+ */
+export function summarizeOutput(text: string | null | undefined, maxLen = 160): string | undefined {
+  if (!text) return undefined;
+  const clean = text.replace(/\s+/g, ' ').trim();
+  if (!clean) return undefined;
+  if (clean.length <= maxLen) return clean;
+  const cut = clean.slice(0, maxLen);
+  const lastSpace = cut.lastIndexOf(' ');
+  // Prefer a word boundary, but don't chop off more than ~40% chasing one.
+  return `${lastSpace > maxLen * 0.6 ? cut.slice(0, lastSpace) : cut}…`;
+}
+
 export async function completeStep(
   stepId: string | null,
   output: {
@@ -92,6 +109,8 @@ export async function completeStep(
     deliverableVersionId?: string;
     priorRubricTotal?: number | null;
     currentRubricTotal?: number | null;
+    /** One-line record of what the agent actually produced, rendered in the run tree. */
+    summary?: string;
   },
   startedAtMs?: number,
 ): Promise<void> {
@@ -140,6 +159,7 @@ export async function completeStep(
       deliverableVersionId: output.deliverableVersionId ?? null,
       deliverableVersionNumber,
       scoreDelta,
+      ...(output.summary ? { metadata: { summary: output.summary } as Record<string, unknown> } : {}),
     });
   } catch (err) {
     console.warn('[runTreeWriter] completeStep failed:', (err as Error).message);

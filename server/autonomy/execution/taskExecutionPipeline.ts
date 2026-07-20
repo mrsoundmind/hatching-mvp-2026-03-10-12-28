@@ -13,7 +13,7 @@ import { getRoleIntelligence } from '@shared/roleIntelligence';
 import type { IStorage } from '../../storage.js';
 import { recordUsage } from '../../billing/usageTracker.js';
 // Phase 37 — autonomy run tree writer (non-fatal step + run writes)
-import { ensureRunForTrace, startStep, completeStep, failStep, completeRun } from '../runs/runTreeWriter.js';
+import { ensureRunForTrace, startStep, completeStep, failStep, completeRun, summarizeOutput } from '../runs/runTreeWriter.js';
 // Phase 38 — autonomous-mode directive block (appended to system prompt when level === 'autonomous')
 import { AUTONOMOUS_DIRECTIVE_BLOCK } from '../../ai/promptTemplate.js';
 
@@ -288,6 +288,7 @@ async function executeTaskWithOutput(
         deliverableVersionId: undefined,
         priorRubricTotal: null,
         currentRubricTotal: null,
+        summary: summarizeOutput(output),
       }, startedAtMs);
       return { status: 'pending_approval', stepId };
     }
@@ -336,6 +337,7 @@ async function executeTaskWithOutput(
             deliverableVersionId: undefined,
             priorRubricTotal: null,
             currentRubricTotal: null,
+            summary: summarizeOutput(output),
           }, startedAtMs);
           return { status: 'pending_approval', stepId };
         }
@@ -396,6 +398,7 @@ async function executeTaskWithOutput(
       deliverableVersionId: undefined,
       priorRubricTotal: null,
       currentRubricTotal: null,
+      summary: summarizeOutput(finalOutput),
     }, startedAtMs);
     return { status: 'completed', stepId };
   } catch (err) {
@@ -485,6 +488,7 @@ export async function executeTask(
         deliverableVersionId: undefined,
         priorRubricTotal: null,
         currentRubricTotal: null,
+        summary: summarizeOutput(output),
       }, startedAtMs);
       return { status: 'pending_approval', stepId };
     }
@@ -535,6 +539,7 @@ export async function executeTask(
           deliverableVersionId: undefined,
           priorRubricTotal: null,
           currentRubricTotal: null,
+          summary: summarizeOutput(output),
         }, startedAtMs);
         return { status: 'pending_approval', stepId };
       }
@@ -592,6 +597,7 @@ export async function executeTask(
           deliverableVersionId: undefined,
           priorRubricTotal: null,
           currentRubricTotal: null,
+          summary: summarizeOutput(finalOutput),
         }, startedAtMs);
         return { status: 'completed', stepId };
       }
@@ -648,6 +654,7 @@ export async function executeTask(
       deliverableVersionId: undefined,
       priorRubricTotal: null,
       currentRubricTotal: null,
+      summary: summarizeOutput(output),
     }, startedAtMs);
     return { status: 'completed', stepId };
   } catch (err) {

@@ -15,6 +15,7 @@ import { AUTONOMY_EVENTS } from '@/lib/autonomyEvents';
 import type { Task } from '@shared/schema';
 // Phase 37 (D-10, TREE-03) — view-mode toggle + tree renderer
 import { ActivityViewModeToggle } from './ActivityViewModeToggle';
+import { ActivityTimeRangeToggle } from './ActivityTimeRangeToggle';
 import { RunTreeView } from './RunTreeView';
 
 interface ActivityTabProps {
@@ -50,6 +51,8 @@ export function ActivityTab({ projectId, agents }: ActivityTabProps) {
     setActiveFilter,
     agentFilter,
     setAgentFilter,
+    timeFilter,
+    setTimeFilter,
   } = useAutonomyFeed(projectId);
 
   // Fetch tasks to surface pending approvals here in Activity
@@ -97,7 +100,10 @@ export function ActivityTab({ projectId, agents }: ActivityTabProps) {
       {/* Phase 37 (D-10) — view-mode toggle ABOVE stats card */}
       <ActivityViewModeToggle mode={viewMode} onChange={setViewMode} />
 
-      <AutonomyStatsCard stats={stats} isLoading={isLoading} />
+      {/* Time range governs BOTH the counters and the feed below, so it sits above both. */}
+      <ActivityTimeRangeToggle value={timeFilter} onChange={setTimeFilter} />
+
+      <AutonomyStatsCard stats={stats} isLoading={isLoading} timeFilter={timeFilter} />
 
       {/* Pending Approvals — pinned directly above the feed when any exist */}
       {pendingApprovals.length > 0 && (

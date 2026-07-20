@@ -1,7 +1,7 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
 import { TaskPipelineView } from './TaskPipelineView';
 import { WorkOutputSection } from './WorkOutputSection';
 import { useSidebarEvent } from '@/hooks/useSidebarEvent';
@@ -32,7 +32,7 @@ export function TasksTab({ projectId }: TasksTabProps) {
     queryFn: async () => {
       const r = await fetch(`/api/tasks?projectId=${projectId}`);
       // 404 returns {error: "..."} — never cache non-array shapes since this
-      // queryKey is shared with RightSidebar/ApprovalsTab/ActivityTab/WorkOutput
+      // queryKey is shared with RightSidebar/ActivityTab/WorkOutputSection
       // and they all assume the data is Task[]. Caching an error object would
       // crash every consumer with "(allTasks ?? []).some is not a function".
       if (!r.ok) return [];
@@ -54,9 +54,13 @@ export function TasksTab({ projectId }: TasksTabProps) {
     queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
   });
 
+  // 'completed' starts collapsed so finished work doesn't bury active work — but if
+  // EVERYTHING is done, collapsing it leaves a board that looks empty even though the
+  // team shipped. In that case start expanded so the user sees what was accomplished.
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
     new Set(['completed'])
   );
+  const [autoExpandedCompleted, setAutoExpandedCompleted] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [showAddTask, setShowAddTask] = useState(false);
 
@@ -85,6 +89,21 @@ export function TasksTab({ projectId }: TasksTabProps) {
   }, [tasks]);
 
   const totalBoardTasks = taskSections.reduce((sum, s) => sum + s.tasks.length, 0);
+
+  // Auto-expand Completed exactly once, when it is the ONLY section with anything in
+  // it. Fires once (autoExpandedCompleted) so a deliberate collapse by the user sticks.
+  useEffect(() => {
+    if (autoExpandedCompleted) return;
+    const count = (id: string) => taskSections.find(s => s.id === id)?.tasks.length ?? 0;
+    if (count('completed') > 0 && count('active') === 0 && count('urgent') === 0) {
+      setCollapsedSections(prev => {
+        const next = new Set(prev);
+        next.delete('completed');
+        return next;
+      });
+      setAutoExpandedCompleted(true);
+    }
+  }, [taskSections, autoExpandedCompleted]);
 
   const toggleSection = useCallback((sectionId: string) => {
     setCollapsedSections(prev => {
@@ -310,11 +329,16 @@ export function TasksTab({ projectId }: TasksTabProps) {
                                 )}
                               </div>
 
+                              {/* Icon button instead of the literal "del" text: same
+                                  pattern as DocumentCard, always reachable on touch
+                                  (hover-only controls can't be revealed by a finger). */}
                               <button
+                                type="button"
+                                aria-label={`Delete task: ${task.title}`}
                                 onClick={() => deleteTask(task.id)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-red-400 hover:text-red-300 shrink-0 py-0.5"
+                                className="flex items-center justify-center rounded-lg shrink-0 min-h-[44px] min-w-[44px] lg:min-h-0 lg:min-w-0 lg:w-7 lg:h-7 text-[var(--hatchin-text-muted)] hover:text-red-400 hover:bg-red-500/10 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 transition-all"
                               >
-                                del
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </motion.div>
                           );

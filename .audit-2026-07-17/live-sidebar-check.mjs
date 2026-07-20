@@ -1,12 +1,11 @@
 /**
- * Live visual verification of the 2026-07-20 sidebar backend fixes.
+ * Live visual verification of the 2026-07-20 sidebar remediation.
  * Drives the real authenticated UI in Chromium and captures the Activity tab
- * (stats card + feed), the Tree view, and the Tasks filter.
+ * (stats + time range), the Tree view, the Tasks board, and a narrow viewport.
  */
 import { chromium } from 'playwright';
 import { readFileSync } from 'fs';
 
-// Pull the session cookie out of the curl jar without ever printing it.
 const jar = readFileSync('.audit-2026-07-17/cookies.txt', 'utf8');
 const line = jar.split('\n').find((l) => l.includes('connect.sid'));
 if (!line) { console.error('no connect.sid in cookie jar'); process.exit(1); }
@@ -14,54 +13,74 @@ const sid = line.split('\t').pop().trim();
 
 const OUT = '.audit-2026-07-17/screenshots';
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-await ctx.addCookies([{ name: 'connect.sid', value: sid, domain: 'localhost', path: '/', httpOnly: true }]);
-const page = await ctx.newPage();
 
-await page.goto('http://localhost:5001/', { waitUntil: 'networkidle' });
-await page.waitForTimeout(2500);
-
-// Dismiss any onboarding/welcome dialog that blocks pointer events
-for (let i = 0; i < 4; i++) {
-  const overlay = page.locator('div[data-state="open"][aria-hidden="true"]');
-  if ((await overlay.count()) === 0) break;
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(800);
+async function openApp(width, height) {
+  const ctx = await browser.newContext({ viewport: { width, height } });
+  await ctx.addCookies([{ name: 'connect.sid', value: sid, domain: 'localhost', path: '/', httpOnly: true }]);
+  const page = await ctx.newPage();
+  await page.goto('http://localhost:5001/', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2500);
+  for (let i = 0; i < 4; i++) {
+    if ((await page.locator('div[data-state="open"][aria-hidden="true"]').count()) === 0) break;
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(700);
+  }
+  const proj = page.getByText('AI Recipe App', { exact: true }).first();
+  if (await proj.count()) { await proj.click({ timeout: 15000 }).catch(() => {}); await page.waitForTimeout(2500); }
+  return page;
 }
-console.log('overlays remaining:', await page.locator('div[data-state="open"][aria-hidden="true"]').count());
 
-// Select the AI Recipe App project
-const proj = page.getByText('AI Recipe App', { exact: true }).first();
-if (await proj.count()) { await proj.click({ timeout: 15000 }).catch(() => {}); await page.waitForTimeout(2500); }
+// ---------- Desktop ----------
+const page = await openApp(1440, 900);
 
-console.log('URL:', page.url());
-
-// --- Activity tab: stats card + feed ---
-const activity = page.getByRole('button', { name: /^ACTIVITY$/i }).first();
+const activity = page.getByTestId('sidebar-tab-activity');
 if (await activity.count()) { await activity.click(); await page.waitForTimeout(2000); }
-await page.screenshot({ path: `${OUT}/live-activity-stats.png`, fullPage: false });
+await page.screenshot({ path: `${OUT}/after-activity.png` });
 
-// Read the two stat numbers as rendered
-const statText = await page.locator('text=/tasks done/i').first().locator('..').innerText().catch(() => 'n/a');
-console.log('STATS CARD (tasks done):', JSON.stringify(statText));
-const handoffText = await page.locator('text=/handoffs/i').first().locator('..').innerText().catch(() => 'n/a');
-console.log('STATS CARD (handoffs):', JSON.stringify(handoffText));
+// Stat labels as actually rendered
+for (const t of ['time-range-today', 'time-range-7days', 'time-range-all']) {
+  const el = page.getByTestId(t);
+  if (await el.count()) console.log(`control ${t}: "${(await el.innerText()).trim()}" checked=${await el.getAttribute('aria-checked')}`);
+}
+const statCard = page.locator('.premium-card').filter({ hasText: /done/i }).first();
+if (await statCard.count()) console.log('STAT:', JSON.stringify((await statCard.innerText()).replace(/\n/g, ' | ')));
 
-// --- Tree view ---
+// ---------- Tree ----------
 const tree = page.getByText('Tree', { exact: true }).first();
 if (await tree.count()) {
   await tree.click();
   await page.waitForTimeout(2500);
-  await page.screenshot({ path: `${OUT}/live-tree.png`, fullPage: false });
-  const runCards = await page.locator('[data-testid^="run-card-"]').count();
-  console.log('TREE run cards rendered:', runCards);
-  const emptyTree = await page.getByText('No autonomous runs yet').count();
-  console.log('TREE empty-state visible:', emptyTree > 0);
+  await page.screenshot({ path: `${OUT}/after-tree.png` });
+  console.log('run cards:', await page.locator('[data-testid^="run-card-"]').count());
+  const first = page.locator('[data-testid^="run-card-"]').first();
+  if (await first.count()) console.log('FIRST CARD:', JSON.stringify((await first.innerText()).replace(/\n/g, ' | ').slice(0, 260)));
 }
 
-// --- back to Flat, filter to Tasks ---
-const flat = page.getByText('Flat', { exact: true }).first();
-if (await flat.count()) { await flat.click(); await page.waitForTimeout(1500); }
+// ---------- Tasks tab ----------
+const tasksTab = page.getByTestId('sidebar-tab-tasks');
+if (await tasksTab.count()) {
+  await tasksTab.click();
+  await page.waitForTimeout(2000);
+  await page.screenshot({ path: `${OUT}/after-tasks.png` });
+  const completedVisible = await page.getByText('Completed', { exact: true }).count();
+  console.log('Tasks: Completed section present =', completedVisible > 0);
+}
+await page.context().close();
+
+// ---------- Narrow desktop (responsiveness) ----------
+const narrow = await openApp(1280, 800);
+const act2 = narrow.getByTestId('sidebar-tab-activity');
+if (await act2.count()) { await act2.click(); await narrow.waitForTimeout(1500); }
+await narrow.screenshot({ path: `${OUT}/after-narrow-1280.png` });
+const aside = narrow.locator('aside').last();
+if (await aside.count()) {
+  const box = await aside.boundingBox();
+  console.log('sidebar width @1280:', box && Math.round(box.width));
+}
+// horizontal overflow check
+const overflow = await narrow.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+console.log('page overflows horizontally @1280:', overflow);
+await narrow.context().close();
 
 await browser.close();
-console.log('screenshots written to', OUT);
+console.log('screenshots ->', OUT);

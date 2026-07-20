@@ -11,6 +11,7 @@ import {
   Send,
   Loader2,
   FileText,
+  Trash2,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -549,9 +550,11 @@ export function DeliverableList({ projectId, onSelect }: DeliverableListProps) {
         const statusInfo = STATUS_LABELS[d.status] || STATUS_LABELS.draft;
         return (
           <div key={d.id} className="relative group">
+            {/* pr-12 reserves the gutter the delete control sits in, so the title,
+                status badge and "by <agent>" row are never covered on hover. */}
             <motion.button
               onClick={() => onSelect(d.id)}
-              className="premium-card p-3 w-full text-left flex items-start gap-3 hover:border-[var(--hatchin-blue)]/30 transition-colors"
+              className="premium-card p-3 pr-12 w-full text-left flex items-start gap-3 hover:border-[var(--hatchin-blue)]/30 transition-colors"
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
             >
@@ -562,7 +565,9 @@ export function DeliverableList({ projectId, onSelect }: DeliverableListProps) {
                 {(d.agentName || 'A')[0]}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                {/* min-w-0 on the inner row too — without it nested flex refuses to
+                    shrink and a long title pushes the badge out instead of ellipsizing. */}
+                <div className="flex items-center gap-2 min-w-0">
                   <span className="text-sm font-medium truncate hatchin-text">{d.title}</span>
                   <span
                     className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-full shrink-0"
@@ -584,16 +589,23 @@ export function DeliverableList({ projectId, onSelect }: DeliverableListProps) {
                 </div>
               </div>
             </motion.button>
+            {/* Was a literal "del" in 10px red text, floated over the card content with
+                a ~18px hit area and hover-only visibility — so it read as debug
+                scaffolding, covered the badges, and was unreachable on touch (no hover).
+                Now an icon button matching DocumentCard: always visible on touch,
+                reveals on hover/keyboard focus from lg up, 44px target on touch. */}
             <button
+              type="button"
+              aria-label={`Delete ${d.title}`}
               onClick={(e) => {
                 e.stopPropagation();
-                if (window.confirm('Delete this deliverable?')) {
+                if (window.confirm(`Delete "${d.title}"? This cannot be undone.`)) {
                   deleteMutation.mutate(d.id);
                 }
               }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-red-400 hover:text-red-300 py-1 px-2"
+              className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-lg min-h-[44px] min-w-[44px] lg:min-h-0 lg:min-w-0 lg:w-8 lg:h-8 text-[var(--hatchin-text-muted)] hover:text-red-400 hover:bg-red-500/10 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-red-400/60 transition-all"
             >
-              del
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
         );

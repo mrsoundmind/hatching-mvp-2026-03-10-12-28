@@ -110,11 +110,15 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
   }, []);
 
   const { activeView } = state;
-  const asideClassName = `w-80 h-[calc(100vh-20px)] min-h-0 premium-column-bg rounded-2xl p-6 overflow-y-auto hide-scrollbar my-2.5 relative right-sidebar-scroll ${isPanelScrolling ? 'is-scrolling' : ''}`;
+  // Responsive width + padding. This was a hard `w-80` with no breakpoints and no
+  // shrink-0, so on a ~1280px laptop with the 480px artifact panel open the centre
+  // chat was crushed while the sidebar stayed rigid. p-6 inside 320px also left
+  // only ~272px of usable content, which is what made every card feel cramped.
+  const asideClassName = `w-72 xl:w-80 2xl:w-[22rem] shrink-0 h-[calc(100vh-20px)] min-h-0 premium-column-bg rounded-2xl p-4 xl:p-6 overflow-y-auto hide-scrollbar my-2.5 relative right-sidebar-scroll ${isPanelScrolling ? 'is-scrolling' : ''}`;
 
   if (activeView === 'none') {
     return (
-      <aside className="w-80 premium-column-bg rounded-2xl p-6 flex flex-col items-center justify-center my-2.5 relative overflow-hidden">
+      <aside className="w-72 xl:w-80 2xl:w-[22rem] shrink-0 premium-column-bg rounded-2xl p-4 xl:p-6 flex flex-col items-center justify-center my-2.5 relative overflow-hidden">
         <div className="ambient-glow-top" />
         <div className="text-center hatchin-text-muted">
           <div className="text-4xl mb-4">🧠</div>
