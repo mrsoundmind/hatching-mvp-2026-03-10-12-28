@@ -47,8 +47,8 @@ async function main() {
 
   await storage.createTask({
     id: taskB, userId: (project as any).userId, projectId: PROJECT_ID,
-    title: 'Handoff probe: write the launch announcement from that scope',
-    description: 'Using the agreed launch scope, write the public announcement copy for the release.',
+    title: 'Handoff probe: implement the pricing page conversion tracking',
+    description: 'Implement the backend API endpoint and database schema needed to track conversion events on the pricing page, including the migration.',
     status: 'todo', priority: 'medium',
     metadata: { dependsOn: taskA },
   } as any);
@@ -125,7 +125,7 @@ async function main() {
     check('receiving agent produced real output', msgs.rows[0].content.length > 100,
       `${msgs.rows[0].content.length} chars by ${agent?.name ?? 'unknown'}`);
     check('output reflects the upstream scope',
-      /channel|pricing|two week|constraint|launch/i.test(msgs.rows[0].content));
+      /channel|pricing|two week|constraint|launch|conversion/i.test(msgs.rows[0].content));
   } else {
     check('receiving agent produced real output', false, 'no output message found');
   }
