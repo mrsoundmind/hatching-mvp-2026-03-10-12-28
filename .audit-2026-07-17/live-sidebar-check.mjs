@@ -37,13 +37,15 @@ const activity = page.getByTestId('sidebar-tab-activity');
 if (await activity.count()) { await activity.click(); await page.waitForTimeout(2000); }
 await page.screenshot({ path: `${OUT}/after-activity.png` });
 
-// Stat labels as actually rendered
-for (const t of ['time-range-today', 'time-range-7days', 'time-range-all']) {
-  const el = page.getByTestId(t);
-  if (await el.count()) console.log(`control ${t}: "${(await el.innerText()).trim()}" checked=${await el.getAttribute('aria-checked')}`);
-}
-const statCard = page.locator('.premium-card').filter({ hasText: /done/i }).first();
-if (await statCard.count()) console.log('STAT:', JSON.stringify((await statCard.innerText()).replace(/\n/g, ' | ')));
+// Controls + feed shape
+const tr = page.getByTestId('activity-time-range');
+if (await tr.count()) console.log('time control value:', await tr.inputValue());
+const vm = await page.getByTestId('view-mode-flat').innerText().catch(()=>'?');
+const vt = await page.getByTestId('view-mode-tree').innerText().catch(()=>'?');
+console.log('view toggle labels:', vm, '/', vt);
+console.log('SYSTEM badges on screen:', await page.getByText('SYSTEM', { exact: true }).count());
+const firstRows = await page.locator('.premium-card').filter({ hasText: /Finished|Started|Handed|approval/ }).count();
+console.log('signal cards:', firstRows);
 
 // ---------- Tree ----------
 const tree = page.getByText('Tree', { exact: true }).first();

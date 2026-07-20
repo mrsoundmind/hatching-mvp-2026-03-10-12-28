@@ -11,6 +11,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSidebarEvent } from './useSidebarEvent';
 import { useAgentWorkingState } from './useAgentWorkingState';
+import { mapEventTypeToCategory, describeAutonomyEvent } from '@shared/activityLabels';
 import {
   AUTONOMY_EVENTS,
   type TaskExecutingPayload,
@@ -49,106 +50,8 @@ const DEBOUNCE_MS = 3000;
 type FilterCategory = 'all' | 'task' | 'handoff' | 'review' | 'approval';
 export type TimeFilter = 'today' | '7days' | 'all';
 
-function mapEventTypeToCategory(eventType: string): FeedEvent['category'] {
-  switch (eventType) {
-    case 'task_started':
-    case 'task_completed':
-    case 'task_executing':
-    case 'autonomous_task_execution': // the string the pipeline actually persists on completion
-    case 'background_execution_started':
-    case 'background_execution_completed':
-      return 'task';
-    case 'handoff_initiated': // the string handoffOrchestrator actually persists
-    case 'handoff_announced':
-    case 'handoff_chain_completed':
-      return 'handoff';
-    case 'peer_review_completed':
-    case 'peer_review_started':
-    case 'peer_review_feedback':
-      return 'review';
-    case 'approval_required':
-    case 'approval_granted':
-    case 'approval_rejected':
-      return 'approval';
-    default:
-      return 'system';
-  }
-}
-
-function buildLabel(eventType: string, agentName: string | null, payload: Record<string, unknown>): string {
-  const name = agentName || 'An agent';
-  const taskTitle = typeof payload?.taskTitle === 'string' ? payload.taskTitle : '';
-  const suffix = taskTitle ? `: ${taskTitle}` : '';
-
-  switch (eventType) {
-    // Task lifecycle
-    case 'task_completed':
-      return `${name} completed a task${suffix}`;
-    case 'task_executing':
-    case 'task_started':
-      return `${name} started working${suffix}`;
-    case 'background_execution_started':
-      return `${name} began working in the background${suffix}`;
-    case 'background_execution_completed':
-      return `${name} finished background work${suffix}`;
-
-    // Handoffs
-    case 'handoff_announced': {
-      const toAgent = typeof payload?.toAgentName === 'string' ? payload.toAgentName : null;
-      return toAgent ? `${name} handed off to ${toAgent}${suffix}` : `${name} handed off work${suffix}`;
-    }
-    case 'handoff_chain_completed': {
-      const hops = typeof payload?.hops === 'number' ? payload.hops : null;
-      return hops ? `Handoff chain completed (${hops} steps)` : 'Handoff chain completed';
-    }
-
-    // Approvals
-    case 'approval_required':
-      return `${name} needs your approval${suffix}`;
-    case 'approval_granted':
-      return `Approval granted${suffix}`;
-    case 'approval_rejected':
-      return `Approval rejected${suffix}`;
-
-    // Peer review
-    case 'peer_review_started':
-      return `Peer review started for ${name}`;
-    case 'peer_review_completed':
-      return `Peer review completed for ${name}`;
-    case 'peer_review_feedback':
-      return `${name} received peer feedback`;
-
-    // AI pipeline internals — translate to plain English
-    case 'agent_synthesis_completed':
-    case 'agent_synthesis':
-      return `${name} synthesised a response`;
-    case 'agent_revision_completed':
-    case 'agent_revision':
-      return `${name} revised their output`;
-    case 'agent_hatch_selected':
-    case 'hatch_selected':
-      return `${name} was selected for this task`;
-    case 'agent_deliberation_completed':
-    case 'deliberation_completed':
-      return `${name} reached a decision`;
-    case 'agent_planning_completed':
-    case 'planning_completed':
-      return `${name} finished planning`;
-    case 'provider_fallback_resolved':
-      return `AI provider fallback resolved`;
-    case 'context_compacted':
-      return `${name}'s context was compacted`;
-
-    default: {
-      // Convert snake_case to readable words — strip leading "agent_" prefix
-      let readable = eventType
-        .replace(/^agent_/, '')
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, c => c.toUpperCase());
-      return agentName ? `${agentName}: ${readable}` : readable;
-    }
-  }
-}
+// mapEventTypeToCategory + the event descriptions live in shared/activityLabels.ts so
+// the server feed and this client mirror cannot drift apart again.
 
 interface RawApiEvent {
   id: string;
@@ -177,7 +80,7 @@ function mapAutonomyEventToFeedEvent(raw: RawApiEvent): FeedEvent {
     eventType: raw.eventType,
     agentId,
     agentName,
-    label: raw.label || buildLabel(raw.eventType, agentName, payload),
+    label: raw.label || describeAutonomyEvent(raw.eventType, payload),
     category,
     timestamp: raw.timestamp,
     expandableData: payload,
@@ -197,7 +100,7 @@ function customEventToFeedEvent(
     eventType,
     agentId,
     agentName,
-    label: buildLabel(eventType, agentName, payload as unknown as Record<string, unknown>),
+    label: describeAutonomyEvent(eventType, payload as unknown as Record<string, unknown>),
     category: mapEventTypeToCategory(eventType),
     timestamp: new Date().toISOString(),
     expandableData: payload as unknown as Record<string, unknown>,

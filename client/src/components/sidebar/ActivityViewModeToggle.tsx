@@ -30,13 +30,21 @@ export function ActivityViewModeToggle({ mode, onChange }: ActivityViewModeToggl
             aria-checked={active}
             onClick={() => onChange(opt)}
             data-testid={`view-mode-${opt}`}
+            title={
+              opt === 'flat'
+                ? 'Everything as it happened, newest first'
+                : 'Grouped under the task that produced it'
+            }
             className={`px-2.5 py-1 text-[10px] font-semibold rounded-md transition-colors ${
               active
                 ? 'bg-[var(--hatchin-surface-elevated)] hatchin-text'
                 : 'hatchin-text-muted hover:hatchin-text'
             }`}
           >
-            {opt === 'flat' ? 'Flat' : 'Tree'}
+            {/* "Flat" and "Tree" name the data structure, not anything the user
+                recognises. "Timeline" and "By task" borrow words they already have
+                (there is a Tasks tab) instead of teaching two new ones. */}
+            {opt === 'flat' ? 'Timeline' : 'By task'}
           </button>
         );
       })}

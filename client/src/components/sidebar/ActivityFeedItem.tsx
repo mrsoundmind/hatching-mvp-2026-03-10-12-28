@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { FeedEvent } from '@/hooks/useAutonomyFeed';
+import { isSignalEvent } from '@shared/activityLabels';
 import AgentAvatar from '@/components/avatars/AgentAvatar';
 
 function formatRelativeTime(isoString: string): string {
@@ -15,23 +16,6 @@ function formatRelativeTime(isoString: string): string {
   return `${Math.floor(diffHr / 24)}d ago`;
 }
 
-// Deterministic color from agent name — no icons
-const AVATAR_PALETTES = [
-  { bg: '#1d4ed8', text: '#bfdbfe' }, // blue
-  { bg: '#0f766e', text: '#99f6e4' }, // teal
-  { bg: '#7c3aed', text: '#ddd6fe' }, // violet
-  { bg: '#b45309', text: '#fde68a' }, // amber
-  { bg: '#be185d', text: '#fbcfe8' }, // pink
-  { bg: '#1e40af', text: '#bfdbfe' }, // indigo
-  { bg: '#065f46', text: '#a7f3d0' }, // green
-];
-
-function avatarPalette(name: string | null) {
-  if (!name) return { bg: '#374151', text: '#9ca3af' };
-  const index = name.charCodeAt(0) % AVATAR_PALETTES.length;
-  return AVATAR_PALETTES[index];
-}
-
 // Category accent color
 function getCategoryAccent(category: FeedEvent['category']): string {
   switch (category) {
@@ -43,46 +27,47 @@ function getCategoryAccent(category: FeedEvent['category']): string {
   }
 }
 
-function getCategoryLabel(category: FeedEvent['category']): string {
+// 'system' deliberately has no label. It was rendered as a "SYSTEM" pill on nearly
+// every row, and a badge that reads the same everywhere distinguishes nothing — it
+// was pure noise in system vocabulary. Only categories that mean something to a
+// person get a badge now.
+function getCategoryLabel(category: FeedEvent['category']): string | null {
   switch (category) {
     case 'task':     return 'Task';
     case 'handoff':  return 'Handoff';
     case 'review':   return 'Review';
     case 'approval': return 'Approval';
-    default:         return 'System';
+    default:         return null;
   }
 }
 
-// Convert expanded technical data into a single plain-English sentence
-function buildHumanSummary(event: FeedEvent): string {
+function clip(text: string, max = 120): string {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  return clean.length > max ? `${clean.slice(0, max)}…` : clean;
+}
+
+/**
+ * Extra detail worth expanding to see — or null when there is none.
+ *
+ * This used to fall back to `event.label`, so expanding a row showed the exact text
+ * already on the row. Worse, the caller treated `expandableData` as proof of detail,
+ * but it defaults to `{}` (truthy), so EVERY row advertised an expand that repeated
+ * itself. Returning null lets the caller drop the affordance entirely.
+ *
+ * taskTitle is intentionally excluded: the label already reads Finished "<title>".
+ */
+function buildHumanDetail(event: FeedEvent): string | null {
   const d = event.expandableData ?? {};
   const parts: string[] = [];
 
-  if (typeof d.taskTitle === 'string' && d.taskTitle) {
-    parts.push(`Working on: "${d.taskTitle}"`);
-  }
-  if (typeof d.toAgentName === 'string') {
-    parts.push(`Passed to ${d.toAgentName}`);
-  }
-  if (typeof d.reason === 'string' && d.reason) {
-    parts.push(d.reason);
-  }
-  if (typeof d.output === 'string' && d.output) {
-    // Show first 120 chars of output
-    parts.push(d.output.slice(0, 120) + (d.output.length > 120 ? '…' : ''));
-  }
-  if (typeof d.summary === 'string' && d.summary) {
-    parts.push(d.summary.slice(0, 120) + (d.summary.length > 120 ? '…' : ''));
-  }
-  if (typeof d.hops === 'number') {
-    parts.push(`${d.hops} agents were involved`);
-  }
+  if (typeof d.toAgentName === 'string' && d.toAgentName) parts.push(`Passed to ${d.toAgentName}`);
+  if (typeof d.reason === 'string' && d.reason.trim()) parts.push(clip(d.reason));
+  if (typeof d.summary === 'string' && d.summary.trim()) parts.push(clip(d.summary));
+  if (typeof d.output === 'string' && d.output.trim()) parts.push(clip(d.output));
+  if (typeof d.hops === 'number') parts.push(`${d.hops} teammates involved`);
+  if (typeof d.batchedEvents === 'number') parts.push(`${d.batchedEvents} steps in this run`);
 
-  // Fallback — don't show raw JSON
-  if (parts.length === 0) {
-    return event.label;
-  }
-  return parts.join(' · ');
+  return parts.length > 0 ? parts.join(' · ') : null;
 }
 
 interface ActivityFeedItemProps {
@@ -92,11 +77,33 @@ interface ActivityFeedItemProps {
 export function ActivityFeedItem({ event }: ActivityFeedItemProps) {
   const [expanded, setExpanded] = useState(false);
   const accent = getCategoryAccent(event.category);
-  const palette = avatarPalette(event.agentName);
-  const isAgentEvent = event.eventType.startsWith('agent_') || event.eventType.startsWith('hatch_') || !!event.agentId;
-  const displayName = event.agentName || (isAgentEvent ? 'Hatch' : 'System');
-  const humanSummary = buildHumanSummary(event);
-  const hasDetail = humanSummary !== event.label || !!event.expandableData;
+  const categoryLabel = getCategoryLabel(event.category);
+  const detail = buildHumanDetail(event);
+  const hasDetail = !!detail && detail !== event.label;
+  const time = formatRelativeTime(event.timestamp);
+
+  // Signal vs plumbing. Work starting/finishing/moving, approvals and safety stops are
+  // what someone running a project actually scans for; the rest is the system narrating
+  // its own bookkeeping and earns a single quiet line instead of a full card.
+  if (!isSignalEvent(event.eventType)) {
+    return (
+      <div className="flex items-baseline gap-2 px-3 py-1.5">
+        <span
+          className="w-1 h-1 rounded-full shrink-0 translate-y-[-2px]"
+          style={{ backgroundColor: 'var(--hatchin-text-muted)', opacity: 0.5 }}
+          aria-hidden
+        />
+        <p className="text-[11px] hatchin-text-muted leading-snug flex-1 min-w-0">
+          {event.label}
+          {/* nowrap so the separator never strands itself at the end of a line */}
+          {event.agentName && (
+            <span className="opacity-70 whitespace-nowrap">{` · ${event.agentName}`}</span>
+          )}
+        </p>
+        <span className="text-[10px] hatchin-text-muted opacity-60 shrink-0 whitespace-nowrap">{time}</span>
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -109,34 +116,36 @@ export function ActivityFeedItem({ event }: ActivityFeedItemProps) {
       <button
         className="w-full flex items-start gap-3 px-3 py-3 rounded-xl transition-colors text-left group relative"
         onClick={() => hasDetail && setExpanded(!expanded)}
-        aria-expanded={expanded}
+        aria-expanded={hasDetail ? expanded : undefined}
+        // A row with nothing behind it is not a control.
+        style={{ cursor: hasDetail ? 'pointer' : 'default' }}
       >
-        {/* Agent avatar — same DiceBear avatar the chat uses (seeded by agent name) so the feed
-            matches the conversation; AgentAvatar falls back to a colored bubble for agentless events. */}
+        {/* Same DiceBear avatar the chat uses (seeded by agent name) so the feed matches
+            the conversation; AgentAvatar falls back to a colored bubble when agentless. */}
         <div className="shrink-0 mt-0.5">
           <AgentAvatar agentName={event.agentName} size={28} />
         </div>
 
         <div className="flex-1 min-w-0">
-          {/* Agent name */}
-          <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-[12px] font-semibold" style={{ color: palette.text }}>
-              {displayName}
-            </span>
-            <span
-              className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
-              style={{ color: accent, backgroundColor: `${accent}1e` }}
-            >
-              {getCategoryLabel(event.category)}
-            </span>
+          <div className="flex items-center gap-2 mb-0.5 min-w-0">
+            {event.agentName && (
+              <span className="text-[12px] font-semibold hatchin-text truncate">{event.agentName}</span>
+            )}
+            {categoryLabel && (
+              <span
+                className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0"
+                style={{ color: accent, backgroundColor: `${accent}1e` }}
+              >
+                {categoryLabel}
+              </span>
+            )}
+            <span className="text-[10px] hatchin-text-muted shrink-0 ml-auto whitespace-nowrap">{time}</span>
           </div>
 
-          {/* Action label — plain English */}
+          {/* What actually happened, in words */}
           <p className="text-[12px] hatchin-text leading-snug">{event.label}</p>
-          <p className="text-[10px] hatchin-text-muted mt-0.5">{formatRelativeTime(event.timestamp)}</p>
         </div>
 
-        {/* Expand chevron hint */}
         {hasDetail && (
           <span className="text-[10px] hatchin-text-muted opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-1">
             {expanded ? '▴' : '▾'}
@@ -144,9 +153,8 @@ export function ActivityFeedItem({ event }: ActivityFeedItemProps) {
         )}
       </button>
 
-      {/* Expanded human-readable detail */}
       <AnimatePresence>
-        {expanded && (
+        {expanded && detail && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
@@ -154,10 +162,11 @@ export function ActivityFeedItem({ event }: ActivityFeedItemProps) {
             transition={{ duration: 0.18 }}
             className="overflow-hidden"
           >
-            <div className="ml-10 mr-2 mb-2 px-3 py-2 rounded-xl text-[12px] hatchin-text-muted leading-relaxed"
+            <div
+              className="ml-10 mr-2 mb-2 px-3 py-2 rounded-xl text-[12px] hatchin-text-muted leading-relaxed"
               style={{ background: `${accent}12` }}
             >
-              {humanSummary}
+              {detail}
             </div>
           </motion.div>
         )}

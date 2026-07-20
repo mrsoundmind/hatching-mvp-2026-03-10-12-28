@@ -19,6 +19,7 @@ import { buildDecisionForecast } from '../ai/forecast.js';
 import { filterAvailableAgents, type ScopeContext } from '../orchestration/agentAvailability.js';
 import { createTaskGraph } from '../autonomy/taskGraph/taskGraphEngine.js';
 import { runAutonomousKnowledgeLoop } from '../knowledge/akl/runner.js';
+import { mapEventTypeToCategory, describeAutonomyEvent } from '@shared/activityLabels';
 import { getCurrentRuntimeConfig } from '../llm/providerResolver.js';
 import { logAutonomyEvent, readAutonomyEvents, readAutonomyEventsByProject, summarizeLatency } from '../autonomy/events/eventLogger.js';
 import { z } from 'zod';
@@ -30,31 +31,9 @@ import {
 import { readConfigSnapshot, writeConfigSnapshot } from '../utils/configSnapshot.js';
 import { detectDrift, loadRecentScores } from '../eval/drift/driftMonitor.js';
 
-function mapEventTypeToCategory(eventType: string): 'task' | 'handoff' | 'review' | 'approval' | 'system' {
-  switch (eventType) {
-    case 'task_started':
-    case 'task_completed':
-    case 'task_executing':
-    case 'autonomous_task_execution': // the string the pipeline actually persists on completion
-    case 'background_execution_started':
-    case 'background_execution_completed':
-      return 'task';
-    case 'handoff_initiated': // the string handoffOrchestrator actually persists
-    case 'handoff_announced':
-    case 'handoff_chain_completed':
-      return 'handoff';
-    case 'peer_review_completed':
-    case 'peer_review_started':
-    case 'peer_review_feedback':
-      return 'review';
-    case 'approval_required':
-    case 'approval_granted':
-    case 'approval_rejected':
-      return 'approval';
-    default:
-      return 'system';
-  }
-}
+// Category + description now live in shared/activityLabels.ts. They used to be
+// duplicated here and in useAutonomyFeed.ts, and the copies drifted — that drift is
+// why completed tasks were categorised 'system' and the Tasks filter showed nothing.
 
 export function registerAutonomyRoutes(app: Express): void {
   const getSessionUserId = (req: Request): string | undefined => (req.session as any)?.userId as string | undefined;
@@ -695,16 +674,12 @@ export function registerAutonomyRoutes(app: Express): void {
           (latest.payload?.agentName as string) ||
           (latest.hatchId ? agentNameById.get(latest.hatchId) : undefined) ||
           null;
-        const readableType = latest.eventType.replace(/_/g, ' ');
-        const rawTaskTitle = (latest.payload?.taskTitle as string) || '';
         const category = mapEventTypeToCategory(latest.eventType);
 
-        // #102: self-documenting label — agent name + verb phrase, no duplicated "peer review
-        // feedback: peer review feedback" junk (only append the task title when there is a real one).
-        const displayName = agentName || 'A Hatch';
-        const label = rawTaskTitle
-          ? `${displayName} · ${readableType}: ${rawTaskTitle}`
-          : `${displayName} · ${readableType}`;
+        // The label is now a written description of what happened, not the event enum
+        // with its underscores removed. It deliberately excludes the agent name, which
+        // the feed renders on its own line directly above.
+        const label = describeAutonomyEvent(latest.eventType, latest.payload as Record<string, unknown> | null);
 
         feedEvents.push({
           id: latest.requestId || `${traceId}-${latest.eventType}`,

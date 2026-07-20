@@ -1,5 +1,4 @@
 import { useAutonomyFeed } from '@/hooks/useAutonomyFeed';
-import { AutonomyStatsCard } from './AutonomyStatsCard';
 import { FeedFilters } from './FeedFilters';
 import { ActivityFeedItem } from './ActivityFeedItem';
 import { HandoffChainTimeline } from './HandoffChainTimeline';
@@ -45,7 +44,6 @@ export function ActivityTab({ projectId, agents }: ActivityTabProps) {
 
   const {
     events,
-    stats,
     isLoading,
     activeFilter,
     setActiveFilter,
@@ -97,13 +95,15 @@ export function ActivityTab({ projectId, agents }: ActivityTabProps) {
         <p className="text-[10px] hatchin-text-muted">Real-time pulse of what your Hatches are working on.</p>
       </div>
 
-      {/* Phase 37 (D-10) — view-mode toggle ABOVE stats card */}
-      <ActivityViewModeToggle mode={viewMode} onChange={setViewMode} />
-
-      {/* Time range governs BOTH the counters and the feed below, so it sits above both. */}
-      <ActivityTimeRangeToggle value={timeFilter} onChange={setTimeFilter} />
-
-      <AutonomyStatsCard stats={stats} isLoading={isLoading} timeFilter={timeFilter} />
+      {/* One control row. This was three stacked rows (view toggle, time segments, and
+          a pair of counter cards) before the feed even began. The counters showed two
+          big numbers with small labels — the template answer — and read 0 most of the
+          time, taking the most valuable space in the panel to say less than the first
+          feed row does. Removed, so the newest real event is what you see first. */}
+      <div className="flex items-center justify-between gap-2 mb-2 mx-1 flex-wrap">
+        <ActivityViewModeToggle mode={viewMode} onChange={setViewMode} />
+        <ActivityTimeRangeToggle value={timeFilter} onChange={setTimeFilter} />
+      </div>
 
       {/* Pending Approvals — pinned directly above the feed when any exist */}
       {pendingApprovals.length > 0 && (
@@ -148,8 +148,6 @@ export function ActivityTab({ projectId, agents }: ActivityTabProps) {
             <div className="flex-1 overflow-y-auto hide-scrollbar space-y-0.5">
               {isLoading && events.length === 0 ? (
                 <div className="space-y-2 px-3 py-2">
-                  {/* Stats card skeleton */}
-                  <div className="rounded-xl h-20 skeleton-shimmer" />
                   {/* Feed item skeletons */}
                   {[1, 2, 3].map(i => (
                     <div key={i} className="flex items-start gap-2 p-3 rounded-xl skeleton-shimmer" style={{ animationDelay: `${i * 0.15}s` }}>
