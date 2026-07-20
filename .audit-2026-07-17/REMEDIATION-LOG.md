@@ -52,7 +52,7 @@ for what was done and why. No dashes; money shown USD + INR (~₹86 per $1, Indi
 | Vanishing messages (re-repro first) | #22 | 0 | REFUTED (not re-fixed) | audit's stated mechanism does not exist in the code; left as-is pending a fresh repro | — |
 | @/slash autocomplete | #94 #139 | — | DEFERRED | net-new feature → Phase 47 backlog | — |
 | a11y button labels | #112 | — | DEFERRED | a11y sweep → Phase 47 backlog | — |
-| Work Outputs shows "Hatch" not the agent name | (untracked, found 2026-07-20) | 6 | OPEN | same anonymous-agent family as #110, different read path; not yet fixed | — |
+| Work Outputs attribution + real output | (untracked, found 2026-07-20) | 6 | VERIFIED (browser + storage) | completion now records who executed and what they produced; 6 historical rows recovered from their output messages | `fb7b54d` |
 | Handoff chain never proven end to end | (untracked, found 2026-07-20) | 6 | OPEN | Handoffs view is correct-empty because no task has ever carried `dependsOn`; needs a real chain to confirm | — |
 
 ---
@@ -166,6 +166,43 @@ that reads the same everywhere distinguishes nothing.
 **Correct-empty, not broken:** Approvals is empty because low-risk work auto-completes and the approval
 gate only fires at risk >= 0.70. Handoffs is empty because no task has ever carried `dependsOn`. Both
 are honest states, though the handoff path is still unproven end to end (tracked as open above).
+
+### Work Outputs attribution (`fb7b54d`)
+
+The user reported Work Outputs rows reading "Hatch — set up the recipe…". Investigating it turned up a
+second, larger problem in the same component.
+
+**Root cause (verified):** all three completion paths in `taskExecutionPipeline` called
+`updateTask(id, { status: 'completed' })` and nothing more. So neither of the two fields the section
+renders was ever written. It read `metadata.output`, which no one wrote, and fell back to
+`task.description` : showing the *instruction* where the *work* belongs. And it read `task.assignee`
+for the name, which is null for anything the system routed rather than a human assigning, so every
+autonomous row read "Hatch". The executing agent was in scope the whole time as `input.agent`.
+
+**What changed:** one `markTaskCompleted(input, output)` helper replaces all three call sites and
+records `output`, `completedByAgentId/Name/Role`, and `completedAt`. It reads the task first and merges,
+because `updateTask` sets metadata wholesale and a naive write would drop `isAutonomous` / `taskId` /
+`awaitingApproval` that other code reads. Best-effort: a failure falls back to the plain status write,
+since the work is already delivered to chat by that point and only the display would degrade.
+
+Client side, the placeholder is gone. `metadata.completedByAgentName` is the source, `assignee` the
+fallback, and an unknown agent renders no name at all with a completed-work checkmark, because "Hatch"
+reads like a real teammate and hides which one did the work. Rows use the same DiceBear avatar as chat
+and the activity feed, and titles wrap to two lines instead of truncating mid-phrase.
+
+**Historical data recovered, not abandoned.** 8 completed tasks predated the fix. The outputs were not
+lost: `executeTask` writes them to `messages` with `metadata.taskId` and `agent_id` set, so
+`backfill-work-outputs.ts` joins on that and restores both fields. 6 of 8 recovered (real outputs, 512
+to 706 chars, attributed to Alex). The remaining 2 are orphaned probe tasks with no output message and
+stay anonymous by design : inventing a name would be worse than admitting we do not know.
+
+**Verification:** `verify-task-completion-meta.ts` exercises the real `markTaskCompleted` against real
+storage, 8/8 PASS including "output is not the description" and "prior metadata preserved". Browser
+check via `live-work-outputs-check.mjs`: 7 rows, 6 attributed with real outputs, zero "Hatch"
+placeholders, expanded row body confirmed to be the produced work. Screenshot:
+`screenshots/after-work-outputs.png`. Typecheck PASS.
+
+**Doc drift found:** the guide filed Work Outputs under the Brain tab; it renders in Tasks. Corrected.
 
 **Verification:** `npx tsc --noEmit` PASS. Runtime driven through a real browser with genuine pointer
 clicks via `.audit-2026-07-17/live-sidebar-check.mjs`; screenshots under `screenshots/after-*.png`.

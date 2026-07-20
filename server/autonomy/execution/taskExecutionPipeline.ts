@@ -56,6 +56,45 @@ function getRoleRiskMultiplier(role: string, taskDescription: string): number {
   return 1.0;
 }
 
+/**
+ * Mark a task complete AND record who did it plus what they produced.
+ *
+ * All three completion paths used to call `updateTask(id, { status: 'completed' })` and nothing
+ * else, so two things the user can see were never written:
+ *   - the Brain tab's Work Outputs section reads `metadata.output`, which no one wrote, so it fell
+ *     back to `task.description` and showed the instruction instead of the work;
+ *   - it reads `task.assignee` for the name, which is null for anything the system routed rather
+ *     than a human assigning, so every completed row read "Hatch".
+ * The executing agent is right here in `input.agent`; recording it costs one read and one merge.
+ *
+ * `updateTask` sets metadata wholesale rather than merging, so the existing object is read first.
+ * A failure here must not fail the task: the work is already delivered to chat by this point, so
+ * the write is best-effort and only degrades the Work Outputs display.
+ */
+export async function markTaskCompleted(
+  input: ExecuteTaskInput,
+  output: string,
+): Promise<void> {
+  try {
+    const existing = await input.storage.getTask(input.task.id);
+    const prior = (existing?.metadata as Record<string, unknown> | null | undefined) ?? {};
+    await input.storage.updateTask(input.task.id, {
+      status: 'completed',
+      metadata: {
+        ...prior,
+        output,
+        completedByAgentId: input.agent.id,
+        completedByAgentName: input.agent.name,
+        completedByAgentRole: input.agent.role,
+        completedAt: new Date().toISOString(),
+      } as any,
+    });
+  } catch (err) {
+    console.warn('[taskExecutionPipeline] completion metadata write failed:', (err as Error).message);
+    await input.storage.updateTask(input.task.id, { status: 'completed' });
+  }
+}
+
 export interface ExecuteTaskInput {
   task: { id: string; title: string; description: string | null; assignee: string | null; projectId: string };
   agent: { id: string; name: string; role: string; personality: unknown };
@@ -367,7 +406,7 @@ async function executeTaskWithOutput(
       message: storedMsg,
     });
 
-    await input.storage.updateTask(input.task.id, { status: 'completed' });
+    await markTaskCompleted(input, finalOutput);
 
     await logAutonomyEvent({
       eventType: 'autonomous_task_execution',
@@ -564,7 +603,7 @@ export async function executeTask(
           message: peerMsg,
         });
 
-        await input.storage.updateTask(input.task.id, { status: 'completed' });
+        await markTaskCompleted(input, finalOutput);
 
         await logAutonomyEvent({
           eventType: 'autonomous_task_execution',
@@ -620,7 +659,7 @@ export async function executeTask(
       message: storedMsg,
     });
 
-    await input.storage.updateTask(input.task.id, { status: 'completed' });
+    await markTaskCompleted(input, output);
 
     // Log autonomy event so cost cap counter increments (EXEC-03)
     await logAutonomyEvent({
