@@ -9,7 +9,38 @@
 - ✅ **v2.0 Hatches That Deliver** — Phases 16-21 (shipped 2026-03-30)
 - ⚠️ **v3.0 Hatchin That Works** — Phases 22 + 28 shipped; Phases 23-27, 29-34 re-scoped into V3 (closed 2026-04-28) — [archive](milestones/v3.0-ROADMAP.md)
 - 🚧 **v2.1 Hatches That Self-Improve** — Phases 35-47 (13 phases inc. Phase 47 backlog batch + Phase 36.5 hotfix; 5-7w est. — in progress)
+- 📋 **v2.1-UX Look, Feel and First Impression** — NOT STARTED, planned 2026-07-20 from the `.audit-ux-2026-07-20/` audit. Starts **after v2.1 Phase 38 closes**. See the milestone block below.
 - 📋 **Future:** v2.1.5, v2.2, v2.3, v2.4, v2.5, v2.5.5, v2.6, v2.7, v3.0 (Mental Models), v4.0 — see [ROADMAP-V3.md](ROADMAP-V3.md) for full post-v2.0 plan
+
+---
+
+## 📋 v2.1-UX — Look, Feel and First Impression (planned 2026-07-20, NOT STARTED)
+
+**Source:** `.audit-ux-2026-07-20/` — an independent UX audit (`AUDIT-HATCHIN.pdf`, plus
+`direction-mockup.html`, `flows-and-ux.html`, `narrative-and-differentiation.html`,
+`narrative-v2-honesty.html`, `site-exploration-notes.md`, and a `screenshots/` set).
+
+**Scope decision (user, 2026-07-20):** run the whole audit as **one properly planned milestone**,
+including the cheap wins. They were explicitly NOT cherry-picked onto the audit-remediation branch,
+so this milestone stays coherent and the remediation branch stays about the 2026-07-17 findings.
+
+**Direction mockup:** the user's verdict was that `direction-mockup.html` "is really good, except the
+counters number". Treat the mockup as the visual target, and carry forward the counter lesson already
+learned in the audit remediation Wave 6: a big number with a small label is the template answer, and
+it read 0 most of the time. Do not reintroduce counter cards.
+
+**Known cheap wins folded in** (previously scoped at roughly 7.5h if taken alone):
+- Inter is declared in CSS but never actually loaded; Space Grotesk and DM Sans are downloaded with
+  zero references. Verified independently during the remediation session.
+- 4 message action buttons have no accessible label (overlaps Phase 47 item #17 / finding #112).
+- The hatching animation has no skip control.
+- No global `prefers-reduced-motion` block.
+- A hardcoded "Welcome, Shashank" string sits in the dead `AppHeader`.
+
+**Remaining:** roughly 20 further findings across the audit's three phases. Phase breakdown,
+requirement IDs and success criteria to be produced by proper planning when the milestone opens.
+
+**Depends on:** v2.1 Phase 38 close-out (Plan 38-05 vibe-check + `38-VERIFICATION.md`).
 
 ---
 
@@ -345,7 +376,8 @@ See archived roadmap: [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
 | 14 | 2026-07-18 | Audit remediation 2026-07-17 | **Auto-revert did not fire on a score regression (#126; 8.6 → 8.3 kept the worse version).** Phase 36 RUBR-02 threshold/trigger issue. | Investigate the `rubricScorer` revert gate; needs real-LLM verification. ~0.5 day. |
 | 15 | 2026-07-18 | Audit remediation 2026-07-17 | **Autonomy dial shows no Pro gate (#161).** Free users can toggle `autonomyEnabled` but it won't run; only misleading when `FEATURE_BILLING_GATES=true` (MVP deploy has them off). | Add a billing-gates-aware Pro indicator on the dial (client needs gates-state). ~3 hr. |
 | 16 | 2026-07-18 | Audit remediation 2026-07-17 | **No @mention / slash-command autocomplete (#94/#139).** Genuinely absent (net-new feature, not a repair). | Additive popover in `ChatInput`. ~1 day. |
-| 17 | 2026-07-18 | Audit remediation 2026-07-17 | **88 icon-only buttons lack aria-labels (#112).** a11y sweep. | Add aria-labels across the message action row + avatars. ~0.5 day. |
+| 17 | 2026-07-18 | Audit remediation 2026-07-17 | **88 icon-only buttons lack aria-labels (#112).** a11y sweep. | Add aria-labels across the message action row + avatars. ~0.5 day. Note: the 4 message action buttons also appear in the v2.1-UX milestone scope; do not fix twice, decide ownership at triage. |
+| 18 | 2026-07-20 | Audit remediation Wave 6 | **The same agent shows under two different names.** Caught while verifying the handoff chain: a DevOps agent stored as `Rex` renders as "Rex" in the Activity feed but "Remy · DevOps Engineer" in the chat, because the chat resolves the canonical character name for the role rather than using the agent's stored name. Same family as #110/#81 (agent-name resolution) but a different read path, and the last surface where one teammate appears under two identities. Confirmed in a live browser, evidence in `.audit-2026-07-17/screenshots/after-handoffs.png`. | Pick one source of truth for the displayed name: either the stored `agents.name` everywhere, or the character map everywhere with the stored name reconciled at creation. The starter-pack naming fix (`f5ad4b6`, #153) already moved pack agents to character names, so the cleanest resolution is likely to make chat use the stored name and let creation own the character mapping. ~1 hr plus runtime verification across chat, activity feed and Work Outputs. |
 
 > **Backlog #9 (multi-agent empty-save) RESOLVED 2026-07-18** by the audit remediation (commit `1346b41`, Wave 2): `handleMultiAgentResponse` now returns its accumulated content and the caller persists it. #10 (foreground streaming visibility) remains open; related phantom-leak (#165) was fixed in the remediation's Wave 4.
 >
