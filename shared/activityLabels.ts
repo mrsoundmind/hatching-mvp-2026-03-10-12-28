@@ -90,7 +90,20 @@ export function describeAutonomyEvent(
   const p = payload ?? {};
   const rawTitle = typeof p.taskTitle === 'string' ? p.taskTitle.trim() : '';
   const onTask = rawTitle ? ` on ${quoted(rawTitle)}` : '';
-  const toAgent = typeof p.toAgentName === 'string' ? p.toAgentName : null;
+  // Handoff payloads are not one shape. `handoff_announced` carries flat `toAgentName`, while
+  // `handoff_initiated` (what handoffOrchestrator actually persists) nests `toAgent: {id, name}`.
+  // Reading only the flat key meant every real handoff rendered as the anonymous "to a teammate".
+  const nested = (k: string): string | null => {
+    const v = p[k];
+    if (v && typeof v === 'object' && typeof (v as { name?: unknown }).name === 'string') {
+      return (v as { name: string }).name;
+    }
+    return null;
+  };
+  const toAgent =
+    (typeof p.toAgentName === 'string' ? p.toAgentName : null) ?? nested('toAgent');
+  const fromAgent =
+    (typeof p.fromAgentName === 'string' ? p.fromAgentName : null) ?? nested('fromAgent');
 
   switch (eventType) {
     // --- Work lifecycle ---
@@ -108,6 +121,12 @@ export function describeAutonomyEvent(
     // --- Handoffs ---
     case 'handoff_initiated':
     case 'handoff_announced':
+      // Self-handoff is real and common: the conductor picks the best-matching agent for the next
+      // task, and in a small team that is often the same person. Calling it a handoff would be a
+      // lie ("Alex handed the work to Alex"), so it is described as what it actually is.
+      if (toAgent && fromAgent && toAgent === fromAgent) {
+        return `Carried straight on to the next piece of work`;
+      }
       return toAgent ? `Handed the work to ${toAgent}` : `Handed the work on${onTask ? onTask.slice(3) : ' to a teammate'}`;
     case 'handoff_chain_completed': {
       const hops = typeof p.hops === 'number' ? p.hops : null;

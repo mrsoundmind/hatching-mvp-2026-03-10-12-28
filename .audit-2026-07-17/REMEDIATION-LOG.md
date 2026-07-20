@@ -53,7 +53,7 @@ for what was done and why. No dashes; money shown USD + INR (~₹86 per $1, Indi
 | @/slash autocomplete | #94 #139 | — | DEFERRED | net-new feature → Phase 47 backlog | — |
 | a11y button labels | #112 | — | DEFERRED | a11y sweep → Phase 47 backlog | — |
 | Work Outputs attribution + real output | (untracked, found 2026-07-20) | 6 | VERIFIED (browser + storage) | completion now records who executed and what they produced; 6 historical rows recovered from their output messages | `fb7b54d` |
-| Handoff chain never proven end to end | (untracked, found 2026-07-20) | 6 | OPEN | Handoffs view is correct-empty because no task has ever carried `dependsOn`; needs a real chain to confirm | — |
+| Handoff chain proven + label fixes | (untracked, found 2026-07-20) | 6 | VERIFIED (E2E, live worker) | chain works: queued, worker ran it, receiving agent produced 688 chars using the upstream scope. Found 2 label bugs doing it: handoff payload shape never resolved the receiver's name, and self-handoffs claimed a handoff that did not happen | `303dae6` |
 
 ---
 
@@ -203,6 +203,38 @@ placeholders, expanded row body confirmed to be the produced work. Screenshot:
 `screenshots/after-work-outputs.png`. Typecheck PASS.
 
 **Doc drift found:** the guide filed Work Outputs under the Brain tab; it renders in Tasks. Corrected.
+
+### Handoff chain proven end to end
+
+The Handoffs view had never shown anything, and "correct-empty" was an assumption. It is only honest
+if the mechanism works and simply has nothing to show, so the missing precondition was built:
+`verify-handoff-chain.ts` seeds a completed task plus a second task whose `metadata.dependsOn` points
+at it, which is the only trigger for a handoff.
+
+**The chain works.** `orchestrateHandoff` returned `queued`, logged `handoff_initiated`, attached the
+upstream output and structured role-to-role context to the receiving task, and the **live background
+worker picked the job up and executed it**: task `todo → completed` in 12 seconds, with a 688-char
+response from the receiving agent that used the upstream scope (channels, pricing page, two-week
+runway). 11/11 checks PASS. So Handoffs was genuinely correct-empty, now confirmed rather than assumed.
+
+**Two label bugs found by doing it, which no amount of code reading had surfaced:**
+1. The handoff label read a flat `p.toAgentName`, but `handoff_initiated` (the event the orchestrator
+   actually persists) nests `toAgent: { id, name }`. The flat key never existed on a real handoff, so
+   **every genuine handoff rendered as the anonymous "Handed the work on to a teammate"**. Both shapes
+   are now read, since `handoff_announced` really does use the flat form.
+2. Self-handoff. The conductor picks the best-matching agent for the next task, and in a small team
+   that is frequently the same person: this run produced Alex → Alex. Labelling that "Alex handed the
+   work to Alex" is a lie about what happened, so it now reads "Carried straight on to the next piece
+   of work". Not suppressed, because the work continuing IS worth showing; only the claim was wrong.
+
+**Verification:** `verify-handoff-label.ts` runs `describeAutonomyEvent` against the **real payload
+pulled from the stored event**, not a hand-written fixture that could re-encode the same wrong
+assumption. 5/5 PASS across self-handoff, cross-agent, and the legacy flat shape. Note the label is
+rendered server-side, so the running dev server keeps emitting the old string until it restarts; the
+logic itself is proven above.
+
+Probe tasks were deleted afterwards so no fake work is left in the project. The `handoff_initiated`
+event is retained, since the Activity feed reads events rather than tasks.
 
 **Verification:** `npx tsc --noEmit` PASS. Runtime driven through a real browser with genuine pointer
 clicks via `.audit-2026-07-17/live-sidebar-check.mjs`; screenshots under `screenshots/after-*.png`.
