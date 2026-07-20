@@ -53,7 +53,7 @@ for what was done and why. No dashes; money shown USD + INR (~₹86 per $1, Indi
 | @/slash autocomplete | #94 #139 | — | DEFERRED | net-new feature → Phase 47 backlog | — |
 | a11y button labels | #112 | — | DEFERRED | a11y sweep → Phase 47 backlog | — |
 | Work Outputs attribution + real output | (untracked, found 2026-07-20) | 6 | VERIFIED (browser + storage) | completion now records who executed and what they produced; 6 historical rows recovered from their output messages | `fb7b54d` |
-| Handoff chain proven + label fixes | (untracked, found 2026-07-20) | 6 | VERIFIED (E2E, live worker) | chain works: queued, worker ran it, receiving agent produced 688 chars using the upstream scope. Found 2 label bugs doing it: handoff payload shape never resolved the receiver's name, and self-handoffs claimed a handoff that did not happen | `303dae6` |
+| Handoff chain proven + label fixes | (untracked, found 2026-07-20) | 6 | VERIFIED (E2E, live worker) | chain works: queued, worker ran it, receiving agent produced 688 chars using the upstream scope. Found 2 label bugs doing it: handoff payload shape never resolved the receiver's name, and self-handoffs claimed a handoff that did not happen | `c549f9c` |
 
 ---
 
