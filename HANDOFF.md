@@ -2,15 +2,21 @@
 
 > **Read this first if you're an AI (Claude Code, Cursor, Windsurf, Copilot, etc.) or a human picking up on Hatchin.** This file tells you what happened, where we are, and what to do next. Session-continuity log — updated at session boundaries.
 
-**Last refreshed:** 2026-07-18
+**Last refreshed:** 2026-07-20
 **Current branch:** `fix/audit-remediation-2026-07-17` (off `wip/pre-reset-2026-04-28`; rollback point `3429a29`)
-**Latest commit:** `e7b39de fix(ui): wire landing nav to real sections + surface billing failure toast (#65, #136)`
+**Latest commit:** `f2b6885 fix(activity): describe what agents did, and cut the panel down to one control row`
 
 ---
 
 ## Right now
 
-**Audit Remediation (2026-07-18) — DONE on `fix/audit-remediation-2026-07-17`.** The 2026-07-17 live audit (`.audit-2026-07-17/`) found the core value prop broken (24 BROKEN / 24 PARTIAL of 164). v2.1 feature work was PAUSED to fix it. 10 commits, strict dependency order: pg-boss queue (#95, the single root cause that disabled ALL background autonomy) → multi-agent empty-save + @mention (#74/#97) → brain grounding + auto-fill (#79/#105) → activity visibility (#102/#110/#80/#165) → polish (#43/#153/#149/#130/#114/#96/#160/#65/#136). Every fix runtime-verified (real browser for UI, live server for backend). Deferred to Phase 47: #37, #60, #87/#88, #126, #161, #94/#139, #112. Phase 47 backlog #9 (multi-agent empty-save) is RESOLVED. Full record + rollback recipe: `.audit-2026-07-17/REMEDIATION-LOG.md`. **Next: merge this branch, then resume Phase 38 Plan 38-05.**
+**Audit Remediation Wave 6 (2026-07-20) — IN PROGRESS on `fix/audit-remediation-2026-07-17`.** The 2026-07-18 close-out below was premature. A live pass through the right sidebar found three audit findings that had never been tracked in any planning doc: **#83** (stats counters read 0 because the server counted event names nothing emits), **#108** (Tree tab permanently empty because no code path anywhere ever finalized a run), **#109** (category map duplicated between server and client and drifted). All three had been assumed to be downstream symptoms of the pg-boss fix (#95); each had its own root cause. Worse, and absent from the audit entirely: `useAutonomyFeed.ts` hardcoded the Activity time window to `'today'` with no setter, so every project's Activity panel silently emptied at midnight.
+
+3 commits: `cdbdd9b` (counters + `completeRun()` + shared `activityLabels.ts`), `ccfa905` (time-window control, sidebar responsiveness, hover-delete as a real icon button), `f2b6885` (descriptions that say what the agent actually did; "Timeline"/"By task" instead of "Flat"/"Tree"; counter cards removed; three control rows collapsed to one). All runtime-verified in a real browser.
+
+**Open right now:** 3 commits unpushed so PR #2 is stale · Work Outputs still shows "Hatch" instead of the agent name · handoff chain still unproven end to end. Full record: `.audit-2026-07-17/REMEDIATION-LOG.md` § Wave 6.
+
+**Audit Remediation Waves 1 to 5 (2026-07-18).** The 2026-07-17 live audit (`.audit-2026-07-17/`) found the core value prop broken (24 BROKEN / 24 PARTIAL of 164). v2.1 feature work was PAUSED to fix it. 10 commits, strict dependency order: pg-boss queue (#95, the single root cause that disabled ALL background autonomy) → multi-agent empty-save + @mention (#74/#97) → brain grounding + goal->coreDirection (#79/#158) → activity visibility (#102/#110/#80/#165) → polish (#43/#153/#149/#130/#114/#96/#160/#65/#136). Every fix runtime-verified. Deferred to Phase 47: #37, #60, #87/#88, #126, #161, #94/#139, #112. Phase 47 backlog #9 is RESOLVED. Note: #104/#105 were **deferred to Phase 42**, not fixed, despite commit `b7e5292`'s message claiming them.
 
 ---
 

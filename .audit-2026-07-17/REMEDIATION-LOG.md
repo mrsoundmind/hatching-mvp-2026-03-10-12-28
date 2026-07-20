@@ -25,41 +25,55 @@ for what was done and why. No dashes; money shown USD + INR (~₹86 per $1, Indi
 
 | Fix | Finding(s) | Wave | Status | Outcome | Commit |
 |---|---|---|---|---|---|
-| pg-boss queue revival | #95 #90 #54 #166 | 1 | VERIFIED (E2E, real output) | task todo→completed with a fresh 622-char agent message in ~9s; +2 second-order bugs fixed (v10 array handler, pooler drops) | (pending commit) |
-| Multi-agent empty-save | #74 #98 #111 | 2 | VERIFIED (runtime) | multi-agent reply now saves 482 chars (was len 0 blank bubble) | (pending commit) |
-| @mention routing (parser regex + expansion guard) | #97 #145 | 2 | VERIFIED (runtime) | "@Coda give me your take" now routes to Coda (was Maya); real cause was the mention-parser regex | (pending commit) |
-| Knowledge grounding + honesty | #79 #144 | 3 | VERIFIED (DeepSeek) | agent quotes uploaded doc facts (Saffron / 14 Aug 2027 / Nusantara), no fabrication | (pending commit) |
-| Goal -> visible coreDirection | #158 | 3 | VERIFIED (runtime) | "set the project goal to X" now persists to coreDirection.whatBuilding | (pending commit) |
-| Organic brain auto-fill from chat | #104 #105 | 3 | DEFERRED -> Phase 42 | organic extraction is Phase 42's MVB-gate scope, not a remediation bug | n/a |
-| Event metadata (name/label) | #102 #110 #81 | 4 | VERIFIED (server) | feed shows "Maya · proposal created" (was anonymous "Hatch" + "memory written: memory written" junk) | (pending commit) |
-| Feed default filter + avatars | #80 #107 #110 | 4 | VERIFIED (browser) | default "All" shows events; feed avatars now match the chat profile picture | (pending commit) |
-| Phantom cross-project activity leak | #165 | 4 | VERIFIED (code) | realtime events must positively match projectId; historical still trusted | (pending commit) |
-| /maya route crash | #149 | 5 | VERIFIED (browser) | /maya/:id renders the chat instead of crashing (paginated messages shape normalized) | (pending commit) |
-| Safety reason-code leak | #43 | 5 | VERIFIED (gate:safety PASS) | internal codes no longer leak into the clarification reply; raw reasons stay in telemetry | (pending commit) |
-| /onboarding orphan page | #130 | 5 | RESOLVED (deleted) | removed the orphaned standalone onboarding.tsx; the modal flow is the real onboarding (user decision) | (pending commit) |
-| Dead Light Mode toggle | #114 | 5 | VERIFIED (browser) | menu no longer shows "Light Mode"; toggle self-hides while FORCE_DARK_MODE | (pending commit) |
-| Off-screen toast | #96 | 5 | VERIFIED (computed CSS) | toast viewport now position:fixed bottom:0 right:0 + safe-area inset (was top:0 base) | (pending commit) |
-| UpgradeModal invisible paywall | #160 | 5 | FIXED (code, gate-dependent) | idea-path 403 now shows UpgradeModal (mirrors verified handleCreateProject); live trigger needs FEATURE_BILLING_GATES=true + cap | (pending commit) |
+| pg-boss queue revival | #95 #90 #54 #166 | 1 | VERIFIED (E2E, real output) | task todo→completed with a fresh 622-char agent message in ~9s; +2 second-order bugs fixed (v10 array handler, pooler drops) | `6749ed0` |
+| Multi-agent empty-save | #74 #98 #111 | 2 | VERIFIED (runtime) | multi-agent reply now saves 482 chars (was len 0 blank bubble) | `1346b41` |
+| @mention routing (parser regex + expansion guard) | #97 #145 | 2 | VERIFIED (runtime) | "@Coda give me your take" now routes to Coda (was Maya); real cause was the mention-parser regex | `1346b41` |
+| Knowledge grounding + honesty | #79 #144 | 3 | VERIFIED (DeepSeek) | agent quotes uploaded doc facts (Saffron / 14 Aug 2027 / Nusantara), no fabrication | `b7e5292` |
+| Goal -> visible coreDirection | #158 | 3 | VERIFIED (runtime) | "set the project goal to X" now persists to coreDirection.whatBuilding | `b7e5292` |
+| Organic brain auto-fill from chat | #104 #105 | 3 | DEFERRED -> Phase 42 | organic extraction is Phase 42's MVB-gate scope, not a remediation bug. NOT fixed here despite `b7e5292`'s commit message listing them: that message is wrong, only #79 + #158 landed | n/a |
+| Event metadata (name/label) | #102 #110 #81 | 4 | VERIFIED (server) | feed shows "Maya · proposal created" (was anonymous "Hatch" + "memory written: memory written" junk) | `1dd8616` |
+| Feed default filter + avatars | #80 #107 #110 | 4 | VERIFIED (browser) | default "All" shows events; feed avatars now match the chat profile picture | `ece0ce3` |
+| Phantom cross-project activity leak | #165 | 4 | VERIFIED (code) | realtime events must positively match projectId; historical still trusted | `ece0ce3` |
+| /maya route crash | #149 | 5 | VERIFIED (browser) | /maya/:id renders the chat instead of crashing (paginated messages shape normalized) | `765eb54` |
+| Safety reason-code leak | #43 | 5 | VERIFIED (gate:safety PASS) | internal codes no longer leak into the clarification reply; raw reasons stay in telemetry | `f5ad4b6` |
+| /onboarding orphan page | #130 | 5 | RESOLVED (deleted) | removed the orphaned standalone onboarding.tsx; the modal flow is the real onboarding (user decision) | `765eb54` |
+| Dead Light Mode toggle | #114 | 5 | VERIFIED (browser) | menu no longer shows "Light Mode"; toggle self-hides while FORCE_DARK_MODE | `0298403` |
+| Off-screen toast | #96 | 5 | VERIFIED (computed CSS) | toast viewport now position:fixed bottom:0 right:0 + safe-area inset (was top:0 base) | `0298403` |
+| UpgradeModal invisible paywall | #160 | 5 | FIXED (code, gate-dependent) | idea-path 403 now shows UpgradeModal (mirrors verified handleCreateProject); live trigger needs FEATURE_BILLING_GATES=true + cap | `0298403` |
 | Autonomy dial no Pro gate | #161 | 5 | DEFERRED -> Phase 47 | a Pro gate is only correct when billing gates are ON (MVP deploy has them off); needs client gates-state awareness | n/a |
-| Starter-pack role-twice naming | #153 | 5 | VERIFIED (runtime) | pack agents now Alex/Jordan/Wren (character names) instead of role-as-name | (pending commit) |
-| Landing dead nav links | #65 | 5 | VERIFIED (browser) | nav Product/Pricing/FAQ scroll to real sections; contentless "About" replaced by real "FAQ"; Playwright spec 1/1 (click Pricing -> #pricing in viewport) | (pending commit) |
-| Manage Subscription silent-fail | #136 | 5 | VERIFIED (browser) | portal/checkout failure now shows a clear toast ("Checkout unavailable ...") bottom-right; also re-confirms #96 toast position; Playwright spec 1/1 | (pending commit) |
+| Starter-pack role-twice naming | #153 | 5 | VERIFIED (runtime) | pack agents now Alex/Jordan/Wren (character names) instead of role-as-name | `f5ad4b6` |
+| Landing dead nav links | #65 | 5 | VERIFIED (browser) | nav Product/Pricing/FAQ scroll to real sections; contentless "About" replaced by real "FAQ"; Playwright spec 1/1 (click Pricing -> #pricing in viewport) | `e7b39de` |
+| Manage Subscription silent-fail | #136 | 5 | VERIFIED (browser) | portal/checkout failure now shows a clear toast ("Checkout unavailable ...") bottom-right; also re-confirms #96 toast position; Playwright spec 1/1 | `e7b39de` |
+| Stats counters, run finalize, category map | #83 #108 #109 | 6 | VERIFIED (runtime) | counters counted event names nothing ever emits, and no code path ever finalized a run, so Tree stayed empty forever; both fixed at the source | `cdbdd9b` |
+| Activity time window stuck on "today" | (untracked, found 2026-07-20) | 6 | VERIFIED (browser) | `timeFilter` was hardcoded with no setter, so the panel silently emptied every midnight; now defaults to All time with a visible control | `ccfa905` |
+| Right sidebar responsiveness + hover delete | (untracked, user-reported) | 6 | VERIFIED (browser, 1100/1280/1600) | panel scales 288/320/352px instead of a fixed 320; the literal "del" text button is now a 44px icon button that is keyboard-reachable | `ccfa905` |
+| Activity panel readability pass | (untracked, user-reported) | 6 | VERIFIED (browser) | descriptions no longer echo the heading; "Flat/Tree" renamed to "Timeline/By task"; two value-free counter cards removed; three control rows collapsed to one | `f2b6885` |
 | Deferred long tail | #126 #60 #87 #88 #37 | 5 -> Phase 47 | DEFERRED | lower-severity backend/AI items needing real-LLM verification (auto-revert, deliverable-vs-task, task-verb nuances, corrupt-PDF) | n/a |
-| Vanishing messages (re-repro first) | #22 | 0 | PENDING | needs fresh repro | — |
+| Vanishing messages (re-repro first) | #22 | 0 | REFUTED (not re-fixed) | audit's stated mechanism does not exist in the code; left as-is pending a fresh repro | — |
 | @/slash autocomplete | #94 #139 | — | DEFERRED | net-new feature → Phase 47 backlog | — |
 | a11y button labels | #112 | — | DEFERRED | a11y sweep → Phase 47 backlog | — |
+| Work Outputs shows "Hatch" not the agent name | (untracked, found 2026-07-20) | 6 | OPEN | same anonymous-agent family as #110, different read path; not yet fixed | — |
+| Handoff chain never proven end to end | (untracked, found 2026-07-20) | 6 | OPEN | Handoffs view is correct-empty because no task has ever carried `dependsOn`; needs a real chain to confirm | — |
 
 ---
 
-## Close-out summary (2026-07-18)
+## Close-out summary (2026-07-18, REOPENED 2026-07-20)
 
 Branch `fix/audit-remediation-2026-07-17` off `wip/pre-reset-2026-04-28`. Rollback point: `3429a29`.
 
-**Shipped and verified (10 commits):**
+> **This close-out was premature.** It was written on 2026-07-18 and declared the remediation
+> complete. On 2026-07-20 a live pass through the right sidebar found three audit findings that had
+> never been tracked at all (#83/#108/#109), plus a hardcoded time window that emptied the Activity
+> panel every midnight. Three more commits followed. Treat the 2026-07-18 wording below as a snapshot
+> of Waves 1 to 5, and the Wave 6 section beneath it as the current state.
+
+**Waves 1 to 5, shipped and verified 2026-07-18 (10 commits):**
 1. `3429a29` docs(audit): audit artifacts + this log
 2. `6749ed0` Wave 1 pg-boss `createQueue` (#95/#90/#54): queue created, `send()` enqueues (was a silent no-op)
 3. `1346b41` Wave 2 multi-agent empty-save + project-scope @mention guard (#74/#98/#111/#97)
-4. `b7e5292` Wave 3 brain grounding + auto-fill (#79/#104/#105/#158)
+4. `b7e5292` Wave 3 brain grounding + goal->coreDirection (#79/#158). NOTE: this commit's own message
+   also claims #104/#105, which is wrong. Organic brain auto-fill was deferred to Phase 42 and no code
+   for it landed here. The summary table above is authoritative.
 5. `1dd8616` Wave 4 activity event metadata, server (#102/#110/#81)
 6. `ece0ce3` Wave 4 activity feed client: default filter + phantom cross-project leak (#80/#107/#165)
 7. `f5ad4b6` Wave 5 server: safety reason-code leak + starter-pack role-twice (#43/#153)
@@ -76,8 +90,8 @@ Branch `fix/audit-remediation-2026-07-17` off `wip/pre-reset-2026-04-28`. Rollba
 invalidates the conversation query, so the audit's stated cause does not exist in the code. Left as-is
 pending a fresh repro.
 
-**Resume v2.1:** Phase 38 Plan 38-05 vibe-check. The audit already confirmed ALWY-04 fires; #43
-(reason-code leak) closes the ALWY-06 partial.
+**Resume v2.1 (once Wave 6 closes):** Phase 38 Plan 38-05 vibe-check. The audit already confirmed
+ALWY-04 fires; #43 (reason-code leak) closes the ALWY-06 partial.
 
 ### Headline re-audit on the real DeepSeek chain (2026-07-18)
 
@@ -107,6 +121,56 @@ re-count was not run : verification was per-fix at runtime plus this headline li
 
 Note: the throwaway LLM-timing browser spec used during the re-audit was removed (flaky by nature);
 the reliable UI regression guard `public-audit-ui.spec.ts` remains.
+
+## Wave 6 — right sidebar, reopened 2026-07-20
+
+Triggered by a user report: Handoffs, Tree, Approvals and Tasks all looked empty, and the panel's
+responsiveness and hover-delete felt unfinished. Investigating each "empty" panel separately turned up
+three untracked audit findings and one bug worse than anything in the original report.
+
+**Shipped (3 commits, all runtime-verified in a real browser):**
+
+11. `cdbdd9b` stats counters, run finalization, category map (#83/#108/#109)
+12. `ccfa905` activity time window, sidebar responsiveness, hover-delete affordance
+13. `f2b6885` activity readability: real descriptions, one control row, shared label vocabulary
+
+**Why #83/#108/#109 were missed the first time.** They were assumed to be downstream symptoms of the
+pg-boss fix (#95) and were never written into this log, the roadmap or STATE.md. They were not
+symptoms. Each had its own root cause, and the queue fix could not have cleared any of them:
+
+- **#83 counters always read 0** : `server/routes/autonomy.ts` counted the literal strings
+  `task_completed` and `handoff_announced`, which no code path emits. The real event names are
+  `autonomous_task_execution` and `handoff_initiated`. A three-way mismatch between what the emitter
+  writes, what the counter counts, and what the client maps.
+- **#108 Tree tab empty** : nothing in the entire codebase ever finalized a run. `autonomy_runs` rows
+  were created and left in `running` forever, so the tree had no completed run to draw. Fixed by adding
+  `completeRun()` to `runTreeWriter.ts` and calling it on both the success and failure exits of
+  `taskExecutionPipeline`. Proven by enqueuing a real task through the real producer and watching the
+  run finalize without intervention.
+- **#109 categories unmapped** : the category map was duplicated between server and client and the two
+  copies had drifted. Collapsed into one source of truth at `shared/activityLabels.ts`.
+
+**The worst bug of the pass was not in the audit at all.** `useAutonomyFeed.ts` declared
+`const [timeFilter] = useState('today')` : no setter existed anywhere in the codebase. The Activity
+panel was permanently pinned to the current calendar day with no way to widen it, so every project
+looked dead each morning and nothing in the UI explained why. Now defaults to All time with a visible
+clock control.
+
+**Also corrected, from the user's own read of the panel:** event descriptions repeated the heading
+verbatim instead of saying what the agent did; "Flat" and "Tree" named the data structure rather than
+anything a person recognizes (now "Timeline" and "By task"); two counter cards occupied the top of the
+panel to show two numbers that were usually 0; and three stacked control rows pushed the newest real
+event below the fold. A "SYSTEM" badge that appeared on nearly every row was removed, since a label
+that reads the same everywhere distinguishes nothing.
+
+**Correct-empty, not broken:** Approvals is empty because low-risk work auto-completes and the approval
+gate only fires at risk >= 0.70. Handoffs is empty because no task has ever carried `dependsOn`. Both
+are honest states, though the handoff path is still unproven end to end (tracked as open above).
+
+**Verification:** `npx tsc --noEmit` PASS. Runtime driven through a real browser with genuine pointer
+clicks via `.audit-2026-07-17/live-sidebar-check.mjs`; screenshots under `screenshots/after-*.png`.
+Responsiveness re-checked at 1100/1280/1600px after an initial check at exactly the `xl` breakpoint
+gave a falsely passing result.
 
 ---
 

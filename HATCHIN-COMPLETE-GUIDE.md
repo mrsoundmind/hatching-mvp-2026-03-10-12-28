@@ -2208,10 +2208,12 @@ Every user-facing feature mapped to the file, component, route, or tab that rend
 |---|---|---|
 | Tabbed layout with badges | All tabs | [components/sidebar/SidebarTabBar.tsx](client/src/components/sidebar/SidebarTabBar.tsx) — Framer Motion animated indicator |
 | **Activity tab shell** | Activity | [components/sidebar/ActivityTab.tsx](client/src/components/sidebar/ActivityTab.tsx) |
-| Autonomy stats card | Activity | [components/sidebar/AutonomyStatsCard.tsx](client/src/components/sidebar/AutonomyStatsCard.tsx) — tasks completed, handoffs, cost |
-| Feed filters | Activity | [components/sidebar/FeedFilters.tsx](client/src/components/sidebar/FeedFilters.tsx) — category chips + agent dropdown + time filter |
-| Activity feed items | Activity | [components/sidebar/ActivityFeedItem.tsx](client/src/components/sidebar/ActivityFeedItem.tsx) — event label + timestamp + expandable data |
-| **Git-style run tree (Phase 37)** | Activity | Inside ActivityTab — semantic-word badges (✓ Improved / ⚠ Made worse), click-step opens exact deliverable version |
+| View mode: Timeline / By task | Activity | [components/sidebar/ActivityViewModeToggle.tsx](client/src/components/sidebar/ActivityViewModeToggle.tsx) — was "Flat / Tree" until 2026-07-20; those named the data structure, not anything a user recognizes |
+| Time range | Activity | [components/sidebar/ActivityTimeRangeToggle.tsx](client/src/components/sidebar/ActivityTimeRangeToggle.tsx) — clock dropdown, Today / Last 7 days / All time. Added 2026-07-20; the window had been hardcoded to "today" with no setter, emptying the panel nightly |
+| Shared event vocabulary | Activity (server + client) | [shared/activityLabels.ts](shared/activityLabels.ts) — one source of truth for category mapping, signal-vs-plumbing, and human descriptions; replaced two copies that had drifted |
+| Feed filters | Activity | [components/sidebar/FeedFilters.tsx](client/src/components/sidebar/FeedFilters.tsx) — category chips + agent dropdown |
+| Activity feed items | Activity | [components/sidebar/ActivityFeedItem.tsx](client/src/components/sidebar/ActivityFeedItem.tsx) — signal events get a full card with the agent's real avatar; plumbing events get one quiet line |
+| **Git-style run tree (Phase 37)** | Activity | [components/sidebar/RunTreeView.tsx](client/src/components/sidebar/RunTreeView.tsx) + [RunTreeNode.tsx](client/src/components/sidebar/RunTreeNode.tsx) — semantic-word badges (✓ Improved / ⚠ Made worse), run status word, click-step opens exact deliverable version |
 | Handoff chain timeline | Activity | [components/sidebar/HandoffChainTimeline.tsx](client/src/components/sidebar/HandoffChainTimeline.tsx) — animated connectors |
 | **Brain & Docs tab shell** | Brain & Docs | [components/sidebar/BrainDocsTab.tsx](client/src/components/sidebar/BrainDocsTab.tsx) |
 | Core direction editor | Brain & Docs | Inside BrainDocsTab — `whatBuilding`, `whyMatters`, `whoFor` fields |
@@ -2223,11 +2225,9 @@ Every user-facing feature mapped to the file, component, route, or tab that rend
 | Document cards | Brain & Docs | [components/sidebar/DocumentCard.tsx](client/src/components/sidebar/DocumentCard.tsx) — type badges (PDF blue, DOCX orange, MD green, TXT muted), optimistic delete with rollback |
 | **Autonomy settings panel** | Brain & Docs | [components/sidebar/AutonomySettingsPanel.tsx](client/src/components/sidebar/AutonomySettingsPanel.tsx) — 4-level dial (Observe/Propose/Confirm/Autonomous) + inactivity trigger + debounced 800ms PATCH + flash-save animation |
 | Work output section | Brain & Docs | [components/sidebar/WorkOutputSection.tsx](client/src/components/sidebar/WorkOutputSection.tsx) — completed task outputs, one-open-at-a-time accordion |
-| **Approvals tab shell** | Approvals | [components/sidebar/ApprovalsTab.tsx](client/src/components/sidebar/ApprovalsTab.tsx) |
-| Approval items | Approvals | [components/sidebar/ApprovalItem.tsx](client/src/components/sidebar/ApprovalItem.tsx) — Approve/Reject buttons + risk badge + expiry |
+| Approval items | Activity (pinned above the feed) | [components/sidebar/ApprovalItem.tsx](client/src/components/sidebar/ApprovalItem.tsx) — Approve/Reject buttons + risk badge + expiry. There is no separate Approvals tab: the tabs are Activity / Tasks / Brain, and pending approvals pin to the top of Activity under "Needs your approval". `ApprovalsTab.tsx` and `ApprovalsEmptyState.tsx` were orphaned shells and were deleted 2026-07-20 |
 | **Approval TTL expiry check** | Approval items | [components/sidebar/approvalUtils.ts::isApprovalExpired()](client/src/components/sidebar/approvalUtils.ts) |
-| Task pipeline (Kanban) | Approvals | [components/sidebar/TaskPipelineView.tsx](client/src/components/sidebar/TaskPipelineView.tsx) — Queued → Assigned → In Progress → Review → Done |
-| Approvals empty state | Approvals | [components/sidebar/ApprovalsEmptyState.tsx](client/src/components/sidebar/ApprovalsEmptyState.tsx) |
+| Task pipeline (Kanban) | Tasks | [components/sidebar/TaskPipelineView.tsx](client/src/components/sidebar/TaskPipelineView.tsx) — Queued → Assigned → In Progress → Review → Done |
 | **Unread count badges on tabs** | All tabs | [hooks/useUnreadCounts.ts](client/src/hooks/useUnreadCounts.ts) — sessionStorage persistence `hatchin:unreadCounts` |
 
 ### 28.7 ArtifactPanel (v2.0 Deliverable Viewer)

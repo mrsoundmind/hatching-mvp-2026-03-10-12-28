@@ -348,6 +348,8 @@ See archived roadmap: [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
 | 17 | 2026-07-18 | Audit remediation 2026-07-17 | **88 icon-only buttons lack aria-labels (#112).** a11y sweep. | Add aria-labels across the message action row + avatars. ~0.5 day. |
 
 > **Backlog #9 (multi-agent empty-save) RESOLVED 2026-07-18** by the audit remediation (commit `1346b41`, Wave 2): `handleMultiAgentResponse` now returns its accumulated content and the caller persists it. #10 (foreground streaming visibility) remains open; related phantom-leak (#165) was fixed in the remediation's Wave 4.
+>
+> **Wave 6 (2026-07-20) narrows #10.** The Activity panel's background/run-tree half is now trustworthy: runs actually finalize (`completeRun()`), counters count event names that are really emitted, and the time window is no longer pinned to the current day. What remains of #10 is strictly the *foreground* streaming row, which is now the only reason a live response is invisible in Activity. See `.audit-2026-07-17/REMEDIATION-LOG.md` § Wave 6.
 
 **Backlog item template (for future additions):**
 ```
