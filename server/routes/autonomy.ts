@@ -35,9 +35,11 @@ function mapEventTypeToCategory(eventType: string): 'task' | 'handoff' | 'review
     case 'task_started':
     case 'task_completed':
     case 'task_executing':
+    case 'autonomous_task_execution': // the string the pipeline actually persists on completion
     case 'background_execution_started':
     case 'background_execution_completed':
       return 'task';
+    case 'handoff_initiated': // the string handoffOrchestrator actually persists
     case 'handoff_announced':
     case 'handoff_chain_completed':
       return 'handoff';
@@ -772,15 +774,22 @@ export function registerAutonomyRoutes(app: Express): void {
         return eventDate >= sevenDaysAgo;
       });
 
-      // Aggregate
+      // Aggregate. Count the event types the pipeline actually persists.
+      // A completed autonomous task is logged as 'autonomous_task_execution'
+      // (taskExecutionPipeline.ts:371/565/621) — 'task_completed' is defined in the
+      // type union but emitted nowhere, so the old counter was structurally always 0.
+      // Handoffs persist as 'handoff_initiated' (handoffOrchestrator.ts:154);
+      // 'handoff_announced' is a client-only WS/CustomEvent that never reaches this table.
+      const TASK_DONE_EVENTS = new Set(['autonomous_task_execution', 'task_completed', 'background_execution_completed']);
+      const HANDOFF_EVENTS = new Set(['handoff_initiated', 'handoff_announced', 'handoff_chain_completed']);
       let tasksCompleted = 0;
       let handoffs = 0;
       let totalCost = 0;
 
       for (const event of filtered) {
         const et = event.eventType as string;
-        if (et === 'task_completed') tasksCompleted++;
-        if (et === 'handoff_announced') handoffs++;
+        if (TASK_DONE_EVENTS.has(et)) tasksCompleted++;
+        if (HANDOFF_EVENTS.has(et)) handoffs++;
         if (typeof event.payload?.cost === 'number') totalCost += event.payload.cost;
       }
 

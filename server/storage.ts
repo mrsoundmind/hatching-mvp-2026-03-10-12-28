@@ -288,6 +288,7 @@ export interface IStorage {
 
   // Phase 37 — autonomy run tree (TREE-01)
   createRun(run: InsertAutonomyRun): Promise<AutonomyRun>;
+  updateRun(id: string, updates: Partial<AutonomyRun>): Promise<AutonomyRun | undefined>;
   createRunStep(step: InsertAutonomyRunStep): Promise<AutonomyRunStep>;
   updateRunStep(id: string, updates: Partial<AutonomyRunStep>): Promise<AutonomyRunStep | undefined>;
   getRunsByProject(projectId: string, options?: { limit?: number; offset?: number }): Promise<{ runs: AutonomyRun[]; steps: AutonomyRunStep[] }>;
@@ -1725,6 +1726,14 @@ export class MemStorage implements IStorage {
     return row;
   }
 
+  async updateRun(id: string, updates: Partial<AutonomyRun>): Promise<AutonomyRun | undefined> {
+    const existing = this.autonomyRuns.get(id);
+    if (!existing) return undefined;
+    const merged = { ...existing, ...updates };
+    this.autonomyRuns.set(id, merged);
+    return merged;
+  }
+
   async updateRunStep(id: string, updates: Partial<AutonomyRunStep>): Promise<AutonomyRunStep | undefined> {
     const existing = this.autonomyRunSteps.get(id);
     if (!existing) return undefined;
@@ -2627,6 +2636,11 @@ export class DatabaseStorage implements IStorage {
       ? { ...input, timeoutAt: sql`NOW() + interval '30 minutes'` as unknown as Date }
       : input;
     const [row] = await db.insert(schema.autonomyRunSteps).values(valuesWithTimeout as any).returning();
+    return row;
+  }
+
+  async updateRun(id: string, updates: Partial<AutonomyRun>): Promise<AutonomyRun | undefined> {
+    const [row] = await db.update(schema.autonomyRuns).set(updates).where(eq(schema.autonomyRuns.id, id)).returning();
     return row;
   }
 

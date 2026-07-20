@@ -20,7 +20,7 @@ import { randomUUID } from 'crypto';
 import { eq } from 'drizzle-orm';
 import { storage } from '../../storage.js';
 import { db } from '../../db.js';
-import { deliverableVersions, type InsertAutonomyRunStep } from '@shared/schema';
+import { autonomyRunSteps, deliverableVersions, type InsertAutonomyRunStep } from '@shared/schema';
 
 // In-process memo to avoid repeated lookups within a single worker invocation.
 // T-37-15: bounded by total distinct traceIds the worker has seen (tens of thousands per long-lived process; ~2MB worst-case).
@@ -143,6 +143,43 @@ export async function completeStep(
     });
   } catch (err) {
     console.warn('[runTreeWriter] completeStep failed:', (err as Error).message);
+  }
+}
+
+/**
+ * Finalize a run when the task (or handoff chain) has ended. Sets the terminal
+ * status, the denormalized step_count, and the aggregate score delta, and bumps
+ * updated_at. Without this the run row stays 'running' forever with step_count 0,
+ * so the Tree renders every run frozen at "In progress" and never resolves.
+ * Non-fatal, like every other writer in this module.
+ */
+export async function completeRun(
+  runId: string,
+  opts: { status: 'complete' | 'failed' },
+): Promise<void> {
+  if (runId.startsWith('synthetic-')) return; // ensureRunForTrace failed earlier — nothing to close
+  try {
+    const steps = await db
+      .select({ scoreDelta: autonomyRunSteps.scoreDelta })
+      .from(autonomyRunSteps)
+      .where(eq(autonomyRunSteps.runId, runId));
+    const stepCount = steps.length;
+    const deltas = steps
+      .map((s) => s.scoreDelta)
+      .filter((d): d is number => typeof d === 'number' && Number.isFinite(d));
+    // Null (not 0) when no step produced a scored deliverable — preserves the
+    // formatScoreDelta 'new' contract. A run whose steps DID score shows the sum.
+    // (Phase 47 #2: the live pipeline rarely produces Phase 36 deliverables, so
+    // this is usually null — the run still correctly reads as completed via status.)
+    const aggregateScoreDelta = deltas.length > 0 ? deltas.reduce((a, b) => a + b, 0) : null;
+    await storage.updateRun(runId, {
+      status: opts.status,
+      stepCount,
+      aggregateScoreDelta,
+      updatedAt: new Date(),
+    });
+  } catch (err) {
+    console.warn('[runTreeWriter] completeRun failed:', (err as Error).message);
   }
 }
 

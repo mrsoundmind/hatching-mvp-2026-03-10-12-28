@@ -13,7 +13,7 @@ import { getRoleIntelligence } from '@shared/roleIntelligence';
 import type { IStorage } from '../../storage.js';
 import { recordUsage } from '../../billing/usageTracker.js';
 // Phase 37 — autonomy run tree writer (non-fatal step + run writes)
-import { ensureRunForTrace, startStep, completeStep, failStep } from '../runs/runTreeWriter.js';
+import { ensureRunForTrace, startStep, completeStep, failStep, completeRun } from '../runs/runTreeWriter.js';
 // Phase 38 — autonomous-mode directive block (appended to system prompt when level === 'autonomous')
 import { AUTONOMOUS_DIRECTIVE_BLOCK } from '../../ai/promptTemplate.js';
 
@@ -839,6 +839,8 @@ export async function handleTaskJob(
       agentName: agent.name,
       error: (err as Error).message,
     });
+    // Close the run tree on the failure path so it doesn't sit at 'running' forever.
+    await completeRun(runId, { status: 'failed' });
     return;
   }
 
@@ -897,6 +899,13 @@ export async function handleTaskJob(
           // Announcement failure is non-critical — task handoff already queued
         }
       }
+    }
+
+    // Finalize the run tree only when the chain has actually ended. If a handoff
+    // was queued, the downstream job shares this traceId (and therefore this run),
+    // so the terminal task in the chain is the one that closes it.
+    if (handoffResult.status !== 'queued') {
+      await completeRun(runId, { status: 'complete' });
     }
   }
 }

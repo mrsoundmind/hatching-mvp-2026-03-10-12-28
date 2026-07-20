@@ -54,9 +54,11 @@ function mapEventTypeToCategory(eventType: string): FeedEvent['category'] {
     case 'task_started':
     case 'task_completed':
     case 'task_executing':
+    case 'autonomous_task_execution': // the string the pipeline actually persists on completion
     case 'background_execution_started':
     case 'background_execution_completed':
       return 'task';
+    case 'handoff_initiated': // the string handoffOrchestrator actually persists
     case 'handoff_announced':
     case 'handoff_chain_completed':
       return 'handoff';
