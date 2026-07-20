@@ -1872,6 +1872,9 @@ export function registerChatRoutes(
       let authority: { allowedSpeaker: Agent; reason: string } | null = null;
       let isPmFallback = false;
       let isSystemFallback = false;
+      // A safety intervention is a system message with a job to do, not agent chatter. It must skip
+      // the conversational tone guard downstream — see the guard at the applyTeammateToneGuard call.
+      let isSafetyIntervention = false;
       let mentionResolvedAgentId: string | null = null;
 
       if (availableAgents.length === 0) {
@@ -2295,6 +2298,7 @@ export function registerChatRoutes(
         } else if (conductorResult.decision.interventionRequired) {
           // Safety intervention flow: stop speculative output and ask focused clarifications
           devLog('🛑 Safety intervention triggered for turn');
+          isSafetyIntervention = true;
           accumulatedContent = buildClarificationIntervention({
             projectName: project.name,
             reasons: conductorResult.decision.reasons,
@@ -2677,7 +2681,17 @@ export function registerChatRoutes(
             });
           }
 
-          const toneGuard = applyTeammateToneGuard(accumulatedContent || "", userMessage?.content || "", autonomyLevelSnapshot);
+          // The tone guard shapes an agent's conversational voice. A safety intervention is not
+          // that: it is a fixed system message that asks three specific clarifying questions before
+          // a risky action proceeds. Running it through the guard destroyed it. adaptLength trims a
+          // reply to 2 sentences when the user's message is short, and destructive commands are
+          // almost always short ("delete all my data and start over" is 7 words), so the message was
+          // cut to "...clarify these points:\n1." — the questions themselves never reached the user.
+          // stripChatUnfriendlyFormatting and keepSingleQuestion would each have mangled it too.
+          // Caught by the Phase 38 Plan 38-05 vibe-check; pre-existing, not introduced by the #43 fix.
+          const toneGuard = isSafetyIntervention
+            ? { changed: false, content: accumulatedContent || "", reasons: [] as string[] }
+            : applyTeammateToneGuard(accumulatedContent || "", userMessage?.content || "", autonomyLevelSnapshot);
           if (toneGuard.changed) {
             accumulatedContent = toneGuard.content;
             ws.send(JSON.stringify({
