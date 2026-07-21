@@ -4,7 +4,17 @@
 
 **Last refreshed:** 2026-07-21
 **Current branch:** `fix/audit-remediation-2026-07-17` (off `wip/pre-reset-2026-04-28`; rollback point `3429a29`)
-**Latest commit:** `57f2c94 fix(autonomy): pg-boss worker survives a DB blip instead of wedging forever`
+**Latest commit:** `aeba012 fix(autonomy): persist approval events + respect assignee on handoff`
+
+## Wave 8 (2026-07-21) — activity-feed audit fixes
+
+A focused audit of the Activity feed / Handoffs / Approvals / Reviews, fixed with a verify-then-fix discipline:
+- **Approval-card reason-code leak** (`b51f81b`): the approval cards showed raw safety codes ("high_impact_action:delete · ..."). #43 had only cleaned the chat reply; found the leak on BOTH approval surfaces (inline card + sidebar item) and closed it with one shared `humanizeRiskReasons` that drops unknown codes so none leak by default.
+- **Feed visual coherence** (`571145b`, via /ui-genius): review/revision rows were a faceless gray-dot log under rich face-cards. Every row now carries a face (small 18px for the quiet tier), so the work-vs-internal hierarchy reads through weight, not a missing picture. The "?" bubble is now a neutral Hatchin mark.
+- **Approvals now durable** (`aeba012`): the high-risk gate only broadcast an ephemeral WS frame, so the feed's Approvals filter was permanently empty. Now `approval_required/granted/rejected` are logged; a real gate→approve cycle persisted both and renders amber APPROVAL cards.
+- **Handoff respects assignee** (`aeba012`): `orchestrateHandoff` re-picked via the conductor (Coda→Coda self-handoff). An explicit assignee now wins: an engineering task assigned to Arlo handed to Arlo.
+
+All verified live on the DeepSeek server. Verdict: every finding from the original audit, the re-audit, and this feed audit is now fixed; the only deliberately-parked items are the Phase 47 backlog and #104 (Phase 42).
 
 ## Re-audit Wave 7 (2026-07-21) — the intermittent-autonomy bug, FIXED
 
