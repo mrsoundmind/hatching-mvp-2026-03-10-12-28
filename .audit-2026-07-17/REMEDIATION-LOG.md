@@ -56,6 +56,7 @@ for what was done and why. No dashes; money shown USD + INR (~₹86 per $1, Indi
 | Handoff chain proven + label fixes | (untracked, found 2026-07-20) | 6 | VERIFIED (E2E, live worker) | chain works: queued, worker ran it, receiving agent produced 688 chars using the upstream scope. Found 2 label bugs doing it: handoff payload shape never resolved the receiver's name, and self-handoffs claimed a handoff that did not happen | `c549f9c` |
 | pg-boss worker recovery gap | #95 (recovery, re-audit) | 7 | VERIFIED (E2E, live) | the intermittent-autonomy bug: pg-boss's fetch loop hung forever on a half-open Supabase socket (no query_timeout), so jobs enqueued but stayed `created` on a long-running instance until a restart. Hardened the pg-boss pool + added a stall watchdog; drained the real 20h-stuck job and a fresh run | `57f2c94` |
 | Safety intervention truncation | (Phase 38 vibe-check) | 5.5 | VERIFIED (live, DeepSeek) | the safety gate fired then delivered only "...clarify these points:\n1." because the clarification ran through the tone guard's short-message trim; interventions now bypass the guard | `e61be9b` |
+| Approval-card reason-code leak | #43 (approval surfaces) | 7 | VERIFIED (browser) | the approval cards showed raw safety codes ("high_impact_action:delete · destructive_verb_critical · ..."). #43 had only cleaned the chat reply. Found + fixed on BOTH surfaces (inline card + sidebar item) via one shared humanizer that drops unknown codes so none can leak by default | `b51f81b` |
 
 ---
 
