@@ -70,7 +70,17 @@ export async function orchestrateHandoff(input: {
 
   // Filter out special agents (Maya) from handoff targets — they shouldn't receive task handoffs
   const eligibleAgents = agents.filter((a) => !(a as any).isSpecialAgent);
-  const targetAgent = conductorResult.primaryMatch ?? eligibleAgents[0];
+
+  // Respect an explicit assignee first. If the dependent task was deliberately assigned to someone
+  // (by name or role), hand off to THAT teammate rather than letting the conductor re-pick, which
+  // otherwise tends to keep the work with the agent who just finished (a Coda→Coda self-handoff even
+  // when the next task is clearly design work assigned to Arlo). The conductor remains the fallback
+  // for tasks with no assignee, or an assignee that doesn't resolve to an eligible teammate.
+  const wanted = (nextTask.assignee ?? '').trim().toLowerCase();
+  const assignedAgent = wanted
+    ? eligibleAgents.find((a) => a.name.toLowerCase() === wanted || a.role.toLowerCase() === wanted)
+    : undefined;
+  const targetAgent = assignedAgent ?? conductorResult.primaryMatch ?? eligibleAgents[0];
   if (!targetAgent) return { status: 'no_next_task' };
 
   // Cycle detection via existing HandoffTracker

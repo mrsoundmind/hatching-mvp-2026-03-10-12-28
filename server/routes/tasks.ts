@@ -4,6 +4,7 @@ import { insertTaskSchema, type Task } from '@shared/schema';
 import { randomUUID } from 'crypto';
 import { getCharacterProfile } from '../ai/characterProfiles.js';
 import { extractOrganicTasks } from '../ai/tasks/organicExtractor.js';
+import { logAutonomyEvent } from '../autonomy/events/eventLogger.js';
 import { z } from 'zod';
 
 const updateTaskSchema = z.object({
@@ -371,6 +372,17 @@ export function registerTaskRoutes(app: Express, deps: RegisterTaskDeps): void {
         agentName: agent?.name ?? task.assignee ?? 'Unknown',
       });
 
+      // Durable event so the resolution shows in the Activity feed and survives reload (mirrors the
+      // approval_required event the pipeline now writes when the gate fires). Best-effort.
+      await logAutonomyEvent({
+        eventType: 'approval_granted',
+        projectId: task.projectId,
+        hatchId: agent?.id ?? null,
+        conversationId: convId,
+        provider: null, mode: 'autonomous', teamId: null, latencyMs: null, confidence: null, riskScore: null,
+        payload: { taskId: task.id, taskTitle: task.title, agentName: agent?.name ?? task.assignee ?? null },
+      }).catch((e) => console.warn('[approve] approval_granted log failed:', (e as Error).message));
+
       devLog('[approve] Task approved:', task.id);
       return res.json({ success: true });
     } catch (error) {
@@ -411,6 +423,16 @@ export function registerTaskRoutes(app: Express, deps: RegisterTaskDeps): void {
         type: 'task_approval_rejected',
         taskId: task.id,
       });
+
+      // Durable event so the rejection shows in the Activity feed and survives reload. Best-effort.
+      await logAutonomyEvent({
+        eventType: 'approval_rejected',
+        projectId: task.projectId,
+        hatchId: null,
+        conversationId: `project:${task.projectId}`,
+        provider: null, mode: 'autonomous', teamId: null, latencyMs: null, confidence: null, riskScore: null,
+        payload: { taskId: task.id, taskTitle: task.title, agentName: task.assignee ?? null },
+      }).catch((e) => console.warn('[reject] approval_rejected log failed:', (e as Error).message));
 
       devLog('[reject] Task rejected:', task.id);
       return res.json({ success: true });

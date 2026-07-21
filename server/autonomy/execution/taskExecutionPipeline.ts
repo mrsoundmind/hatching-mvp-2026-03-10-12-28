@@ -95,6 +95,45 @@ export async function markTaskCompleted(
   }
 }
 
+/**
+ * Persist an `approval_required` autonomy event when the high-risk gate blocks a task.
+ *
+ * The gate already broadcasts a `task_requires_approval` WS frame and sets the task's
+ * `awaitingApproval` metadata, but it never wrote a durable event. So the pinned "Needs your
+ * approval" section (task-driven) worked, while the Activity feed's Approvals FILTER was always
+ * empty and approvals vanished from history on reload. This closes that: the event carries the same
+ * data the card shows, and the client already knows how to render it (`approval_required` is a signal
+ * event in `activityLabels.ts`). Best-effort, never blocks the gate itself.
+ */
+async function logApprovalRequired(
+  input: ExecuteTaskInput,
+  riskReasons: string[] | string,
+  riskScore: number | null,
+): Promise<void> {
+  try {
+    await logAutonomyEvent({
+      eventType: 'approval_required',
+      projectId: input.task.projectId,
+      hatchId: input.agent.id,
+      conversationId: input.conversationId,
+      provider: null,
+      mode: 'autonomous',
+      teamId: null,
+      latencyMs: null,
+      confidence: null,
+      riskScore,
+      payload: {
+        taskId: input.task.id,
+        taskTitle: input.task.title,
+        agentName: input.agent.name,
+        riskReasons: Array.isArray(riskReasons) ? riskReasons : [riskReasons],
+      },
+    });
+  } catch (err) {
+    console.warn('[taskExecutionPipeline] approval_required event log failed:', (err as Error).message);
+  }
+}
+
 export interface ExecuteTaskInput {
   task: { id: string; title: string; description: string | null; assignee: string | null; projectId: string };
   agent: { id: string; name: string; role: string; personality: unknown };
@@ -321,6 +360,7 @@ async function executeTaskWithOutput(
         agentName: input.agent.name,
         riskReasons: safety.reasons,
       });
+      await logApprovalRequired(input, safety.reasons, Math.max(adjustedExecutionRisk, adjustedScopeRisk, adjustedHallucinationRisk));
       // Phase 37 — HOOK B (pending_approval path): mark step complete (work surfaced; no LLM error)
       await completeStep(stepId, {
         deliverableId: undefined,
@@ -370,6 +410,7 @@ async function executeTaskWithOutput(
             agentName: input.agent.name,
             riskReasons: peerResult.reason,
           });
+          await logApprovalRequired(input, peerResult.reason, null);
           // Phase 37 — HOOK B (pending_approval after peer review): mark step complete
           await completeStep(stepId, {
             deliverableId: undefined,
@@ -521,6 +562,7 @@ export async function executeTask(
         agentName: input.agent.name,
         riskReasons: safety.reasons,
       });
+      await logApprovalRequired(input, safety.reasons, Math.max(adjustedExecutionRisk, adjustedScopeRisk, adjustedHallucinationRisk));
       // Phase 37 — HOOK B (pending_approval path): mark step complete (work surfaced, awaiting human)
       await completeStep(stepId, {
         deliverableId: undefined,
@@ -572,6 +614,7 @@ export async function executeTask(
           agentName: input.agent.name,
           riskReasons: peerResult.reason,
         });
+        await logApprovalRequired(input, peerResult.reason, null);
         // Phase 37 — HOOK B (pending_approval after peer review): mark step complete
         await completeStep(stepId, {
           deliverableId: undefined,
