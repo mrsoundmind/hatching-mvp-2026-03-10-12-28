@@ -12,6 +12,39 @@ export const QUEUE_TASK_EXECUTION = 'autonomous_task_execution';
 let _boss: PgBoss | null = null;
 
 /**
+ * pg-boss connection config. pg-boss forwards this object verbatim to `new pg.Pool()` internally
+ * (see node_modules/pg-boss/src/db.js: `this.pool = new pg.Pool(this.config)`), so every standard
+ * node-postgres pool option applies to pg-boss's own pool.
+ *
+ * Why this exists at all: pg-boss used to be constructed from the bare connection string, giving its
+ * internal pool NONE of the resilience the app pool has in db.ts. The worker loop
+ * (node_modules/pg-boss/src/worker.js) is `while (!stopping) { await fetch(); ... }` and catches
+ * errors to retry, so a transient blip should self-heal. It does NOT self-heal from a *hang*:
+ * `fetch()` runs `pool.query()`, and with no `query_timeout` a query against a half-open Supavisor
+ * socket never resolves and never rejects, so `await fetch()` blocks forever and the loop wedges.
+ * The observed failure was exactly this: after a Supabase DNS/timeout blip, jobs enqueued but stayed
+ * in `created` state (never fetched) on a long-running instance, and only a restart cleared it. That
+ * is the intermittent "sometimes autonomy works, sometimes it vanishes" bug.
+ *
+ * `query_timeout` is the load-bearing line: it caps how long the client waits for any single query,
+ * so a wedged fetch aborts after the timeout, the loop's existing catch handles it, and the next
+ * iteration reconnects. The rest mirror db.ts so idle Supavisor drops are handled the same way.
+ */
+export function buildBossConfig(): Record<string, unknown> {
+  return {
+    connectionString: process.env.DATABASE_URL!,
+    application_name: 'hatchin-pgboss', // distinguishes pg-boss connections from the app pool in Supabase
+    ssl: { rejectUnauthorized: false }, // Supabase managed PG with a valid CA (same pattern as db.ts)
+    max: 4, // small dedicated pool; the app pool (db.ts) is separate at max:10, so total stays well under caps
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10_000, // TCP keepalive detects a dead socket instead of trusting it
+    idleTimeoutMillis: 30_000, // recycle before the Supavisor pooler kills an idle server connection
+    connectionTimeoutMillis: 10_000, // fail fast on connect rather than hanging on a dead route
+    query_timeout: 60_000, // THE fix: a fetch/maintenance query can never hang forever (see doc above)
+  };
+}
+
+/**
  * Returns the singleton pg-boss instance, or null if the backgroundExecution
  * feature flag is disabled. Starts the boss on first call.
  *
@@ -28,7 +61,7 @@ export async function getJobQueue(): Promise<PgBoss | null> {
     return _boss;
   }
 
-  _boss = new PgBoss(process.env.DATABASE_URL!);
+  _boss = new PgBoss(buildBossConfig() as any);
   _boss.on('error', (err) => {
     console.error('[Hatchin][JobQueue] pg-boss error (non-fatal):', err);
   });
@@ -71,6 +104,27 @@ export async function queueTaskExecution(data: {
   });
 
   return jobId;
+}
+
+/**
+ * Force-recreates the pg-boss instance. Used by the worker watchdog when it detects a wedged worker
+ * (jobs enqueued but not consumed) that the query_timeout self-heal did not clear.
+ *
+ * Nulls the singleton FIRST so the next getJobQueue() rebuilds a fresh, hardened boss even if the old
+ * one's stop() hangs on a dead socket. The old instance is stopped forcefully (no graceful wait) and
+ * with a hard cap, because during a wedge there are no active jobs to drain and the connection may be
+ * dead. The caller re-registers the worker via startTaskWorker() after this resolves.
+ */
+export async function restartJobQueue(): Promise<void> {
+  const old = _boss;
+  _boss = null;
+  if (!old) return;
+  await Promise.race([
+    old.stop({ graceful: false, close: true }).catch((err) => {
+      console.error('[Hatchin][JobQueue] force-stop during restart failed (continuing):', (err as Error).message);
+    }),
+    new Promise((resolve) => setTimeout(resolve, 5_000)),
+  ]);
 }
 
 /**

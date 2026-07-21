@@ -973,3 +973,75 @@ export async function startTaskWorker(deps: {
     }
   });
 }
+
+// ── Worker watchdog ───────────────────────────────────────────────────────────
+// Defense in depth behind the query_timeout fix in jobQueue.ts. That fix stops the fetch loop from
+// hanging on a dead socket (the observed `created`-state stall). This watchdog covers the residual
+// cases the pool timeout can't: a job that hangs mid-processing (`onFetch` → handleTaskJob, e.g. an
+// LLM or app-pool call with no timeout, which strands a job in `active`), or any wedge the timeout
+// somehow misses. Detection is DB-truth, not an in-memory flag: a healthy worker fetches every ~2s,
+// so a job left `created` for minutes, or `active` far past its expiry, means nothing is consuming.
+type WorkerDeps = Parameters<typeof startTaskWorker>[0];
+let watchdogTimer: ReturnType<typeof setInterval> | null = null;
+let lastWatchdogRestartAt = 0;
+const WATCHDOG_INTERVAL_MS = 60_000;
+const CREATED_STALL_MS = 180_000;     // 3 min in `created`: a healthy worker would have fetched it
+const ACTIVE_STALL_MS = 600_000;      // 10 min in `active`: past the 30 min expiry is stuck, but 10 min catches hangs early
+const RESTART_COOLDOWN_MS = 300_000;  // at most one restart per 5 min, so a persistent outage cannot cause a restart storm
+
+/**
+ * Reports whether the task queue looks wedged, read straight from `pgboss.job` via the hardened app
+ * pool (not pg-boss's own pool, so a check still runs even if pg-boss's connection is the sick one).
+ * Exported for the verification harness.
+ */
+export async function detectWorkerStall(): Promise<{ stalled: boolean; created: number; stuckActive: number }> {
+  const { pool } = await import('../../db.js');
+  const res = await pool.query(
+    `select
+       count(*) filter (where state = 'created' and created_on < now() - ($2 || ' milliseconds')::interval)::int as created,
+       count(*) filter (where state = 'active'  and started_on < now() - ($3 || ' milliseconds')::interval)::int as stuck_active
+     from pgboss.job
+     where name = $1`,
+    [QUEUE_TASK_EXECUTION, String(CREATED_STALL_MS), String(ACTIVE_STALL_MS)],
+  );
+  const created = res.rows[0]?.created ?? 0;
+  const stuckActive = res.rows[0]?.stuck_active ?? 0;
+  return { stalled: created > 0 || stuckActive > 0, created, stuckActive };
+}
+
+/**
+ * Starts the periodic watchdog. Idempotent (a second call is a no-op). On a detected stall it
+ * force-restarts pg-boss and re-registers this worker, rate-limited by RESTART_COOLDOWN_MS. The old,
+ * possibly-wedged instance is discarded rather than waited on (see restartJobQueue).
+ */
+export function startTaskWorkerWatchdog(deps: WorkerDeps): void {
+  if (watchdogTimer) return;
+  watchdogTimer = setInterval(async () => {
+    try {
+      const { stalled, created, stuckActive } = await detectWorkerStall();
+      if (!stalled) return;
+      const now = Date.now();
+      if (now - lastWatchdogRestartAt < RESTART_COOLDOWN_MS) return;
+      lastWatchdogRestartAt = now;
+      console.error(
+        `[Hatchin][TaskWorker][watchdog] stall detected (created=${created}, stuckActive=${stuckActive}); restarting pg-boss worker`,
+      );
+      const { restartJobQueue } = await import('./jobQueue.js');
+      await restartJobQueue();
+      await startTaskWorker(deps);
+      console.log('[Hatchin][TaskWorker][watchdog] pg-boss worker re-registered; backlog will be consumed');
+    } catch (err) {
+      console.error('[Hatchin][TaskWorker][watchdog] check failed (non-fatal):', (err as Error).message);
+    }
+  }, WATCHDOG_INTERVAL_MS);
+  // Do not keep the process alive solely for the watchdog.
+  watchdogTimer.unref?.();
+}
+
+/** Stops the watchdog. For tests and graceful shutdown. */
+export function stopTaskWorkerWatchdog(): void {
+  if (watchdogTimer) {
+    clearInterval(watchdogTimer);
+    watchdogTimer = null;
+  }
+}

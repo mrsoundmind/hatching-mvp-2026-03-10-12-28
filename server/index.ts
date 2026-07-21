@@ -361,9 +361,9 @@ app.use((req, res, next) => {
       console.log('[Hatchin][BackgroundRunner] Autonomy background jobs started');
 
       // Wire task execution worker (pg-boss .work() handler)
-      const { startTaskWorker } = await import('./autonomy/execution/taskExecutionPipeline.js');
+      const { startTaskWorker, startTaskWorkerWatchdog } = await import('./autonomy/execution/taskExecutionPipeline.js');
       const { resolveModelForTier } = await import('./llm/providerResolver.js');
-      await startTaskWorker({
+      const taskWorkerDeps = {
         storage: storageInstance,
         broadcastToConversation: (convId: string, payload: unknown) => {
           const broadcast = getGlobalBroadcast();
@@ -384,8 +384,12 @@ app.use((req, res, next) => {
           });
           return result.content ?? '';
         },
-      });
-      console.log('[Hatchin][TaskWorker] Autonomous task execution worker registered');
+      };
+      await startTaskWorker(taskWorkerDeps);
+      // Watchdog: recovers a wedged worker after a transient DB outage (the intermittent-autonomy bug).
+      // Same deps, so a restart re-registers an identical worker.
+      startTaskWorkerWatchdog(taskWorkerDeps);
+      console.log('[Hatchin][TaskWorker] Autonomous task execution worker + watchdog registered');
     } catch (err: any) {
       console.error('[Hatchin][BackgroundRunner] Failed to start:', err.message);
     }
