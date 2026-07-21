@@ -1,8 +1,34 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles } from 'lucide-react';
 import type { FeedEvent } from '@/hooks/useAutonomyFeed';
 import { isSignalEvent } from '@shared/activityLabels';
 import AgentAvatar from '@/components/avatars/AgentAvatar';
+
+/**
+ * One face for every feed row. When an event has an agent, it is that agent's avatar (the same one
+ * the chat uses). When it is a genuinely agentless system event, it is a neutral Hatchin mark, NOT a
+ * "?" bubble: a question mark reads as a broken avatar, while the mark reads as "the system did this".
+ *
+ * Every row getting a face is the whole point of this component. The feed has two weights: delivered
+ * work on a full card, and the team's internal steps (reviews, revisions, memory) on a quiet line.
+ * That hierarchy is intentional, but before this it was drawn as face-vs-no-face, so a quiet line
+ * looked like a card that had lost its picture. Now the difference is size and weight, not a missing
+ * face, so the quiet tier reads as deliberately minor instead of broken.
+ */
+function EventFace({ agentName, size }: { agentName: string | null; size: number }) {
+  if (agentName) return <AgentAvatar agentName={agentName} size={size} />;
+  return (
+    <div
+      className="rounded-full flex items-center justify-center bg-[var(--hatchin-surface-elevated)]"
+      style={{ width: size, height: size, minWidth: size, minHeight: size }}
+      title="System"
+      aria-hidden
+    >
+      <Sparkles style={{ width: size * 0.5, height: size * 0.5 }} className="hatchin-text-muted" />
+    </div>
+  );
+}
 
 function formatRelativeTime(isoString: string): string {
   const now = Date.now();
@@ -87,18 +113,16 @@ export function ActivityFeedItem({ event }: ActivityFeedItemProps) {
   // its own bookkeeping and earns a single quiet line instead of a full card.
   if (!isSignalEvent(event.eventType)) {
     return (
-      <div className="flex items-baseline gap-2 px-3 py-1.5">
-        <span
-          className="w-1 h-1 rounded-full shrink-0 translate-y-[-2px]"
-          style={{ backgroundColor: 'var(--hatchin-text-muted)', opacity: 0.5 }}
-          aria-hidden
-        />
-        <p className="text-[11px] hatchin-text-muted leading-snug flex-1 min-w-0">
-          {event.label}
-          {/* nowrap so the separator never strands itself at the end of a line */}
+      <div className="flex items-start gap-2 px-3 py-1.5">
+        {/* Small face carries who; the row stays light so it reads as an internal step, not delivered work. */}
+        <div className="shrink-0 mt-0.5 opacity-90">
+          <EventFace agentName={event.agentName} size={18} />
+        </div>
+        <p className="text-[11px] leading-snug flex-1 min-w-0">
           {event.agentName && (
-            <span className="opacity-70 whitespace-nowrap">{` · ${event.agentName}`}</span>
+            <span className="hatchin-text opacity-80 font-medium">{`${event.agentName} · `}</span>
           )}
+          <span className="hatchin-text-muted">{event.label}</span>
         </p>
         <span className="text-[10px] hatchin-text-muted opacity-60 shrink-0 whitespace-nowrap">{time}</span>
       </div>
@@ -120,10 +144,10 @@ export function ActivityFeedItem({ event }: ActivityFeedItemProps) {
         // A row with nothing behind it is not a control.
         style={{ cursor: hasDetail ? 'pointer' : 'default' }}
       >
-        {/* Same DiceBear avatar the chat uses (seeded by agent name) so the feed matches
-            the conversation; AgentAvatar falls back to a colored bubble when agentless. */}
+        {/* Same face vocabulary as the quiet rows and the chat; agentless system events get the
+            neutral Hatchin mark instead of a "?" bubble. */}
         <div className="shrink-0 mt-0.5">
-          <AgentAvatar agentName={event.agentName} size={28} />
+          <EventFace agentName={event.agentName} size={28} />
         </div>
 
         <div className="flex-1 min-w-0">
