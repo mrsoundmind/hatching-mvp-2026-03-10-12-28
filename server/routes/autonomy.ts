@@ -1,5 +1,7 @@
-import type { Express, Request } from 'express';
+import type { Express, Request, Response } from 'express';
+import { randomUUID } from 'crypto';
 import { storage } from '../storage.js';
+import { pool } from '../db.js';
 import { evaluateConductorDecision, buildRoleIdentity } from '../ai/conductor.js';
 import { evaluateSafetyScore } from '../ai/safety.js';
 import {
@@ -17,6 +19,7 @@ import { buildDecisionForecast } from '../ai/forecast.js';
 import { filterAvailableAgents, type ScopeContext } from '../orchestration/agentAvailability.js';
 import { createTaskGraph } from '../autonomy/taskGraph/taskGraphEngine.js';
 import { runAutonomousKnowledgeLoop } from '../knowledge/akl/runner.js';
+import { mapEventTypeToCategory, describeAutonomyEvent } from '@shared/activityLabels';
 import { getCurrentRuntimeConfig } from '../llm/providerResolver.js';
 import { logAutonomyEvent, readAutonomyEvents, readAutonomyEventsByProject, summarizeLatency } from '../autonomy/events/eventLogger.js';
 import { z } from 'zod';
@@ -28,29 +31,9 @@ import {
 import { readConfigSnapshot, writeConfigSnapshot } from '../utils/configSnapshot.js';
 import { detectDrift, loadRecentScores } from '../eval/drift/driftMonitor.js';
 
-function mapEventTypeToCategory(eventType: string): 'task' | 'handoff' | 'review' | 'approval' | 'system' {
-  switch (eventType) {
-    case 'task_started':
-    case 'task_completed':
-    case 'task_executing':
-    case 'background_execution_started':
-    case 'background_execution_completed':
-      return 'task';
-    case 'handoff_announced':
-    case 'handoff_chain_completed':
-      return 'handoff';
-    case 'peer_review_completed':
-    case 'peer_review_started':
-    case 'peer_review_feedback':
-      return 'review';
-    case 'approval_required':
-    case 'approval_granted':
-    case 'approval_rejected':
-      return 'approval';
-    default:
-      return 'system';
-  }
-}
+// Category + description now live in shared/activityLabels.ts. They used to be
+// duplicated here and in useAutonomyFeed.ts, and the copies drifted — that drift is
+// why completed tasks were categorised 'system' and the Tasks filter showed nothing.
 
 export function registerAutonomyRoutes(app: Express): void {
   const getSessionUserId = (req: Request): string | undefined => (req.session as any)?.userId as string | undefined;
@@ -665,14 +648,38 @@ export function registerAutonomyRoutes(app: Express): void {
         traceGroups.set(event.traceId, existing);
       }
 
+      // #110/#102: resolve agentId -> name at read time. Events carry hatchId but rarely agentName,
+      // so the feed rendered an anonymous "Hatch" with a blank avatar. Build a name map once from the
+      // relevant project(s); this also fixes history (old rows) since it resolves at read, not write.
+      const agentNameById = new Map<string, string>();
+      const nameLookupProjectIds = projectId
+        ? [projectId]
+        : Array.from(new Set(rawEvents.map((e) => e.projectId).filter((id): id is string => !!id)));
+      for (const pid of nameLookupProjectIds) {
+        try {
+          const agents = await storage.getAgentsByProject(pid);
+          for (const a of agents) agentNameById.set(a.id, a.name);
+        } catch {
+          // best-effort; falls back to a friendly generic below
+        }
+      }
+
       const feedEvents = [];
       for (const [traceId, group] of traceGroups) {
         const latest = group.reduce((a, b) =>
           new Date(a.timestamp) > new Date(b.timestamp) ? a : b
         );
-        const agentName = (latest.payload?.agentName as string) || null;
-        const taskTitle = (latest.payload?.taskTitle as string) || latest.eventType.replace(/_/g, ' ');
+        // #110: prefer an explicit payload name, else resolve from hatchId, else a friendly fallback.
+        const agentName =
+          (latest.payload?.agentName as string) ||
+          (latest.hatchId ? agentNameById.get(latest.hatchId) : undefined) ||
+          null;
         const category = mapEventTypeToCategory(latest.eventType);
+
+        // The label is now a written description of what happened, not the event enum
+        // with its underscores removed. It deliberately excludes the agent name, which
+        // the feed renders on its own line directly above.
+        const label = describeAutonomyEvent(latest.eventType, latest.payload as Record<string, unknown> | null);
 
         feedEvents.push({
           id: latest.requestId || `${traceId}-${latest.eventType}`,
@@ -680,7 +687,7 @@ export function registerAutonomyRoutes(app: Express): void {
           eventType: latest.eventType,
           agentId: latest.hatchId || null,
           agentName,
-          label: `${agentName || 'Agent'} ${latest.eventType.replace(/_/g, ' ')}: ${taskTitle}`,
+          label,
           category,
           timestamp: latest.timestamp,
           count: group.length,
@@ -742,15 +749,22 @@ export function registerAutonomyRoutes(app: Express): void {
         return eventDate >= sevenDaysAgo;
       });
 
-      // Aggregate
+      // Aggregate. Count the event types the pipeline actually persists.
+      // A completed autonomous task is logged as 'autonomous_task_execution'
+      // (taskExecutionPipeline.ts:371/565/621) — 'task_completed' is defined in the
+      // type union but emitted nowhere, so the old counter was structurally always 0.
+      // Handoffs persist as 'handoff_initiated' (handoffOrchestrator.ts:154);
+      // 'handoff_announced' is a client-only WS/CustomEvent that never reaches this table.
+      const TASK_DONE_EVENTS = new Set(['autonomous_task_execution', 'task_completed', 'background_execution_completed']);
+      const HANDOFF_EVENTS = new Set(['handoff_initiated', 'handoff_announced', 'handoff_chain_completed']);
       let tasksCompleted = 0;
       let handoffs = 0;
       let totalCost = 0;
 
       for (const event of filtered) {
         const et = event.eventType as string;
-        if (et === 'task_completed') tasksCompleted++;
-        if (et === 'handoff_announced') handoffs++;
+        if (TASK_DONE_EVENTS.has(et)) tasksCompleted++;
+        if (HANDOFF_EVENTS.has(et)) handoffs++;
         if (typeof event.payload?.cost === 'number') totalCost += event.payload.cost;
       }
 
@@ -780,6 +794,183 @@ export function registerAutonomyRoutes(app: Express): void {
       res.status(500).json({ error: 'Failed to read deliberation traces' });
     }
   });
+
+  // Phase 37 (TREE-03) — autonomy run tree per project.
+  // Returns runs + their step rows for client-side tree assembly (37-03 useAutonomyRunTree hook).
+  // Ownership-checked; 401 on no session, 404 on mismatch (NOT 403 — T-37-12: 403 leaks resource existence).
+  app.get('/api/projects/:projectId/runs', async (req: Request, res) => {
+    try {
+      const userId = getSessionUserId(req);
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+      const project = await requireOwnedProject(req.params.projectId, userId);
+      if (!project) return res.status(404).json({ error: 'Project not found' });
+
+      const tree = await storage.getRunsByProject(project.id, { limit: 20 });
+      return res.json({ runs: tree.runs, steps: tree.steps });
+    } catch (error) {
+      console.error('Autonomy run tree read error:', error);
+      return res.status(500).json({ error: 'Failed to read autonomy run tree' });
+    }
+  });
+
+  // ---------------------------------------------------------------------
+  // Phase 37 (TREE-05) — DEV-only seed/reset/mark-flat-historical endpoints.
+  //
+  // Used by tests/e2e/phase-37-run-tree.spec.ts to build deterministic tree
+  // state without driving the live autonomy pipeline. Pattern mirrors Phase 36-02's
+  // /api/dev/force-judge-score: double-guard (conditional registration AND
+  // in-handler production throw). NEVER exposed in production.
+  // ---------------------------------------------------------------------
+  if (process.env.NODE_ENV !== 'production') {
+    app.post('/api/dev/seed-run-tree', async (req: Request, res: Response) => {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('FATAL: /api/dev/seed-run-tree called in production. DEV-only endpoint must not run in a production code path.');
+      }
+      try {
+        const { projectId, runs } = req.body as {
+          projectId: string;
+          runs: Array<{
+            rootGoal: string;
+            metadata?: Record<string, unknown>;
+            steps: Array<{
+              stepType: 'task' | 'handoff' | 'peer_review' | 'deliberation' | 'safety_block' | 'approval_request';
+              parentStepIndex?: number | null;
+              agentName: string;
+              agentRole: string;
+              title: string;
+              status: 'pending' | 'running' | 'complete' | 'failed' | 'skipped';
+              scoreDelta?: number | null;
+              deliverableId?: string | null;
+              deliverableVersionId?: string | null;
+              deliverableVersionNumber?: number | null;
+            }>;
+          }>;
+        };
+        if (!projectId || !Array.isArray(runs)) {
+          return res.status(400).json({ error: 'projectId and runs[] required' });
+        }
+        for (const r of runs) {
+          const traceId = randomUUID();
+          const run = await storage.createRun({
+            traceId,
+            projectId,
+            userId: null,
+            rootAgentId: null,
+            rootGoal: r.rootGoal.slice(0, 500),
+            status: 'complete',
+            stepCount: r.steps.length,
+            aggregateScoreDelta: null,
+            metadata: r.metadata ?? {},
+          });
+          const createdStepIds: string[] = [];
+          for (const s of r.steps) {
+            const parentIdx = typeof s.parentStepIndex === 'number' ? s.parentStepIndex : -1;
+            const parentStepId =
+              parentIdx >= 0 && parentIdx < createdStepIds.length
+                ? createdStepIds[parentIdx]
+                : null;
+            const step = await storage.createRunStep({
+              runId: run.id,
+              parentStepId,
+              traceId,
+              agentId: null,
+              agentName: s.agentName,
+              agentRole: s.agentRole,
+              stepType: s.stepType,
+              title: s.title.slice(0, 200),
+              status: s.status,
+              deliverableId: s.deliverableId ?? null,
+              deliverableVersionId: s.deliverableVersionId ?? null,
+              deliverableVersionNumber: s.deliverableVersionNumber ?? null,
+              scoreDelta: s.scoreDelta ?? null,
+              metadata: {},
+              completedAt: s.status === 'complete' || s.status === 'failed' ? new Date() : null,
+              latencyMs: null,
+            });
+            createdStepIds.push(step.id);
+          }
+        }
+        return res.json({ ok: true });
+      } catch (error) {
+        console.error('[dev] seed-run-tree error:', error);
+        return res.status(500).json({ error: 'Failed to seed run tree', detail: (error as Error).message });
+      }
+    });
+
+    app.post('/api/dev/reset-run-tree', async (req: Request, res: Response) => {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('FATAL: /api/dev/reset-run-tree called in production. DEV-only endpoint must not run in a production code path.');
+      }
+      try {
+        const { projectId } = req.body as { projectId: string };
+        if (!projectId) return res.status(400).json({ error: 'projectId required' });
+        // Reset path branches on storage type. In DB mode we use raw pool.query for
+        // batch deletes. In MemStorage mode the in-process Maps are the source of
+        // truth; mutate them directly via the same hook __resetRunTreeForTests uses.
+        if (process.env.STORAGE_MODE === 'db') {
+          await pool.query(
+            `DELETE FROM autonomy_run_steps WHERE run_id IN (SELECT id FROM autonomy_runs WHERE project_id = $1)`,
+            [projectId],
+          );
+          await pool.query(`DELETE FROM autonomy_runs WHERE project_id = $1`, [projectId]);
+        } else {
+          const mem = storage as unknown as {
+            autonomyRuns?: Map<string, { id: string; projectId: string }>;
+            autonomyRunSteps?: Map<string, { id: string; runId: string }>;
+          };
+          if (mem.autonomyRuns && mem.autonomyRunSteps) {
+            const runIdsToDrop = new Set<string>();
+            for (const [id, run] of mem.autonomyRuns.entries()) {
+              if (run.projectId === projectId) runIdsToDrop.add(id);
+            }
+            for (const [stepId, step] of mem.autonomyRunSteps.entries()) {
+              if (runIdsToDrop.has(step.runId)) mem.autonomyRunSteps.delete(stepId);
+            }
+            for (const id of runIdsToDrop) mem.autonomyRuns.delete(id);
+          }
+        }
+        return res.json({ ok: true });
+      } catch (error) {
+        console.error('[dev] reset-run-tree error:', error);
+        return res.status(500).json({ error: 'Failed to reset run tree', detail: (error as Error).message });
+      }
+    });
+
+    app.post('/api/dev/mark-flat-historical', async (req: Request, res: Response) => {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('FATAL: /api/dev/mark-flat-historical called in production. DEV-only endpoint must not run in a production code path.');
+      }
+      try {
+        const { projectId } = req.body as { projectId: string };
+        if (!projectId) return res.status(400).json({ error: 'projectId required' });
+        if (process.env.STORAGE_MODE === 'db') {
+          await pool.query(
+            `UPDATE autonomy_runs SET metadata = jsonb_set(COALESCE(metadata, '{}'::jsonb), '{flatHistorical}', 'true') WHERE project_id = $1`,
+            [projectId],
+          );
+        } else {
+          const mem = storage as unknown as {
+            autonomyRuns?: Map<string, { id: string; projectId: string; metadata: Record<string, unknown> }>;
+          };
+          if (mem.autonomyRuns) {
+            for (const [id, run] of mem.autonomyRuns.entries()) {
+              if (run.projectId === projectId) {
+                mem.autonomyRuns.set(id, {
+                  ...run,
+                  metadata: { ...(run.metadata ?? {}), flatHistorical: true },
+                });
+              }
+            }
+          }
+        }
+        return res.json({ ok: true });
+      } catch (error) {
+        console.error('[dev] mark-flat-historical error:', error);
+        return res.status(500).json({ error: 'Failed to mark flat historical', detail: (error as Error).message });
+      }
+    });
+  }
 
   app.get('/api/autonomy/evidence-pack', async (req, res) => {
     try {

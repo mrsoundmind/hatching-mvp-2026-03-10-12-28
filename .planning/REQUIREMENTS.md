@@ -16,11 +16,11 @@
 
 ### Production Polish (LEGAL, LLMUX)
 
-- [ ] **LEGAL-01**: User can click "Privacy" and "Terms" links from the landing footer (and login page) and reach actual page content — `/legal/privacy` and `/legal/terms` are registered routes that render production-ready legal copy (not 404)
-- [ ] **LLMUX-01**: When all LLM providers fail simultaneously, server emits a typed `PROVIDER_DEGRADED` WS event (no raw HTTP 500 leaks to the client) — 429 rate limits do NOT trigger this state because they route to the next provider
-- [ ] **LLMUX-02**: Client shows a non-blocking banner ("Agents are slow right now, hang tight") when `PROVIDER_DEGRADED` is received — never a blocking modal
-- [ ] **LLMUX-03**: Banner auto-dismisses within 5 seconds of the next successful streamed response (recovery signal)
-- [ ] **AUDIT-01**: Runtime verification spec (Playwright) confirms Phase 1 work end-to-end — clicking landing footer Privacy/Terms loads non-404 content; simulated provider outage shows banner; recovery dismisses it
+- [x] **LEGAL-01**: User can click "Privacy" and "Terms" links from the landing footer (and login page) and reach actual page content — `/legal/privacy` and `/legal/terms` are registered routes that render production-ready legal copy (not 404) (Phase 35 — Fly v19, 2026-05-11)
+- [x] **LLMUX-01**: When all LLM providers fail simultaneously, server emits a typed `PROVIDER_DEGRADED` WS event (no raw HTTP 500 leaks to the client) — 429 rate limits do NOT trigger this state because they route to the next provider (Phase 35 — Fly v19, 2026-05-11)
+- [x] **LLMUX-02**: Client shows a non-blocking banner ("Agents are slow right now, hang tight") when `PROVIDER_DEGRADED` is received — never a blocking modal (Phase 35 — Fly v19, 2026-05-11)
+- [x] **LLMUX-03**: Banner auto-dismisses within 5 seconds of the next successful streamed response (recovery signal) (Phase 35 — Fly v19, 2026-05-11; 248ms latency 2026-06-03 re-verified on Supabase)
+- [x] **AUDIT-01**: Runtime verification spec (Playwright) confirms Phase 1 work end-to-end — clicking landing footer Privacy/Terms loads non-404 content; simulated provider outage shows banner; recovery dismisses it (Phase 35 — 7/7 Playwright cases PASS 2026-05-11; re-PASS 2026-06-03 on Supabase)
 
 ---
 
@@ -28,14 +28,25 @@
 
 **Theme:** Every refinement scored 0–10 on locked, type-specific rubrics. Auto-revert if a new version scores lower than the previous one. Rubric explains "what a 10 looks like."
 
-- [ ] **RUBR-01**: Each of the 15 deliverable types has a frozen rubric with explicit 0–10 scoring criteria (rubric content schema-validated; immutable per type version)
-- [ ] **RUBR-02**: Every iteration request scores both old and new versions against the rubric; if new < old, system auto-reverts and surfaces a "Refinement made it worse, kept previous version" message
-- [ ] **RUBR-03**: Rubric scores persist on `deliverable_versions` rows with breakdown per criterion
-- [ ] **RUBR-04**: User can see rubric scoring for any version in the artifact panel; "Why this scored X" explanation is visible per criterion
-- [ ] **FBK-01**: Deliverables table gains `userAcceptedAt` timestamp, `editsCount` int, `dismissedAt` timestamp, `impressionCount` int columns
-- [ ] **FBK-02**: User can Accept or Dismiss a deliverable from the artifact panel — actions populate the corresponding columns
-- [ ] **FBK-03**: System auto-increments `impressionCount` when a deliverable is opened in the artifact panel
-- [ ] **FBK-04**: Agent prompts include recent feedback signal for that role ("your last 3 PRDs were accepted, 1 dismissed") so quality compounds with use
+- [x] **RUBR-01**: Each of the 15 deliverable types has a frozen rubric with explicit 0–10 scoring criteria (rubric content schema-validated; immutable per type version) (Phase 36-01 — registry-shape + Object.freeze invariant, 2026-05-11)
+- [x] **RUBR-02**: Every iteration request scores both old and new versions against the rubric; if new < old, system auto-reverts and surfaces a "Refinement made it worse, kept previous version" message (Phase 36-02 + 36-03, 2026-05-13; re-verified 2026-06-03)
+- [x] **RUBR-03**: Rubric scores persist on `deliverable_versions` rows with breakdown per criterion (Phase 36-01 schema + 36-02 persistence, 2026-05-13)
+- [x] **RUBR-04**: User can see rubric scoring for any version in the artifact panel; "Why this scored X" explanation is visible per criterion (Phase 36-03 RubricBreakdown, visual-approved 2026-05-13)
+- [x] **FBK-01**: Deliverables table gains `userAcceptedAt` timestamp, `editsCount` int, `dismissedAt` timestamp, `impressionCount` int columns (Phase 36-01 schema, 2026-05-11)
+- [⚠] **FBK-02**: User can Accept or Dismiss a deliverable from the artifact panel — actions populate the corresponding columns — **DEFERRED** per user simplification 2026-05-13 (server endpoints persist; no UI surface in v2.1; may resurface via Phase 37 run-tree)
+- [x] **FBK-03**: System auto-increments `impressionCount` when a deliverable is opened in the artifact panel (Phase 36-02 + 36-03 useEffect + Playwright case 4, 2026-05-13; re-PASS 2026-06-03)
+- [x] **FBK-04**: Agent prompts include recent feedback signal for that role ("your last 3 PRDs were accepted, 1 dismissed") so quality compounds with use (Phase 36-04 aggregator + injection + prompt-snapshot test, 2026-05-11)
+
+---
+
+## Phase 36.5 — Imperative Action Shortcuts (HOTFIX)
+
+**Theme:** Skip the LLM ask-first dance for clearly-imperative chat commands. Parse intent server-side before the LLM call, fire the action directly, return a brief confirmation. Falls back to existing LLM flow for ambiguous messages.
+
+- [x] **IMP-01**: New `imperativeIntentParser.ts` module recognizes 4 imperative-command patterns from chat text: create-agent ("create an agent named X as Y"), create-task ("add a task to Z"), rename-project ("rename the project to W"), set-brain-field ("set the project goal to V"). Returns structured intent or `null` for ambiguous text.
+- [x] **IMP-02**: WS chat handler in `server/routes/chat.ts` checks for imperative intent BEFORE spawning the LLM. On match: fires the corresponding storage write (createAgent/createTask/updateProject/updateBrain), emits the existing WS event (`teams_auto_hatched` / `task_created` / `brain_updated_from_chat`), and posts a brief confirmation message from the responding agent ("Done — added Pixel as Social Media Manager"). No LLM call needed. On no-match: existing flow runs unchanged.
+- [x] **IMP-03**: Maya's team-suggestion grammar drops the `conversationTurnCount >= 2` requirement in `openaiService.ts` so Maya can propose a team on turn 1 when a no-team project is opened.
+- [x] **IMP-04**: Playwright probe spec (`tests/e2e/agent-action-probe.spec.ts` — already written during audit) passes: Turn 1 "create an agent named Pixel" creates the agent; Turn 2 "add a task to update landing" creates the task; Turn 3 ambiguous question routes to LLM unchanged.
 
 ---
 
@@ -43,21 +54,24 @@
 
 **Theme:** `autonomy_runs` + `autonomy_run_steps` tables. Activity feed visualizes the tree with score deltas.
 
-- [ ] **TREE-01**: New `autonomy_runs` and `autonomy_run_steps` tables with parent-child relationships modeling autonomous execution as a DAG
-- [ ] **TREE-02**: Every autonomous task and handoff writes a step row; rubric score deltas (from Phase 2) attach to step nodes
-- [ ] **TREE-03**: Activity feed sidebar visualizes the run tree per project — collapsible nodes, score-delta badges per step
-- [ ] **TREE-04**: User can click any step node to see the deliverable version produced and its score
-- [ ] **TREE-05**: Migration backfills existing `autonomy_events` rows into the run tree for historical projects
+- [x] **TREE-01**: New `autonomy_runs` and `autonomy_run_steps` tables with parent-child relationships modeling autonomous execution as a DAG _(shipped 2026-05-14 via Phase 37-01; commits 2acd134, 819be29, c92d8bb)_
+- [x] **TREE-02**: Every autonomous task and handoff writes a step row; rubric score deltas (from Phase 2) attach to step nodes _(shipped 2026-05-14 via Phase 37-02; commits 6aa50bb writer module, ef4ca1b 3-hook BOTH executeTask paths, eda62db handoffOrchestrator parent-link + handoff_initiated event, 30eef4a GET endpoint, 255a42c writer tests; D-06.1 acknowledged: scoreDelta resolves to null in ~100% of live calls because autonomy pipeline doesn't currently produce Phase 36 deliverables — bridge work tracked as Phase 47 backlog #2)_
+- [x] **TREE-03**: Activity feed sidebar visualizes the run tree per project — collapsible nodes, **semantic-word badges** (✓ Improved / ⚠ Made worse / In progress for runs; ✓ Better / ⚠ Worse / New for steps) _(shipped 2026-05-14 via Phase 37-03; commits dbe7fb6 helpers + hook, a568851 RunTreeView+RunTreeNode, 14951be integration+verb-led clarity pass. User feedback during visual checkpoint upgraded from bare numbers/icons to verbs/words per `feedback_ui_self_documenting.md` rule — Activity tab now reads as a sentence.)_
+- [x] **TREE-04**: User can click any step node to see the deliverable version produced and its score _(shipped 2026-05-14 via Phase 37-03; W-4 wiring — pendingVersionNumber prop on ArtifactPanel + open_deliverable event extension on home.tsx; click step → panel opens to EXACT version via existing restoreMutation, not most-recent)_
+- [x] **TREE-05**: Migration backfills existing `autonomy_events` rows into the run tree for historical projects _(vacuously satisfied 2026-06-03: Neon data abandoned during quick-260601-ojf Supabase migration; no historical autonomy_events rows exist to backfill — fresh Supabase DB will accumulate run-tree data going forward via Phase 37-02 writer hooks)_
 
 ---
 
-## Phase 38 — "Never Stop, Never Ask" Autonomy Prompt (V3 Pillar 3)
+## Phase 38 — "Never Stop, Never Ask" Autonomy + Autonomy Safety (V3 Pillar 3, expanded 2026-07-09)
 
-**Theme:** At level-4 autonomy, Hatches stop asking "should I keep going?" — they continue chains until natural completion.
+**Theme:** At level-4 autonomy, Hatches stop asking "should I keep going?" — they continue chains until natural completion. **BUT** the safety floor must actually fire on destructive intent, Maya's role voice must snap to decisive (not exploratory), and no Hatch may describe having performed actions it cannot execute. Scope expanded 2026-07-09 after live vibe-check surfaced three shipping blockers.
 
-- [ ] **ALWY-01**: When `autonomy_level === 4`, agent system prompts include "Never Stop, Never Ask" framing — no clarifying questions, no "should I continue" patterns
-- [ ] **ALWY-02**: Conversation flow tests verify that level-4 Hatches do not emit clarifying questions during autonomous execution
-- [ ] **ALWY-03**: User can downgrade to level 3 mid-run if they want clarification gating back; downgrade applies to next step, not in-flight one
+- [x] **ALWY-01**: When `autonomy_level === 4`, agent system prompts include "Never Stop, Never Ask" framing — no clarifying questions, no "should I continue" patterns _(shipped 2026-06-21 via Plan 38-01; commit `e676e37` — AUTONOMOUS_DIRECTIVE_BLOCK injected at 3 sites in openaiService.ts; verified by scripts/test-autonomous-directive.ts 16/16 PASS)_
+- [x] **ALWY-02**: Conversation flow tests verify that level-4 Hatches do not emit clarifying questions during autonomous execution — **✅ VERIFIED 2026-07-21 via Plan 38-05 human-delegated vibe-check on the DeepSeek production chain.** All three level-4 prompts produced D-04 commit-shape with zero clarifying questions: "Build me a marketing strategy" → "Here's what I'd do: ..."; "What color should the CTA be?" → "I'd go with a vibrant saffron-orange, ... Going with that assumption unless ..." (textbook, and grounded on the uploaded Project Saffron doc, the #79 fix compounding); "Maya, suggest a team" → "Here's the team: ... Adding them now." (ALWY-05 snap confirmed). Site 3 soft-closing leak fixed earlier (Plan 38-01 hotfix). See `.planning/phases/38-never-stop-never-ask/38-VERIFICATION.md`.
+- [x] **ALWY-03**: User can downgrade to level 3 mid-run if they want clarification gating back; downgrade applies to next step, not in-flight one — **✅ VERIFIED 2026-07-21 via Plan 38-05.** Code shipped 2026-06-21 (Plan 38-01 commit `b218021` snapshot-at-task-entry); runtime confirmed by dropping the dial to Confirm and asking "which Postgres vector extension should we use?" → the agent asked a genuine clarifying question ("What would you want to nail down first?"), a visibly different voice from the committed level-4 shape. The dial changes behaviour as designed. See 38-VERIFICATION.md.
+- [x] **ALWY-04**: Safety scorer detects destructive-intent verbs (`delete`, `wipe`, `reset`, `remove all`, `start over`, `nuke`, `erase`, `destroy`) and returns `executionRisk ≥ 0.70` — approval card fires at level-4 for destructive commands (D-11..D-13 safety floor invariant verified behaviorally, not just by grep count) _(SHIPPED 2026-07-09 via Plan 38-02; unit 12/12 PASS + D-11..D-13 grep=7 preserved + test:tone/test:injection/gate:safety all clean + Playwright `phase-38-safety-floor` 2/2 PASS on live server against DeepSeek primary)_
+- [x] **ALWY-05**: Maya (Idea Partner, `isSpecialAgent`) at level-4 opens with a commit-shape ("Here's what I'd do: X. Because Y. Flag if wrong.") not with her default exploratory shape ("I keep coming back to the idea..."); Maya-specific override clause added to `AUTONOMOUS_DIRECTIVE_BLOCK` _(SHIPPED 2026-07-10 via Plan 38-03; new `MAYA_AUTONOMOUS_OVERRIDE` block appended AFTER `AUTONOMOUS_DIRECTIVE_BLOCK` so the LLM reads the commit-shape rule last. Wired via `chatContext.agentIsSpecial` in chat.ts (detects Maya via both `isSpecialAgent` flag and `role === 'Idea Partner'` fallback). Also fixed Plan 38-01 residual bug in `buildProviderOrder` — capture provider was falling through to mock; now selects capture. Unit 10/10 PASS + Playwright phase-38 6/6 PASS on live server (Test 5 verifies override present + ordering after directive))_
+- [x] **ALWY-06**: Agent responses never describe having completed actions the agent has no tool to perform. Role capability envelope injected into every system prompt lists what each role CAN and CANNOT do. Idea Partner Maya says "I can only chat — I can't delete data, run tasks, or modify the DB from here" instead of "I'll wipe the slate clean." _(SHIPPED 2026-07-10 via Plan 38-04. Universal `AGENT_CAPABILITY_ENVELOPE` XML block declaring CAN list (four canonical [[...]] proposal blocks) and CANNOT list (delete/wipe/DB/file-system/code-exec/deployment) with enforcement line "NEVER describe having performed an action you cannot perform." Injected in staticPrefix + both createPromptTemplate sites in openaiService.ts. Unit 19/19 PASS + Playwright phase-38-fake-action-guard 2/2 PASS on live Groq server — destructive command "delete all my data" → safety_intervention fired (defense in depth with Plan 38-02), benign "help me plan a database migration" → 247-char substantive response with no over-firing. Foundational precursor to Phase 46 Slop Detection.)_
 
 ---
 
@@ -196,13 +210,19 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LEGAL-01 | 35 | Pending |
-| LLMUX-01..03 | 35 | Pending |
-| AUDIT-01 | 35 | Pending |
-| RUBR-01..04 | 36 | Pending |
-| FBK-01..04 | 36 | Pending |
-| TREE-01..05 | 37 | Pending |
-| ALWY-01..03 | 38 | Pending |
+| LEGAL-01 | 35 | Shipped 2026-05-11 |
+| LLMUX-01..03 | 35 | Shipped 2026-05-11 |
+| AUDIT-01 | 35 | Shipped 2026-05-11 |
+| RUBR-01..04 | 36 | Code-complete (awaiting deploy) |
+| FBK-01..04 | 36 | Code-complete (awaiting deploy; FBK-02 UI deferred) |
+| IMP-01..04 | 36.5 | Shipped 2026-05-13 (code-complete, bundled with 36 for deploy) |
+| TREE-01..05 | 37 | TREE-01..04 shipped 2026-05-14; TREE-05 pending (37-04 backfill) |
+| ALWY-01 | 38 | Shipped 2026-06-21 (Plan 38-01) |
+| ALWY-02 | 38 | ✅ VERIFIED 2026-07-21 (Plan 38-05 vibe-check on DeepSeek; all 3 level-4 prompts commit-shape, zero clarifying questions) |
+| ALWY-03 | 38 | ✅ VERIFIED 2026-07-21 (Plan 38-05; Confirm-level downgrade asks a clarifying question, distinct voice from level-4) |
+| ALWY-04 | 38 | ✅ SHIPPED 2026-07-09 via Plan 38-02; unit 12/12 + regression sweep clean + Playwright 2/2 PASS on live server |
+| ALWY-05 | 38 | ✅ SHIPPED 2026-07-10 via Plan 38-03; Playwright 6/6 PASS incl. new Test 5 |
+| ALWY-06 | 38 | ✅ SHIPPED 2026-07-10 via Plan 38-04; Playwright 2/2 PASS on live Groq server |
 | READ-01..04 | 39 | Pending |
 | EVAL-01..04 | 40 | Pending |
 | PHASE-01..04 | 41 | Pending |
@@ -215,8 +235,8 @@
 | SLOP-01..04 | 46 | Pending |
 
 **Coverage:**
-- v2.1 total: 60 requirements
-- Mapped to phases: 60 (12 phases)
+- v2.1 total: 67 requirements (60 original + 4 IMP added 2026-05-13 hotfix + 3 ALWY-04/05/06 added 2026-07-09 vibe-check pivot)
+- Mapped to phases: 67 (13 phases including 36.5 hotfix)
 - Unmapped: 0 ✓
 
 ---

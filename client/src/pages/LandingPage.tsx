@@ -249,9 +249,13 @@ export default function LandingPage() {
           </span>
 
           <div className="hidden md:flex items-center gap-8">
-            {["Product", "Pricing", "About"].map((link) => (
-              <a key={link} href="#" className="text-sm text-white/55 hover:text-white transition-colors">
-                {link}
+            {[
+              { label: "Product", href: "#how-it-works" },
+              { label: "Pricing", href: "#pricing" },
+              { label: "FAQ", href: "#faq" },
+            ].map((link) => (
+              <a key={link.label} href={link.href} className="text-sm text-white/55 hover:text-white transition-colors">
+                {link.label}
               </a>
             ))}
           </div>
@@ -328,7 +332,7 @@ export default function LandingPage() {
         </section>
 
         {/* How It Works */}
-        <section className="w-full max-w-[1200px] mx-auto px-6 pt-10 pb-20 md:pt-14 md:pb-28 scroll-reveal">
+        <section id="how-it-works" className="w-full max-w-[1200px] mx-auto px-6 pt-10 pb-20 md:pt-14 md:pb-28 scroll-reveal scroll-mt-20">
           <div className="text-center mb-12">
             <h2 className="text-2xl md:text-4xl font-semibold text-white mb-5" style={{ fontFamily: "'Poppins', sans-serif" }}>
               How it works.
@@ -346,7 +350,7 @@ export default function LandingPage() {
       <div className="dark-section-start w-full relative">
 
         {/* FAQ — brutalist unit numbering */}
-        <section className="w-full max-w-[760px] mx-auto px-6 pt-20 pb-12 md:pt-28 md:pb-16 scroll-reveal">
+        <section id="faq" className="w-full max-w-[760px] mx-auto px-6 pt-20 pb-12 md:pt-28 md:pb-16 scroll-reveal scroll-mt-20">
           <div className="text-center mb-14">
             <div className="brutalist-mono text-[10px] text-white/40 tracking-[0.25em] uppercase mb-3 flex items-center justify-center gap-3">
               <span className="h-px w-8 bg-white/15" />
@@ -394,7 +398,7 @@ export default function LandingPage() {
         </section>
 
         {/* Pricing — brutalist spec-sheet */}
-        <section className="w-full max-w-[980px] mx-auto px-6 pt-10 pb-20 md:pt-16 md:pb-28 scroll-reveal">
+        <section id="pricing" className="w-full max-w-[980px] mx-auto px-6 pt-10 pb-20 md:pt-16 md:pb-28 scroll-reveal scroll-mt-20">
           <div className="text-center mb-14">
             <div className="brutalist-mono text-[10px] text-white/40 tracking-[0.25em] uppercase mb-3 flex items-center justify-center gap-3">
               <span className="h-px w-8 bg-white/15" />

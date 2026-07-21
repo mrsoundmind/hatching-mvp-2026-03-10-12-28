@@ -65,10 +65,14 @@ export function MayaChat({ projectId }: MayaChatProps) {
     agent.name === "Maya"
   );
 
-  // Fetch initial messages from API
-  const { data: apiMessages } = useQuery<Message[]>({
+  // Fetch initial messages from API.
+  // #149 fix: this endpoint returns the paginated shape { messages, hasMore, nextCursor }, not a
+  // bare array — the old code called apiMessages.map(...) directly and crashed the whole /maya route
+  // with "apiMessages.map is not a function". Normalize to an array via select().
+  const { data: apiMessages } = useQuery<unknown, Error, Message[]>({
     queryKey: [`/api/conversations/${conversationId}/messages`],
     enabled: !!conversationId,
+    select: (data) => (Array.isArray(data) ? data : ((data as any)?.messages ?? [])),
   });
 
   // Streaming State

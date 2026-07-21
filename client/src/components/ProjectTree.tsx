@@ -233,16 +233,11 @@ export function ProjectTree({
       setShowDeleteConfirm(null);
       return;
     }
-    const project = projects.find(p => p.id === projectId);
     setDeletingProjectId(projectId);
     try {
       await onDeleteProject(projectId);
       setContextMenuOpen(null);
       setShowDeleteConfirm(null);
-      toast({
-        title: 'Project deleted',
-        description: project ? `"${project.name}" has been removed.` : 'Project removed.',
-      });
     } catch (error) {
       console.error('Failed to delete project:', error);
       toast({

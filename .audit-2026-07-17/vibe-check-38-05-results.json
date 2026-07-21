@@ -1,0 +1,18 @@
+[
+  {
+    "id": "downgrade-confirm",
+    "text": "which Postgres vector extension should we use?",
+    "expect": "at Confirm level the agent MAY ask a clarifying question (ALWY-03 downgrade)",
+    "done": true,
+    "wsTypes": [
+      "new_message",
+      "chat_message",
+      "typing_started",
+      "conductor_decision",
+      "streaming_started",
+      "streaming_chunk",
+      "streaming_completed"
+    ],
+    "tail": "· Idea Partner\nI want to make sure we do this safely and accurately for AI Recipe App. Before I proceed, clarify these points:\nWhat exact outcome do you want in one sentence?\nWhat constraints are non-negotiable (time, budget, legal, quality)?\nShould I optimize for speed, quality, or balanced delivery right now?\n1 minute ago\nwhich Postgres vector extension should we use?\nJust now\nMaya\n· Idea Partner\nI keep coming back to the fact that pgvector is the closest thing to a consensus choice right now—it's mature, well-documented, and handles both exact and approximate nearest neighbor search. The real question isn't which extension, but what kind of similarity landscape you're mapping.\nWhat would you want to nail down first?\nJust now\nHand off to..."
+  }
+]

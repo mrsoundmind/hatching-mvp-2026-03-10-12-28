@@ -47,7 +47,18 @@ export type AutonomyEventType =
   | 'proactive_outreach_sent'
   | 'world_update_detected'
   // Task execution events
-  | 'autonomous_task_execution';
+  | 'autonomous_task_execution'
+  // Approval lifecycle — durable so the Activity feed's Approvals filter and history work
+  // (the high-risk gate previously only broadcast an ephemeral WS frame). Client render + category
+  // mapping already exist in shared/activityLabels.ts.
+  | 'approval_required'
+  | 'approval_granted'
+  | 'approval_rejected'
+  // Phase 37 (D-07.1) — forward-compat for backfill of POST-37 runs.
+  // Emitted by handoffOrchestrator alongside the run_steps row write so that
+  // future re-runs of the backfill against richer post-Phase-37 history can
+  // reconstruct full handoff trees from events alone.
+  | 'handoff_initiated';
 
 export interface AutonomyEvent {
   eventType: AutonomyEventType;

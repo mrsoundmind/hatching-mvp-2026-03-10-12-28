@@ -9,6 +9,34 @@ import { storage } from '../storage.js';
 import { getSectionsForType, getTypeLabel } from '@shared/deliverableTypes';
 import { generateChatWithRuntimeFallback } from '../llm/providerResolver.js';
 import type { Deliverable } from '@shared/schema';
+import { scoreIteration, type RubricScoreResult } from './rubricScorer.js';
+
+/**
+ * Phase 36 — Iterate result shape (RUBR-02).
+ *
+ * Returned by iterateDeliverable. The caller (route handler in
+ * server/routes/deliverables.ts) maps this directly to the iterate response.
+ *
+ * - `reverted: true` → the rubric scorer recommended revert (newScore.total <
+ *   oldScore.total). The candidate version IS persisted to deliverable_versions
+ *   with revertedFromHigherScore=true, but `deliverables.currentVersion` and
+ *   `deliverables.content` are unchanged (the rejected version stays in version
+ *   history but is not active). editsCount is NOT incremented (D-19).
+ * - `reverted: false` → keep-new path. New content + currentVersion are
+ *   committed, editsCount is incremented by 1 via atomic
+ *   `storage.incrementEditsCount` (NOT a read-modify-write through
+ *   updateDeliverable — that would race two concurrent keep-new iterations on
+ *   the same deliverable).
+ * - When generation throws (LLM down, network error): returns
+ *   `{ deliverable: existing, reverted: false }` with no scores (no candidate
+ *   to score).
+ */
+export interface IterateResult {
+  deliverable: Deliverable | undefined;
+  reverted: boolean;
+  oldScore?: RubricScoreResult['oldScore'];
+  newScore?: RubricScoreResult['newScore'];
+}
 
 interface GenerateDeliverableInput {
   projectId: string;
@@ -115,23 +143,63 @@ export async function generateDeliverable(input: GenerateDeliverableInput): Prom
     },
   });
 
+  // Phase 36 D-11 — score v1 baseline (no oldContent; passes '' as old). Wrapped
+  // in try/catch so a scorer failure does not abort the generation flow — the
+  // v1 row will simply lack a rubricScore and the UI shows "score pending".
+  try {
+    const v1Score = await scoreIteration(deliverable.type, '', deliverable.content);
+    const v1Versions = await storage.getDeliverableVersions(deliverable.id);
+    const v1Row = v1Versions.find((v) => v.versionNumber === 1);
+    if (v1Row) {
+      const persistedV1Score =
+        v1Score.rubricVersion === '0.0.0'
+          ? {
+              total: 0,
+              breakdown: [],
+              skipped: true,
+              reason: 'no_rubric_for_type' as const,
+            }
+          : v1Score.newScore;
+      await storage.updateDeliverableVersionScore(v1Row.id, {
+        rubricVersion: v1Score.rubricVersion,
+        rubricScore: persistedV1Score,
+      });
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[deliverableGenerator] v1 baseline scoring failed', err);
+  }
+
   return { deliverable, generationTimeMs };
 }
 
 /**
  * Update a deliverable based on user iteration request.
- * Takes the existing content and a user instruction, produces updated content.
+ *
+ * Phase 36 wrap: after generation produces a candidate, scoreIteration scores
+ * OLD + NEW against the frozen rubric. On recommendation='revert' the candidate
+ * is persisted as a deliverable_versions row with revertedFromHigherScore=true
+ * but deliverables.currentVersion is NOT advanced and editsCount is NOT
+ * incremented (D-19). On recommendation='keep_new' the candidate is committed
+ * and editsCount is incremented atomically via storage.incrementEditsCount —
+ * NOT via a read-modify-write inside updateDeliverable, which would race two
+ * concurrent keep-new iterations.
+ *
+ * Persistence shape note: when scoring is skipped (unknown type, sentinel
+ * rubricVersion '0.0.0'), persistedScore wraps to `{ skipped: true, reason:
+ * 'no_rubric_for_type' }` so the UI in 36-03 has a sentinel to render
+ * "Rubric not available" without crashing on an empty breakdown.
  */
 export async function iterateDeliverable(
   deliverableId: string,
   instruction: string,
   agentName: string,
   agentRole: string,
-): Promise<Deliverable | undefined> {
+): Promise<IterateResult> {
   const existing = await storage.getDeliverable(deliverableId);
-  if (!existing) return undefined;
+  if (!existing) return { deliverable: undefined, reverted: false };
 
-  let updatedContent = '';
+  let candidate = '';
   try {
     const response = await generateChatWithRuntimeFallback({
       messages: [
@@ -147,31 +215,77 @@ export async function iterateDeliverable(
       maxTokens: 4000,
       temperature: 0.5,
     });
-    updatedContent = response.content || existing.content;
+    candidate = response.content || existing.content;
   } catch {
-    return existing;
+    // Generation failed — no candidate to score, no version row to write.
+    return { deliverable: existing, reverted: false };
   }
 
-  // Create new version
+  // Score OLD vs NEW. scoreIteration is fail-open: a flaky judge returns
+  // recommendation='keep_new' rather than blocking iteration.
+  const score = await scoreIteration(existing.type, existing.content, candidate);
   const versions = await storage.getDeliverableVersions(deliverableId);
-  const nextVersion = versions.length + 1;
+  const nextVersionNumber = versions.length + 1;
+
+  const persistedScore =
+    score.rubricVersion === '0.0.0'
+      ? {
+          total: 0,
+          breakdown: [],
+          skipped: true,
+          reason: 'no_rubric_for_type' as const,
+        }
+      : score.newScore;
+
+  if (score.recommendation === 'revert') {
+    // Revert path — persist the rejected version row but do NOT advance
+    // currentVersion or increment editsCount (D-10, D-19).
+    await storage.createDeliverableVersion({
+      deliverableId,
+      versionNumber: nextVersionNumber,
+      content: candidate,
+      changeDescription: `[REVERTED] ${instruction.slice(0, 180)}`,
+      createdByAgentId: existing.agentId,
+      rubricVersion: score.rubricVersion,
+      rubricScore: persistedScore,
+      revertedFromHigherScore: true,
+    });
+    return {
+      deliverable: existing,
+      reverted: true,
+      oldScore: score.oldScore,
+      newScore: score.newScore,
+    };
+  }
+
+  // Keep-new path — commit the candidate, advance currentVersion, atomically
+  // bump editsCount. The atomic increment via storage.incrementEditsCount (NOT
+  // a read-modify-write through updateDeliverable's update object) prevents
+  // two parallel keep-new iterations on the same deliverable from losing a
+  // count to a race (DatabaseStorage uses `sql\`${editsCount} + 1\``).
   await storage.createDeliverableVersion({
     deliverableId,
-    versionNumber: nextVersion,
-    content: updatedContent,
+    versionNumber: nextVersionNumber,
+    content: candidate,
     changeDescription: instruction.slice(0, 200),
     createdByAgentId: existing.agentId,
+    rubricVersion: score.rubricVersion,
+    rubricScore: persistedScore,
+    revertedFromHigherScore: false,
   });
-
-  // Update deliverable
   const updated = await storage.updateDeliverable(deliverableId, {
-    content: updatedContent,
-    currentVersion: nextVersion,
+    content: candidate,
+    currentVersion: nextVersionNumber,
     metadata: {
       ...existing.metadata,
-      wordCount: updatedContent.split(/\s+/).length,
+      wordCount: candidate.split(/\s+/).length,
     },
   });
-
-  return updated;
+  await storage.incrementEditsCount(deliverableId);
+  return {
+    deliverable: updated,
+    reverted: false,
+    oldScore: score.oldScore,
+    newScore: score.newScore,
+  };
 }

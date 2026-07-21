@@ -10,6 +10,7 @@ import { z } from "zod";
 import { OpenAIConfigurationError, generateIntelligentResponse, generateStreamingResponse } from "../ai/openaiService.js";
 import { getCharacterProfile } from "../ai/characterProfiles.js";
 import { parseAction, stripActionBlocks, detectUserPermission } from "../ai/actionParser.js";
+import { parseImperativeIntent, type ImperativeIntent } from "../ai/imperativeIntentParser.js";
 import { resolveMentionedAgent } from "../ai/mentionParser.js";
 import { applyTeammateToneGuard } from "../ai/responsePostProcessing.js";
 import { personalityEngine } from "../ai/personalityEvolution.js";
@@ -913,6 +914,31 @@ export function registerChatRoutes(
               timestamp: new Date().toISOString()
             });
 
+            // Phase 36.5 — Imperative shortcut check. If the message is a clearly
+            // imperative command, fire the action directly and skip the LLM dance.
+            // Returns early on success; falls through to LLM flow on no-match or error.
+            {
+              const imperative = parseImperativeIntent(savedUserMessage.content || '');
+              if (imperative) {
+                try {
+                  await handleImperativeIntent(
+                    imperative,
+                    validatedProjectId,
+                    envelope.conversationId,
+                    ws,
+                    messageId,
+                  );
+                  // Release the streaming slot we never acquired (we exited before slot logic).
+                  streamingConversations.delete(envelope.conversationId);
+                  devLog(`[ImperativeShortcut] ${imperative.kind} → ok (LLM skipped)`);
+                  break; // exit the case 'send_message_streaming' branch entirely
+                } catch (err: any) {
+                  console.error('[ImperativeShortcut] handler failed, falling through to LLM:', err?.message ?? err);
+                  // Fall through to normal LLM flow on error — never lock the user out.
+                }
+              }
+            }
+
             // Early explicit task detection (runs BEFORE streaming — zero LLM cost)
             // This catches TODO:/task:/action item: patterns immediately, regardless of streaming outcome.
             try {
@@ -1186,6 +1212,171 @@ export function registerChatRoutes(
     }
   }
 
+  // ─── Phase 36.5: Imperative-shortcut handler ───────────────────────────────
+  // Fires direct storage writes for clearly imperative chat commands, bypassing
+  // the LLM dance. Always posts a brief confirmation message in the conversation
+  // so the user sees an in-character acknowledgement. Uses the same storage
+  // methods the LLM-driven flow uses, so ownership + Zod validation still apply.
+  async function handleImperativeIntent(
+    intent: ImperativeIntent,
+    projectId: string,
+    conversationId: string,
+    ws: WebSocket,
+    _messageId: string,
+  ): Promise<void> {
+    const userId = (ws as any).__userId as string | undefined;
+    if (!userId) throw new Error('handleImperativeIntent: missing userId on socket');
+
+    // Find responding agent for confirmation attribution.
+    // Project-level conversations → Maya (special agent). Team/agent scope → the
+    // active agent for that conversation if available, else Maya, else first agent.
+    const allAgents = await storage.getAgentsByProject(projectId);
+    const maya = allAgents.find((a: any) => a.isSpecialAgent || a.role === 'Idea Partner');
+    let parsedConv: { type: string; agentId?: string; teamId?: string } | null = null;
+    try { parsedConv = parseConversationId(conversationId) as any; } catch { parsedConv = null; }
+    let respondingAgent: any = null;
+    if (parsedConv?.type === 'agent' && parsedConv.agentId) {
+      respondingAgent = allAgents.find((a: any) => a.id === parsedConv!.agentId) || maya;
+    } else {
+      respondingAgent = maya || allAgents[0];
+    }
+
+    const postConfirmation = async (content: string): Promise<void> => {
+      const confirmMsg = await storage.createMessage({
+        id: randomUUID(),
+        conversationId,
+        content,
+        messageType: 'agent',
+        agentId: respondingAgent?.id || null,
+        userId: null,
+        metadata: { isImperativeConfirmation: true, intentKind: intent.kind },
+      } as any);
+      broadcastToConversation(conversationId, {
+        type: 'new_message',
+        conversationId,
+        message: confirmMsg,
+      });
+    };
+
+    switch (intent.kind) {
+      case 'create-agent': {
+        // Find or create a default team to attach the new agent to.
+        const existingTeams = await storage.getTeamsByProject(projectId);
+        let targetTeam: any = existingTeams[0];
+        const createdTeams: any[] = [];
+        if (!targetTeam) {
+          targetTeam = await storage.createTeam({
+            name: 'Team',
+            emoji: '⭐',
+            projectId,
+            userId,
+          } as any);
+          createdTeams.push(targetTeam);
+        }
+        const newAgent = await storage.createAgent({
+          name: intent.name,
+          role: intent.role,
+          color: 'blue',
+          teamId: targetTeam.id,
+          projectId,
+          userId,
+          personality: {
+            traits: [],
+            communicationStyle: `${intent.role} with deep expertise in their domain`,
+            expertise: [intent.role],
+            welcomeMessage: `Hi! I'm ${intent.name}, your ${intent.role}.`,
+          },
+          isSpecialAgent: false,
+        } as any);
+        ws.send(JSON.stringify({
+          type: 'teams_auto_hatched',
+          projectId,
+          teams: createdTeams,
+          agents: [newAgent],
+        }));
+        await postConfirmation(`Done — added ${intent.name} as ${intent.role}. They'll show up in your team panel.`);
+        return;
+      }
+      case 'create-task': {
+        const newTask = await storage.createTask({
+          title: intent.title,
+          description: `Created from chat (imperative shortcut)`,
+          status: 'todo',
+          priority: intent.priority,
+          projectId,
+          userId,
+          agentId: respondingAgent?.id || null,
+          dueDate: null,
+          completedAt: null,
+          metadata: {
+            sourceConversationId: conversationId,
+            createdFromChat: true,
+            imperativeShortcut: true,
+          },
+        } as any);
+        ws.send(JSON.stringify({
+          type: 'task_created',
+          task: newTask,
+        }));
+        // Also emit task_created_from_chat for parity with the existing chat-action path.
+        ws.send(JSON.stringify({
+          type: 'task_created_from_chat',
+          projectId,
+          task: newTask,
+        }));
+        await postConfirmation(`Added to your task list — ${intent.title}`);
+        return;
+      }
+      case 'rename-project': {
+        const updated = await storage.updateProject(projectId, { name: intent.name });
+        ws.send(JSON.stringify({
+          type: 'project_updated',
+          project: updated,
+        }));
+        await postConfirmation(`Renamed the project to ${intent.name}.`);
+        return;
+      }
+      case 'set-brain-field': {
+        const currentProject = await storage.getProject(projectId);
+        if (!currentProject) throw new Error('project not found');
+        const currentBrain = (currentProject.brain as any) || {};
+        let updates: Partial<Project> = {};
+        if (intent.field === 'coreDirection' || intent.field === 'goals') {
+          // #158 fix: a "goal" is part of the project's direction, so route it to the VISIBLE
+          // coreDirection (whatBuilding) too — previously "set the project goal" landed on
+          // project.brain.goals and coreDirection stayed {} so the Brain UI showed nothing.
+          // Map "audience"-style intent into the JSONB `whoFor` slot; everything else lands on
+          // `whatBuilding` so the value survives in projects.coreDirection.
+          const existingDirection = (currentProject.coreDirection as any) || {};
+          const isAudienceish = /audience|customer|user|buyer|reader|founder/i.test(intent.value);
+          const newDirection = isAudienceish
+            ? { ...existingDirection, whoFor: intent.value }
+            : { ...existingDirection, whatBuilding: intent.value };
+          updates = { coreDirection: newDirection as any };
+        } else {
+          // goals / teamCulture / executionRules / summary live on projects.brain JSONB.
+          const updatedBrain = {
+            ...currentBrain,
+            [intent.field]: intent.value,
+            lastUpdatedAt: new Date().toISOString(),
+            lastUpdatedBy: respondingAgent?.name || 'Hatch',
+          };
+          updates = { brain: updatedBrain as any };
+        }
+        await storage.updateProject(projectId, updates);
+        ws.send(JSON.stringify({
+          type: 'brain_updated_from_chat',
+          projectId,
+          field: intent.field,
+          value: intent.value,
+          updatedBy: respondingAgent?.name || 'Hatch',
+        }));
+        await postConfirmation(`Updated the project ${intent.field} to: ${intent.value}.`);
+        return;
+      }
+    }
+  }
+
   // Expose broadcast to other server modules (e.g. background autonomy runner)
   // Broadcast to all conversations belonging to a given project
   function broadcastToProject(projectId: string, data: unknown) {
@@ -1234,7 +1425,7 @@ export function registerChatRoutes(
     conversationId: string,
     ws: WebSocket,
     abortController: AbortController
-  ) {
+  ): Promise<string> {
     devLog('🤝 Handling multi-agent team response with', selectedAgents.length, 'agents');
 
     // Parse conversationId to get canonical projectId for memory retrieval
@@ -1421,6 +1612,10 @@ export function registerChatRoutes(
       }
 
       devLog('✅ Multi-agent team response completed');
+      // Return the streamed content so the caller can persist it. The single-agent path mutates the
+      // outer accumulator directly; this path streamed into a LOCAL var, so without returning it the
+      // DB saved content length 0 → blank team bubbles (the #74/#98/#111 multi-agent empty-save bug).
+      return accumulatedContent;
 
     } catch (error) {
       console.error('❌ Error in multi-agent response:', error);
@@ -1446,6 +1641,8 @@ export function registerChatRoutes(
           accumulatedContent: fallbackContent
         }));
       }
+      // Persist the fallback content too — same empty-save trap otherwise.
+      return fallbackContent;
     }
   }
 
@@ -1675,6 +1872,9 @@ export function registerChatRoutes(
       let authority: { allowedSpeaker: Agent; reason: string } | null = null;
       let isPmFallback = false;
       let isSystemFallback = false;
+      // A safety intervention is a system message with a job to do, not agent chatter. It must skip
+      // the conversational tone guard downstream — see the guard at the applyTeammateToneGuard call.
+      let isSafetyIntervention = false;
       let mentionResolvedAgentId: string | null = null;
 
       if (availableAgents.length === 0) {
@@ -1836,10 +2036,15 @@ export function registerChatRoutes(
       if (
         !isPmFallback &&
         !isSystemFallback &&
+        !hasExplicitMention &&
+        !authorityIsDefinitive &&
         respondingAgent &&
         conductorResult.decision.reviewRequired &&
         mode !== "agent"
       ) {
+        // When the user explicitly @mentions a specialist (or speaking authority is definitive),
+        // do NOT expand into a review team — that buries the addressed agent behind PM/Maya
+        // (the #97 "@Coda gets answered by Maya" bug). The mentioned agent responds alone.
         const mergedAgents = [respondingAgent, ...potentialMultiAgents, ...conductorResult.fallbackMatches];
         const uniqueAgents = mergedAgents.filter(
           (agent, index, arr) => arr.findIndex((candidate) => candidate.id === agent.id) === index
@@ -1913,6 +2118,14 @@ export function registerChatRoutes(
       }));
       const { history: conversationHistory } = await getCompactedContext(conversationId, allMapped, storage);
 
+      // Phase 38 (D-10) — foreground chat is treated as a NEW task per user message.
+      // Snapshot autonomyLevel ONCE per message before any LLM call. Mid-streaming
+      // dial moves don't apply to the in-flight reply (D-10 explicit: applies to
+      // the NEXT message). The project was already fetched at line ~1767, so this
+      // is a pure field-read with no extra DB round-trip.
+      const autonomyLevelSnapshot = (project.executionRules as any)?.autonomyLevel as
+        | 'observe' | 'propose' | 'confirm' | 'autonomous' | undefined;
+
       // Create chat context for AI
       const chatContext = {
         mode: mode as 'project' | 'team' | 'agent',
@@ -1924,8 +2137,23 @@ export function registerChatRoutes(
         agentId: respondingAgent.id,
         conversationHistory,
         userId: userMessage.userId || 'user',
+        // Phase 38 — autonomyLevel snapshot threads into createPromptTemplate
+        // (Site 1 instructions block + Site 2 Maya team-suggestion grammar) and into
+        // the final systemPrompt assembly where AUTONOMOUS_DIRECTIVE_BLOCK lands.
+        autonomyLevel: autonomyLevelSnapshot,
+        // Phase 38-03 — Maya (Idea Partner) drives the MAYA_AUTONOMOUS_OVERRIDE voice
+        // snap at level 4. Detect both by the isSpecialAgent flag (canonical) and by
+        // role === 'Idea Partner' (fallback — respondingAgent.isSpecialAgent is
+        // sometimes stripped in the intermediate hydration path, mirroring
+        // openaiService.ts:292 isMaya detection pattern).
+        agentIsSpecial:
+          !!(respondingAgent as any)?.isSpecialAgent ||
+          respondingAgent?.role === 'Idea Partner' ||
+          respondingAgent?.role === 'Maya',
         // P3: Project direction + team + memories injected for richer context
         projectDirection: (project.coreDirection as any) ?? null,
+        // Wave 3 (#79) — inject uploaded brain documents so agents can actually reference them
+        brainDocuments: ((project.brain as any)?.documents as Array<{ title?: string; content?: string; type?: string }>) ?? null,
         teamMembers: respondingAgent ? await storage.getAgentsByProject(projectId!).then(
           (agents: any[]) => agents.filter((a: any) => !a.isSpecialAgent).map((a: any) => ({ name: a.name, role: a.role }))
         ).catch(() => []) : [],
@@ -2070,6 +2298,7 @@ export function registerChatRoutes(
         } else if (conductorResult.decision.interventionRequired) {
           // Safety intervention flow: stop speculative output and ask focused clarifications
           devLog('🛑 Safety intervention triggered for turn');
+          isSafetyIntervention = true;
           accumulatedContent = buildClarificationIntervention({
             projectName: project.name,
             reasons: conductorResult.decision.reasons,
@@ -2113,7 +2342,8 @@ export function registerChatRoutes(
         } else if (selectedAgents.length > 1) {
           // E2.1: Handle multi-agent responses for team dynamics
           devLog('🤝 Generating multi-agent team response...');
-          await handleMultiAgentResponse(selectedAgents, userMessage, chatContext, sharedMemory, responseMessageId, conversationId, ws, abortController);
+          // Capture the returned content into the outer accumulator so it persists (fixes empty-save).
+          accumulatedContent = await handleMultiAgentResponse(selectedAgents, userMessage, chatContext, sharedMemory, responseMessageId, conversationId, ws, abortController);
         } else if (respondingAgent && !isPmFallback && !isSystemFallback) {
           // Single agent response (existing logic)
           devLog('🔄 Generating single agent streaming response...');
@@ -2451,7 +2681,17 @@ export function registerChatRoutes(
             });
           }
 
-          const toneGuard = applyTeammateToneGuard(accumulatedContent || "", userMessage?.content || "");
+          // The tone guard shapes an agent's conversational voice. A safety intervention is not
+          // that: it is a fixed system message that asks three specific clarifying questions before
+          // a risky action proceeds. Running it through the guard destroyed it. adaptLength trims a
+          // reply to 2 sentences when the user's message is short, and destructive commands are
+          // almost always short ("delete all my data and start over" is 7 words), so the message was
+          // cut to "...clarify these points:\n1." — the questions themselves never reached the user.
+          // stripChatUnfriendlyFormatting and keepSingleQuestion would each have mangled it too.
+          // Caught by the Phase 38 Plan 38-05 vibe-check; pre-existing, not introduced by the #43 fix.
+          const toneGuard = isSafetyIntervention
+            ? { changed: false, content: accumulatedContent || "", reasons: [] as string[] }
+            : applyTeammateToneGuard(accumulatedContent || "", userMessage?.content || "", autonomyLevelSnapshot);
           if (toneGuard.changed) {
             accumulatedContent = toneGuard.content;
             ws.send(JSON.stringify({

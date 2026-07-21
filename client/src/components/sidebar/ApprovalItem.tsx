@@ -4,6 +4,7 @@ import { CheckCircle, XCircle } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { isApprovalExpired, APPROVAL_EXPIRY_MS } from './approvalUtils';
+import { humanizeRiskReasons } from '@shared/riskReasons';
 import type { Task } from '@shared/schema';
 
 interface ApprovalItemProps {
@@ -97,13 +98,13 @@ export function ApprovalItem({ task }: ApprovalItemProps) {
           {/* Task title */}
           <p className="text-xs text-[var(--hatchin-text)] mt-1 truncate">{task.title}</p>
 
-          {/* Risk reasons */}
-          {Array.isArray(meta?.riskReasons) &&
-            (meta.riskReasons as string[]).length > 0 && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {(meta.riskReasons as string[]).join(' · ')}
-              </p>
-            )}
+          {/* Risk reasons, humanized. Raw safety codes are telemetry (#43); the humanizer maps them
+              and drops anything unrecognized so no code leaks here even for historical rows. */}
+          {humanizeRiskReasons(meta?.riskReasons).length > 0 && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {humanizeRiskReasons(meta?.riskReasons).join(' · ')}
+            </p>
+          )}
 
           {/* Expired badge OR approve/reject buttons */}
           <div className="flex gap-2 mt-2">

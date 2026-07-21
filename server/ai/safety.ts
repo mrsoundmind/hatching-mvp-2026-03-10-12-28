@@ -65,6 +65,43 @@ export function hasExplicitCreationIntent(userMessage: string): boolean {
   return EXPLICIT_CREATION_INTENTS.some(pattern => pattern.test(userMessage));
 }
 
+// Phase 38-02 — destructive intent detection (ALWY-04)
+// Critical verbs: unambiguously destructive → base 0.60
+// Reset verbs: destructive-in-context but ambiguous alone → base 0.45
+// Bulk scope + data scope multiplicatively raise the score so combined
+// intent like "delete all my data" crosses the 0.70 clarificationRequiredRisk gate.
+const DESTRUCTIVE_VERB_CRITICAL = /\b(delete|wipe|nuke|erase|destroy|obliterate)\b/i;
+const DESTRUCTIVE_VERB_RESET = /\b(reset|start over|restart|clean slate)\b/i;
+const BULK_SCOPE = /\b(all|everything|every|entire)\b/i;
+const DATA_SCOPE = /\b(data|database|db|project|history|conversations?|messages?|tasks?|team|agents?|brain)\b/i;
+
+function scoreDestructiveIntent(userMessage: string): { score: number; reasons: string[] } {
+  const reasons: string[] = [];
+  let base = 0;
+
+  if (DESTRUCTIVE_VERB_CRITICAL.test(userMessage)) {
+    base = 0.60;
+    reasons.push("destructive_verb_critical");
+  } else if (DESTRUCTIVE_VERB_RESET.test(userMessage)) {
+    base = 0.45;
+    reasons.push("destructive_verb_reset");
+  }
+
+  if (base === 0) return { score: 0, reasons };
+
+  let multiplier = 1.0;
+  if (BULK_SCOPE.test(userMessage)) {
+    multiplier *= 1.3;
+    reasons.push("bulk_scope_modifier");
+  }
+  if (DATA_SCOPE.test(userMessage)) {
+    multiplier *= 1.2;
+    reasons.push("data_scope_modifier");
+  }
+
+  return { score: Math.min(1, base * multiplier), reasons };
+}
+
 export function evaluateSafetyScore(input: {
   userMessage: string;
   draftResponse?: string;
@@ -146,6 +183,15 @@ export function evaluateSafetyScore(input: {
     }
   }
 
+  // Phase 38-02 — destructive-intent detector (ALWY-04)
+  // Additive-max avoids inflating non-destructive scores while ensuring
+  // "delete all my data" crosses clarificationRequiredRisk (0.70).
+  const destructiveIntent = scoreDestructiveIntent(input.userMessage || "");
+  if (destructiveIntent.score > 0) {
+    executionRisk = Math.max(executionRisk, destructiveIntent.score);
+    reasons.push(...destructiveIntent.reasons);
+  }
+
   // Autonomous context raises execution risk baseline
   if (input.executionContext === "autonomous_task") {
     executionRisk = executionRisk + 0.10;
@@ -183,10 +229,11 @@ export function buildClarificationIntervention(input: {
   reasons: string[];
 }): string {
   const projectLabel = input.projectName || "this project";
-  const reasonHint = input.reasons.slice(0, 2).join(", ");
-  const hint = reasonHint ? ` (${reasonHint})` : "";
+  // #43: do NOT interpolate input.reasons here — they are internal codes (e.g.
+  // "authority_default", "high_impact_action:delete") and were leaking into the user-facing reply.
+  // The raw reasons still ride in the telemetry payload (logAutonomyEvent), just not in chat text.
   return [
-    `I want to make sure we do this safely and accurately for ${projectLabel}${hint}.`,
+    `I want to make sure we do this safely and accurately for ${projectLabel}.`,
     "Before I proceed, clarify these points:",
     "1. What exact outcome do you want in one sentence?",
     "2. What constraints are non-negotiable (time, budget, legal, quality)?",

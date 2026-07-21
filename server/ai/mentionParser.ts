@@ -23,8 +23,12 @@ const ROLE_REFERENCE_PATTERNS: Array<{ pattern: RegExp; roleHint: string }> = [
  * Returns the name string, or null if no @mention is found.
  */
 function extractAtMention(message: string): string | null {
-    // Match @word or @"multi word" patterns
-    const atMatch = message.match(/@([A-Za-z][A-Za-z0-9 _-]*)/);
+    // Match a single @name token (letters, digits, underscore, hyphen). The character class must NOT
+    // include a space: with a space it greedily swallowed trailing words, so "@Coda give me your take"
+    // captured "Coda give me your take" and matched no agent — the #97 bug where an @mention at the
+    // START of a message never resolved and routing fell back to Maya. Hatchin agent names are single
+    // tokens (Coda, Maya, Alex…), so token-only capture is correct here.
+    const atMatch = message.match(/@([A-Za-z][A-Za-z0-9_-]*)/);
     if (atMatch) {
         return atMatch[1].trim();
     }

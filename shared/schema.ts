@@ -1,7 +1,18 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, jsonb, timestamp, index, uniqueIndex, doublePrecision } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, jsonb, timestamp, index, uniqueIndex, doublePrecision, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// Express session store table — managed at runtime by connect-pg-simple, NOT by Drizzle.
+// Declared here only so `drizzle-kit push` recognizes it and leaves it alone instead of
+// trying to drop it. Column shape mirrors connect-pg-simple's stock CREATE TABLE.
+export const session = pgTable("session", {
+  sid: varchar("sid").primaryKey(),
+  sess: json("sess").notNull(),
+  expire: timestamp("expire", { precision: 6, mode: "date" }).notNull(),
+}, (table) => ({
+  expireIdx: index("IDX_session_expire").on(table.expire),
+}));
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -33,6 +44,9 @@ export const projects = pgTable("projects", {
   name: text("name").notNull(),
   emoji: text("emoji").notNull().default("🚀"),
   description: text("description"),
+  // Soft-delete window for "Undo Delete" UX. NULL = visible; non-NULL = hidden
+  // pending purge. Cron in server/index.ts purges rows with deletedAt < NOW() - 10min.
+  deletedAt: timestamp("deleted_at"),
   color: text("color").notNull().default("blue"),
   isExpanded: boolean("is_expanded").notNull().default(true),
   progress: integer("progress").notNull().default(0),
@@ -254,6 +268,76 @@ export const autonomyEvents = pgTable("autonomy_events", {
   projectEventTimeIdx: index("autonomy_events_project_event_time_idx").on(table.projectId, table.eventType, table.timestamp),
 }));
 
+// Phase 37 (TREE-01) — autonomy run tree: one row per autonomous chain initiation
+export const autonomyRuns = pgTable("autonomy_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  traceId: text("trace_id").notNull(),
+  projectId: varchar("project_id").references(() => projects.id, { onDelete: 'cascade' }).notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  rootAgentId: varchar("root_agent_id").references(() => agents.id),
+  rootGoal: text("root_goal"),       // ≤500 chars; enforced at insert via Zod
+  status: text("status").notNull().$type<'running' | 'complete' | 'failed' | 'cancelled'>().default('running'),
+  stepCount: integer("step_count").notNull().default(0),
+  aggregateScoreDelta: doublePrecision("aggregate_score_delta"),
+  metadata: jsonb("metadata").$type<{
+    backfilledFrom?: 'autonomy_events';
+    flatHistorical?: boolean;
+    [key: string]: unknown;
+  }>().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  traceIdIdx: index("autonomy_runs_trace_id_idx").on(table.traceId),
+  projectCreatedIdx: index("autonomy_runs_project_created_idx").on(table.projectId, table.createdAt),
+}));
+
+// Phase 37 (TREE-01) — autonomy run tree: one row per task / handoff / peer_review / etc within a chain
+export const autonomyRunSteps = pgTable("autonomy_run_steps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  runId: varchar("run_id").references(() => autonomyRuns.id, { onDelete: 'cascade' }).notNull(),
+  parentStepId: varchar("parent_step_id"),   // self-ref nullable — NO .references() per Drizzle DSL self-circular limit (see messages.parentMessageId, tasks.parentTaskId, deliverables.parentDeliverableId)
+  traceId: text("trace_id").notNull(),        // denormalized for backfill correlation
+  agentId: varchar("agent_id").references(() => agents.id),
+  agentName: text("agent_name"),
+  agentRole: text("agent_role"),
+  stepType: text("step_type").notNull().$type<
+    'task' | 'handoff' | 'peer_review' | 'deliberation' | 'safety_block' | 'approval_request'
+  >(),
+  title: text("title"),  // ≤200 chars; enforced at insert
+  status: text("status").notNull().$type<'pending' | 'running' | 'complete' | 'failed' | 'skipped'>().default('pending'),
+  deliverableId: varchar("deliverable_id").references(() => deliverables.id),
+  deliverableVersionId: varchar("deliverable_version_id").references(() => deliverableVersions.id),
+  deliverableVersionNumber: integer("deliverable_version_number"),  // W-4 — denormalized from deliverable_versions.version_number; companion to deliverableVersionId; null when deliverableVersionId is null
+  scoreDelta: doublePrecision("score_delta"),   // null if no deliverable; 0 if unchanged
+  metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}),
+  startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  latencyMs: integer("latency_ms"),
+  timeoutAt: timestamp("timeout_at", { withTimezone: true }),  // Q4 defensive — opportunistic sweep target
+}, (table) => ({
+  runParentIdx: index("autonomy_run_steps_run_parent_idx").on(table.runId, table.parentStepId),
+  traceIdIdx: index("autonomy_run_steps_trace_id_idx").on(table.traceId),
+}));
+
+export const insertAutonomyRunSchema = createInsertSchema(autonomyRuns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  rootGoal: z.string().max(500).optional().nullable(),
+}).strict();
+export type AutonomyRun = typeof autonomyRuns.$inferSelect;
+export type InsertAutonomyRun = z.infer<typeof insertAutonomyRunSchema>;
+
+export const insertAutonomyRunStepSchema = createInsertSchema(autonomyRunSteps).omit({
+  id: true,
+  startedAt: true,
+}).extend({
+  title: z.string().max(200).optional().nullable(),
+}).strict();
+export type AutonomyRunStep = typeof autonomyRunSteps.$inferSelect;
+export type InsertAutonomyRunStep = z.infer<typeof insertAutonomyRunStepSchema>;
+
 // Phase 22: Atomic budget ledger — single source of truth for per-project daily autonomy budget
 // Atomic INSERT...ON CONFLICT...WHERE reserved_count < limit_count RETURNING closes the
 // check-then-act race in taskExecutionPipeline. See .planning/phases/22-atomic-budget-enforcement/22-RESEARCH.md
@@ -326,6 +410,11 @@ export const deliverables = pgTable("deliverables", {
     generationTimeMs?: number;
     chainPosition?: number;
   }>().default({}),
+  // Phase 36 (FBK-01) — accept/dismiss timestamps + impression/edit counters
+  userAcceptedAt: timestamp("user_accepted_at"),
+  dismissedAt: timestamp("dismissed_at"),
+  editsCount: integer("edits_count").notNull().default(0),
+  impressionCount: integer("impression_count").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
@@ -343,6 +432,15 @@ export const deliverableVersions = pgTable("deliverable_versions", {
   changeDescription: text("change_description"),
   createdByAgentId: varchar("created_by_agent_id").references(() => agents.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Phase 36 (RUBR-03) — frozen rubric score persistence + revert marker
+  rubricVersion: text("rubric_version"),
+  rubricScore: jsonb("rubric_score").$type<{
+    total: number;
+    breakdown: Array<{ criterion: string; score: number; justification: string }>;
+    skipped?: boolean;
+    reason?: string;
+  }>(),
+  revertedFromHigherScore: boolean("reverted_from_higher_score").notNull().default(false),
 }, (table) => ({
   deliverableIdIdx: index("deliverable_versions_deliverable_id_idx").on(table.deliverableId),
   versionIdx: index("deliverable_versions_version_idx").on(table.deliverableId, table.versionNumber),

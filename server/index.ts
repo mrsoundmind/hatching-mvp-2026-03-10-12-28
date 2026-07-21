@@ -8,7 +8,7 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { registerRoutes, getGlobalBroadcast } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { getStorageModeInfo, STORAGE_MODE } from "./storage";
+import { getStorageModeInfo, STORAGE_MODE, storage } from "./storage";
 import { assertProductionStorageMode } from "./productionGuard";
 import { pool } from "./db";
 import {
@@ -159,7 +159,7 @@ const sessionOptions: session.SessionOptions = {
   },
 };
 
-if (process.env.DATABASE_URL) {
+if (process.env.DATABASE_URL && STORAGE_MODE === 'db') {
   sessionOptions.store = new PostgresqlStore({
     pool: pool,
     createTableIfMissing: true,
@@ -261,8 +261,10 @@ app.use((req, res, next) => {
 
 (async () => {
   // Storage mode is announced by createStorage() in storage.ts on startup
-  await ensureSessionTableExists();
-  await ensureAuthSchemaCompatibility();
+  if (STORAGE_MODE === 'db') {
+    await ensureSessionTableExists();
+    await ensureAuthSchemaCompatibility();
+  }
   await hydrateCacheStore();
   const snapshotResult = await writeConfigSnapshot('baseline_snapshot');
   const diagnostics = await runRuntimeStartupChecks();
@@ -308,8 +310,32 @@ app.use((req, res, next) => {
     log(`serving on port ${port}`);
   });
 
+  // Soft-delete purge safety net: every 60s, hard-delete any project whose
+  // deletedAt is older than 10 minutes. Generous buffer past the 5s client undo
+  // window so we never purge while a user is mid-decision. Catches the cases
+  // where the client failed to POST /purge (browser close, network drop, etc.).
+  if (STORAGE_MODE === 'db') {
+    const PURGE_INTERVAL_MS = 60_000;
+    const PURGE_OLDER_THAN_MS = 10 * 60 * 1000; // 10 minutes
+    setInterval(async () => {
+      try {
+        const stragglers = await storage.getProjectsNeedingPurge(PURGE_OLDER_THAN_MS);
+        for (const { id } of stragglers) {
+          try {
+            await storage.purgeProject(id);
+            log(`[purge-cron] hard-deleted soft-deleted project ${id}`);
+          } catch (err) {
+            console.error(`[purge-cron] failed to purge ${id}:`, err);
+          }
+        }
+      } catch (err) {
+        console.error('[purge-cron] sweep failed:', err);
+      }
+    }, PURGE_INTERVAL_MS);
+  }
+
   // P7: Background autonomy runner (opt-in via env flag, default off)
-  if (process.env.BACKGROUND_AUTONOMY_ENABLED === 'true') {
+  if (process.env.BACKGROUND_AUTONOMY_ENABLED === 'true' && STORAGE_MODE === 'db') {
     try {
       const { backgroundRunner } = await import('./autonomy/background/backgroundRunner.js');
       const { generateChatWithRuntimeFallback } = await import('./llm/providerResolver.js');
@@ -335,9 +361,9 @@ app.use((req, res, next) => {
       console.log('[Hatchin][BackgroundRunner] Autonomy background jobs started');
 
       // Wire task execution worker (pg-boss .work() handler)
-      const { startTaskWorker } = await import('./autonomy/execution/taskExecutionPipeline.js');
+      const { startTaskWorker, startTaskWorkerWatchdog } = await import('./autonomy/execution/taskExecutionPipeline.js');
       const { resolveModelForTier } = await import('./llm/providerResolver.js');
-      await startTaskWorker({
+      const taskWorkerDeps = {
         storage: storageInstance,
         broadcastToConversation: (convId: string, payload: unknown) => {
           const broadcast = getGlobalBroadcast();
@@ -358,8 +384,12 @@ app.use((req, res, next) => {
           });
           return result.content ?? '';
         },
-      });
-      console.log('[Hatchin][TaskWorker] Autonomous task execution worker registered');
+      };
+      await startTaskWorker(taskWorkerDeps);
+      // Watchdog: recovers a wedged worker after a transient DB outage (the intermittent-autonomy bug).
+      // Same deps, so a restart re-registers an identical worker.
+      startTaskWorkerWatchdog(taskWorkerDeps);
+      console.log('[Hatchin][TaskWorker] Autonomous task execution worker + watchdog registered');
     } catch (err: any) {
       console.error('[Hatchin][BackgroundRunner] Failed to start:', err.message);
     }

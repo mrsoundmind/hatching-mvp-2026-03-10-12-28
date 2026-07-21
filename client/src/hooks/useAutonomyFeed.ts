@@ -11,6 +11,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSidebarEvent } from './useSidebarEvent';
 import { useAgentWorkingState } from './useAgentWorkingState';
+import { mapEventTypeToCategory, describeAutonomyEvent } from '@shared/activityLabels';
 import {
   AUTONOMY_EVENTS,
   type TaskExecutingPayload,
@@ -47,106 +48,10 @@ const DEBOUNCE_MS = 3000;
 // --- Helpers ---
 
 type FilterCategory = 'all' | 'task' | 'handoff' | 'review' | 'approval';
-type TimeFilter = 'today' | '7days' | 'all';
+export type TimeFilter = 'today' | '7days' | 'all';
 
-function mapEventTypeToCategory(eventType: string): FeedEvent['category'] {
-  switch (eventType) {
-    case 'task_started':
-    case 'task_completed':
-    case 'task_executing':
-    case 'background_execution_started':
-    case 'background_execution_completed':
-      return 'task';
-    case 'handoff_announced':
-    case 'handoff_chain_completed':
-      return 'handoff';
-    case 'peer_review_completed':
-    case 'peer_review_started':
-    case 'peer_review_feedback':
-      return 'review';
-    case 'approval_required':
-    case 'approval_granted':
-    case 'approval_rejected':
-      return 'approval';
-    default:
-      return 'system';
-  }
-}
-
-function buildLabel(eventType: string, agentName: string | null, payload: Record<string, unknown>): string {
-  const name = agentName || 'An agent';
-  const taskTitle = typeof payload?.taskTitle === 'string' ? payload.taskTitle : '';
-  const suffix = taskTitle ? `: ${taskTitle}` : '';
-
-  switch (eventType) {
-    // Task lifecycle
-    case 'task_completed':
-      return `${name} completed a task${suffix}`;
-    case 'task_executing':
-    case 'task_started':
-      return `${name} started working${suffix}`;
-    case 'background_execution_started':
-      return `${name} began working in the background${suffix}`;
-    case 'background_execution_completed':
-      return `${name} finished background work${suffix}`;
-
-    // Handoffs
-    case 'handoff_announced': {
-      const toAgent = typeof payload?.toAgentName === 'string' ? payload.toAgentName : null;
-      return toAgent ? `${name} handed off to ${toAgent}${suffix}` : `${name} handed off work${suffix}`;
-    }
-    case 'handoff_chain_completed': {
-      const hops = typeof payload?.hops === 'number' ? payload.hops : null;
-      return hops ? `Handoff chain completed (${hops} steps)` : 'Handoff chain completed';
-    }
-
-    // Approvals
-    case 'approval_required':
-      return `${name} needs your approval${suffix}`;
-    case 'approval_granted':
-      return `Approval granted${suffix}`;
-    case 'approval_rejected':
-      return `Approval rejected${suffix}`;
-
-    // Peer review
-    case 'peer_review_started':
-      return `Peer review started for ${name}`;
-    case 'peer_review_completed':
-      return `Peer review completed for ${name}`;
-    case 'peer_review_feedback':
-      return `${name} received peer feedback`;
-
-    // AI pipeline internals — translate to plain English
-    case 'agent_synthesis_completed':
-    case 'agent_synthesis':
-      return `${name} synthesised a response`;
-    case 'agent_revision_completed':
-    case 'agent_revision':
-      return `${name} revised their output`;
-    case 'agent_hatch_selected':
-    case 'hatch_selected':
-      return `${name} was selected for this task`;
-    case 'agent_deliberation_completed':
-    case 'deliberation_completed':
-      return `${name} reached a decision`;
-    case 'agent_planning_completed':
-    case 'planning_completed':
-      return `${name} finished planning`;
-    case 'provider_fallback_resolved':
-      return `AI provider fallback resolved`;
-    case 'context_compacted':
-      return `${name}'s context was compacted`;
-
-    default: {
-      // Convert snake_case to readable words — strip leading "agent_" prefix
-      let readable = eventType
-        .replace(/^agent_/, '')
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, c => c.toUpperCase());
-      return agentName ? `${agentName}: ${readable}` : readable;
-    }
-  }
-}
+// mapEventTypeToCategory + the event descriptions live in shared/activityLabels.ts so
+// the server feed and this client mirror cannot drift apart again.
 
 interface RawApiEvent {
   id: string;
@@ -175,7 +80,7 @@ function mapAutonomyEventToFeedEvent(raw: RawApiEvent): FeedEvent {
     eventType: raw.eventType,
     agentId,
     agentName,
-    label: raw.label || buildLabel(raw.eventType, agentName, payload),
+    label: raw.label || describeAutonomyEvent(raw.eventType, payload),
     category,
     timestamp: raw.timestamp,
     expandableData: payload,
@@ -195,7 +100,7 @@ function customEventToFeedEvent(
     eventType,
     agentId,
     agentName,
-    label: buildLabel(eventType, agentName, payload as unknown as Record<string, unknown>),
+    label: describeAutonomyEvent(eventType, payload as unknown as Record<string, unknown>),
     category: mapEventTypeToCategory(eventType),
     timestamp: new Date().toISOString(),
     expandableData: payload as unknown as Record<string, unknown>,
@@ -220,9 +125,16 @@ export function useAutonomyFeed(projectId: string | undefined) {
   // State for real-time events
   const [realtimeEvents, setRealtimeEvents] = useState<FeedEvent[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [activeFilter, setActiveFilter] = useState<FilterCategory>('task');
+  // #80: default to "all" — the previous "task" default hid every review/synthesis/conductor event,
+  // so an active project's feed looked empty ("Your team is ready") despite 50+ events.
+  const [activeFilter, setActiveFilter] = useState<FilterCategory>('all');
   const [agentFilter, setAgentFilter] = useState<string | null>(null);
-  const [timeFilter] = useState<TimeFilter>('today');
+  // Was hardcoded to 'today' with NO setter, so the feed and both stat counters
+  // silently reset to empty every midnight and nothing in the UI said why or let
+  // you widen the window — an active project read as a dead one the next morning.
+  // Defaults to 'all' (the events query is already capped at 50) so the panel can
+  // never look falsely empty; the user narrows it deliberately.
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
 
   // Debounce batching refs
   const pendingBatch = useRef<FeedEvent[]>([]);
@@ -246,7 +158,8 @@ export function useAutonomyFeed(projectId: string | undefined) {
 
   // REST: fetch stats
   const { data: statsData, isLoading: isLoadingStats } = useQuery<FeedStats>({
-    queryKey: ['/api/autonomy/stats', `?projectId=${projectId}&period=today`],
+    // Period follows the visible time filter so the card can never disagree with the feed below it.
+    queryKey: ['/api/autonomy/stats', `?projectId=${projectId}&period=${timeFilter}`],
     enabled: !!projectId,
     staleTime: 60_000,
   });
@@ -353,26 +266,18 @@ export function useAutonomyFeed(projectId: string | undefined) {
   // Combine historical + realtime and filter strictly by active projectId
   const allEvents = useMemo(() => {
     const historical = (historicalData?.events || []).map(mapAutonomyEventToFeedEvent);
-    const combined = [...historical, ...realtimeEvents];
-    
-    // Strict isolation: only show events for the currently selected project
-    if (projectId) {
-      return combined.filter(event => {
-        // FeedEvent doesn't explicitly guarantee a top-level projectId property on the object 
-        // because it comes from the API route. The API does include it in RawApiEvent but 
-        // we should verify both top-level and payload.
-        const eventProjectId = event.expandableData?.projectId;
-        
-        // If the backend strictly filtered historical events, we trust them, but 
-        // validating payload.projectId if it exists is safer.
-        if (eventProjectId && eventProjectId !== projectId) {
-          return false;
-        }
-        return true;
-      });
-    }
-    
-    return combined;
+
+    // #165 fix: historical events are already filtered server-side by projectId, so trust them.
+    // Realtime events, however, can arrive for a project you just switched away from (in-flight WS
+    // frames) or carry no projectId at all — under the old mismatch-only filter, a realtime event
+    // WITHOUT a projectId leaked into ANY project's feed and flickered in an empty project. Require
+    // realtime events to positively match the selected project; anything ambiguous is dropped from
+    // the live view (it still appears after the next historical refetch, which is projectId-scoped).
+    const scopedRealtime = projectId
+      ? realtimeEvents.filter(event => event.expandableData?.projectId === projectId)
+      : realtimeEvents;
+
+    return [...historical, ...scopedRealtime];
   }, [historicalData, realtimeEvents, projectId]);
 
   // Apply filters
@@ -396,5 +301,7 @@ export function useAutonomyFeed(projectId: string | undefined) {
     setActiveFilter,
     agentFilter,
     setAgentFilter,
+    timeFilter,
+    setTimeFilter,
   };
 }

@@ -1,10 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronLeft, ChevronRight, Copy, Download, Check, Pencil, Send, Loader2, FileText } from 'lucide-react';
+import {
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Download,
+  Check,
+  Pencil,
+  Send,
+  Loader2,
+  FileText,
+  Trash2,
+} from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Deliverable } from '@shared/schema';
+import { RubricBreakdown } from './deliverable/RubricBreakdown';
+import { AutoRevertBanner } from './deliverable/AutoRevertBanner';
+import {
+  iterateDeliverableResponseSchema,
+  type IterateDeliverableResponse,
+} from '@shared/dto/apiSchemas';
 
 // Type badge colors
 const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
@@ -34,14 +52,38 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 interface ArtifactPanelProps {
   deliverableId: string;
+  // Phase 37 (D-15, TREE-04) — when set by the open_deliverable event handler in
+  // home.tsx, the panel auto-navigates to this version via the existing
+  // restoreMutation. Backward compatible: callers that don't pass it get current
+  // behavior (panel opens to most-recent version).
+  pendingVersionNumber?: number;
   onClose: () => void;
 }
 
-export function ArtifactPanel({ deliverableId, onClose }: ArtifactPanelProps) {
+// Phase 36 — local shape mirroring the deliverable_versions.rubricScore JSONB column.
+// (DTO lives at @shared/dto/apiSchemas — keeping a structural local type here avoids
+// importing the server-only registry per T-36-31.)
+type RubricBreakdownScore = {
+  total: number;
+  breakdown: Array<{ criterion: string; score: number; justification: string }>;
+  skipped?: boolean;
+  reason?: string;
+};
+
+export function ArtifactPanel({ deliverableId, pendingVersionNumber, onClose }: ArtifactPanelProps) {
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const [refineInstruction, setRefineInstruction] = useState('');
+  // Phase 36 — local UI state for new rubric toggle + auto-revert banner (D-15/D-16: not persisted).
+  const [showRubric, setShowRubric] = useState(false);
+  const [revertBannerState, setRevertBannerState] = useState<{
+    oldScore: number;
+    newScore: number;
+    rejectedContent?: string;
+    rejectedBreakdown?: Array<{ criterion: string; score: number; justification: string }>;
+    rubricVersion?: string | null;
+  } | null>(null);
 
   // Fetch deliverable
   const { data: deliverableData, isLoading } = useQuery<{ deliverable: Deliverable }>({
@@ -49,8 +91,19 @@ export function ArtifactPanel({ deliverableId, onClose }: ArtifactPanelProps) {
     enabled: !!deliverableId,
   });
 
-  // Fetch versions
-  const { data: versionsData } = useQuery<{ versions: Array<{ id: string; versionNumber: number; content: string; changeDescription: string | null; createdAt: string }> }>({
+  // Fetch versions (Phase 36 — version rows now carry rubricVersion + rubricScore + revertedFromHigherScore)
+  const { data: versionsData } = useQuery<{
+    versions: Array<{
+      id: string;
+      versionNumber: number;
+      content: string;
+      changeDescription: string | null;
+      createdAt: string;
+      rubricVersion?: string | null;
+      rubricScore?: RubricBreakdownScore | null;
+      revertedFromHigherScore?: boolean;
+    }>;
+  }>({
     queryKey: [`/api/deliverables/${deliverableId}/versions`],
     enabled: !!deliverableId,
   });
@@ -84,17 +137,85 @@ export function ArtifactPanel({ deliverableId, onClose }: ArtifactPanelProps) {
       if (!res.ok) throw new Error('Failed to iterate');
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (raw: unknown) => {
       queryClient.invalidateQueries({ queryKey: ['/api/deliverables', deliverableId] });
       queryClient.invalidateQueries({ queryKey: [`/api/deliverables/${deliverableId}/versions`] });
       setRefineInstruction('');
       setIsRefining(false);
+
+      // Phase 36 — parse the iterate response shape via iterateDeliverableResponseSchema
+      // (Zod .strict()). On parse failure, treat as keep_new (no banner); on reverted=true,
+      // surface AutoRevertBanner with old/new scores + rejected breakdown.
+      const parsed = iterateDeliverableResponseSchema.safeParse(raw);
+      if (!parsed.success) {
+        // eslint-disable-next-line no-console
+        console.warn('[ArtifactPanel] iterate response failed schema parse', parsed.error.flatten());
+        setRevertBannerState(null);
+        return;
+      }
+      if (parsed.data.reverted && parsed.data.oldScore && parsed.data.newScore) {
+        const deliverableObj = parsed.data.deliverable as { rubricVersion?: string | null } | undefined;
+        setRevertBannerState({
+          oldScore: parsed.data.oldScore.total,
+          newScore: parsed.data.newScore.total,
+          rejectedBreakdown: parsed.data.newScore.breakdown,
+          rubricVersion: deliverableObj?.rubricVersion ?? null,
+        });
+      } else {
+        setRevertBannerState(null); // clear stale banner on a keep-new iterate
+      }
     },
   });
+
+  // Phase 36 — FBK-02 UI dropped per simplification 2026-05-13. Server endpoints
+  // (POST /accept, /dismiss) still exist (Wave 2) but no UI surface in this phase;
+  // the agent learning signal (FBK-04) uses score history + impressions + edits
+  // instead of explicit accept/dismiss counts.
+
+  // Phase 36 (FBK-03) — Fire one impression POST per panel mount / deliverableId change.
+  // Server-side 5s dedupe (per (userId, deliverableId)) absorbs StrictMode double-fire,
+  // so the client just does a single fire-and-forget. Failures are silently swallowed —
+  // impression counting is non-critical and must never block the panel UI.
+  useEffect(() => {
+    if (!deliverableId) return;
+    fetch(`/api/deliverables/${deliverableId}/impression`, {
+      method: 'POST',
+      credentials: 'include',
+    }).catch(() => {
+      /* non-critical — silent */
+    });
+  }, [deliverableId]);
+
+  // Phase 36 (T-36-37 / I-2) — Clear any stale AutoRevertBanner when the panel switches
+  // to a different deliverable. Pure local-state reset (no I/O); kept in a separate
+  // useEffect from the impression fire so a slow/failed POST cannot delay the banner clear.
+  useEffect(() => {
+    setRevertBannerState(null);
+  }, [deliverableId]);
 
   const deliverable = deliverableData?.deliverable;
   const versions = versionsData?.versions || [];
   const currentVersion = deliverable?.currentVersion || 1;
+
+  // Phase 37 (D-15, TREE-04) — auto-navigate to pendingVersionNumber when the
+  // RunTreeView's open_deliverable dispatch carries a versionNumber. Fires once
+  // versionsData has loaded AND the deliverable's current version differs from
+  // the target. Reuses the existing restoreMutation so side effects (impression
+  // refresh, breakdown re-derive) stay consistent with the version-navigator UI.
+  // No-op when pendingVersionNumber is undefined (backward compat with Phase 36
+  // callers that don't carry the field).
+  useEffect(() => {
+    if (typeof pendingVersionNumber !== 'number') return;
+    if (!versions || versions.length === 0) return;
+    const targetVersion = versions.find((v) => v.versionNumber === pendingVersionNumber);
+    if (!targetVersion) return;
+    if (deliverable && deliverable.currentVersion !== pendingVersionNumber) {
+      restoreMutation.mutate(pendingVersionNumber);
+    }
+    // restoreMutation is stable across renders (created via useMutation); excluded
+    // from deps to avoid an infinite mutation loop on each onSuccess invalidation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingVersionNumber, versions, deliverable]);
 
   const handleCopy = async () => {
     if (!deliverable) return;
@@ -145,13 +266,53 @@ export function ArtifactPanel({ deliverableId, onClose }: ArtifactPanelProps) {
             {deliverable?.title || 'Loading...'}
           </h3>
         </div>
-        <button
-          onClick={onClose}
-          className="p-1.5 rounded-lg hover:bg-[var(--hatchin-surface)] transition-colors shrink-0"
-          aria-label="Close artifact panel"
-        >
-          <X className="w-4 h-4 hatchin-text-muted" />
-        </button>
+        {/* Phase 36 — Score chip (NEW) + Close (existing). The chip shows the
+            active version's score and toggles the breakdown card on click.
+            Color-coded by score: green >=7, blue 5-6.9, orange <5. Hides when
+            no score yet (pre-Phase-36 deliverables, custom type, or v1 still
+            scoring). One element replaces the prior Accept/Dismiss/Rubric trio. */}
+        <div className="flex items-center gap-2 shrink-0">
+          {(() => {
+            const currentVersionRow = versions.find((v) => v.versionNumber === currentVersion);
+            const total = currentVersionRow?.rubricScore?.total;
+            if (typeof total !== 'number') return null;
+            const tone: 'good' | 'ok' | 'low' =
+              total >= 7 ? 'good' : total >= 5 ? 'ok' : 'low';
+            const toneStyles: Record<typeof tone, { bg: string; color: string }> = {
+              good: { bg: 'hsla(158, 66%, 47%, 0.18)', color: 'var(--hatchin-green)' },
+              ok: { bg: 'hsla(248, 100%, 71%, 0.18)', color: 'var(--hatchin-blue)' },
+              low: { bg: 'hsla(25, 100%, 60%, 0.18)', color: 'var(--hatchin-orange)' },
+            };
+            const active = showRubric;
+            const baseStyle = toneStyles[tone];
+            return (
+              <button
+                type="button"
+                onClick={() => setShowRubric((v) => !v)}
+                className="inline-flex items-center gap-1 h-6 px-2.5 rounded-full border text-[11px] font-bold tabular-nums leading-none transition-[filter] hover:brightness-110"
+                style={{
+                  backgroundColor: active ? baseStyle.bg.replace('0.18', '0.28') : baseStyle.bg,
+                  color: baseStyle.color,
+                  borderColor: baseStyle.color,
+                }}
+                data-testid="score-chip"
+                aria-pressed={active}
+                aria-label={`Why this scored ${total.toFixed(1)} / 10`}
+                title={`Why this scored ${total.toFixed(1)} / 10`}
+              >
+                {total.toFixed(1)}
+                <span className="text-[10px] opacity-85">★</span>
+              </button>
+            );
+          })()}
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-[var(--hatchin-surface)] transition-colors"
+            aria-label="Close artifact panel"
+          >
+            <X className="w-4 h-4 hatchin-text-muted" />
+          </button>
+        </div>
       </div>
 
       {/* Attribution + Status bar */}
@@ -211,6 +372,35 @@ export function ArtifactPanel({ deliverableId, onClose }: ArtifactPanelProps) {
         </div>
       )}
 
+      {/* Phase 36 — AutoRevertBanner (only when iterateMutation produced reverted=true) */}
+      <AnimatePresence>
+        {revertBannerState && (
+          <div className="px-4 pt-3 shrink-0">
+            <AutoRevertBanner
+              oldScore={revertBannerState.oldScore}
+              newScore={revertBannerState.newScore}
+              rejectedContent={revertBannerState.rejectedContent}
+              rejectedBreakdown={revertBannerState.rejectedBreakdown}
+              rubricVersion={revertBannerState.rubricVersion}
+              onDismiss={() => setRevertBannerState(null)}
+            />
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Phase 36 — RubricBreakdown (toggled via header rubric button; D-16 not persisted) */}
+      {showRubric && (() => {
+        const currentVersionRow = versions.find((v) => v.versionNumber === currentVersion);
+        return (
+          <div className="px-4 pt-3 shrink-0" data-testid="rubric-toggle-panel">
+            <RubricBreakdown
+              rubricScore={currentVersionRow?.rubricScore ?? null}
+              rubricVersion={currentVersionRow?.rubricVersion ?? null}
+            />
+          </div>
+        );
+      })()}
+
       {/* Content area */}
       <div className="flex-1 overflow-y-auto px-4 py-4 hide-scrollbar">
         {isLoading ? (
@@ -249,6 +439,7 @@ export function ArtifactPanel({ deliverableId, onClose }: ArtifactPanelProps) {
               className="flex-1 text-xs px-3 py-2 rounded-lg bg-[var(--hatchin-surface)] border border-[var(--hatchin-border-subtle)] hatchin-text placeholder:text-[var(--hatchin-text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--hatchin-blue)]"
               autoFocus
               disabled={iterateMutation.isPending}
+              data-testid="refine-input"
             />
             <button
               onClick={() => {
@@ -256,6 +447,7 @@ export function ArtifactPanel({ deliverableId, onClose }: ArtifactPanelProps) {
               }}
               disabled={!refineInstruction.trim() || iterateMutation.isPending}
               className="p-2 rounded-lg bg-[var(--hatchin-blue)] text-white hover:opacity-90 disabled:opacity-40 transition-colors"
+              data-testid="refine-send"
             >
               {iterateMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
             </button>
@@ -269,6 +461,7 @@ export function ArtifactPanel({ deliverableId, onClose }: ArtifactPanelProps) {
                 ? 'bg-[var(--hatchin-blue)] text-white'
                 : 'bg-[var(--hatchin-surface)] hover:bg-[var(--hatchin-surface)]/80'
             }`}
+            data-testid="refine-button"
           >
             <Pencil className="w-3.5 h-3.5" />
             Refine
@@ -357,9 +550,11 @@ export function DeliverableList({ projectId, onSelect }: DeliverableListProps) {
         const statusInfo = STATUS_LABELS[d.status] || STATUS_LABELS.draft;
         return (
           <div key={d.id} className="relative group">
+            {/* pr-12 reserves the gutter the delete control sits in, so the title,
+                status badge and "by <agent>" row are never covered on hover. */}
             <motion.button
               onClick={() => onSelect(d.id)}
-              className="premium-card p-3 w-full text-left flex items-start gap-3 hover:border-[var(--hatchin-blue)]/30 transition-colors"
+              className="premium-card p-3 pr-12 w-full text-left flex items-start gap-3 hover:border-[var(--hatchin-blue)]/30 transition-colors"
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
             >
@@ -370,7 +565,9 @@ export function DeliverableList({ projectId, onSelect }: DeliverableListProps) {
                 {(d.agentName || 'A')[0]}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                {/* min-w-0 on the inner row too — without it nested flex refuses to
+                    shrink and a long title pushes the badge out instead of ellipsizing. */}
+                <div className="flex items-center gap-2 min-w-0">
                   <span className="text-sm font-medium truncate hatchin-text">{d.title}</span>
                   <span
                     className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-full shrink-0"
@@ -392,16 +589,23 @@ export function DeliverableList({ projectId, onSelect }: DeliverableListProps) {
                 </div>
               </div>
             </motion.button>
+            {/* Was a literal "del" in 10px red text, floated over the card content with
+                a ~18px hit area and hover-only visibility — so it read as debug
+                scaffolding, covered the badges, and was unreachable on touch (no hover).
+                Now an icon button matching DocumentCard: always visible on touch,
+                reveals on hover/keyboard focus from lg up, 44px target on touch. */}
             <button
+              type="button"
+              aria-label={`Delete ${d.title}`}
               onClick={(e) => {
                 e.stopPropagation();
-                if (window.confirm('Delete this deliverable?')) {
+                if (window.confirm(`Delete "${d.title}"? This cannot be undone.`)) {
                   deleteMutation.mutate(d.id);
                 }
               }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-red-400 hover:text-red-300 py-1 px-2"
+              className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-lg min-h-[44px] min-w-[44px] lg:min-h-0 lg:min-w-0 lg:w-8 lg:h-8 text-[var(--hatchin-text-muted)] hover:text-red-400 hover:bg-red-500/10 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-red-400/60 transition-all"
             >
-              del
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
         );

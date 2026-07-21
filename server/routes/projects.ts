@@ -210,27 +210,67 @@ export function registerProjectRoutes(app: Express, deps: RegisterProjectDeps): 
     }
   });
 
-  // Delete project
+  // Delete project (soft-delete — marks deletedAt; client must call /purge after the
+  // undo window expires, or the cron in server/index.ts cleans up stragglers).
   app.delete("/api/projects/:id", async (req, res) => {
-    devLog('DELETE /api/projects/:id called with id:', req.params.id);
+    devLog('DELETE /api/projects/:id (soft) called with id:', req.params.id);
     try {
       const ownedProject = await getOwnedProject(req.params.id, getSessionUserId(req));
       if (!ownedProject) {
         return res.status(404).json({ error: "Project not found" });
       }
-      devLog('Calling storage.deleteProject with id:', req.params.id);
       const success = await storage.deleteProject(req.params.id);
-      devLog('Storage deleteProject result:', success);
-
       if (!success) {
-        devLog('Project not found in storage');
         return res.status(404).json({ error: "Project not found" });
       }
-      devLog('Project deleted successfully from storage');
-      res.status(200).json({ message: "Project deleted successfully" });
+      res.status(200).json({ message: "Project soft-deleted (undo window open)" });
     } catch (error) {
       console.error('Error in delete project endpoint:', error);
       res.status(500).json({ error: "Failed to delete project" });
+    }
+  });
+
+  // Restore a soft-deleted project (called when user clicks Undo within the popup window).
+  // Idempotent — restoring an already-active project is a no-op success.
+  app.post("/api/projects/:id/restore", async (req, res) => {
+    try {
+      const ownedProject = await getOwnedProject(req.params.id, getSessionUserId(req));
+      if (!ownedProject) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      const success = await storage.restoreProject(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      res.status(200).json({ message: "Project restored" });
+    } catch (error) {
+      console.error('Error in restore project endpoint:', error);
+      res.status(500).json({ error: "Failed to restore project" });
+    }
+  });
+
+  // Hard-delete (purge) a project — client triggers this after the undo window expires
+  // or user explicitly dismisses the popup. Cascades through teams/agents/conversations/
+  // messages/etc. Server only purges projects already soft-deleted (deletedAt IS NOT NULL).
+  app.post("/api/projects/:id/purge", async (req, res) => {
+    try {
+      const ownedProject = await getOwnedProject(req.params.id, getSessionUserId(req));
+      if (!ownedProject) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      // Guard: only purge soft-deleted rows. If the user clicked Undo first the row is
+      // already active again — purging would silently destroy their restored project.
+      if (!(ownedProject as any).deletedAt) {
+        return res.status(409).json({ error: "Project is not soft-deleted; restore first or wait" });
+      }
+      const success = await storage.purgeProject(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      res.status(200).json({ message: "Project permanently deleted" });
+    } catch (error) {
+      console.error('Error in purge project endpoint:', error);
+      res.status(500).json({ error: "Failed to purge project" });
     }
   });
 
@@ -392,4 +432,87 @@ export function registerProjectRoutes(app: Express, deps: RegisterProjectDeps): 
       res.status(500).json({ error: 'Failed to delete document' });
     }
   });
+
+  // ---------------------------------------------------------------------
+  // Phase 38 (ALWY-02) — DEV-only endpoints for Playwright runtime assertions.
+  //
+  // Pattern mirrors Phase 36-02's /api/dev/force-judge-score and Phase 37's
+  // /api/dev/seed-run-tree: double-guard (conditional registration AND
+  // in-handler production throw). NEVER exposed in production.
+  //
+  // - POST /api/dev/set-autonomy-level: flips a project's autonomyLevel for
+  //   the snapshot-at-boundary test (T-38-06 mitigation: ownership-checked,
+  //   400 on missing fields).
+  // - GET  /api/dev/captured-prompts: returns the module-level captureProvider
+  //   buffer. Only active when LLM_MODE=test TEST_LLM_PROVIDER=capture; in any
+  //   other env the buffer stays empty.
+  // - POST /api/dev/clear-captured-prompts: resets the buffer between tests.
+  //
+  // The capture buffer is in-memory only — never persisted — and evaporates
+  // on server restart (T-38-07 mitigation).
+  // ---------------------------------------------------------------------
+  if (process.env.NODE_ENV !== 'production') {
+    const setAutonomyLevelSchema = z.object({
+      projectId: z.string().min(1),
+      autonomyLevel: z.enum(['observe', 'propose', 'confirm', 'autonomous']),
+    });
+
+    app.post('/api/dev/set-autonomy-level', async (req, res) => {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('FATAL: /api/dev/set-autonomy-level called in production. DEV-only endpoint must not run in a production code path.');
+      }
+      try {
+        const parsed = setAutonomyLevelSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({ error: 'projectId and autonomyLevel required', detail: parsed.error.format() });
+        }
+        const { projectId, autonomyLevel } = parsed.data;
+        const userId = getSessionUserId(req);
+        // T-38-06 mitigation: ownership check even under NODE_ENV gate
+        const project = await getOwnedProject(projectId, userId);
+        if (!project) {
+          return res.status(404).json({ error: 'Project not found or not owned by session user' });
+        }
+        const existing = (project.executionRules ?? {}) as Record<string, unknown>;
+        const updated = await storage.updateProject(projectId, {
+          executionRules: { ...existing, autonomyLevel } as any,
+        });
+        if (!updated) {
+          return res.status(500).json({ error: 'Project update returned no row' });
+        }
+        return res.json({ ok: true, autonomyLevel, projectId: updated.id });
+      } catch (error) {
+        console.error('[dev] set-autonomy-level error:', error);
+        return res.status(500).json({ error: 'Failed to set autonomy level', detail: (error as Error).message });
+      }
+    });
+
+    app.get('/api/dev/captured-prompts', async (_req, res) => {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('FATAL: /api/dev/captured-prompts called in production. DEV-only endpoint must not run in a production code path.');
+      }
+      try {
+        // Dynamic import so the captureProvider module is only loaded in dev/test
+        const { getCapturedPrompts } = await import('../llm/providers/captureProvider.js');
+        return res.json({ prompts: getCapturedPrompts() });
+      } catch (error) {
+        console.error('[dev] captured-prompts error:', error);
+        return res.status(500).json({ error: 'Failed to read captured prompts', detail: (error as Error).message });
+      }
+    });
+
+    app.post('/api/dev/clear-captured-prompts', async (_req, res) => {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('FATAL: /api/dev/clear-captured-prompts called in production. DEV-only endpoint must not run in a production code path.');
+      }
+      try {
+        const { clearCapturedPrompts } = await import('../llm/providers/captureProvider.js');
+        clearCapturedPrompts();
+        return res.json({ ok: true });
+      } catch (error) {
+        console.error('[dev] clear-captured-prompts error:', error);
+        return res.status(500).json({ error: 'Failed to clear captured prompts', detail: (error as Error).message });
+      }
+    });
+  }
 }

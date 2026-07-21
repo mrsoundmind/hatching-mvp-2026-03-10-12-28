@@ -10,8 +10,9 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-// Light mode disabled for now — force dark mode until light theme is fully polished
-const FORCE_DARK_MODE = true;
+// Light mode disabled for now — force dark mode until light theme is fully polished.
+// Exported so UI can HIDE the theme toggle rather than render a dead control (#114).
+export const FORCE_DARK_MODE = true;
 
 function getInitialTheme(): Theme {
   if (FORCE_DARK_MODE) return "dark";

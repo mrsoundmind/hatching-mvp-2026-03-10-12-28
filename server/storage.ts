@@ -1,7 +1,57 @@
-import { type User, type InsertUser, type Project, type InsertProject, type Team, type InsertTeam, type Agent, type InsertAgent, type Conversation, type InsertConversation, type Message, type InsertMessage, type MessageReaction, type InsertMessageReaction, type TypingIndicator, type InsertTypingIndicator, type Task, type InsertTask, type UsageDailySummary, type Deliverable, type InsertDeliverable, type DeliverableVersion, type InsertDeliverableVersion, type DeliverablePackage, type InsertDeliverablePackage } from "@shared/schema";
+import { type User, type InsertUser, type Project, type InsertProject, type Team, type InsertTeam, type Agent, type InsertAgent, type Conversation, type InsertConversation, type Message, type InsertMessage, type MessageReaction, type InsertMessageReaction, type TypingIndicator, type InsertTypingIndicator, type Task, type InsertTask, type UsageDailySummary, type Deliverable, type InsertDeliverable, type DeliverableVersion, type InsertDeliverableVersion, type DeliverablePackage, type InsertDeliverablePackage, type AutonomyRun, type InsertAutonomyRun, type AutonomyRunStep, type InsertAutonomyRunStep } from "@shared/schema";
 import { starterPacksByCategory, allHatchTemplates } from "@shared/templates";
+import { ROLE_DEFINITIONS } from "@shared/roleRegistry";
+
+// #153: starter-pack templates use role-as-name (name === role), so pack agents showed the role
+// twice ("Product Manager" / "Product Manager"). Resolve the character name (Alex, Coda…) from the
+// role registry the same way the idea-path AddHatch flow does; fall back to the template name.
+const CHARACTER_NAME_BY_ROLE = new Map(ROLE_DEFINITIONS.map((r) => [r.role, r.characterName]));
+const packAgentName = (role: string, fallback: string): string => CHARACTER_NAME_BY_ROLE.get(role) || fallback;
 import { parseConversationId } from "@shared/conversationId";
 import { randomUUID } from "crypto";
+
+// -----------------------------------------------------------------------------
+// Phase 36 — Impression dedupe (FBK-03, D-20).
+//
+// 5s server-side window per (deliverableId, userId) drops React StrictMode
+// double-fires in dev. Module-scope so both MemStorage and DatabaseStorage
+// share it (single-server). A future multi-instance deployment can route
+// through Redis behind a thin wrapper without changing the IStorage contract.
+//
+// Size bound + opportunistic cleanup keeps the Map bounded under DoS (T-36-15).
+// -----------------------------------------------------------------------------
+
+const __impressionDedupeMap = new Map<string, number>();
+const __IMPRESSION_DEDUPE_MS = 5_000;
+const __IMPRESSION_DEDUPE_MAX_ENTRIES = 1000;
+const __IMPRESSION_DEDUPE_CLEANUP_OLDER_THAN_MS = 60_000;
+
+function __shouldRecordImpression(deliverableId: string, userId: string): boolean {
+  const key = `${deliverableId}:${userId}`;
+  const now = Date.now();
+  const last = __impressionDedupeMap.get(key) ?? 0;
+  if (now - last < __IMPRESSION_DEDUPE_MS) return false;
+  __impressionDedupeMap.set(key, now);
+  if (__impressionDedupeMap.size > __IMPRESSION_DEDUPE_MAX_ENTRIES) {
+    for (const [k, t] of __impressionDedupeMap) {
+      if (now - t > __IMPRESSION_DEDUPE_CLEANUP_OLDER_THAN_MS) {
+        __impressionDedupeMap.delete(k);
+      }
+    }
+  }
+  return true;
+}
+
+/**
+ * DEV-only: clear the impression dedupe Map between tests. Throws FATAL in
+ * production (T-36-13 mirror — mirrors __setForcedScoreForTests prod guard).
+ */
+export function __resetImpressionDedupeForTests(): void {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL: __resetImpressionDedupeForTests called in production');
+  }
+  __impressionDedupeMap.clear();
+}
 
 // Phase 0.6.a: Storage Mode Declaration
 export type StorageMode = "memory" | "db";
@@ -59,12 +109,19 @@ export interface IStorage {
   upsertOAuthUser(input: OAuthUserInput): Promise<User>;
 
   // Projects
+  // Soft-delete model: deleteProject sets deletedAt; restoreProject clears it;
+  // purgeProject does the hard cascade. List methods (getProjects/getProjectsByUserId)
+  // filter out soft-deleted rows; getProject returns soft-deleted rows so restore/purge
+  // endpoints can find their target.
   getProjects(): Promise<Project[]>;
   getProjectsByUserId(userId: string): Promise<Project[]>;
   getProject(id: string): Promise<Project | undefined>;
   createProject(project: InsertProject): Promise<Project>;
   updateProject(id: string, updates: Partial<Project>): Promise<Project | undefined>;
   deleteProject(id: string): Promise<boolean>;
+  restoreProject(id: string): Promise<boolean>;
+  purgeProject(id: string): Promise<boolean>;
+  getProjectsNeedingPurge(olderThanMs: number): Promise<Array<{ id: string }>>;
 
   // Teams
   getTeams(): Promise<Team[]>;
@@ -204,11 +261,37 @@ export interface IStorage {
   createDeliverableVersion(version: InsertDeliverableVersion): Promise<DeliverableVersion>;
   restoreDeliverableVersion(deliverableId: string, versionNumber: number): Promise<Deliverable | undefined>;
 
+  // === Phase 36 (FBK-01..04 / RUBR-02..04) ===
+  acceptDeliverable(id: string): Promise<Deliverable | undefined>;
+  dismissDeliverable(id: string): Promise<Deliverable | undefined>;
+  recordImpression(id: string, userId: string): Promise<{ deliverable: Deliverable | undefined; deduped: boolean }>;
+  incrementEditsCount(id: string): Promise<Deliverable | undefined>;
+  updateDeliverableVersionScore(
+    versionId: string,
+    fields: {
+      rubricVersion: string;
+      rubricScore: {
+        total: number;
+        breakdown: Array<{ criterion: string; score: number; justification: string }>;
+        skipped?: boolean;
+        reason?: string;
+      };
+    },
+  ): Promise<DeliverableVersion | undefined>;
+  getRecentFinalizedDeliverablesByAgent(projectId: string, agentId: string, limit: number): Promise<Deliverable[]>;
+
   // v2.0: Packages
   getPackagesByProject(projectId: string): Promise<DeliverablePackage[]>;
   getPackage(id: string): Promise<DeliverablePackage | undefined>;
   createPackage(pkg: InsertDeliverablePackage): Promise<DeliverablePackage>;
   updatePackage(id: string, updates: Partial<DeliverablePackage>): Promise<DeliverablePackage | undefined>;
+
+  // Phase 37 — autonomy run tree (TREE-01)
+  createRun(run: InsertAutonomyRun): Promise<AutonomyRun>;
+  updateRun(id: string, updates: Partial<AutonomyRun>): Promise<AutonomyRun | undefined>;
+  createRunStep(step: InsertAutonomyRunStep): Promise<AutonomyRunStep>;
+  updateRunStep(id: string, updates: Partial<AutonomyRunStep>): Promise<AutonomyRunStep | undefined>;
+  getRunsByProject(projectId: string, options?: { limit?: number; offset?: number }): Promise<{ runs: AutonomyRun[]; steps: AutonomyRunStep[] }>;
 }
 
 
@@ -269,6 +352,7 @@ export class MemStorage implements IStorage {
       emoji: "🚀",
       description: "Building the next generation SaaS platform",
       color: "blue",
+      deletedAt: null,
       isExpanded: true,
       progress: 45,
       timeSpent: "32h 15m",
@@ -489,14 +573,15 @@ export class MemStorage implements IStorage {
 
   // Project methods
   async getProjects(): Promise<Project[]> {
-    return Array.from(this.projects.values());
+    return Array.from(this.projects.values()).filter(p => !(p as any).deletedAt);
   }
 
   async getProjectsByUserId(userId: string): Promise<Project[]> {
-    return Array.from(this.projects.values()).filter(p => p.userId === userId);
+    return Array.from(this.projects.values()).filter(p => p.userId === userId && !(p as any).deletedAt);
   }
 
   async getProject(id: string): Promise<Project | undefined> {
+    // Unfiltered — matches DatabaseStorage so restore/purge endpoints can find soft-deleted rows.
     return this.projects.get(id);
   }
 
@@ -513,6 +598,7 @@ export class MemStorage implements IStorage {
       description: insertProject.description || null,
       emoji: insertProject.emoji || "🚀",
       color: insertProject.color || "blue",
+      deletedAt: null,
       isExpanded: insertProject.isExpanded ?? true,
       progress: insertProject.progress || 0,
       timeSpent: insertProject.timeSpent || "0h 0m",
@@ -537,7 +623,33 @@ export class MemStorage implements IStorage {
   }
 
   async deleteProject(id: string): Promise<boolean> {
-    // Fix 8: Cascade delete — teams → agents → conversations → messages → memories → tasks
+    // Soft-delete — mark the project as deleted; purgeProject does the real cascade.
+    const project = this.projects.get(id);
+    if (!project) return false;
+    this.projects.set(id, { ...project, deletedAt: new Date() } as Project);
+    return true;
+  }
+
+  async restoreProject(id: string): Promise<boolean> {
+    const project = this.projects.get(id);
+    if (!project) return false;
+    const restored = { ...project, deletedAt: null } as Project;
+    this.projects.set(id, restored);
+    return true;
+  }
+
+  async getProjectsNeedingPurge(olderThanMs: number): Promise<Array<{ id: string }>> {
+    const cutoff = Date.now() - olderThanMs;
+    const out: Array<{ id: string }> = [];
+    for (const [id, p] of this.projects) {
+      const d = (p as any).deletedAt;
+      if (d && new Date(d).getTime() < cutoff) out.push({ id });
+    }
+    return out;
+  }
+
+  async purgeProject(id: string): Promise<boolean> {
+    // Hard cascade — teams → agents → conversations → messages → memories → tasks → project.
     const teamsToDelete = Array.from(this.teams.values()).filter(t => t.projectId === id);
     for (const team of teamsToDelete) {
       // Delete agents in this team
@@ -814,7 +926,7 @@ export class MemStorage implements IStorage {
           const agent: Agent = {
             id: randomUUID(),
             userId: project.userId,
-            name: hatchTemplate.name,
+            name: packAgentName(hatchTemplate.role, hatchTemplate.name),
             role: hatchTemplate.role,
             color: hatchTemplate.color,
             teamId: team.id,
@@ -823,7 +935,7 @@ export class MemStorage implements IStorage {
               traits: hatchTemplate.skills?.slice(0, 3) || [],
               communicationStyle: hatchTemplate.description,
               expertise: hatchTemplate.skills || [],
-              welcomeMessage: `Hi! I'm ${hatchTemplate.name}, your ${hatchTemplate.role}. ${hatchTemplate.description}`
+              welcomeMessage: `Hi! I'm ${packAgentName(hatchTemplate.role, hatchTemplate.name)}, your ${hatchTemplate.role}. ${hatchTemplate.description}`
             },
             isSpecialAgent: false,
           };
@@ -1420,7 +1532,19 @@ export class MemStorage implements IStorage {
     this.deliverables.set(id, deliverable);
     // Auto-create v1
     const vId = randomUUID();
-    const version: DeliverableVersion = { id: vId, deliverableId: id, versionNumber: 1, content: deliverable.content, changeDescription: 'Initial version', createdByAgentId: data.agentId ?? null, createdAt: now };
+    const version: DeliverableVersion = {
+      id: vId,
+      deliverableId: id,
+      versionNumber: 1,
+      content: deliverable.content,
+      changeDescription: 'Initial version',
+      createdByAgentId: data.agentId ?? null,
+      createdAt: now,
+      // Phase 36 — fields default for MemStorage v1 (pre-scoring path; 36-02 scorer writes real values)
+      rubricVersion: null,
+      rubricScore: null,
+      revertedFromHigherScore: false,
+    };
     this.deliverableVersions.set(vId, version);
     return deliverable;
   }
@@ -1452,6 +1576,71 @@ export class MemStorage implements IStorage {
     return this.updateDeliverable(deliverableId, { content: target.content, currentVersion: versionNumber });
   }
 
+  // === Phase 36 (FBK-01..04 / RUBR-02..04) — MemStorage impls ===
+  async acceptDeliverable(id: string): Promise<Deliverable | undefined> {
+    // D-18 mutually exclusive but reversible — set userAcceptedAt, clear dismissedAt.
+    return this.updateDeliverable(id, { userAcceptedAt: new Date(), dismissedAt: null });
+  }
+  async dismissDeliverable(id: string): Promise<Deliverable | undefined> {
+    // Symmetric to acceptDeliverable (D-18).
+    return this.updateDeliverable(id, { dismissedAt: new Date(), userAcceptedAt: null });
+  }
+  async recordImpression(id: string, userId: string): Promise<{ deliverable: Deliverable | undefined; deduped: boolean }> {
+    const existing = await this.getDeliverable(id);
+    if (!existing) return { deliverable: undefined, deduped: false };
+    if (!__shouldRecordImpression(id, userId)) {
+      // 5s window hit — return current state without incrementing (D-20).
+      return { deliverable: existing, deduped: true };
+    }
+    const updated = await this.updateDeliverable(id, {
+      impressionCount: (existing.impressionCount ?? 0) + 1,
+    });
+    return { deliverable: updated, deduped: false };
+  }
+  async incrementEditsCount(id: string): Promise<Deliverable | undefined> {
+    // MemStorage is single-threaded JS — RMW is safe here. DatabaseStorage uses
+    // `sql\`${editsCount} + 1\`` to defeat parallel-iterate races.
+    const existing = await this.getDeliverable(id);
+    if (!existing) return undefined;
+    return this.updateDeliverable(id, { editsCount: (existing.editsCount ?? 0) + 1 });
+  }
+  async updateDeliverableVersionScore(
+    versionId: string,
+    fields: {
+      rubricVersion: string;
+      rubricScore: {
+        total: number;
+        breakdown: Array<{ criterion: string; score: number; justification: string }>;
+        skipped?: boolean;
+        reason?: string;
+      };
+    },
+  ): Promise<DeliverableVersion | undefined> {
+    const existing = this.deliverableVersions.get(versionId);
+    if (!existing) return undefined;
+    const updated = { ...existing, ...fields } as DeliverableVersion;
+    this.deliverableVersions.set(versionId, updated);
+    return updated;
+  }
+  async getRecentFinalizedDeliverablesByAgent(
+    projectId: string,
+    agentId: string,
+    limit: number,
+  ): Promise<Deliverable[]> {
+    const all = [...this.deliverables.values()]
+      .filter(
+        (d) =>
+          d.projectId === projectId &&
+          d.agentId === agentId &&
+          d.status === 'complete',
+      )
+      .sort(
+        (a, b) =>
+          (b.updatedAt?.getTime() ?? 0) - (a.updatedAt?.getTime() ?? 0),
+      );
+    return all.slice(0, limit);
+  }
+
   // v2.0: Packages (MemStorage)
   async getPackagesByProject(projectId: string): Promise<DeliverablePackage[]> {
     return Array.from(this.deliverablePackages.values()).filter(p => p.projectId === projectId);
@@ -1473,6 +1662,112 @@ export class MemStorage implements IStorage {
     this.deliverablePackages.set(id, updated);
     return updated;
   }
+
+  // Phase 37 (TREE-01) — autonomy run tree (MemStorage)
+  private autonomyRuns: Map<string, AutonomyRun> = new Map();
+  private autonomyRunSteps: Map<string, AutonomyRunStep> = new Map();
+
+  async createRun(input: InsertAutonomyRun): Promise<AutonomyRun> {
+    const id = randomUUID();
+    const now = new Date();
+    const row = {
+      id,
+      traceId: input.traceId,
+      projectId: input.projectId,
+      userId: input.userId ?? null,
+      rootAgentId: input.rootAgentId ?? null,
+      rootGoal: input.rootGoal ?? null,
+      status: input.status ?? 'running',
+      stepCount: input.stepCount ?? 0,
+      aggregateScoreDelta: input.aggregateScoreDelta ?? null,
+      metadata: (input.metadata as Record<string, unknown>) ?? {},
+      createdAt: now,
+      updatedAt: now,
+    } as AutonomyRun;
+    this.autonomyRuns.set(id, row);
+    return row;
+  }
+
+  async createRunStep(input: InsertAutonomyRunStep): Promise<AutonomyRunStep> {
+    // Parent-mismatch guard — cross-run parentStepId claim is a tree-integrity violation
+    if (input.parentStepId) {
+      const parent = this.autonomyRunSteps.get(input.parentStepId);
+      if (!parent || parent.runId !== input.runId) {
+        throw new Error(`parentStepId ${input.parentStepId} does not belong to runId ${input.runId}`);
+      }
+    }
+    const id = randomUUID();
+    const startedAt = new Date();
+    const status = input.status ?? 'pending';
+    const isRunning = status === 'running' || status === 'pending';
+    const row = {
+      id,
+      runId: input.runId,
+      parentStepId: input.parentStepId ?? null,
+      traceId: input.traceId,
+      agentId: input.agentId ?? null,
+      agentName: input.agentName ?? null,
+      agentRole: input.agentRole ?? null,
+      stepType: input.stepType,
+      title: input.title ?? null,
+      status,
+      deliverableId: input.deliverableId ?? null,
+      deliverableVersionId: input.deliverableVersionId ?? null,
+      deliverableVersionNumber: input.deliverableVersionNumber ?? null,
+      scoreDelta: input.scoreDelta ?? null,
+      metadata: (input.metadata as Record<string, unknown>) ?? {},
+      startedAt,
+      completedAt: input.completedAt ?? null,
+      latencyMs: input.latencyMs ?? null,
+      // Q4: 30-min timeout matches pg-boss expireInMinutes — only set on running/pending inserts
+      timeoutAt: isRunning ? new Date(startedAt.getTime() + 30 * 60 * 1000) : null,
+    } as AutonomyRunStep;
+    this.autonomyRunSteps.set(id, row);
+    return row;
+  }
+
+  async updateRun(id: string, updates: Partial<AutonomyRun>): Promise<AutonomyRun | undefined> {
+    const existing = this.autonomyRuns.get(id);
+    if (!existing) return undefined;
+    const merged = { ...existing, ...updates };
+    this.autonomyRuns.set(id, merged);
+    return merged;
+  }
+
+  async updateRunStep(id: string, updates: Partial<AutonomyRunStep>): Promise<AutonomyRunStep | undefined> {
+    const existing = this.autonomyRunSteps.get(id);
+    if (!existing) return undefined;
+    const merged = { ...existing, ...updates };
+    this.autonomyRunSteps.set(id, merged);
+    return merged;
+  }
+
+  async getRunsByProject(projectId: string, options?: { limit?: number; offset?: number }): Promise<{ runs: AutonomyRun[]; steps: AutonomyRunStep[] }> {
+    const limit = options?.limit ?? 20;
+    const offset = options?.offset ?? 0;
+    // Q4: opportunistic sweep — mark stuck rows as failed (mirrors DB-mode semantics for parity)
+    const now = new Date();
+    for (const [stepId, step] of this.autonomyRunSteps.entries()) {
+      if (step.status === 'running' && step.timeoutAt && step.timeoutAt.getTime() < now.getTime()) {
+        const projectRun = this.autonomyRuns.get(step.runId);
+        if (projectRun && projectRun.projectId === projectId) {
+          this.autonomyRunSteps.set(stepId, {
+            ...step,
+            status: 'failed',
+            completedAt: now,
+            metadata: { ...step.metadata, timeoutReason: 'inferred from pg-boss expiry' },
+          });
+        }
+      }
+    }
+    const allRuns = [...this.autonomyRuns.values()]
+      .filter(r => r.projectId === projectId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const runs = allRuns.slice(offset, offset + limit);
+    const runIds = new Set(runs.map(r => r.id));
+    const steps = [...this.autonomyRunSteps.values()].filter(s => runIds.has(s.runId));
+    return { runs, steps };
+  }
 }
 
 // ============================================================
@@ -1480,7 +1775,7 @@ export class MemStorage implements IStorage {
 // ============================================================
 import { db } from "./db";
 import * as schema from "@shared/schema";
-import { eq, and, sql, desc, inArray } from "drizzle-orm";
+import { eq, and, sql, desc, inArray, isNull, lt } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
   // Users
@@ -1544,12 +1839,16 @@ export class DatabaseStorage implements IStorage {
 
   // Projects
   async getProjects(): Promise<Project[]> {
-    return db.select().from(schema.projects);
+    // List excludes soft-deleted. Use getProject(id) directly when you need a soft-deleted row.
+    return db.select().from(schema.projects).where(isNull(schema.projects.deletedAt));
   }
   async getProjectsByUserId(userId: string): Promise<Project[]> {
-    return db.select().from(schema.projects).where(eq(schema.projects.userId, userId));
+    return db.select().from(schema.projects)
+      .where(and(eq(schema.projects.userId, userId), isNull(schema.projects.deletedAt)));
   }
   async getProject(id: string): Promise<Project | undefined> {
+    // Intentionally NOT filtered by deletedAt — restore/purge endpoints need to find
+    // soft-deleted projects, and the route layer already validates ownership.
     const [proj] = await db.select().from(schema.projects).where(eq(schema.projects.id, id));
     return proj;
   }
@@ -1564,6 +1863,39 @@ export class DatabaseStorage implements IStorage {
     return proj;
   }
   async deleteProject(id: string): Promise<boolean> {
+    // Soft-delete: mark the row with deletedAt = NOW(). The Undo popup gets the chance
+    // to fire restoreProject within its window; if dismissed, the client (or the cron
+    // safety net in server/index.ts) calls purgeProject for the hard cascade.
+    const result = await db.update(schema.projects)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(schema.projects.id, id), isNull(schema.projects.deletedAt)))
+      .returning({ id: schema.projects.id });
+    return result.length > 0;
+  }
+
+  async restoreProject(id: string): Promise<boolean> {
+    const result = await db.update(schema.projects)
+      .set({ deletedAt: null })
+      .where(eq(schema.projects.id, id))
+      .returning({ id: schema.projects.id });
+    return result.length > 0;
+  }
+
+  async getProjectsNeedingPurge(olderThanMs: number): Promise<Array<{ id: string }>> {
+    // Returns soft-deleted projects whose deletedAt is older than the cutoff. Used by
+    // the cron safety net to clean up rows where the client failed to call /purge
+    // (browser close, network drop, etc.).
+    const cutoff = new Date(Date.now() - olderThanMs);
+    return db.select({ id: schema.projects.id })
+      .from(schema.projects)
+      .where(and(
+        sql`${schema.projects.deletedAt} IS NOT NULL`,
+        lt(schema.projects.deletedAt, cutoff),
+      ));
+  }
+
+  async purgeProject(id: string): Promise<boolean> {
+    // Hard cascade — permanently removes the project and ALL associated data.
     // Single transaction; uses IN (subquery) so each table is one statement instead of
     // a N+1 select-then-loop. Cuts wall-clock from ~seconds to <1s on typical projects.
     // Order respects FK constraints:
@@ -1760,7 +2092,7 @@ export class DatabaseStorage implements IStorage {
         const [team] = await db.insert(schema.teams).values({ userId: project.userId, name: teamData[tKey].name, emoji: teamData[tKey].emoji, projectId, isExpanded: true }).returning();
         teamMap[tKey] = team.id;
       }
-      await db.insert(schema.agents).values({ userId: project.userId, name: (tpl as any).name, role: (tpl as any).role, color: (tpl as any).color, teamId: teamMap[tKey], projectId, isSpecialAgent: false, personality: { traits: (tpl as any).skills?.slice(0, 3) || [], communicationStyle: (tpl as any).description, expertise: (tpl as any).skills || [], welcomeMessage: `Hi! I'm ${(tpl as any).name}, your ${(tpl as any).role}.` } });
+      await db.insert(schema.agents).values({ userId: project.userId, name: packAgentName((tpl as any).role, (tpl as any).name), role: (tpl as any).role, color: (tpl as any).color, teamId: teamMap[tKey], projectId, isSpecialAgent: false, personality: { traits: (tpl as any).skills?.slice(0, 3) || [], communicationStyle: (tpl as any).description, expertise: (tpl as any).skills || [], welcomeMessage: `Hi! I'm ${packAgentName((tpl as any).role, (tpl as any).name)}, your ${(tpl as any).role}.` } });
     }
   }
 
@@ -2192,6 +2524,76 @@ export class DatabaseStorage implements IStorage {
     return this.updateDeliverable(deliverableId, { content: target.content, currentVersion: versionNumber });
   }
 
+  // === Phase 36 (FBK-01..04 / RUBR-02..04) — DatabaseStorage impls ===
+  async acceptDeliverable(id: string): Promise<Deliverable | undefined> {
+    return this.updateDeliverable(id, { userAcceptedAt: new Date(), dismissedAt: null });
+  }
+  async dismissDeliverable(id: string): Promise<Deliverable | undefined> {
+    return this.updateDeliverable(id, { dismissedAt: new Date(), userAcceptedAt: null });
+  }
+  async recordImpression(id: string, userId: string): Promise<{ deliverable: Deliverable | undefined; deduped: boolean }> {
+    const existing = await this.getDeliverable(id);
+    if (!existing) return { deliverable: undefined, deduped: false };
+    if (!__shouldRecordImpression(id, userId)) {
+      return { deliverable: existing, deduped: true };
+    }
+    // Atomic SQL increment — defeats RMW race two parallel /impression calls
+    // would otherwise hit on the same (deliverable, user) outside the dedupe
+    // window (e.g. two browser tabs).
+    const [row] = await db.update(schema.deliverables)
+      .set({
+        impressionCount: sql`${schema.deliverables.impressionCount} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.deliverables.id, id))
+      .returning();
+    return { deliverable: row, deduped: false };
+  }
+  async incrementEditsCount(id: string): Promise<Deliverable | undefined> {
+    // Atomic SQL increment — defeats RMW race two parallel iterate calls that
+    // both pass scoring would otherwise hit (T-36-16 / W-5).
+    const [row] = await db.update(schema.deliverables)
+      .set({
+        editsCount: sql`${schema.deliverables.editsCount} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.deliverables.id, id))
+      .returning();
+    return row;
+  }
+  async updateDeliverableVersionScore(
+    versionId: string,
+    fields: {
+      rubricVersion: string;
+      rubricScore: {
+        total: number;
+        breakdown: Array<{ criterion: string; score: number; justification: string }>;
+        skipped?: boolean;
+        reason?: string;
+      };
+    },
+  ): Promise<DeliverableVersion | undefined> {
+    const [row] = await db.update(schema.deliverableVersions)
+      .set(fields)
+      .where(eq(schema.deliverableVersions.id, versionId))
+      .returning();
+    return row;
+  }
+  async getRecentFinalizedDeliverablesByAgent(
+    projectId: string,
+    agentId: string,
+    limit: number,
+  ): Promise<Deliverable[]> {
+    return db.select().from(schema.deliverables)
+      .where(and(
+        eq(schema.deliverables.projectId, projectId),
+        eq(schema.deliverables.agentId, agentId),
+        eq(schema.deliverables.status, 'complete'),
+      ))
+      .orderBy(desc(schema.deliverables.updatedAt))
+      .limit(limit);
+  }
+
   // v2.0: Packages (DatabaseStorage)
   async getPackagesByProject(projectId: string): Promise<DeliverablePackage[]> {
     return db.select().from(schema.deliverablePackages).where(eq(schema.deliverablePackages.projectId, projectId));
@@ -2207,6 +2609,67 @@ export class DatabaseStorage implements IStorage {
   async updatePackage(id: string, updates: Partial<DeliverablePackage>): Promise<DeliverablePackage | undefined> {
     const [row] = await db.update(schema.deliverablePackages).set({ ...updates, updatedAt: new Date() }).where(eq(schema.deliverablePackages.id, id)).returning();
     return row;
+  }
+
+  // Phase 37 (TREE-01) — autonomy run tree (DatabaseStorage)
+  async createRun(input: InsertAutonomyRun): Promise<AutonomyRun> {
+    const [row] = await db.insert(schema.autonomyRuns).values(input as any).returning();
+    return row;
+  }
+
+  async createRunStep(input: InsertAutonomyRunStep): Promise<AutonomyRunStep> {
+    // Parent-mismatch guard — same write-time integrity enforcement as MemStorage
+    if (input.parentStepId) {
+      const [parent] = await db
+        .select({ id: schema.autonomyRunSteps.id, runId: schema.autonomyRunSteps.runId })
+        .from(schema.autonomyRunSteps)
+        .where(eq(schema.autonomyRunSteps.id, input.parentStepId))
+        .limit(1);
+      if (!parent || parent.runId !== input.runId) {
+        throw new Error(`parentStepId ${input.parentStepId} does not belong to runId ${input.runId}`);
+      }
+    }
+    const status = input.status ?? 'pending';
+    const isRunning = status === 'running' || status === 'pending';
+    // Q4: timeoutAt = startedAt + 30min matches pg-boss expireInMinutes; set on running/pending inserts only
+    const valuesWithTimeout = isRunning
+      ? { ...input, timeoutAt: sql`NOW() + interval '30 minutes'` as unknown as Date }
+      : input;
+    const [row] = await db.insert(schema.autonomyRunSteps).values(valuesWithTimeout as any).returning();
+    return row;
+  }
+
+  async updateRun(id: string, updates: Partial<AutonomyRun>): Promise<AutonomyRun | undefined> {
+    const [row] = await db.update(schema.autonomyRuns).set(updates).where(eq(schema.autonomyRuns.id, id)).returning();
+    return row;
+  }
+
+  async updateRunStep(id: string, updates: Partial<AutonomyRunStep>): Promise<AutonomyRunStep | undefined> {
+    const [row] = await db.update(schema.autonomyRunSteps).set(updates).where(eq(schema.autonomyRunSteps.id, id)).returning();
+    return row;
+  }
+
+  async getRunsByProject(projectId: string, options?: { limit?: number; offset?: number }): Promise<{ runs: AutonomyRun[]; steps: AutonomyRunStep[] }> {
+    const limit = options?.limit ?? 20;
+    const offset = options?.offset ?? 0;
+    // Q4 opportunistic sweep — UPDATE stuck rows BEFORE the SELECT
+    await db.execute(sql`
+      UPDATE autonomy_run_steps
+      SET status = 'failed',
+          completed_at = NOW(),
+          metadata = jsonb_set(metadata, '{timeoutReason}', '"inferred from pg-boss expiry"')
+      WHERE status = 'running'
+        AND timeout_at < NOW()
+        AND run_id IN (SELECT id FROM autonomy_runs WHERE project_id = ${projectId})
+    `);
+    const runs = await db.select().from(schema.autonomyRuns)
+      .where(eq(schema.autonomyRuns.projectId, projectId))
+      .orderBy(desc(schema.autonomyRuns.createdAt))
+      .limit(limit).offset(offset);
+    if (runs.length === 0) return { runs: [], steps: [] };
+    const runIds = runs.map(r => r.id);
+    const steps = await db.select().from(schema.autonomyRunSteps).where(inArray(schema.autonomyRunSteps.runId, runIds));
+    return { runs, steps };
   }
 }
 
@@ -2227,3 +2690,17 @@ function createStorage(): IStorage {
 }
 
 export const storage = createStorage();
+
+/**
+ * Phase 37 (TREE-01) — DEV-only test helper for clearing the in-memory run-tree state between cases.
+ * Mirrors the prod-guard pattern from server/llm/providerHealthState.ts and
+ * __resetImpressionDedupeForTests at the top of this file.
+ */
+export function __resetRunTreeForTests(): void {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL: __resetRunTreeForTests() called in production. Test-only helper must not run in a production code path.');
+  }
+  const mem = storage as { autonomyRuns?: Map<string, unknown>; autonomyRunSteps?: Map<string, unknown> };
+  mem.autonomyRuns?.clear();
+  mem.autonomyRunSteps?.clear();
+}

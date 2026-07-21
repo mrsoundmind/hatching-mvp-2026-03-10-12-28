@@ -17,15 +17,41 @@ Hatchin is an **AI-powered collaborative project execution platform**. Think of 
 - Execute tasks autonomously in the background and hand off work between specialists
 - Self-review quality via peer review gates and progressive trust scoring
 
-**Current Phase**: Post-v2.0 — production hardening + next milestone planning. v2.0 shipped (2026-03-30). v1.3 shipped (23/23). v1.2 shipped (16/16). v1.1 shipped (17/17). v1.0 shipped (31/31). Post-v1.1: World-class agent intelligence upgrade shipped (30 roles, 294 new tests). Smart Task Detection rewrite complete (7/7 phases).
+**Current Phase**: v2.1 in progress (Phases 35, 36, 36.5 shipped of 12). v3.0 closed partial 2026-04-28 (Phase 22 atomic budget + Phase 28 Maya bug fix shipped, remaining 11 phases re-scoped into V3). v2.0 shipped 2026-03-30. v1.3 / v1.2 / v1.1 / v1.0 all shipped.
 
-**Latest Milestone**: v2.0 — Hatches That Deliver (shipped 2026-03-30). Cross-agent deliverable chains, artifact panel, PDF export, 15 deliverable types, 3 package templates (launch/content-sprint/research), organic detection, zero-friction onboarding.
+**Latest Milestone in flight**: **v2.1 — Hatches That Self-Improve** (5–7w, 12 phases per ROADMAP-V3). Shipped so far:
+- Phase 35 — Production Hotfix Pass (2026-05-11, Fly v19; re-verified 2026-06-03 on Supabase, 7/7 Playwright PASS): legal modal + deep-link hybrid (Privacy/Terms), PROVIDER_DEGRADED toast banner, AUDIT-01 Playwright spec
+- Phase 36 — Frozen-Rubric Deliverable Iteration (2026-05-11/13; re-verified 2026-06-03 on Supabase, 4/4 Playwright PASS): 15 frozen rubrics, auto-revert on score regression, FBK schema columns, per-criterion breakdown UI, agent-prompt feedback signal injection. FBK-02 deferred per user simplification (server endpoints persist; no UI surface in v2.1).
+- Phase 36.5 — Imperative Action Shortcuts hotfix (2026-05-13): regex-based imperative-command parser fires actions BEFORE LLM call; lowers Maya's turn-count gate
+- Phase 37 — Git-Style Run Tree (2026-05-14): `autonomy_runs` + `autonomy_run_steps` schema, run-tree writer hooks into both executeTask paths, handoff_initiated event + parent-link, GET endpoint, Activity-tab tree visualization with **semantic-word badges** (✓ Improved / ⚠ Made worse — per `feedback_ui_self_documenting.md`), click-step opens exact deliverable version. TREE-05 backfill vacuously satisfied (Neon data abandoned during 2026-06-02 migration; no historical rows to backfill).
+- Phase 38 — Never Stop, Never Ask (expanded scope 2026-07-09, Plans 01-04 shipped, Plan 05 human vibe-check remaining):
+  - Plan 38-01 (2026-06-21, commits e676e37+b218021+d904768): `<autonomous_directive>` prompt block + snapshot-at-task-boundary + Playwright wire-level prompt-capture spec. Closes ALWY-01, partial ALWY-02, code-ships ALWY-03. Runtime coverage became genuine only after Plan 38-03 fixed the `buildProviderOrder` capture branch residual.
+  - Plan 38-02 (2026-07-09, commits 673c158+a4e8942): `scoreDestructiveIntent()` in `server/ai/safety.ts` with regex sets DESTRUCTIVE_VERB_CRITICAL / DESTRUCTIVE_VERB_RESET / BULK_SCOPE / DATA_SCOPE, merged via `Math.max(existing_executionRisk, destructiveIntentScore)`. Unit 12/12 PASS + Playwright `phase-38-safety-floor` 2/2 PASS on live server. Closes ALWY-04.
+  - Plan 38-03 (2026-07-10, commit 748ae66): `MAYA_AUTONOMOUS_OVERRIDE` sibling constant appended after `AUTONOMOUS_DIRECTIVE_BLOCK` when autonomy=autonomous + `agentIsSpecial`. Snaps Maya's opener from exploratory ("I keep coming back to...") to committed-synthesizer ("Here's what I'd do: X. Because Y. Flag if wrong."). Also fixed Plan 38-01 residual: `buildProviderOrder` had no `capture` branch → capture provider silently fell through to mock, invalidating phase-38 Playwright coverage until fix. Unit 10/10 + Playwright phase-38 6/6 PASS. Closes ALWY-05.
+  - Plan 38-04 (2026-07-10, commit a017055): universal `AGENT_CAPABILITY_ENVELOPE` XML block in `staticPrefix` declaring CAN (four `[[...]]` proposal blocks) and CANNOT (delete/wipe/DB/file-system/code-exec/deployment) with enforcement line "NEVER describe having performed an action you cannot perform." Ordering strictly enforced: envelope → directive → override. Unit 19/19 + Playwright `phase-38-fake-action-guard` 2/2 PASS on live Groq server (destructive → `safety_intervention` fired, zero fake-action language; benign 247-char substantive response, no over-firing). Cross-plan regression 38-02 spec 2/2 PASS re-run. Foundational precursor to Phase 46 Slop Detection. Closes ALWY-06.
+  - Plan 38-05 ✅ VERIFIED 2026-07-21 (commit a017055 line was 38-04; 38-05 is verification, no product code beyond the safety fix `e61be9b`): human-delegated vibe-check ("do it for me") on the DeepSeek production chain. All three level-4 prompts commit-shape with zero clarifying questions; safety floor fired at level-4; no confabulation; Confirm-level downgrade asked a clarifying question. Caught + fixed a pre-existing defect: the safety clarification message was run through the conversational tone guard (`adaptLength` trims short-user-message replies to 2 sentences), so the three safety questions were cut to "...clarify these points:\n1." on any short destructive command; `e61be9b` makes interventions bypass the guard, regression `scripts/test-safety-intervention-integrity.ts` 10/10. Closes ALWY-02 fully, ALWY-03 runtime, and **Phase 38 overall**. See `.planning/phases/38-never-stop-never-ask/38-VERIFICATION.md`.
+
+**Phase 38 CLOSED 2026-07-21. Next canonical phase: 39 (Reader Testing Peer Review Mode).**
+
+Mid-milestone infra + marketing changes committed 2026-07-10 (folded into v2.1 per `feedback_no_decimal_hotfixes.md`):
+- 5b9e674 marketing role tactical depth for Wren/Kai/Robin from coreyhaines31/marketingskills (MIT) + 2 eval scripts (eval-marketing-tactical.ts, eval-marketing-ab.ts). A/B validated 7/9 → 9/9 markers (+22pp): Wren gains numeric specificity, Robin prevents schema-confabulation on JS-injected JSON-LD.
+- cdbda8e ProjectTree duplicate undo-toast removed (global undo popup already renders it, post-911bbb2 cleanup).
+- ee7d072 AUTO-ROUTING.md (canonical routing matrix, 452L, referenced by CLAUDE.md §23) + HATCHIN-BRIEF.md (product/brand brief, 537L, dated 2026-06-13).
+- 727d555 eval trendline (5 new runs from 2026-05-04) + Alex Chen persona snapshot refresh.
+- 035325f 8 undo-project bug-hunt screenshots moved to `.evidence/undo-bug/`.
+
+Pending: Phase 38 ✅ CLOSED 2026-07-21. Next: Phases 39 (Reader Testing Peer Review), 40 (promptfoo migration), 41 (Phase Machine + Blueprint), 42 (MVB Gate), 43 (Skip-Maya), 44 (Per-Run Cost Visibility), 45 (Maya 3-Stage Interrogation), 46 (AI Slop Detection), plus the new **v2.1-UX** milestone (look-and-feel, from the 2026-07-20 UX audit, now unblocked). **True next action: merge the audit-remediation branch + `fly deploy` (Phases 35 through 38 all verified), OR start Phase 39.**
+
+**Mid-milestone infrastructure changes** (off-roadmap, no scope creep — tracked as quick tasks per `feedback_no_decimal_hotfixes.md`):
+- **Phase A — DeepSeek migration** (shipped 2026-05-04): DeepSeek V4-Flash inserted as primary LLM provider; Gemini demoted to hot fallback; OpenAI removed from default prod chain (escape hatch only via `LLM_PRIMARY=openai`); cache-friendly prompt restructure (staticPrefix/dynamicSuffix) for 50× cheaper input on cache hit
+- **quick-260601-ojf — Supabase migration** (shipped 2026-06-02): Neon over compute quota → migrated to Supabase Postgres (Singapore region); `server/db.ts` driver swap from `@neondatabase/serverless` to `pg` (node-postgres); Supavisor session-mode pooler; pg-boss + connect-pg-simple unchanged
+- **quick-260427-ojf — DB-CRASH-01 hotfix** (shipped 2026-04-27): uncaughtException/unhandledRejection handlers for Neon idle-in-transaction recovery + traceStore.ts transaction-leak fix (handlers retained post-Supabase as defensive)
 
 **Previous Milestones**:
-- v1.3 — Autonomy Visibility & Right Sidebar Revamp (shipped, 23/23 requirements). Tabbed right sidebar (Activity/Brain & Docs/Approvals), live autonomy feed, handoff visualization, agent working avatar state, approvals hub, task pipeline, project brain file upload, autonomy settings dial, work output viewer.
-- v1.2 — Billing + LLM Intelligence (shipped 2026-03-23). Stripe monetization (Free/Pro tiers, $19/mo), smart LLM routing (Gemini Flash/Pro + Groq free tier), token tracking, usage capping, conversation compaction, reasoning cache, background task batching.
+- v1.3 — Autonomy Visibility & Right Sidebar Revamp (shipped 2026-03-29, 23/23). Tabbed right sidebar, live autonomy feed, handoff visualization, agent working-avatar state, approvals hub, task pipeline, project brain file upload, autonomy settings dial.
+- v1.2 — Billing + LLM Intelligence (shipped 2026-03-23, 16/16). Stripe Free/Pro tiers ($19/mo), smart LLM routing, token tracking, usage capping, conversation compaction, reasoning cache, task batching.
 
-**Current Branch**: `main` (production).
+**Current Branch**: `wip/pre-reset-2026-04-28` (active dev; ahead of `main` by the v2.1 + infra migration commits). v2.1 close-out will merge this back to `main`.
 
 ### v1.1 — Autonomous Execution Loop
 
@@ -183,11 +209,15 @@ Replaced broken task detection with intent-classified pipeline. Zero-LLM pattern
 | Concern | Library | Version | Notes |
 |---------|---------|---------|-------|
 | Server | Express | 4.21.2 | With Helmet security middleware |
-| Database ORM | Drizzle ORM | 0.39.1 | Type-safe, migration-based |
-| Database | PostgreSQL (Neon) | serverless | `@neondatabase/serverless` |
-| LLM Primary | Google Gemini 2.5-Flash | — | `@google/generative-ai` 0.24.1 |
-| LLM Fallback | OpenAI GPT-4o-mini | — | `openai` 5.21.0 |
-| LLM Local | Ollama (llama3.1:8b) | — | Testing only |
+| Database ORM | Drizzle ORM | 0.39.1 | Type-safe, migration-based; uses `drizzle-orm/node-postgres` adapter |
+| Database | PostgreSQL via Supabase | 17.6 | `pg` 8.21 (node-postgres) — was Neon serverless until 2026-06-02 |
+| DB Pooler | Supavisor session mode | — | `aws-1-ap-southeast-1.pooler.supabase.com:5432`; pg-boss requires session mode, never transaction (6543). pg-boss's own pool is hardened in `jobQueue.ts` `buildBossConfig()` with `query_timeout` + keepAlive (2026-07-21, commit `57f2c94`): without `query_timeout` a fetch on a half-open Supavisor socket hangs forever and wedges the worker loop, the intermittent-autonomy bug. A stall watchdog (`startTaskWorkerWatchdog`) force-restarts the worker if it wedges anyway. |
+| LLM Primary | DeepSeek V4-Flash | — | `openai` SDK 5.21.0 with custom `baseURL` (was Gemini 2.5-Flash until Phase A 2026-05-04) |
+| LLM Fallback (hot) | Google Gemini 2.5-Flash/Pro | — | `@google/genai` 1.50.x (migrated from `@google/generative-ai` in Phase 28) |
+| LLM Tier (Pro) | DeepSeek V4-Pro / Gemini 2.5-Pro | — | Premium routing via `resolveModelForTier('premium')` |
+| LLM Free workloads | Groq Llama 3.3-70B | — | `groq-sdk` — simple chat, task extraction, compaction |
+| LLM Local | Ollama (llama3.1:8b) | — | Test only (hard-blocked in providerResolver.ts:62 for prod) |
+| LLM Escape hatch | OpenAI GPT-4o-mini | — | `openai` 5.21.0 — REMOVED from default prod chain in commit `34c8f23`; only used when `LLM_PRIMARY=openai` is explicitly set |
 | AI Orchestration | LangChain + LangGraph | 0.3.74 + 0.4.9 | Multi-agent state machine |
 | Auth | OpenID Connect (Google) | — | `openid-client` 6.6.2 + PKCE |
 | Session | express-session + pg-store | — | PostgreSQL-backed, 7-day TTL |
@@ -338,39 +368,54 @@ hatching-mvp-5th-march/
 
 ### Required (app will crash without these)
 ```bash
-DATABASE_URL=postgresql://user:pass@*.neon.tech/db?sslmode=require
+# Database — Supabase since 2026-06-02 (was Neon). Use Supavisor session-mode (5432), NOT transaction (6543)
+DATABASE_URL=postgresql://postgres.<project-ref>:<password>@aws-1-<region>.pooler.supabase.com:5432/postgres
 SESSION_SECRET=<strong-random-secret-min-32-chars>
-GEMINI_API_KEY=AIzaSy...
+DEEPSEEK_API_KEY=sk-...                 # Primary LLM since Phase A 2026-05-04
+GEMINI_API_KEY=AIzaSy...                # Hot fallback (was primary pre-Phase A)
+GROQ_API_KEY=gsk_...                    # Free-tier workloads (simple chat, task extraction, compaction)
 GOOGLE_CLIENT_ID=681006596933-....apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=GOCSPX-...
 ```
 
 ### Important Optional
 ```bash
-NODE_ENV=development|production          # Affects security settings
-GEMINI_MODEL=gemini-2.5-flash           # Default: gemini-2.5-flash
-OPENAI_API_KEY=sk-...                   # Fallback provider
-OPENAI_MODEL=gpt-4o-mini               # Default: gpt-4o-mini
-LLM_MODE=prod|test                      # Switch provider chain
-TEST_LLM_PROVIDER=openai|ollama|mock   # Used when LLM_MODE=test
+NODE_ENV=development|production          # Affects security settings; gates DEV-only routes
+STORAGE_MODE=db|memory                   # db = Postgres (default), memory = MemStorage; Gemini's 2026-06-02 gate skips DB-only boot steps in memory mode
+LLM_MODE=prod|test                       # Switch provider chain
+LLM_PRIMARY=deepseek|openai|gemini       # Escape hatch override; default unset = deepseek primary per Phase A
+TEST_LLM_PROVIDER=mock|groq|ollama|openai # Used when LLM_MODE=test
 TEST_OLLAMA_BASE_URL=http://localhost:11434
 TEST_OLLAMA_MODEL=llama3.1:8b
+
+# LLM model selection
+DEEPSEEK_MODEL=deepseek-v4-flash         # Default primary model
+DEEPSEEK_PRO_MODEL=deepseek-v4-pro       # Premium routing (PROMO pricing through 2026-05-31; re-evaluate post-promo)
+DEEPSEEK_MIN_MAX_TOKENS=2000             # Floor enforced — V4 emits hidden reasoning tokens BEFORE content; <2000 returns empty (commit 31c0dc5)
+GEMINI_MODEL=gemini-2.5-flash            # Hot fallback default
+GEMINI_PRO_MODEL=gemini-2.5-pro          # Premium fallback for Pro tier
+OPENAI_API_KEY=sk-...                    # Optional escape hatch only — NOT in default prod chain (removed in commit 34c8f23)
+OPENAI_MODEL=gpt-4o-mini                 # Default if LLM_PRIMARY=openai
+
+# OAuth + app routing
 GOOGLE_OAUTH_REDIRECT_URI=http://localhost:5001/api/auth/google/callback
 APP_BASE_URL=http://localhost:5001
 ALLOWED_ORIGIN=http://localhost:5001
-LANGSMITH_API_KEY=ls_...               # Optional LLM tracing
+LANGSMITH_API_KEY=ls_...                 # Optional LLM tracing
 LANGSMITH_PROJECT=hatchin-chat
-STORAGE_MODE=db|memory                 # db = PostgreSQL, memory = MemStorage
 
-# v1.2 Billing & LLM Optimization
-GROQ_API_KEY=gsk_...                   # Free tier at console.groq.com
-GEMINI_PRO_MODEL=gemini-2.5-pro       # Premium model for autonomy (Pro users)
-STRIPE_SECRET_KEY=sk_...               # Stripe billing
-STRIPE_WEBHOOK_SECRET=whsec_...        # Stripe webhook signature
-STRIPE_PRO_MONTHLY_PRICE_ID=price_...  # Stripe price ID
-STRIPE_PRO_ANNUAL_PRICE_ID=price_...   # Stripe annual price ID
-FEATURE_BILLING_GATES=true|false       # Kill switch for tier gating (default: true in prod)
-FEATURE_CONVERSATION_COMPACTION=false  # Context compaction (default: off)
+# Billing (Stripe) — v1.2
+STRIPE_SECRET_KEY=sk_...                 # Stripe billing
+STRIPE_WEBHOOK_SECRET=whsec_...          # Stripe webhook signature
+STRIPE_PRO_MONTHLY_PRICE_ID=price_...    # Stripe price ID
+STRIPE_PRO_ANNUAL_PRICE_ID=price_...     # Stripe annual price ID
+FEATURE_BILLING_GATES=true|false         # Kill switch for tier gating (default: true in prod)
+FEATURE_CONVERSATION_COMPACTION=false    # Context compaction (default: off)
+
+# Autonomy (v3.0 + v2.1 — solo-dev safety)
+BACKGROUND_AUTONOMY_ENABLED=true|false   # pg-boss task worker (default: off in dev; gated on STORAGE_MODE=db)
+DAILY_COST_CAP_CENTS_DEV=500             # Per-day LLM spend cap for solo-dev safety (Phase A)
+DEV_COST_CAP_ENABLED=true|false          # Activate dev cap
 ```
 
 > **RULE**: Never hardcode secrets. Never commit `.env`. Always read from `process.env`.
@@ -567,19 +612,29 @@ Client connects to: ws://host/ws  (upgraded from HTTP)
 
 ### LLM Provider Chain
 ```
-Production (v1.2 — shipped, final routing):
-  Simple messages         → Groq llama-3.3-70b (FREE) → [fallback] → Gemini Pro
-  Standard/Complex chat   → Gemini 2.5-Pro (all users, same quality)
-  Task extraction         → Groq llama-3.3-70b (FREE) → [fallback] → Gemini Pro
+Production (Phase A — DeepSeek migration shipped 2026-05-04):
+  Standard/Complex chat   → DeepSeek V4-Flash → [hot fallback] → Gemini 2.5-Flash
+  Simple messages         → Groq llama-3.3-70b (FREE) → [fallback] → DeepSeek V4-Flash → Gemini 2.5-Flash
+  Task extraction         → Groq llama-3.3-70b (FREE) → [fallback] → DeepSeek V4-Flash
   Conversation compaction → Groq (FREE)
-  Autonomy tasks          → Gemini 2.5-Pro (Pro users only)
+  Autonomy / Pro tier     → DeepSeek V4-Pro → [fallback] → Gemini 2.5-Pro (resolveModelForTier('premium'))
+
+  Removed from default chain (commit 34c8f23): OpenAI — escape hatch only via LLM_PRIMARY=openai
+  Reasoning-token floor (commit 31c0dc5): DEEPSEEK_MIN_MAX_TOKENS=2000 — V4 emits hidden reasoning before content
+  Cross-provider model fallback (commit ee57ce0): applyModelDefaults() rewrites model name when falling
+    across provider boundaries (e.g. deepseek-v4-pro → gemini-2.5-pro)
+  Cache-friendly prompts: staticPrefix (cacheable role identity + 14 response rules) + dynamicSuffix
+    (per-turn data) for DeepSeek's 50× cheaper cache-hit input pricing
 
 Test Mode (LLM_MODE=test):
+  TEST_LLM_PROVIDER=groq    → Groq llama-3.3-70b
   TEST_LLM_PROVIDER=openai  → GPT-4o-mini
-  TEST_LLM_PROVIDER=ollama  → Ollama llama3.1:8b
+  TEST_LLM_PROVIDER=ollama  → Ollama llama3.1:8b (loop-back, no real API cost)
   TEST_LLM_PROVIDER=mock    → Mock (deterministic, zero-cost)
   default                   → Mock
 ```
+
+**Eval gate status (Phase A acceptance):** smoke:deepseek 6/6 · test:tone PASS · test:voice 8/8 · test:pushback 46/46 · test:reasoning 240/240 · eval:routing 93.33% · eval:bench 29.00/35 vs Groq baseline 26.83 (+8.1%) · gate:safety PASS · gate:conductor 10/10 improved-or-equal, 0 regressions · gate:performance pending live traffic.
 
 ### Core AI Flow (Per Message)
 ```
@@ -611,9 +666,17 @@ Two-file architecture designed for 200+ roles:
 
 Adding role #31+ requires only adding entries to these two arrays — no other code changes.
 
-**LLM prompt injection** (in `openaiService.ts`): Two sections injected after CHARACTER VOICE:
-- `PROFESSIONAL DEPTH` — domain depth, critical thinking, pushback style, collaboration style
-- `DOMAIN INTELLIGENCE` — reasoning pattern, output standards
+**LLM prompt injection** (in `openaiService.ts` at line 214): single merged `ROLE EXPERTISE` section injected after CHARACTER VOICE. Combines six fields into one block:
+- `Domain:` ← roleProfile.domainDepth
+- `Reasoning:` ← roleIntelligence.reasoningPattern
+- `Output standard:` ← roleIntelligence.outputStandards
+- `Critical thinking:` ← roleProfile.criticalThinking
+- `Pushback:` ← characterProfile.negativeHandling
+- `Collaboration:` ← characterProfile.collaborationStyle
+
+The older `PROFESSIONAL DEPTH` + `DOMAIN INTELLIGENCE` two-section layout (pre-Phase A) was merged to reduce prompt overhead. `peerReviewLens` and `handoffProtocol` are NOT chat-injected — they're consumed by `peerReviewRunner.ts` and `handoffOrchestrator.ts` downstream.
+
+**Marketing role tactical depth** (Wren, Kai, Robin — updated 2026-06-09): `reasoningPattern` / `outputStandards` / `peerReviewLens` for these three roles were enriched with frameworks adapted from [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) (MIT, © 2025 Corey Haines). Append-only edit — original frameworks preserved; tactical layer (banned-word lists, CRO impact ordering, audit attack order, schema-detection caveats, hreflang reciprocity) added. Other 27 roles untouched.
 
 **30 roles (character names):**
 Product Manager (Alex), Business Analyst (Morgan), Backend Developer (Dev), Software Engineer (Coda), Technical Lead (Jordan), AI Developer (Nyx), DevOps Engineer (Remy), Product Designer (Cleo), UX Designer (Lumi), UI Engineer (Finn), UI Designer (Arlo), Designer (Roux), Creative Director (Zara), Brand Strategist (Cass), QA Lead (Sam), Content Writer (Mira), Copywriter (Wren), Growth Marketer (Kai), Marketing Specialist (Nova), Social Media Manager (Pixel), SEO Specialist (Robin), Email Specialist (Drew), Data Analyst (Rio), Data Scientist (Sage), Operations Manager (Quinn), Business Strategist (Blake), HR Specialist (Taylor), Instructional Designer (Lee), Audio Editor (Vince), Maya (Idea Partner)
@@ -1200,5 +1263,105 @@ class HatchinGraphError extends Error {
 
 ---
 
-*Last updated: 2026-04-01 | Branch: main | v2.0 shipped | v1.3 shipped | Smart Task Detection complete | Author: Claude Code*
-*This file should be updated whenever a significant architectural change is made.*
+## 23. AUTO-ROUTING DIRECTIVE (always on, approval-first)
+
+> **Principle**: When the user texts a freeform request — an idea, a bug, a feature, a question, or a note — DO NOT ask which slash command to use and DO NOT enumerate the GSD menu. Detect intent, **propose** the right Skill via an `AskUserQuestion` popup, and invoke **only after explicit approval**. NEVER fire any skill on your own. The user wants the Hatchin/Maya UX with a brake pedal: clear proposal, single-click approval, always in control.
+>
+> Full matrix lives in [AUTO-ROUTING.md](./AUTO-ROUTING.md) at project root. The fast-path below covers ~80% of cases. For edge cases, collisions, chained intents, Hatchin-specific overrides, or new skills — defer to AUTO-ROUTING.md.
+
+### Approval protocol (every routing decision requires approval — no auto-fire)
+
+For every freeform user message that implies action, fire an `AskUserQuestion` popup BEFORE invoking any skill. Format:
+
+**Question**: "Proposed: `<skill>` — approve?"
+**Header**: short skill name (≤12 chars)
+**Body must include**:
+- Skill name
+- Detected intent
+- Why (one-clause reason)
+- Confidence (HIGH | MED | LOW + 0.xx score)
+- What will happen if approved (one line)
+- For chains: full chain (`A → B → C`) — one approval covers ALL stages
+- For extra-warning skills: cost/scope/irreversibility note
+
+**Options (max 4)**:
+1. **Approve** (Recommended for HIGH confidence) — proceed with proposed skill
+2. **Different skill** — user describes alternative or picks runner-up
+3. **Just answer, no skill** — chat-only response, skip routing
+4. **Cancel** — drop the action
+
+**After approval**, narrate progress:
+```
+[<skill>] <current step>
+```
+
+**After completion**:
+```
+✓ <skill> done: <one-line outcome>  ·  Next: <suggested next step>
+```
+
+**Chain rules**: one approval covers the entire chain. Narrate transitions between stages (`→ Continuing: <next-skill>`). User can abort anytime by typing `stop` / `pause` / `wait` — route to `gsd-pause-work`.
+
+### Confidence thresholds (affect popup CONTENT, not WHETHER to ask)
+
+All routes ask via popup. Confidence shapes the body:
+
+- **HIGH (≥0.8)** — single proposed skill, "Approve" pre-marked Recommended
+- **MED (0.5–0.8)** — single proposed skill + runner-up listed in body, user can pick via "Different skill"
+- **LOW (<0.5)** — top 2 candidates both surfaced as options (Approve = top-1, Different skill = top-2 named)
+- **No match** — propose `gsd-do` (built-in router) as the fallback
+
+Confidence bumps (+): verbatim skill name (+0.5), strong intent verb (+0.3), Hatchin domain noun (+0.2), file path / URL match (+0.4), prior-turn continuation (inherit), project state implies it like `PLAN.md` exists → execute-ready (+0.2).
+
+### Top-15 fast-path (covers ~80% of cases)
+
+| You say... | Propose |
+|---|---|
+| "fix bug X" / "Y is broken" / "why isn't Z working?" | `gsd-debug` |
+| "trivial — fix this typo" / "one-liner" | `gsd-fast` |
+| "quick task: X" / "small fix" / "while we're here..." | `gsd-quick` |
+| "let's explore X" / "what if..." / "I have an idea" | `gsd-explore` |
+| "let's add phase X" / new scope work | `gsd-add-phase` → `gsd-discuss-phase` |
+| "plan phase X" / "make PLAN.md" | `gsd-plan-phase` |
+| "execute phase X" / "run the plan" | `gsd-execute-phase` |
+| "verify it works" / "validate" | `gsd-verify-work` |
+| "ship it" / "open PR" / "merge ready" | `gsd-ship` |
+| "where are we?" / "project state" | `gsd-progress` |
+| "what's next?" | `gsd-next` |
+| "note: X" / random thought | `gsd-note` |
+| "park this for later" / "backlog this" | `gsd-add-backlog` |
+| "review my changes" / "review the diff" | `gsd-code-review` |
+| "review the UI" / "audit the design" | `gsd-ui-review` |
+
+### Always-manual (refuse to propose — user must invoke explicitly)
+
+- **Destructive**: `gsd-undo`, `gsd-remove-phase`, `gsd-remove-workspace`, `gsd-cleanup`, `gsd-from-gsd2`, `gsd-reapply-patches`
+- **Settings / install**: `gsd-set-profile`, `gsd-settings*`, `gsd-update`, `gsd-sync-skills`, `init`, `update-config`, `fewer-permission-prompts`, `keybindings-help`
+- **Paid services**: `gsd-ultraplan-phase`
+
+For these, do NOT show a routing popup. Tell the user the skill is on the always-manual list and ask them to invoke it explicitly via slash command.
+
+### Extra-warning routes (popup body MUST flag the risk before approval)
+
+`gsd-autonomous` · `gsd-new-milestone` · `gsd-complete-milestone` · `gsd-new-project` · `gsd-new-workspace` · `loop` · `schedule`
+
+For these, the popup body must include estimated cost / scope / irreversibility — make sure the user sees the risk before clicking Approve.
+
+### Hatchin-specific overrides (layered on top of the matrix)
+
+These come from durable user preferences in `~/.claude/projects/.../memory/`:
+
+- **No mid-milestone decimal hotfixes** (`feedback_no_decimal_hotfixes.md`) — block auto-routing to `gsd-insert-phase`; redirect to `gsd-add-backlog` with "Accumulated Upgrades" tag and narrate the redirect
+- **Verify in runtime** (`feedback_verify_in_runtime.md`) — after any "fix shipped" / `gsd-execute-phase` claim, auto-chain `playwright-tester` or `verify` against the live restarted server before reporting done
+- **UI change approval** (`feedback_ui_change_protocol.md`) — before any skill that edits `client/src/`, narrate `→ UI change detected. Showing current state via Playwright before edit.` and wait for explicit approval (server-side changes skip this gate)
+- **Self-documenting UI** (`feedback_ui_self_documenting.md`) — when invoking `gsd-ui-phase` or `gsd-ui-review`, inject self-documenting rules into the spec/audit criteria
+- **Always update CLAUDE.md** — when architecture, conventions, or system surface changes, refresh this file (and bump the "Last updated" footer line)
+
+### Reference
+
+See [AUTO-ROUTING.md](./AUTO-ROUTING.md) for: confidence-math details, full skill inventory (~111 usable), all chains, collision tiebreakers, concept-skill loading rules, and the update procedure for adding new skills to the matrix.
+
+---
+
+*Last updated: 2026-07-21 (Wave 8) | Branch: fix/audit-remediation-2026-07-17 (audit remediation, off wip/pre-reset-2026-04-28) | v2.1 in progress: Phase 35/36/36.5/37 shipped + Phase 38 Plans 01/02/03/04 all shipped 2026-06-21 through 2026-07-10 (Plan 38-05 human vibe-check + 38-VERIFICATION.md remaining before phase closes). ALWY-01/03/04/05/06 all ✅ SHIPPED, ALWY-02 ⚠ PARTIAL (final closure via 38-05). Progress 23/24 plans (96%). | Phase A DeepSeek migration shipped 2026-05-04 | Supabase migration shipped 2026-06-02 | Phase 35+36 Playwright 12/12 PASS on Supabase | Section 23 (Auto-Routing, approval-first) added 2026-06-04, every skill requires popup approval before firing, see AUTO-ROUTING.md | 2026-06-09: marketing role tactical depth (Wren/Kai/Robin) enriched from coreyhaines31/marketingskills (MIT), committed 2026-07-10 as 5b9e674; injection note: old PROFESSIONAL DEPTH+DOMAIN INTELLIGENCE pair merged into single ROLE EXPERTISE section | 2026-07-06: HANDOFF.md added at repo root, read that first for session-continuity | 2026-07-10 session: shipped Plan 38-02 (safety scorer destructive-intent, ALWY-04, commits 673c158+a4e8942), Plan 38-03 (Maya voice snap at level-4, ALWY-05, commit 748ae66, also fixed buildProviderOrder capture branch residual from Plan 38-01), Plan 38-04 (universal AGENT_CAPABILITY_ENVELOPE, ALWY-06, commit a017055). Marketing enrichment eval A/B validated 7/9 → 9/9 markers (+22pp) with Robin schema-confabulation prevention landing textbook. Fly.io cost model: min=0 pre-public ~$0-3/mo ₹0-258, min=1 post-launch ~$6.48/mo ₹557. Ambient constellation rule broadened 2026-07-10: CLAUDE.md AND HANDOFF.md AND STATE.md AND REQUIREMENTS.md AND ROADMAP.md updated atomically per change. | 2026-07-18 Audit Remediation (2026-07-17 live audit): v2.1 feature work paused; 10 commits on fix/audit-remediation-2026-07-17 fixed the core-value blocks in strict dependency order (pg-boss createQueue #95 revives ALL background autonomy; multi-agent empty-save #74; project-scope @mention #97; brain grounding + auto-fill #79/#105; activity metadata/default-filter/phantom-leak #102/#110/#80/#165; polish #43/#153/#149/#130/#114/#96/#160/#65/#136). Each runtime-verified (real browser for UI via tests/e2e/public-audit-ui.spec.ts, live server for backend). Deferred to Phase 47: #37/#60/#87/#88/#126/#161/#94/#139/#112. Phase 47 backlog #9 resolved. Note #104/#105 were deferred to Phase 42, NOT fixed, despite commit b7e5292's message claiming them. | 2026-07-20 Wave 6 (remediation reopened): right-sidebar pass found 3 never-tracked audit findings (#83 stats counters counted event names nothing emits; #108 Tree empty because no code path ever finalized a run, fixed by new completeRun() in runTreeWriter.ts; #109 category map duplicated server/client and drifted, collapsed into shared/activityLabels.ts) plus a bug absent from the audit: useAutonomyFeed.ts hardcoded the Activity time window to 'today' with no setter, emptying every project's panel at midnight. Commits cdbdd9b, ccfa905, f2b6885, all browser-verified. Close-out: 1a3b979 (deleted orphaned ApprovalsEmptyState), dadb686 (Work Outputs recorded neither executing agent nor produced output, so it showed "Hatch" over the task description; new markTaskCompleted helper covers all 3 completion paths, 6 of 8 historical rows recovered by joining messages on metadata.taskId), c549f9c (handoff chain PROVEN end to end via seeded dependsOn pair, live worker executed it, receiving agent produced 688 chars from the upstream scope; exposed 2 label bugs: the label read flat toAgentName while handoff_initiated nests toAgent.name so every real handoff rendered anonymously, and self-handoffs claimed a handoff that never happened). All Wave 6 re-verified live on restarted server (Alex→Rex handoff, browser labels correct). Decisions: 2026-07-20 UX audit → new v2.1-UX milestone (starts after Phase 38); Rex-vs-Remy chat/feed name mismatch → Phase 47 backlog #18. | 2026-07-21 Phase 38 CLOSED via Plan 38-05 vibe-check on DeepSeek (user-delegated); caught + fixed pre-existing safety-message truncation (e61be9b: safety interventions bypass the tone guard, whose adaptLength was cutting the 3 clarification questions to "...clarify these points:\n1." on short destructive commands; regression test-safety-intervention-integrity.ts 10/10). ALWY-01..06 all ✅. | 2026-07-21 Wave 7: user's independent 3-persona re-audit (.audit-reaudit-2026-07-20/) confirmed 14/15 remediation fixes live and found the intermittent-autonomy bug: pg-boss's fetch loop hangs forever on a half-open Supabase socket (no query_timeout) and wedges, so jobs enqueue but stay 'created' on a long-running instance until restart. Fixed 57f2c94: hardened pg-boss pool (query_timeout + keepAlive) + stall watchdog. Verified live (drained the real 20h-stuck job + fresh run 27s). Known-partial remaining per re-audit triage: #104 KB list (Phase 42). | 2026-07-21 Wave 8: focused Activity-feed audit fixed with verify-then-fix discipline: approval cards leaked raw safety codes (finishing #43 on the 2 surfaces the original missed, shared humanizeRiskReasons in shared/riskReasons.ts, b51f81b); feed visual coherence via /ui-genius (every row gets a face, small for the quiet review tier, "?" bubble → neutral system mark, 571145b); approval events now durable (approval_required/granted/rejected logged at gate + endpoints so the Approvals filter populates, aeba012); handoff respects explicit assignee (Coda→Coda self-handoff → assignee wins, aeba012). All verified live. Note #44 capability wording was closed as part of the humanizer/approval work. Next: merge + fly deploy (all audit blockers fixed) or Phase 39. Full record: .audit-2026-07-17/REMEDIATION-LOG.md. | Author: Claude Code*
+*This file should be updated whenever a significant architectural change is made. Status-doc constellation (this file, HANDOFF.md, HATCHIN-COMPLETE-GUIDE.md at repo root, .planning/STATE.md, .planning/REQUIREMENTS.md, .planning/ROADMAP.md) must stay in sync per feedback_always_update_claudemd.md. HATCHIN-COMPLETE-GUIDE.md is the product/feature catalog: every feature, every agent, how they police each other via peer review, how they grow and learn from each other over time. For session-by-session progress and daily-log style continuity, see HANDOFF.md.*

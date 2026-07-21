@@ -195,9 +195,19 @@ function pickClosing(state: UserSignals['emotionalState']): string {
   return bank[Math.floor(Math.random() * bank.length)];
 }
 
-function applyAdaptiveClosing(input: string, state: UserSignals['emotionalState']): string {
+function applyAdaptiveClosing(
+  input: string,
+  state: UserSignals['emotionalState'],
+  autonomyLevel?: string,
+): string {
   // Remove the forced next step if present
   let output = input.replace(FORCED_NEXT_STEP_REGEX, '').trim();
+
+  // Phase 38 Site 3 — autonomous mode suppresses soft-closing questions
+  // ("Never Stop, Never Ask" — the whole point is to commit, not invite more questions)
+  if (autonomyLevel === 'autonomous') {
+    return output;
+  }
 
   // Only add a closing if the response doesn't already end with a question
   const alreadyHasQuestion = /\?\s*$/.test(output);
@@ -225,7 +235,8 @@ function keepSingleQuestion(input: string): string {
 // ─── Primary export: Full Human Layer ────────────────────────────────────────
 export function applyTeammateToneGuard(
   input: string,
-  userMessage?: string
+  userMessage?: string,
+  autonomyLevel?: string,
 ): ToneGuardResult {
   let output = input || '';
   const reasons: string[] = [];
@@ -268,7 +279,8 @@ export function applyTeammateToneGuard(
   }
 
   // 5. Apply human closing (replaces forced next-step ending)
-  const withClosing = applyAdaptiveClosing(output, emotionalState);
+  //    Phase 38 Site 3 — autonomyLevel gate suppresses the closing question in autonomous mode
+  const withClosing = applyAdaptiveClosing(output, emotionalState, autonomyLevel);
   if (withClosing !== output) {
     output = withClosing;
     reasons.push('applied_human_closing');

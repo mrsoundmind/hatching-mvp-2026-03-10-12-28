@@ -13,6 +13,11 @@ import {
   forceDegradedBroadcast,
   __resetCountersOnly,
 } from '../llm/providerHealthState.js';
+import {
+  __setForcedScoreForTests,
+  __clearForcedScoreForTests,
+  type RubricScoreResult,
+} from '../ai/rubricScorer.js';
 
 interface RegisterHealthDeps {
   getWsHealth: () => {
@@ -161,5 +166,71 @@ export function registerHealthRoute(app: Express, deps: RegisterHealthDeps): voi
       `[DEV] /api/dev/reset-provider-state called — NODE_ENV=${process.env.NODE_ENV}`,
     );
     return res.json({ ok: true });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Phase 36 — DEV-only deterministic judge override for Playwright case 3
+  // (adversarial iterate). Mirrors the 35-05 force-outage pattern.
+  //
+  // Defence in depth (T-36-13): handler returns 404 in production AND the
+  // underlying __setForcedScoreForTests in rubricScorer.ts throws FATAL in
+  // production. Endpoints appear absent in prod and are indistinguishable
+  // from non-existent paths.
+  // ---------------------------------------------------------------------------
+
+  const breakdownEntrySchema = z.object({
+    criterion: z.string().min(1).max(100),
+    score: z.number().min(0).max(10),
+    justification: z.string().min(1).max(500),
+  }).strict();
+  const forceJudgeScoreBodySchema = z.object({
+    recommendation: z.enum(['keep_new', 'revert']),
+    oldTotal: z.number().min(0).max(10).optional(),
+    newTotal: z.number().min(0).max(10).optional(),
+    // Phase 36-04: optional populated breakdown so the Playwright spec can
+    // verify per-criterion rows render in RubricBreakdown. Server-side
+    // recompute (T-36-11) still applies to recommendation if these are
+    // supplied via the natural (non-forced) judge path — but for the forced
+    // path scoreIteration short-circuits and returns this verbatim, so what
+    // we send here lands in deliverable_versions.rubricScore.breakdown.
+    oldBreakdown: z.array(breakdownEntrySchema).max(10).optional(),
+    newBreakdown: z.array(breakdownEntrySchema).max(10).optional(),
+    clear: z.boolean().optional(),
+  }).strict();
+
+  app.post('/api/dev/force-judge-score', (req: Request, res: Response) => {
+    if (process.env.NODE_ENV === 'production') return res.status(404).send();
+    const parsed = forceJudgeScoreBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'invalid body', details: parsed.error.flatten() });
+    }
+    if (parsed.data.clear) {
+      __clearForcedScoreForTests();
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[DEV] /api/dev/force-judge-score CLEARED — NODE_ENV=${process.env.NODE_ENV}`,
+      );
+      return res.json({ ok: true, mode: 'cleared' });
+    }
+    // Sensible defaults: if caller omits totals, pick values that match the
+    // requested recommendation (revert -> new<old; keep_new -> new>=old) so
+    // the response is internally consistent even though scoreIteration's
+    // forced-path short-circuits before the recompute step.
+    const oldTotal = parsed.data.oldTotal ?? (parsed.data.recommendation === 'revert' ? 8 : 5);
+    const newTotal = parsed.data.newTotal ?? (parsed.data.recommendation === 'revert' ? 5 : 7);
+    const synthetic: RubricScoreResult = {
+      // rubricVersion is overwritten by scoreIteration with the actual registry
+      // value (T-36-12 defence); '1.0.0' is just a placeholder.
+      rubricVersion: '1.0.0',
+      oldScore: { total: oldTotal, breakdown: parsed.data.oldBreakdown ?? [] },
+      newScore: { total: newTotal, breakdown: parsed.data.newBreakdown ?? [] },
+      recommendation: parsed.data.recommendation,
+    };
+    __setForcedScoreForTests(synthetic);
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[DEV] /api/dev/force-judge-score called — recommendation=${parsed.data.recommendation} old=${oldTotal} new=${newTotal} NODE_ENV=${process.env.NODE_ENV}`,
+    );
+    return res.json({ ok: true, mode: 'forced', recommendation: parsed.data.recommendation });
   });
 }

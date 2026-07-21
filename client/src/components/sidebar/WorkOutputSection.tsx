@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import type { Task } from '@shared/schema';
+import AgentAvatar from '@/components/avatars/AgentAvatar';
 
 interface WorkOutputSectionProps {
   projectId: string;
@@ -22,8 +23,11 @@ export function WorkOutputSection({ projectId }: WorkOutputSectionProps) {
 
   const { data: tasks } = useQuery<Task[]>({
     queryKey: ['/api/tasks', `?projectId=${projectId}`],
-    queryFn: () =>
-      fetch(`/api/tasks?projectId=${projectId}`).then(r => r.json()),
+    queryFn: async () => {
+      const r = await fetch(`/api/tasks?projectId=${projectId}`);
+      if (!r.ok) return []; // see TasksTab — shared queryKey must always cache Task[]
+      return r.json();
+    },
     enabled: !!projectId,
     staleTime: 15_000,
   });
@@ -56,7 +60,12 @@ export function WorkOutputSection({ projectId }: WorkOutputSectionProps) {
             (meta?.output as string | undefined) ??
             task.description ??
             '';
-          const agentName = task.assignee ?? 'Hatch';
+          // The executing agent is recorded on completion (completedByAgentName). `assignee` only
+          // holds a name when a human assigned the task, so it is the fallback, not the source.
+          // No "Hatch" placeholder: an anonymous row is worse than no name, because "Hatch" reads
+          // like a real teammate and hides which one actually did the work.
+          const agentName =
+            (meta?.completedByAgentName as string | undefined) ?? task.assignee ?? null;
 
           return (
             <Collapsible key={task.id} open={isOpen} onOpenChange={() => handleToggle(task.id)}>
@@ -64,18 +73,33 @@ export function WorkOutputSection({ projectId }: WorkOutputSectionProps) {
                 <CollapsibleTrigger asChild>
                   <button
                     type="button"
-                    className="w-full flex items-center gap-2 px-3 py-3 min-h-[44px] lg:min-h-auto text-left hover:bg-[var(--hatchin-surface-elevated)] transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-3 min-h-[44px] lg:min-h-0 text-left hover:bg-[var(--hatchin-surface-elevated)] transition-colors"
                   >
-                    {/* Agent avatar */}
-                    <div className="w-6 h-6 rounded-full bg-[var(--hatchin-blue)] flex items-center justify-center text-[10px] font-semibold text-white shrink-0">
-                      {agentName.charAt(0).toUpperCase()}
+                    {/* Same DiceBear avatar the chat and activity feed use, so a completed output is
+                        recognizably the same teammate across all three surfaces. When the agent is
+                        genuinely unknown (rows completed before the executing agent was recorded),
+                        show a completed-work checkmark rather than a "?" bubble: a question mark
+                        reads as a broken avatar, while the checkmark says what the row actually is. */}
+                    <div className="shrink-0">
+                      {agentName ? (
+                        <AgentAvatar agentName={agentName} size={24} />
+                      ) : (
+                        <div
+                          className="w-6 h-6 rounded-full flex items-center justify-center bg-[var(--hatchin-surface-elevated)]"
+                          title="Completed work"
+                        >
+                          <Check className="w-3 h-3 text-[var(--hatchin-text-muted)]" />
+                        </div>
+                      )}
                     </div>
 
                     {/* Title */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-[12px] text-[var(--hatchin-text)] truncate">
-                        <span className="font-medium">{agentName}</span>
-                        {task.title ? ` — ${task.title}` : ''}
+                      {/* Wraps to two lines rather than truncating: a work output cut off mid-phrase
+                          ("Alex · Draft the onboarding…") hides the one thing the row is for. */}
+                      <p className="text-[12px] text-[var(--hatchin-text)] leading-snug line-clamp-2">
+                        {agentName && <span className="font-medium">{agentName} · </span>}
+                        {task.title}
                       </p>
                       <p className="text-[11px] text-[var(--hatchin-text-muted)]">
                         {formatTimestamp(task.updatedAt ?? task.createdAt)}

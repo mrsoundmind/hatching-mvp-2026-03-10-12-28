@@ -64,6 +64,12 @@ function HomeInner() {
 
   // Artifact panel state (v2.0)
   const [activeDeliverableId, setActiveDeliverableId] = useState<string | null>(null);
+  // Phase 37 (TREE-04) — when the open_deliverable CustomEvent carries a
+  // versionNumber (e.g., from RunTreeView's step click), capture it so
+  // ArtifactPanel can auto-navigate via its pendingVersionNumber prop.
+  // undefined means "no target version" → panel opens to most-recent (backward
+  // compat for Phase 36 callers that don't carry versionNumber).
+  const [pendingVersionNumber, setPendingVersionNumber] = useState<number | undefined>(undefined);
 
   // Mobile drawer state
   const [mobileLeftOpen, setMobileLeftOpen] = useState(false);
@@ -321,9 +327,13 @@ function HomeInner() {
         // Auto-expand the new project and close others
         setExpandedProjects(new Set([newProject.id]));
 
-        // Optimistically update the projects cache so the UI updates immediately
+        // Optimistically update the projects cache so the UI updates immediately.
+        // Dedupe by id — defensive against undo-restore double-insert and any race
+        // where the parallel invalidate-refetch also adds the same project.
         queryClient.setQueryData(["/api/projects"], (oldData: any) => {
-          return oldData ? [...oldData, newProject] : [newProject];
+          if (!Array.isArray(oldData)) return [newProject];
+          const filtered = oldData.filter((p: any) => p?.id !== newProject.id);
+          return [...filtered, newProject];
         });
 
         // Trigger data refresh just in case
@@ -391,6 +401,16 @@ function HomeInner() {
         queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
 
         return newProject;
+      } else if (response.status === 403) {
+        // #160: the idea-path creation previously swallowed the project-cap 403 into a generic error
+        // toast, so the paywall never appeared. Mirror handleCreateProject: show the UpgradeModal.
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData.code === 'PROJECT_LIMIT_REACHED') {
+          setUpgradeReason('project_limit');
+          setShowUpgradeModal(true);
+        } else {
+          toast({ title: 'Error', description: errorData.error || 'Not allowed', variant: 'destructive' });
+        }
       } else {
         console.error('Failed to create idea project');
         toast({ title: 'Error', description: 'Failed to create project. Please try again.', variant: 'destructive' });
@@ -613,16 +633,17 @@ function HomeInner() {
     }
   };
 
-  // Team creation handler
-  const handleCreateTeam = async (name: string, projectId: string) => {
+  // Team creation handler — emoji optional (defaults to 🚀 server-side default if absent;
+  // explicit value required by undo-restore path to preserve original team emoji).
+  const handleCreateTeam = async (name: string, projectId: string, emoji: string = '🚀') => {
     try {
-      devLog('Creating team with data:', { name, projectId });
+      devLog('Creating team with data:', { name, projectId, emoji });
       const response = await fetch('/api/teams', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name, projectId }),
+        body: JSON.stringify({ name, projectId, emoji }),
       });
 
       if (response.ok) {
@@ -853,12 +874,20 @@ function HomeInner() {
     return () => document.removeEventListener('keydown', handleKeydown);
   }, []);
 
-  // Listen for deliverable open events (v2.0)
+  // Listen for deliverable open events (v2.0 + Phase 37 versionNumber extension)
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.deliverableId) {
         setActiveDeliverableId(detail.deliverableId);
+        // Phase 37 (TREE-04) — capture optional versionNumber for ArtifactPanel
+        // auto-navigate. Clear (undefined) when not present so a subsequent
+        // event on a different deliverable doesn't carry stale state.
+        if (typeof detail.versionNumber === 'number') {
+          setPendingVersionNumber(detail.versionNumber);
+        } else {
+          setPendingVersionNumber(undefined);
+        }
       }
     };
     window.addEventListener('open_deliverable', handler);
@@ -1016,7 +1045,11 @@ function HomeInner() {
           {activeDeliverableId && (
             <ArtifactPanel
               deliverableId={activeDeliverableId}
-              onClose={() => setActiveDeliverableId(null)}
+              pendingVersionNumber={pendingVersionNumber}
+              onClose={() => {
+                setActiveDeliverableId(null);
+                setPendingVersionNumber(undefined);
+              }}
             />
           )}
         </AnimatePresence>
