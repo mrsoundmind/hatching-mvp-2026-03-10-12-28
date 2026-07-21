@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { humanizeRiskReasons } from '@shared/riskReasons';
 
 export interface AutonomousApprovalCardProps {
   taskId: string;
@@ -35,9 +36,11 @@ export function AutonomousApprovalCard({
           <p className="text-sm font-semibold text-[var(--hatchin-text-bright)]">
             {agentName} needs your approval
           </p>
-          {riskReasons.length > 0 && (
+          {/* Plain-language reasons only. The raw safety codes are telemetry (#43); a humanizer maps
+              them and drops anything unrecognized so a new code can never leak here. */}
+          {humanizeRiskReasons(riskReasons).length > 0 && (
             <p className="mt-1 text-xs text-muted-foreground">
-              {riskReasons.join(' . ')}
+              {humanizeRiskReasons(riskReasons).join(' · ')}
             </p>
           )}
 
