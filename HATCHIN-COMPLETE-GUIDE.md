@@ -1,6 +1,6 @@
 # Hatchin, Complete Product & System Documentation
 
-> **Last updated**: 2026-07-10 | **Branch**: `wip/pre-reset-2026-04-28` | **Version**: v2.0 shipped, v2.1 Phase 38 code-complete (Plan 05 vibe-check pending)
+> **Last updated**: 2026-07-21 | **Branch**: `fix/audit-remediation-2026-07-17` | **Version**: v2.0 shipped, v2.1 Phase 38 ✅ CLOSED 2026-07-21 (all 5 plans, ALWY-01..06 verified on the DeepSeek production chain). 2026-07-17 audit remediation Waves 1-6 complete on this branch. Next canonical phase: 39.
 
 This is the single-source-of-truth guide for everything Hatchin does: every feature, how it works, what outcome it produces; every one of the 30 agents; the knowledge system; how agents police each other via peer review; how they grow, learn, and improve from each other over time.
 
@@ -492,7 +492,12 @@ Each template ships with 3 pre-drafted deliverable packages (v2.0): launch, cont
    - executionRisk (destructive verbs + bulk/data scope multipliers,
      evasion patterns, prompt injection, RISKY_EXECUTION substring hits)
 7. Risk routing:
-   - >= 0.70: block, request clarification, fire safety_intervention WS event
+   - >= 0.70: block, fire safety_intervention WS event, and deliver a fixed
+     three-question clarification message (`buildClarificationIntervention`).
+     That message deliberately BYPASSES the conversational tone guard: the guard
+     trims short-user-message replies to two sentences, and destructive commands
+     are short, so before the 2026-07-21 fix (`e61be9b`) the three questions were
+     cut to "...clarify these points:\n1." and never reached the user.
    - 0.35 to 0.69: peer review required
    - < 0.35: auto-complete
 8. Assemble prompt: staticPrefix (cacheable identity + capability envelope) +

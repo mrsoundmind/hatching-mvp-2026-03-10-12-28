@@ -2,9 +2,9 @@
 
 > **Read this first if you're an AI (Claude Code, Cursor, Windsurf, Copilot, etc.) or a human picking up on Hatchin.** This file tells you what happened, where we are, and what to do next. Session-continuity log — updated at session boundaries.
 
-**Last refreshed:** 2026-07-20
+**Last refreshed:** 2026-07-21
 **Current branch:** `fix/audit-remediation-2026-07-17` (off `wip/pre-reset-2026-04-28`; rollback point `3429a29`)
-**Latest commit:** `f2b6885 fix(activity): describe what agents did, and cut the panel down to one control row`
+**Latest commit:** `e61be9b fix(safety): stop the tone guard from deleting the safety questions`
 
 ---
 
@@ -24,17 +24,21 @@ Close-out added three more: `1a3b979` deleted the orphaned `ApprovalsEmptyState`
 - The `.audit-ux-2026-07-20/` UX audit becomes its own properly planned milestone, **v2.1-UX Look, Feel and First Impression**, starting after Phase 38 closes. Nothing was cherry-picked onto the remediation branch, deliberately, so both streams stay coherent. Scope block is in ROADMAP.md.
 - The Rex-vs-Remy name mismatch (same agent, two names across chat and the activity feed) is logged as **Phase 47 backlog #18**, not hotfixed, per the no-mid-milestone-decimal-hotfixes rule.
 
-**Next: v2.1 Phase 38 Plan 38-05** — the human vibe-check plus writing `38-VERIFICATION.md`. It needs you at the browser; the protocol is below.
+**Phase 38 is CLOSED (2026-07-21).** The user delegated the vibe-check ("do it for me"), so Plan 38-05 ran on the DeepSeek production chain with Claude judging voice against the D-04 commit-shape contract. All three level-4 prompts committed with zero clarifying questions (marketing strategy → "Here's what I'd do:..."; CTA colour → "I'd go with a vibrant saffron-orange... Going with that assumption unless..." grounded on the Project Saffron brain doc; "Maya, suggest a team" → "Here's the team:... Adding them now."). Safety floor fired at level-4, no confabulation, Confirm-level downgrade asked a clarifying question. ALWY-01 through ALWY-06 all ✅. Record: `.planning/phases/38-never-stop-never-ask/38-VERIFICATION.md`.
+
+**The vibe-check earned its keep.** It caught a pre-existing defect no unit test or Playwright spec had: the safety clarification message was being run through the conversational tone guard, whose `adaptLength` trims a reply to 2 sentences when the user's message is short. Destructive commands are short, so the gate fired and then delivered only "...clarify these points:\n1." — the three questions never reached the user. Fixed `e61be9b` (interventions bypass the guard) + regression `scripts/test-safety-intervention-integrity.ts` 10/10. Verified live: 114 chars → 306 with all three questions.
+
+**Next (pick one):** (1) merge this branch and `fly deploy` — Phases 35 through 38 plus the audit remediation are all verified, roughly 10 weeks of shipped work into first real use (confirm `DAILY_COST_CAP` active first); (2) start Phase 39 Reader Testing Peer Review; (3) open the v2.1-UX milestone (now unblocked). The old 38-05 protocol below is kept for reference.
 
 **Audit Remediation Waves 1 to 5 (2026-07-18).** The 2026-07-17 live audit (`.audit-2026-07-17/`) found the core value prop broken (24 BROKEN / 24 PARTIAL of 164). v2.1 feature work was PAUSED to fix it. 10 commits, strict dependency order: pg-boss queue (#95, the single root cause that disabled ALL background autonomy) → multi-agent empty-save + @mention (#74/#97) → brain grounding + goal->coreDirection (#79/#158) → activity visibility (#102/#110/#80/#165) → polish (#43/#153/#149/#130/#114/#96/#160/#65/#136). Every fix runtime-verified. Deferred to Phase 47: #37, #60, #87/#88, #126, #161, #94/#139, #112. Phase 47 backlog #9 is RESOLVED. Note: #104/#105 were **deferred to Phase 42**, not fixed, despite commit `b7e5292`'s message claiming them.
 
 ---
 
-**Phase:** v2.1 Phase 38 code-complete, only Plan 38-05 human vibe-check remaining (resumes after the remediation branch merges)
-**State:** Plans 38-01/02/03/04 all SHIPPED with unit + Playwright + regression + invariant checks against live server. Plan 38-05 (human vibe-check + `38-VERIFICATION.md`) is the last plan; requires you at the browser.
-**Trackers say:** ALWY-01 ✅ · ALWY-02 ⚠ PARTIAL (final closure via 38-05) · ALWY-03 ✅ · ALWY-04 ✅ · ALWY-05 ✅ · ALWY-06 ✅. Progress 23/24 plans (96%).
+**Phase:** v2.1 Phase 38 ✅ CLOSED 2026-07-21 (all 5 plans). Next canonical phase is 39 (Reader Testing Peer Review).
+**State:** Plans 38-01 through 38-05 all shipped and verified. 38-05 ran on the DeepSeek production chain, caught and fixed a pre-existing safety-message truncation (`e61be9b`).
+**Trackers say:** ALWY-01 ✅ · ALWY-02 ✅ · ALWY-03 ✅ · ALWY-04 ✅ · ALWY-05 ✅ · ALWY-06 ✅. Progress 24/24 plans (100%).
 
-**Server:** UP on port 5001 (PID 58860) in Groq test mode (`LLM_MODE=test TEST_LLM_PROVIDER=groq` from `.env`). Supabase active_healthy.
+**Server:** UP on port 5001 (PID 78615) on the **DeepSeek production chain** (`LLM_MODE=prod LLM_PRIMARY=deepseek DEV_COST_CAP_ENABLED=true DAILY_COST_CAP_CENTS_DEV=200`), started this way for the 38-05 vibe-check. To return it to the `.env` default (Groq test mode): `kill $(lsof -ti:5001) && npm run dev`. Supabase active_healthy.
 
 **Parallel-session work folded in 2026-07-10:** 5 commits landing the marketing tactical enrichment (Wren/Kai/Robin, coreyhaines31/marketingskills MIT attribution), undo-toast cleanup, AUTO-ROUTING.md + HATCHIN-BRIEF.md, eval trendline refresh, undo-bug screenshots archived. Marketing A/B eval validated 7/9 → 9/9 markers (+22pp) with Robin schema-confabulation prevention textbook.
 

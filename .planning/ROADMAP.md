@@ -9,7 +9,7 @@
 - ✅ **v2.0 Hatches That Deliver** — Phases 16-21 (shipped 2026-03-30)
 - ⚠️ **v3.0 Hatchin That Works** — Phases 22 + 28 shipped; Phases 23-27, 29-34 re-scoped into V3 (closed 2026-04-28) — [archive](milestones/v3.0-ROADMAP.md)
 - 🚧 **v2.1 Hatches That Self-Improve** — Phases 35-47 (13 phases inc. Phase 47 backlog batch + Phase 36.5 hotfix; 5-7w est. — in progress)
-- 📋 **v2.1-UX Look, Feel and First Impression** — NOT STARTED, planned 2026-07-20 from the `.audit-ux-2026-07-20/` audit. Starts **after v2.1 Phase 38 closes**. See the milestone block below.
+- 📋 **v2.1-UX Look, Feel and First Impression** — NOT STARTED, planned 2026-07-20 from the `.audit-ux-2026-07-20/` audit. Its blocker (Phase 38) closed 2026-07-21, so it is now startable. See the milestone block below.
 - 📋 **Future:** v2.1.5, v2.2, v2.3, v2.4, v2.5, v2.5.5, v2.6, v2.7, v3.0 (Mental Models), v4.0 — see [ROADMAP-V3.md](ROADMAP-V3.md) for full post-v2.0 plan
 
 ---
@@ -40,7 +40,7 @@ it read 0 most of the time. Do not reintroduce counter cards.
 **Remaining:** roughly 20 further findings across the audit's three phases. Phase breakdown,
 requirement IDs and success criteria to be produced by proper planning when the milestone opens.
 
-**Depends on:** v2.1 Phase 38 close-out (Plan 38-05 vibe-check + `38-VERIFICATION.md`).
+**Depends on:** v2.1 Phase 38 close-out (Plan 38-05 vibe-check + `38-VERIFICATION.md`) — ✅ met 2026-07-21.
 
 ---
 
@@ -151,7 +151,7 @@ See archived roadmap: [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
 - [ ] **Phase 36: Frozen-Rubric Deliverable Iteration** — Per-type rubric scoring, auto-revert on score regression, deliverable feedback columns
 - [x] **Phase 36.5: Imperative Action Shortcuts (HOTFIX)** — Regex-based imperative-command parser fires actions BEFORE the LLM call; lowers Maya's turn-count gate; closes the gap until Phase 38/41/42/43 land · **SHIPPED 2026-05-13** (6 commits d870f15..0feefe3, 21/21 unit cases PASS, agent-probe Playwright PASS, phase-36 regression unbroken). Bundled with Phase 36 for next `fly deploy`.
 - [ ] **Phase 37: Git-Style Run Tree** — `autonomy_runs` + `autonomy_run_steps` tables, sidebar tree visualization with score-delta badges
-- [ ] **Phase 38: "Never Stop, Never Ask" Autonomy Prompt** — Level-4 autonomy stops asking clarifying questions during chains
+- [x] **Phase 38: "Never Stop, Never Ask" Autonomy Prompt** — Level-4 autonomy stops asking clarifying questions during chains · **✅ CLOSED 2026-07-21** (5 plans; ALWY-01..06 all verified; Plan 38-05 vibe-check on the DeepSeek production chain, `.planning/phases/38-never-stop-never-ask/38-VERIFICATION.md`)
 - [ ] **Phase 39: Reader Testing Peer Review Mode** — Context-naïve fresh reviewer for doc-type deliverables
 - [ ] **Phase 40: Internal Eval Migration to promptfoo** — Replace bespoke `scripts/test-*` with promptfoo testcases; CI-gated regression detection
 - [ ] **Phase 41: Conversation Phase Machine + Blueprint** — Discovery → Draft → Building states; BlueprintCard handoff with idempotent task gen
@@ -249,7 +249,9 @@ See archived roadmap: [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
   - [x] 38-02-PLAN.md — **SHIPPED 2026-07-09.** Safety scorer destructive-intent detection: `scoreDestructiveIntent()` helper in `server/ai/safety.ts` with regex sets DESTRUCTIVE_VERB_CRITICAL (base 0.60), DESTRUCTIVE_VERB_RESET (base 0.45), BULK_SCOPE (×1.3), DATA_SCOPE (×1.2). Merged into `evaluateSafetyScore` via `Math.max(existing_executionRisk, destructiveIntentScore)`. Unit `scripts/test-safety-destructive-intent.ts` 12/12 PASS ("delete all my data and start over" → 0.936; "write me a marketing plan" → 0.100). D-11..D-13 grep=7 preserved. Regression sweep clean (test:tone, test:injection, gate:safety). Playwright `tests/e2e/phase-38-safety-floor.spec.ts` 2/2 PASS on live server (destructive command fired `safety_intervention`; benign control did not). Closes ALWY-04.
   - [x] 38-03-PLAN.md — **SHIPPED 2026-07-10.** Maya voice snap at level-4: new sibling constant `MAYA_AUTONOMOUS_OVERRIDE` in promptTemplate.ts appended AFTER `AUTONOMOUS_DIRECTIVE_BLOCK` so the LLM reads the commit-shape rule last. Threaded via `chatContext.agentIsSpecial` in chat.ts (detects Maya via `isSpecialAgent` flag OR `role === 'Idea Partner'` fallback, since the flag is sometimes stripped in intermediate hydration). Also fixed Plan 38-01 residual: `buildProviderOrder` had no `capture` branch → capture provider fell through to mock, silently breaking phase-38 runtime. Unit `scripts/test-maya-autonomous-voice.ts` 10/10 PASS. Playwright `phase-38` 6/6 PASS (Test 5 new: asserts override present, closing tag present, commit-shape example present, override appears AFTER general directive). Closes ALWY-05.
   - [x] 38-04-PLAN.md — **SHIPPED 2026-07-10.** Fake-action guard: universal `AGENT_CAPABILITY_ENVELOPE` XML block in `server/ai/promptTemplate.ts` declaring CAN list (four canonical [[...]] proposal blocks) and CANNOT list (delete/wipe/DB/file-system/code-exec/deployment) with "NEVER describe having performed" enforcement line. Injected in staticPrefix (buildSystemPrompt) + both createPromptTemplate sites in openaiService.ts. Ordering preserved: envelope (identity) → autonomous_directive → maya_autonomous_override. Unit `scripts/test-capability-envelope.ts` 19/19 PASS. Playwright `tests/e2e/phase-38-fake-action-guard.spec.ts` 2/2 PASS on live Groq server: destructive command "delete all my data" fired safety_intervention (defense in depth with Plan 38-02) with no fake-action language; benign "help me plan a database migration" produced 247-char response with no over-firing disclaimer. Cross-plan regression: `phase-38-safety-floor` still 2/2 PASS. Foundational precursor to Phase 46 Slop Detection. Closes ALWY-06.
-  - [ ] 38-05-PLAN.md — Human vibe-check checkpoint (moved from old Task 5 of 38-01): retest all four dimensions (level-4 commits, safety floor firing, mid-run downgrade, no-fake-actions); write 38-VERIFICATION.md when all pass. Closes ALWY-02 fully and ALWY-03 runtime.
+  - [x] 38-05 — **VERIFIED 2026-07-21** (human-delegated: user said "do it for me", so Claude ran the protocol on the DeepSeek production chain and judged voice against the D-04 commit-shape contract). All three level-4 prompts commit-shape with zero clarifying questions; safety floor fired at level-4 (ALWY-04); no confabulation (ALWY-06); Confirm-level downgrade asked a clarifying question (ALWY-03). **Caught a pre-existing defect**: the safety clarification message was run through the conversational tone guard, whose `adaptLength` trims short-user-message replies to 2 sentences, so the three safety questions were cut to "...clarify these points:\n1." on any short destructive command. Fixed `e61be9b` (interventions bypass the guard) + regression `scripts/test-safety-intervention-integrity.ts` 10/10. Closes ALWY-02 fully and ALWY-03 runtime. See `.planning/phases/38-never-stop-never-ask/38-VERIFICATION.md`.
+
+**Phase 38 CLOSED 2026-07-21.** Success criteria 1-6 all satisfied; the vibe-check additionally hardened criterion 4's user-facing surface (the questions now actually arrive, not just the gate firing).
 
 ### Phase 39: Reader Testing Peer Review Mode
 **Goal**: Doc-type deliverables get a fresh-eyes review before delivery — a reviewer that has never seen the conversation context. Catches "this only makes sense if you wrote it" failures.
@@ -431,7 +433,7 @@ See archived roadmap: [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
 | 36. Frozen-Rubric Deliverable Iteration | v2.1 | 4/4 | Code-complete (awaiting fly deploy) | 2026-05-13 |
 | 36.5. Imperative Action Shortcuts (HOTFIX) | v2.1 | 1/1 | Code-complete (bundled with 36 for next fly deploy) | 2026-05-13 |
 | 37. Git-Style Run Tree | v2.1 | 0/? | Not started | — |
-| 38. "Never Stop, Never Ask" Autonomy Prompt | v2.1 | 0/? | Not started | — |
+| 38. "Never Stop, Never Ask" Autonomy Prompt | v2.1 | 5/5 | ✅ Closed | 2026-07-21 |
 | 39. Reader Testing Peer Review Mode | v2.1 | 0/? | Not started | — |
 | 40. Internal Eval Migration to promptfoo | v2.1 | 0/? | Not started | — |
 | 41. Conversation Phase Machine + Blueprint | v2.1 | 0/? | Not started | — |
