@@ -150,7 +150,7 @@ See archived roadmap: [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
 - [x] **Phase 35: Production Hotfix Pass** — LEGAL-01 hybrid legal pages (modal + deep-link); LLMUX-01..03 graceful degradation banner; AUDIT-01 Playwright spec 7/7 pass · **SHIPPED 2026-05-11** (Fly version 19, deployment-01KRB7R3TP4NBV9WREP1PQNGVN). Rollback: `git checkout pre-phase-35` + `fly releases rollback`
 - [ ] **Phase 36: Frozen-Rubric Deliverable Iteration** — Per-type rubric scoring, auto-revert on score regression, deliverable feedback columns
 - [x] **Phase 36.5: Imperative Action Shortcuts (HOTFIX)** — Regex-based imperative-command parser fires actions BEFORE the LLM call; lowers Maya's turn-count gate; closes the gap until Phase 38/41/42/43 land · **SHIPPED 2026-05-13** (6 commits d870f15..0feefe3, 21/21 unit cases PASS, agent-probe Playwright PASS, phase-36 regression unbroken). Bundled with Phase 36 for next `fly deploy`.
-- [ ] **Phase 37: Git-Style Run Tree** — `autonomy_runs` + `autonomy_run_steps` tables, sidebar tree visualization with score-delta badges
+- [x] **Phase 37: Git-Style Run Tree** — `autonomy_runs` + `autonomy_run_steps` tables, sidebar tree visualization with score-delta badges · **VERIFIED 2026-05-15 (PASS-WITH-NOTES), awaiting fly deploy**
 - [x] **Phase 38: "Never Stop, Never Ask" Autonomy Prompt** — Level-4 autonomy stops asking clarifying questions during chains · **✅ CLOSED 2026-07-21** (5 plans; ALWY-01..06 all verified; Plan 38-05 vibe-check on the DeepSeek production chain, `.planning/phases/38-never-stop-never-ask/38-VERIFICATION.md`)
 - [ ] **Phase 39: Reader Testing Peer Review Mode** — Context-naïve fresh reviewer for doc-type deliverables
 - [ ] **Phase 40: Internal Eval Migration to promptfoo** — Replace bespoke `scripts/test-*` with promptfoo testcases; CI-gated regression detection
@@ -432,7 +432,7 @@ See archived roadmap: [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
 | 35. Production Hotfix Pass | v2.1 | 5/5 | Shipped to prod (Fly v19) | 2026-05-11 |
 | 36. Frozen-Rubric Deliverable Iteration | v2.1 | 4/4 | Code-complete (awaiting fly deploy) | 2026-05-13 |
 | 36.5. Imperative Action Shortcuts (HOTFIX) | v2.1 | 1/1 | Code-complete (bundled with 36 for next fly deploy) | 2026-05-13 |
-| 37. Git-Style Run Tree | v2.1 | 0/? | Not started | — |
+| 37. Git-Style Run Tree | v2.1 | 2/2 | Verified (PASS-WITH-NOTES), awaiting fly deploy | 2026-05-15 |
 | 38. "Never Stop, Never Ask" Autonomy Prompt | v2.1 | 5/5 | ✅ Closed | 2026-07-21 |
 | 39. Reader Testing Peer Review Mode | v2.1 | 0/? | Not started | — |
 | 40. Internal Eval Migration to promptfoo | v2.1 | 0/? | Not started | — |
