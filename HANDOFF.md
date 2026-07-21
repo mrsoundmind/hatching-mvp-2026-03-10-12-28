@@ -4,7 +4,15 @@
 
 **Last refreshed:** 2026-07-21
 **Current branch:** `fix/audit-remediation-2026-07-17` (off `wip/pre-reset-2026-04-28`; rollback point `3429a29`)
-**Latest commit:** `e61be9b fix(safety): stop the tone guard from deleting the safety questions`
+**Latest commit:** `57f2c94 fix(autonomy): pg-boss worker survives a DB blip instead of wedging forever`
+
+## Re-audit Wave 7 (2026-07-21) — the intermittent-autonomy bug, FIXED
+
+The user's independent 3-persona re-audit (`.audit-reaudit-2026-07-20/`) confirmed 14 of 15 remediation fixes working live and found the last real problem: autonomous execution dead on the long-running server, a job stuck in `created` for 20+ hours. **This is the "sometimes autonomy works, sometimes it vanishes" bug.** Root cause, from reading pg-boss source: pg-boss forwards its config to `new pg.Pool()`, and the bare connection string gave it no `query_timeout`, so a fetch on a half-open Supabase socket hangs forever and wedges the worker loop (which otherwise retries on error). A restart masked it, which is why it looked intermittent.
+
+Fixed in `57f2c94`: hardened pg-boss's pool (query_timeout 60s + keepAlive + connect/idle timeouts mirroring `db.ts`) and added a stall watchdog (`startTaskWorkerWatchdog` / `detectWorkerStall`) that reads `pgboss.job` through the app pool and force-restarts the worker on a detected wedge, rate-limited. Verified live: the detector flagged the real 20h wedge then read clean; the fix drained that exact stuck job (task completed, Alex 1305 chars); a fresh producer-enqueued run finished in 27s; restart mechanism 6/6; config guard `scripts/test-jobqueue-resilience.ts` 9/9.
+
+**Two known-partials remain, per the re-audit's own triage (not blockers):** #44 capability-envelope wording (the safety reply implies it could delete rather than stating it has no delete tool, a nuance not a regression), and #104 KB list rendering empty (deferred to Phase 42).
 
 ---
 

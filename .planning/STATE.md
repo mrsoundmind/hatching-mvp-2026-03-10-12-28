@@ -4,7 +4,7 @@ milestone: v2.1
 milestone_name: Hatches That Self-Improve
 status: v2.1_phase_38_CLOSED_2026-07-21_all_5_plans_shipped_ALWY-01..06_all_verified_next_is_phase_39
 stopped_at: Phase 38 expanded 2026-07-09 from 1 plan to 5 plans after live vibe-check. Plans 38-01/02/03/04 all CODE-SHIPPED with unit + Playwright coverage against a live server. Plan 38-05 (human vibe-check + 38-VERIFICATION.md write-up) is the only remaining plan; depends on human confirmation via trial project at autonomy=Autonomous. ALWY-01/03/04/05/06 all ✅ SHIPPED; ALWY-02 ⚠ PARTIAL (soft-closing suppressed via Site 3 fix, but final closure needs human vibe-check per Plan 38-05). Prior phases in v2.1 all shipped: Phase 35 (Fly v19 2026-05-11), Phase 36 (2026-05-13, FBK-02 deferred), Phase 36.5 hotfix (2026-05-13), Phase 37 (2026-05-15). Infra: Supabase migration shipped 2026-06-02 (quick-260601-ojf), DeepSeek V4-Flash inserted 2026-05-04 (Phase A).
-last_updated: "2026-07-21T00:00:00.000Z"
+last_updated: "2026-07-21T12:00:00.000Z"
 last_activity: 2026-07-10 — Plan 38-04 SHIPPED. Added AGENT_CAPABILITY_ENVELOPE universal XML block in server/ai/promptTemplate.ts declaring CAN list (all four canonical [[HATCH_SUGGESTION|TASK|UPDATE|PROJECT_NAME]] proposal blocks) and CANNOT list (delete/wipe/DB/file-system/code-exec/deployment) with enforcement line "NEVER describe having performed an action you cannot perform." Injected inside staticPrefix (buildSystemPrompt) so the envelope is cacheable identity. Also prepended into both createPromptTemplate sites in openaiService.ts (streaming line 432 + intelligent-response line 627). Ordering strictly enforced: envelope (identity, always present) → autonomous_directive (if L4) → maya_autonomous_override (if L4+Maya). Unit scripts/test-capability-envelope.ts 19/19 PASS covering presence at all 4 autonomy levels, all four block-name inclusions, all four CANNOT-category inclusions, enforcement-line presence, and ordering. Playwright tests/e2e/phase-38-fake-action-guard.spec.ts 2/2 PASS on live Groq server (LLM_MODE=test TEST_LLM_PROVIDER=groq from .env): destructive command "delete all my data and start over" → safety_intervention fired (defense in depth with Plan 38-02) with zero fake-action language in the response; benign "help me plan a database migration" → 247-char substantive response with no over-firing disclaimer. Cross-plan regression: phase-38-safety-floor 2/2 PASS re-run confirms Plan 38-02 unaffected. Prior 38-XX regression clean: test-autonomous-directive 16/16, test-safety-destructive-intent 12/12, test-maya-autonomous-voice 10/10, test:tone PASS, test:injection PASS. D-11..D-13 grep=7 preserved. Server PID 58860 (Groq mode from .env). Phase 38 code-complete for Plans 01-04; only 38-05 human vibe-check + 38-VERIFICATION.md write-up remaining. Prior in-session: Plan 38-03 SHIPPED (Maya voice snap).
 progress:
   total_phases: 13
@@ -168,6 +168,20 @@ correctly in the browser. **Wave 6 is closed.** Two decisions taken 2026-07-20: 
 UX audit becomes its own planned milestone (v2.1-UX) starting after Phase 38 closes, with nothing
 cherry-picked onto this branch; and the Rex-vs-Remy name mismatch found during verification is logged as
 Phase 47 backlog #18 rather than hotfixed.
+
+Same session, 2026-07-21 (later) — **Re-audit Wave 7: pg-boss worker recovery.** The user ran an
+independent 3-persona re-audit (`.audit-reaudit-2026-07-20/`) that confirmed 14 of 15 remediation
+fixes working live and found ONE remaining problem: autonomous execution dead on the long-running
+server, a job stuck in `created` for 20+ hours. Root cause (from reading pg-boss source): pg-boss
+forwards its config to `new pg.Pool()`, and the bare connection string gave it no `query_timeout`, so
+a fetch on a half-open Supabase socket hung forever and wedged the worker loop (which otherwise retries
+on error). This is the reported "sometimes autonomy works, sometimes it vanishes." Fixed in `57f2c94`:
+hardened the pg-boss pool (query_timeout + keepAlive + timeouts mirroring db.ts) and added a stall
+watchdog that force-restarts the worker on a detected wedge. Verified live: the detector flagged the
+real 20h wedge then read clean; the fix drained that exact stuck job (task completed, Alex 1305 chars);
+a fresh producer-enqueued run completed in 27s; restart mechanism 6/6; config guard
+`scripts/test-jobqueue-resilience.ts` 9/9. #95 recovery closed. Two known-partials remain per the
+re-audit's own triage: #44 capability wording (a nuance, not a regression), #104 KB list (Phase 42).
 
 Same session, 2026-07-21 — **Phase 38 CLOSED.** With the sidebar work verified, moved on to the
 documented resume point, Plan 38-05. The user delegated the voice judgment ("do it for me"), so the

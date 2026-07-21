@@ -54,6 +54,8 @@ for what was done and why. No dashes; money shown USD + INR (~₹86 per $1, Indi
 | a11y button labels | #112 | — | DEFERRED | a11y sweep → Phase 47 backlog | — |
 | Work Outputs attribution + real output | (untracked, found 2026-07-20) | 6 | VERIFIED (browser + storage) | completion now records who executed and what they produced; 6 historical rows recovered from their output messages | `fb7b54d` |
 | Handoff chain proven + label fixes | (untracked, found 2026-07-20) | 6 | VERIFIED (E2E, live worker) | chain works: queued, worker ran it, receiving agent produced 688 chars using the upstream scope. Found 2 label bugs doing it: handoff payload shape never resolved the receiver's name, and self-handoffs claimed a handoff that did not happen | `c549f9c` |
+| pg-boss worker recovery gap | #95 (recovery, re-audit) | 7 | VERIFIED (E2E, live) | the intermittent-autonomy bug: pg-boss's fetch loop hung forever on a half-open Supabase socket (no query_timeout), so jobs enqueued but stayed `created` on a long-running instance until a restart. Hardened the pg-boss pool + added a stall watchdog; drained the real 20h-stuck job and a fresh run | `57f2c94` |
+| Safety intervention truncation | (Phase 38 vibe-check) | 5.5 | VERIFIED (live, DeepSeek) | the safety gate fired then delivered only "...clarify these points:\n1." because the clarification ran through the tone guard's short-message trim; interventions now bypass the guard | `e61be9b` |
 
 ---
 
@@ -359,3 +361,56 @@ an unbuilt feature, so it is deferred to Phase 42, not dropped.
 
 **Files:** `server/ai/openaiService.ts`, `server/routes/chat.ts`. Typecheck: PASS. Verification tool:
 `.audit-2026-07-17/verify-brain-wave3.ts`.
+
+### Wave 7 — pg-boss worker recovery (re-audit finding, #95 resilience) — VERIFIED
+
+**Source:** the 2026-07-20 re-audit (`.audit-reaudit-2026-07-20/`) confirmed 14 of 15 fixes working
+live and found ONE remaining problem: autonomous execution was dead on the running server. Not the
+original `createQueue` regression (that stayed fixed), but a job stuck in `created` for 20+ hours on a
+long-running instance. This is the user's reported "sometimes autonomy works, sometimes it vanishes."
+
+**Root cause (verified by reading `node_modules/pg-boss/src/`):** pg-boss forwards its config straight
+to `new pg.Pool()` (`db.js`: `this.pool = new pg.Pool(this.config)`), and it was constructed from the
+bare connection string, so its internal pool had NONE of the timeouts the app pool has in `db.ts`. The
+worker loop (`worker.js`) is `while (!stopping) { await fetch(); ... }` and catches errors to retry, so
+a transient blip self-heals. It does NOT self-heal from a HANG: `fetch()` runs `pool.query()`, and with
+no `query_timeout` a query on a half-open Supavisor socket never resolves and never rejects, so
+`await fetch()` blocks forever and the loop wedges. The evidence matches exactly: the stuck job was in
+`created` state (never fetched), so the wedge was in fetch, not in job processing.
+
+**What changed:**
+- `server/autonomy/execution/jobQueue.ts`: new `buildBossConfig()` builds pg-boss from a hardened
+  options object mirroring `db.ts` (ssl, keepAlive, connectionTimeoutMillis, idleTimeoutMillis, small
+  dedicated `max:4` pool, `application_name: hatchin-pgboss`) plus the load-bearing line
+  `query_timeout: 60_000`. A wedged fetch now aborts after 60s, the loop's existing catch handles it,
+  and the next iteration reconnects. Added `restartJobQueue()` (force-stop + rebuild the singleton).
+- `server/autonomy/execution/taskExecutionPipeline.ts`: `startTaskWorkerWatchdog()` + `detectWorkerStall()`.
+  The watchdog reads `pgboss.job` through the hardened APP pool (so a check still runs even if pg-boss's
+  own pool is the sick one) every 60s, and on a real stall (jobs `created` > 3 min, or `active` > 10 min)
+  force-restarts pg-boss and re-registers the worker, rate-limited to once per 5 min. This covers the
+  residual case query_timeout can't: a hang during job processing (`onFetch` → LLM/app-pool call).
+- `server/index.ts`: registers the watchdog alongside the worker with the same deps.
+
+**Verification (live, DeepSeek server):**
+- `scripts/test-jobqueue-resilience.ts` 9/9 — config guard locks in `query_timeout` so a refactor can't
+  silently drop it and reintroduce the wedge.
+- `detectWorkerStall()` flagged the REAL live wedge (`{stalled:true, created:1}` — the actual 20h-stuck
+  job), then read clean (`{stalled:false, created:0}`) after recovery. Positive and negative, on real data.
+- **The fix drained that exact stuck job**: after restart on the hardened worker, job `6756a413` went
+  `created → completed`, and its task (`9a94de8b`) completed with real work (Alex, 1305 chars).
+- **Fresh run**: a new task enqueued through the real producer completed in 27s (Alex, 614 chars),
+  proving sustained health, not just backlog drain. This closes the re-audit's "restart re-test for #95".
+- Watchdog restart mechanism (`verify-watchdog-restart.ts` 6/6): the queue survives a restart, enqueue
+  works before and after, the instance is actually replaced.
+- Regression: `gate:safety`, `test:integrity`, `tsc --noEmit` all clean.
+
+**Files:** `server/autonomy/execution/jobQueue.ts`, `server/autonomy/execution/taskExecutionPipeline.ts`,
+`server/index.ts`, `scripts/test-jobqueue-resilience.ts`. Commit `57f2c94`. Harness under
+`.audit-reaudit-2026-07-20/` (verify-stall-detect, verify-fresh-run, verify-watchdog-restart).
+
+**Still known-partial, NOT fixed here (per the re-audit's own triage):**
+- **#44 capability-envelope wording** — on a destructive prompt the safety reply asks its three
+  clarifying questions but still implies it could proceed to delete, rather than stating it has no
+  delete tool. The re-audit calls this "not a regression; a wording nuance", matching the prior ALWY-06
+  note. Left as-is unless prioritized.
+- **#104 KB list renders empty** — deferred to Phase 42 (organic brain extraction), unchanged.
