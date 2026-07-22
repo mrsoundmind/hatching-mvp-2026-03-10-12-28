@@ -97,27 +97,22 @@
   --ring: hsl(240, 4.9%, 83.9%);
   --radius: 0.5rem;
 
-  /* Hatchin Custom Colors — refined direction (2026-07-21): palette sampled from the hero
-     artwork. Same structure, warmed from cool slate to deep-night navy with a lamp-amber accent.
-     This one block re-skins the whole app because every component reads these tokens. */
-  --hatchin-dark: #0B1020;              /* app background: deep ink navy */
-  --hatchin-panel: #141B2E;             /* panels */
-  --hatchin-card: #1C2540;              /* cards */
-  --hatchin-surface: #1C2540;           /* raised surface */
-  --hatchin-surface-elevated: #243052;  /* hover / elevated */
-  --hatchin-surface-muted: #131A2B;     /* recessed, just under panel */
-  --hatchin-border: #2A3557;            /* navy border */
-  --hatchin-border-subtle: #212B47;     /* subtle navy line */
-  --hatchin-text: #EEF1F8;              /* near-white, slightly cool */
-  --hatchin-text-muted: #98A2C0;        /* dusk — lightened so it passes AA on navy */
-  --hatchin-text-bright: #FFFFFF;
-  /* Accents: green→ok, orange→lamp amber (the brand warm). Blue/purple already match the artwork. */
-  --hatchin-green: #3DBE93;
-  --hatchin-orange: #F2B441;
+  /* Hatchin Custom Colors */
+  --hatchin-dark: hsl(210, 5%, 22%);
+  --hatchin-panel: hsl(216, 10%, 14%);
+  --hatchin-card: hsl(216, 8%, 22%);
+  --hatchin-surface: hsl(216, 8%, 23%);
+  --hatchin-surface-elevated: hsl(216, 7%, 18%);
+  --hatchin-surface-muted: hsl(216, 7%, 15%);
+  --hatchin-border: hsl(216, 8%, 27%);
+  --hatchin-border-subtle: hsl(216, 7%, 30%);
+  --hatchin-text: hsl(210, 9%, 95%);
+  --hatchin-text-muted: hsl(216, 6%, 67%);
+  --hatchin-text-bright: hsl(0, 0%, 95%);
 
-  /* Premium layout — navy to match the new surfaces */
-  --premium-bg-start: #10182B;
-  --premium-bg-end: #0B1020;
+  /* Premium layout */
+  --premium-bg-start: #1A1D23;
+  --premium-bg-end: #111318;
   --premium-glow-opacity: 0.05;
   --premium-line-opacity: 0.4;
 
