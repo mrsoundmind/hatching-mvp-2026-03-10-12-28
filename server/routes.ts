@@ -17,6 +17,7 @@ import { registerTaskRoutes } from "./routes/tasks.js";
 import { registerChatRoutes } from "./routes/chat.js";
 import { registerBillingRoutes } from "./routes/billing.js";
 import { registerDeliverableRoutes } from "./routes/deliverables.js";
+import { registerIntegrationRoutes } from "./routes/integrations.js";
 import {
   buildGoogleAuthorizationUrl,
   exchangeGoogleAuthorizationCode,
@@ -76,7 +77,12 @@ export async function registerRoutes(app: Express, sessionParser?: SessionParser
 
   // Protect all API routes except auth endpoints and public storage status
   app.use('/api', (req, res, next) => {
-    if (req.path.startsWith('/auth') || req.path === '/system/storage-status' || req.path === '/billing/webhook') {
+    if (
+      req.path.startsWith('/auth') ||
+      req.path === '/system/storage-status' ||
+      req.path === '/billing/webhook' ||
+      req.path.startsWith('/integrations/mattermost') // signed by HMAC in the button context, not a session
+    ) {
       return next();
     }
     requireAuth(req, res, next);
@@ -539,6 +545,7 @@ export async function registerRoutes(app: Express, sessionParser?: SessionParser
   registerMessageRoutes(app);
   registerProjectRoutes(app, { broadcastToConversation });
   registerTaskRoutes(app, { broadcastToConversation, broadcastToProject });
+  registerIntegrationRoutes(app, { broadcastToConversation, broadcastToProject });
   registerBillingRoutes(app);
   registerDeliverableRoutes(app, { broadcastToConversation });
 

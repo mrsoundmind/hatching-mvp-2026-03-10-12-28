@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 import { getCharacterProfile } from '../ai/characterProfiles.js';
 import { extractOrganicTasks } from '../ai/tasks/organicExtractor.js';
 import { logAutonomyEvent } from '../autonomy/events/eventLogger.js';
+import { resolveTaskApproval } from '../services/taskApprovalService.js';
 import { z } from 'zod';
 
 const updateTaskSchema = z.object({
@@ -317,71 +318,9 @@ export function registerTaskRoutes(app: Express, deps: RegisterTaskDeps): void {
       const project = await getOwnedProject(task.projectId, userId);
       if (!project) return res.status(404).json({ error: 'Task not found' });
 
-      const meta = (task.metadata ?? {}) as Record<string, unknown>;
-      if (!meta.awaitingApproval || !meta.draftOutput) {
-        return res.status(400).json({ error: 'Task is not awaiting approval' });
-      }
-
-      // Clear awaitingApproval immediately to prevent concurrent double-approve
-      await storage.updateTask(req.params.id, {
-        metadata: { ...meta, awaitingApproval: false } as any,
-      });
-
-      // Resolve the assigned agent
-      const allAgents = await storage.getAgentsByProject(task.projectId);
-      const agent = allAgents.find(
-        (a) => a.name === task.assignee || a.role === task.assignee,
-      ) ?? null;
-
-      // Publish draft output as an agent message in chat
-      const convId = agent
-        ? `agent:${task.projectId}:${agent.id}`
-        : `project:${task.projectId}`;
-
-      const draftContent = meta.draftOutput as string;
-      const createdMsg = await storage.createMessage({
-        conversationId: convId,
-        content: draftContent,
-        messageType: 'agent',
-        agentId: agent?.id ?? null,
-        userId: null,
-        metadata: { approvedByUser: true },
-      } as any);
-
-      deps.broadcastToConversation(convId, {
-        type: 'new_message',
-        conversationId: convId,
-        message: createdMsg,
-      });
-
-      // Mark task completed and clear approval state
-      await storage.updateTask(req.params.id, {
-        status: 'completed',
-        metadata: {
-          ...meta,
-          awaitingApproval: false,
-          draftOutput: draftContent,
-          approvedAt: new Date().toISOString(),
-        } as any,
-      });
-
-      deps.broadcastToConversation(convId, {
-        type: 'task_execution_completed',
-        taskId: task.id,
-        agentId: agent?.id ?? '',
-        agentName: agent?.name ?? task.assignee ?? 'Unknown',
-      });
-
-      // Durable event so the resolution shows in the Activity feed and survives reload (mirrors the
-      // approval_required event the pipeline now writes when the gate fires). Best-effort.
-      await logAutonomyEvent({
-        eventType: 'approval_granted',
-        projectId: task.projectId,
-        hatchId: agent?.id ?? null,
-        conversationId: convId,
-        provider: null, mode: 'autonomous', teamId: null, latencyMs: null, confidence: null, riskScore: null,
-        payload: { taskId: task.id, taskTitle: task.title, agentName: agent?.name ?? task.assignee ?? null },
-      }).catch((e) => console.warn('[approve] approval_granted log failed:', (e as Error).message));
+      // Core approve logic is shared with the Mattermost button callback (see taskApprovalService).
+      const result = await resolveTaskApproval(req.params.id, 'approve', deps);
+      if (!result.ok) return res.status(result.status).json({ error: result.error });
 
       devLog('[approve] Task approved:', task.id);
       return res.json({ success: true });
@@ -407,32 +346,9 @@ export function registerTaskRoutes(app: Express, deps: RegisterTaskDeps): void {
         return res.status(400).json({ error: 'Invalid request body', details: parsed.error.errors });
       }
 
-      const meta = (task.metadata ?? {}) as Record<string, unknown>;
-      await storage.updateTask(req.params.id, {
-        status: 'todo',
-        metadata: {
-          ...meta,
-          awaitingApproval: false,
-          draftOutput: null,
-          rejectedAt: new Date().toISOString(),
-          ...(parsed.data.reason ? { rejectionReason: parsed.data.reason } : {}),
-        } as any,
-      });
-
-      deps.broadcastToProject(task.projectId, {
-        type: 'task_approval_rejected',
-        taskId: task.id,
-      });
-
-      // Durable event so the rejection shows in the Activity feed and survives reload. Best-effort.
-      await logAutonomyEvent({
-        eventType: 'approval_rejected',
-        projectId: task.projectId,
-        hatchId: null,
-        conversationId: `project:${task.projectId}`,
-        provider: null, mode: 'autonomous', teamId: null, latencyMs: null, confidence: null, riskScore: null,
-        payload: { taskId: task.id, taskTitle: task.title, agentName: task.assignee ?? null },
-      }).catch((e) => console.warn('[reject] approval_rejected log failed:', (e as Error).message));
+      // Core reject logic is shared with the Mattermost button callback (see taskApprovalService).
+      const result = await resolveTaskApproval(req.params.id, 'reject', deps, { reason: parsed.data.reason });
+      if (!result.ok) return res.status(result.status).json({ error: result.error });
 
       devLog('[reject] Task rejected:', task.id);
       return res.json({ success: true });

@@ -20,8 +20,13 @@ export interface MattermostConfig {
   projectId: string;
   /** Which autonomy event types to notify on. Defaults to approvals only, to avoid channel noise. */
   enabledEvents: Set<string>;
-  /** App base URL for "Open in Hatchin" deep links. */
+  /** App base URL for "Open in Hatchin" deep links, and the base for the inbound callback URL. */
   appBaseUrl: string;
+  /**
+   * Secret for verifying inbound button/slash callbacks (HMAC over the button context).
+   * Interactive Approve/Reject buttons are only attached when this is set; inbound is off without it.
+   */
+  signingSecret?: string;
 }
 
 const DEFAULT_EVENTS = ['approval_required'];
@@ -45,6 +50,7 @@ export function getMattermostConfig(env: NodeJS.ProcessEnv = process.env): Matte
     : DEFAULT_EVENTS;
 
   const appBaseUrl = trimSlash((env.APP_BASE_URL || 'http://localhost:5001').trim());
+  const signingSecret = (env.MATTERMOST_SIGNING_SECRET || '').trim() || undefined;
 
-  return { baseUrl, botToken, channelId, projectId, enabledEvents: new Set(events), appBaseUrl };
+  return { baseUrl, botToken, channelId, projectId, enabledEvents: new Set(events), appBaseUrl, signingSecret };
 }

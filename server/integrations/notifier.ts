@@ -13,6 +13,7 @@ import type { AutonomyEvent } from '../autonomy/events/eventTypes.js';
 import { getMattermostConfig, type MattermostConfig } from './config.js';
 import { formatAutonomyEvent } from './mattermost/formatter.js';
 import { postToMattermost } from './mattermost/mattermostAdapter.js';
+import { buildApprovalAttachments } from './mattermost/approvalButtons.js';
 
 export interface NotifierChannel {
   readonly name: string;
@@ -39,7 +40,10 @@ class MattermostNotifierChannel implements NotifierChannel {
     if (!config) return;
     const formatted = formatAutonomyEvent(event, config.appBaseUrl);
     if (!formatted) return;
-    await postToMattermost(config, { channelId: config.channelId, message: formatted.text });
+    // Approval events get interactive Approve/Reject buttons when a signing secret is configured
+    // (Phase 2). Everything else, and the fallback when inbound isn't set up, is text + deep link.
+    const props = buildApprovalAttachments(event, config) ?? undefined;
+    await postToMattermost(config, { channelId: config.channelId, message: formatted.text, props });
   }
 }
 
