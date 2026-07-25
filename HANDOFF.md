@@ -2,9 +2,26 @@
 
 > **Read this first if you're an AI (Claude Code, Cursor, Windsurf, Copilot, etc.) or a human picking up on Hatchin.** This file tells you what happened, where we are, and what to do next. Session-continuity log — updated at session boundaries.
 
-**Last refreshed:** 2026-07-25
-**Current branch:** `fix/audit-remediation-2026-07-17` (off `wip/pre-reset-2026-04-28`; rollback point `3429a29`)
-**Latest commit:** `aeba012 fix(autonomy): persist approval events + respect assignee on handoff`
+**Last refreshed:** 2026-07-26
+**Current branch:** `feat/v2.2-intelligence-fixes` (v2.2 intelligence fixes; a parallel session is also committing a UI type-scale refresh onto this branch)
+**Latest commit (this workstream):** `c2887fa feat(activity-feed): surface real peer-review verdicts in the feed (v2.2 Phase D, visibility)`
+
+## 2026-07-26 — v2.2 "Hatches That Remember & Grow": Phase D shipped (peer review with teeth)
+
+New milestone **v2.2** (fresh branch, off the audit-verified code) fixes the four agent-intelligence gaps the 2026-07-25 audit found. Prior sessions shipped Phases A (memory correctness — outcome-aware extraction, retire the crude keyword extractor), B (persona first-person voice), C (feedback anchored to role baseline, stops trait-flattening + sycophancy), E (first-person role-expertise reframe), F (agents address the user by name, remembered cross-project). **This session shipped Phase D — real peer review**, the last correctness gap.
+
+Before D, `evaluatePeerReviewRubric` was deterministic regex + safety-score matching: the reviewing agent never actually read the work. Phase D makes it a genuine **LLM-as-judge**:
+- `server/autonomy/peerReview/llmJudge.ts` — a second AI reads the work through the reviewer's `peerReviewLens` and returns approve/revise/reject + severity + mustFix + confidence + reasoning. Runs on **Groq** on purpose: a *different model family* than the DeepSeek/Gemini writer (defuses self-preference bias) and *free* (no per-task cost). **Blind to authorship.** Fail-safe: any parse/LLM failure returns null and does NOT block.
+- `peerReviewRunner.ts` — opt-in `enableLlmJudge` (autonomous path only; the chat-path caller at `chat.ts:2618` leaves it unset, so chat is byte-identical). Confident **reject → `clarificationRequired` → the existing `pending_approval` block path** (the teeth). **Revise → a REAL bounded regeneration** via the author model with the reviewer's mustFix, then re-judged (replaces the cosmetic "Quality checks applied" synthesizer).
+- `taskExecutionPipeline.ts` — both autonomous call sites opt in and pass the author generate fn.
+- **Visibility:** `shared/activityLabels.ts` makes `peer_review_feedback` a signal event and reads the verdict into verbs ("approved it" / "asked for changes" / "sent it back"); `ActivityFeedItem.tsx` `buildHumanDetail` shows the reviewer's reason + concrete fixes on expand (the render half landed via the parallel UI commit `745ebd8`, which swept the working-tree edit; `c2887fa` completes the pair). UI-change-approval gate honored (before-screenshot shown, user approved).
+
+Verified in runtime (not just code): `scripts/eval-peer-review-judge.ts` calibration on 12 labelled drafts = **0% hard false-block, 100% catch** (the false-block rate is the gate); `scripts/test-peer-review-integration.ts` live `runPeerReview` + real Groq = **7/7** (bad unsafe draft BLOCKED, good work passes); real-browser feed proof (`tests/e2e/persona-v22-feed-{before,after}.spec.ts`) shows the verdict cards. typecheck + gate:safety + test:integrity + test:tone + test:voice + test:pushback all green. Commits: `6ec4973` (server) + `c2887fa` (visibility).
+
+**Nothing merged to main. All of v2.2 sits on this branch.** Deferred to a later milestone (per the plan): per-role RAG, the outcome-based growth loop (consumes Phase C's deferred content-wiring), and ambient watchdog policing. A dev server runs on Phase D code at localhost:5001 (free Groq mode) and a demo project "Phase D Review Demo" (dev_tester account) shows the verdict cards.
+
+---
+
 
 ## 2026-07-25 — Mattermost bridge milestone scaffolded (stub, no build)
 
