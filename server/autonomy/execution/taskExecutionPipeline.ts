@@ -397,6 +397,11 @@ async function executeTaskWithOutput(
           userMessage: input.task.description ?? input.task.title,
           draftResponse: output,
           projectName: input.project.name,
+          // v2.2 Phase D — real LLM-as-judge on the autonomous path (Groq judge, writer regenerates on revise)
+          enableLlmJudge: true,
+          authorGenerate: input.generateText,
+          task: input.task.description ?? input.task.title,
+          maxRevisionCycles: BUDGETS.maxRevisionCycles,
         });
 
         if (peerResult?.clarificationRequired) {
@@ -597,6 +602,11 @@ export async function executeTask(
           userMessage: input.task.description ?? input.task.title,
           draftResponse: output,
           projectName: input.project.name,
+          // v2.2 Phase D — real LLM-as-judge on the autonomous path (Groq judge, writer regenerates on revise)
+          enableLlmJudge: true,
+          authorGenerate: input.generateText,
+          task: input.task.description ?? input.task.title,
+          maxRevisionCycles: BUDGETS.maxRevisionCycles,
         });
       } catch (peerReviewErr) {
         // Peer review infrastructure failure — log and fall through to non-reviewed path

@@ -2,6 +2,14 @@ import { appendPeerReview, appendDeliberationRound } from '../traces/traceStore.
 import { logAutonomyEvent } from '../events/eventLogger.js';
 import { BUDGETS, DELIBERATION_GATES } from '../config/policies.js';
 import { evaluatePeerReviewRubric, type PeerReviewRubric } from './peerReviewRubric.js';
+// v2.2 Phase D — real LLM-as-judge peer review layer (opt-in via enableLlmJudge)
+import { runLlmJudge, aggregateVerdicts, type PeerJudgeResult, type AggregateJudgeResult } from './llmJudge.js';
+import { getRoleIntelligence } from '@shared/roleIntelligence';
+
+/** Kill switch for the LLM-as-judge layer. Default on; set FEATURE_PEER_REVIEW_JUDGE=false to fall back to deterministic-only. */
+const FEATURE_PEER_REVIEW_JUDGE = (process.env.FEATURE_PEER_REVIEW_JUDGE ?? 'true').toLowerCase() === 'true';
+const REJECT_CONFIDENCE = Number(process.env.PEER_REVIEW_REJECT_CONFIDENCE ?? 0.7);
+const REVISE_CONFIDENCE = Number(process.env.PEER_REVIEW_REVISE_CONFIDENCE ?? 0.6);
 
 export interface ReviewerAgent {
   id: string;
@@ -17,6 +25,14 @@ export interface PeerReviewDecision {
   clarificationRequired: boolean;
   blockedByHallucination: boolean;
   overrideUsed: boolean;
+  // v2.2 Phase D — populated only when the LLM-as-judge layer ran (autonomous path)
+  judge?: {
+    decision: 'approve' | 'revise' | 'reject';
+    reasoning: string;
+    mustFix: string[];
+    revisionsApplied: number;
+    results: PeerJudgeResult[];
+  };
 }
 
 export function shouldTriggerPeerReview(input: {
@@ -111,6 +127,16 @@ export async function runPeerReview(input: {
   safetySensitive?: boolean;
   contradictsCanon?: boolean;
   allowOverrideHighRisk?: boolean;
+  // v2.2 Phase D — opt-in LLM-as-judge (autonomous path passes these; chat path leaves them unset)
+  enableLlmJudge?: boolean;
+  /** The writer/author model, used to regenerate on a "revise" verdict. Usually the pipeline's generateText. */
+  authorGenerate?: (prompt: string, system: string) => Promise<string>;
+  /** Optional judge generate override (tests inject this); when absent the judge calls Groq itself. */
+  judgeGenerate?: (prompt: string, system: string) => Promise<string>;
+  /** Task text the work was meant to accomplish — gives the judge the yardstick. Falls back to userMessage. */
+  task?: string;
+  /** Max real regeneration cycles on a "revise" verdict. Defaults to BUDGETS.maxRevisionCycles. */
+  maxRevisionCycles?: number;
 }): Promise<PeerReviewDecision> {
   const trigger = shouldTriggerPeerReview({
     confidence: input.confidence,
@@ -155,6 +181,12 @@ export async function runPeerReview(input: {
     },
   });
 
+  // v2.2 Phase D — the LLM-as-judge layer runs only when the caller opts in (autonomous pipeline).
+  // When it runs, the per-reviewer feed event carries the real verdict (logged after judging), so the
+  // deterministic rubric event is suppressed here to avoid double-logging. The chat path leaves
+  // enableLlmJudge unset and keeps the exact prior behaviour.
+  const judgeEnabled = Boolean(input.enableLlmJudge) && FEATURE_PEER_REVIEW_JUDGE;
+
   const reviews: PeerReviewRubric[] = [];
   for (const reviewer of selectedReviewers) {
     const rubric = evaluatePeerReviewRubric({
@@ -167,19 +199,21 @@ export async function runPeerReview(input: {
     });
     reviews.push(rubric);
 
-    await logAutonomyEvent({
-      eventType: 'peer_review_feedback',
-      projectId: input.projectId,
-      teamId: input.teamId ?? null,
-      conversationId: input.conversationId,
-      hatchId: reviewer.id,
-      provider: input.provider,
-      mode: input.mode,
-      latencyMs: null,
-      confidence: input.confidence,
-      riskScore: input.riskScore,
-      payload: rubric as unknown as Record<string, unknown>,
-    });
+    if (!judgeEnabled) {
+      await logAutonomyEvent({
+        eventType: 'peer_review_feedback',
+        projectId: input.projectId,
+        teamId: input.teamId ?? null,
+        conversationId: input.conversationId,
+        hatchId: reviewer.id,
+        provider: input.provider,
+        mode: input.mode,
+        latencyMs: null,
+        confidence: input.confidence,
+        riskScore: input.riskScore,
+        payload: rubric as unknown as Record<string, unknown>,
+      });
+    }
 
     if (input.traceId) {
       await appendPeerReview(input.traceId, {
@@ -205,6 +239,118 @@ export async function runPeerReview(input: {
   const highRiskFlagged = reviews.some((review) => review.hallucinationRisk === 'high');
   const contradictionCount = reviews.reduce((sum, review) => sum + review.contradictions.length, 0);
   const overrideUsed = highRiskFlagged && Boolean(input.allowOverrideHighRisk);
+
+  // ── v2.2 Phase D: real LLM-as-judge with teeth + a real regeneration loop ──────────────────
+  // Each reviewer genuinely reads the work through its own peerReviewLens (cross-model Groq judge,
+  // blind to authorship). Verdicts aggregate to a single decision; a confident "reject" blocks to
+  // the user, a "revise" regenerates the work with the reviewer's mustFix list (bounded), "approve"
+  // ships it. Any judge failure yields no verdict and the flow falls back to the deterministic path.
+  let judgeDecision: AggregateJudgeResult | null = null;
+  let judgeRevisedContent: string | null = null;
+  let judgeRevisionsApplied = 0;
+  const judgeResults: PeerJudgeResult[] = [];
+
+  if (judgeEnabled && selectedReviewers.length > 0) {
+    const maxCycles = Math.max(0, input.maxRevisionCycles ?? BUDGETS.maxRevisionCycles);
+    const taskText = input.task ?? input.userMessage;
+    let currentDraft = input.draftResponse;
+
+    for (let cycle = 0; cycle <= maxCycles; cycle++) {
+      const cycleVerdicts: PeerJudgeResult[] = [];
+      for (const reviewer of selectedReviewers) {
+        const lens = getRoleIntelligence(reviewer.role)?.peerReviewLens;
+        const verdict = await runLlmJudge({
+          reviewerHatchId: reviewer.id,
+          reviewerName: reviewer.name,
+          reviewerRole: reviewer.role,
+          peerReviewLens: lens,
+          task: taskText,
+          draft: currentDraft,
+          generate: input.judgeGenerate,
+        });
+        if (!verdict) continue;
+        cycleVerdicts.push(verdict);
+        judgeResults.push(verdict);
+
+        // Rich per-reviewer feed event: this is what the Activity feed renders for autonomous reviews.
+        await logAutonomyEvent({
+          eventType: 'peer_review_feedback',
+          projectId: input.projectId,
+          teamId: input.teamId ?? null,
+          conversationId: input.conversationId,
+          hatchId: reviewer.id,
+          provider: input.provider,
+          mode: input.mode,
+          latencyMs: null,
+          confidence: verdict.confidence,
+          riskScore: input.riskScore,
+          payload: {
+            verdict: verdict.verdict,
+            severity: verdict.severity,
+            reasoning: verdict.reasoning,
+            mustFix: verdict.mustFix,
+            specificProblems: verdict.specificProblems,
+            reviewerName: verdict.reviewerName,
+            reviewerRole: verdict.reviewerRole,
+            judgeModel: verdict.judgeModel,
+            revisionCycle: cycle,
+          },
+        });
+      }
+
+      if (cycleVerdicts.length === 0) break; // no usable judgment this cycle → fail-safe to deterministic path
+
+      judgeDecision = aggregateVerdicts({
+        verdicts: cycleVerdicts,
+        rejectConfidence: REJECT_CONFIDENCE,
+        reviseConfidence: REVISE_CONFIDENCE,
+      });
+
+      if (judgeDecision.decision === 'approve') {
+        judgeRevisedContent = currentDraft;
+        break;
+      }
+      if (judgeDecision.decision === 'reject') {
+        break; // teeth: fall through to the block path below
+      }
+
+      // decision === 'revise' — regenerate with the mustFix list if we can and still have a cycle left
+      if (cycle < maxCycles && input.authorGenerate && judgeDecision.mustFix.length > 0) {
+        const revisePrompt = [
+          'Your work was peer-reviewed and needs revision. Fix these specific issues, keeping everything that was already correct:',
+          ...judgeDecision.mustFix.map((fix, idx) => `${idx + 1}. ${fix}`),
+          '',
+          `TASK: ${taskText}`,
+          '',
+          'CURRENT WORK:',
+          currentDraft,
+          '',
+          'Return only the improved work, no preamble or meta-commentary.',
+        ].join('\n');
+        try {
+          const regenerated = await input.authorGenerate(
+            revisePrompt,
+            `You are a ${input.primaryHatchRole}. Improve your own work based on the peer feedback.`,
+          );
+          if (regenerated?.trim()) {
+            currentDraft = regenerated.trim();
+            judgeRevisedContent = currentDraft;
+            judgeRevisionsApplied += 1;
+            continue; // re-judge the revised draft
+          }
+        } catch {
+          // regeneration failed — ship the current best draft rather than block good-enough work
+        }
+        judgeRevisedContent = currentDraft;
+        break;
+      }
+
+      // revise with no cycles left / no regenerator: keep the current draft (best effort), stop looping
+      judgeRevisedContent = currentDraft;
+      break;
+    }
+  }
+  const judgeRejected = judgeEnabled && judgeDecision?.decision === 'reject';
 
   if (highRiskFlagged) {
     await logAutonomyEvent({
@@ -258,14 +404,28 @@ export async function runPeerReview(input: {
     },
   });
 
-  const revised = synthesizeRevisions({
-    draftResponse: input.draftResponse,
-    reviews,
-    highRisk: highRiskFlagged && !overrideUsed,
-  });
+  let revisedContent: string;
+  let clarificationRequired: boolean;
 
-  let revisedContent = revised.revised;
-  let clarificationRequired = revised.clarificationRequired;
+  if (judgeEnabled && judgeDecision) {
+    // The judge ran and produced a usable decision → it is authoritative for the shipped content.
+    // A confident reject blocks (teeth). The deterministic hallucination gate is kept as an OR
+    // safety net so a real hallucination still blocks even if the judge missed it.
+    clarificationRequired = judgeRejected || (highRiskFlagged && !overrideUsed);
+    revisedContent = judgeRejected
+      ? input.draftResponse // don't ship rejected work; the user sees the draft to approve or deny
+      : judgeRevisedContent ?? input.draftResponse; // approve → draft; revise → regenerated content
+  } else {
+    // No judge (chat path) or no usable verdict → deterministic synthesis, exactly as before.
+    const revised = synthesizeRevisions({
+      draftResponse: input.draftResponse,
+      reviews,
+      highRisk: highRiskFlagged && !overrideUsed,
+    });
+    revisedContent = revised.revised;
+    clarificationRequired = revised.clarificationRequired;
+  }
+
   if (overrideUsed) {
     revisedContent = [
       input.draftResponse.trim(),
@@ -336,13 +496,26 @@ export async function runPeerReview(input: {
     });
   }
 
+  const reason = judgeDecision
+    ? [...trigger.reasons, `peer_review_${judgeDecision.decision}`, judgeDecision.reasoning]
+    : trigger.reasons;
+
   return {
     triggered: true,
-    reason: trigger.reasons,
+    reason,
     reviews,
     revisedContent,
     clarificationRequired,
     blockedByHallucination: highRiskFlagged && !overrideUsed,
     overrideUsed,
+    judge: judgeDecision
+      ? {
+          decision: judgeDecision.decision,
+          reasoning: judgeDecision.reasoning,
+          mustFix: judgeDecision.mustFix,
+          revisionsApplied: judgeRevisionsApplied,
+          results: judgeResults,
+        }
+      : undefined,
   };
 }
