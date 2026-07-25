@@ -69,6 +69,9 @@ const SIGNAL_EVENTS = new Set([
   'approval_rejected',
   'safety_triggered',
   'proposal_created',
+  // v2.2 Phase D: a real peer-review verdict (one AI judged another's work) is signal, not plumbing —
+  // it is the moment the team catches its own mistakes, which is exactly what a founder wants to see.
+  'peer_review_feedback',
 ]);
 
 export function isSignalEvent(eventType: string): boolean {
@@ -150,8 +153,16 @@ export function describeAutonomyEvent(
       return "Started reviewing a teammate's work";
     case 'peer_review_completed':
       return "Finished reviewing a teammate's work";
-    case 'peer_review_feedback':
+    case 'peer_review_feedback': {
+      // v2.2 Phase D: when a real judge ran, the payload carries the verdict — say what was decided,
+      // in verbs, not the raw "approve/revise/reject" enum. Older deterministic reviews have no
+      // verdict and keep the neutral wording.
+      const verdict = typeof p.verdict === 'string' ? p.verdict : null;
+      if (verdict === 'approve') return "Reviewed a teammate's work and approved it";
+      if (verdict === 'revise') return "Reviewed a teammate's work and asked for changes";
+      if (verdict === 'reject') return "Reviewed a teammate's work and sent it back";
       return "Left feedback on a teammate's work";
+    }
     case 'revision_requested':
       return 'Asked for another pass at the draft';
     case 'revision_completed':
