@@ -84,7 +84,7 @@ export function ChatInput({
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="flex items-center gap-1 px-2 py-1 text-micro text-[var(--hatchin-text-muted)] hover:text-[var(--hatchin-text)] hover:bg-[var(--hatchin-surface-elevated)] rounded-md transition-colors"
+                    className="hit-target flex items-center gap-1 px-2 py-1 text-micro text-[var(--hatchin-text-muted)] hover:text-[var(--hatchin-text)] hover:bg-[var(--hatchin-surface-elevated)] rounded-md transition-colors"
                   >
                     <ArrowRightLeft className="w-3 h-3" />
                     Hand off to...
@@ -142,7 +142,7 @@ export function ChatInput({
               <button
                 type="button"
                 onClick={onCancelStreaming}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors"
+                className="hit-target flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors"
                 aria-label="Stop generating"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -154,7 +154,7 @@ export function ChatInput({
                 type="submit"
                 disabled={!inputValue.trim()}
                 aria-label="Send message"
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg transition-colors ${
+                className={`hit-target flex items-center gap-1 px-2.5 py-1.5 rounded-lg transition-colors ${
                   inputValue.trim()
                     ? 'bg-[var(--hatchin-surface-elevated)] text-[var(--hatchin-text)] hover:bg-[var(--hatchin-border)]'
                     : 'bg-[var(--hatchin-surface-elevated)] text-[var(--hatchin-text-muted)] cursor-not-allowed opacity-50'

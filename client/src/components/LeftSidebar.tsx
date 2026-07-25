@@ -577,7 +577,7 @@ export function LeftSidebar({
           </h2>
           <button
             onClick={handleAddProjectClick}
-            className="px-3 py-1.5 btn-primary-glow rounded-full text-xs font-semibold btn-press"
+            className="hit-target px-3 py-1.5 btn-primary-glow rounded-full text-xs font-semibold btn-press"
           >
             + New
           </button>

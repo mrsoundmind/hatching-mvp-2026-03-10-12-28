@@ -952,7 +952,7 @@ function HomeInner() {
       <div className="lg:hidden shrink-0 flex items-center gap-2 px-3 h-12 border-b border-border/40 bg-background/80 backdrop-blur-sm">
         <button
           onClick={() => setMobileLeftOpen(true)}
-          className="p-2 -ml-1 rounded-lg hover:bg-muted transition-colors"
+          className="hit-target p-2 -ml-1 rounded-lg hover:bg-muted transition-colors"
           aria-label="Open projects"
         >
           <Menu className="w-5 h-5" />

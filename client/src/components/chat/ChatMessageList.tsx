@@ -138,7 +138,7 @@ export function ChatMessageList({
             <button
               onClick={onLoadEarlier}
               disabled={loadingEarlier}
-              className="text-sm text-slate-400 hover:text-slate-200 transition-colors px-4 py-2 rounded-lg hover:bg-slate-800/50 disabled:opacity-50"
+              className="hit-target text-sm text-slate-400 hover:text-slate-200 transition-colors px-4 py-2 rounded-lg hover:bg-slate-800/50 disabled:opacity-50"
             >
               {loadingEarlier ? 'Fetching earlier messages...' : 'Load earlier messages'}
             </button>

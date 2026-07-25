@@ -84,7 +84,7 @@ export function ChatHeader({
         <button
           onClick={onAddHatchClick}
           disabled={!activeProject}
-          className="btn-primary-glow px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 btn-press disabled:opacity-50 disabled:cursor-not-allowed"
+          className="hit-target btn-primary-glow px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 btn-press disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Add Hatch"
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

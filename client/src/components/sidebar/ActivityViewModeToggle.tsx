@@ -35,7 +35,7 @@ export function ActivityViewModeToggle({ mode, onChange }: ActivityViewModeToggl
                 ? 'Everything as it happened, newest first'
                 : 'Grouped under the task that produced it'
             }
-            className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
+            className={`hit-target px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
               active
                 ? 'bg-[var(--hatchin-surface-elevated)] hatchin-text'
                 : 'hatchin-text-muted hover:hatchin-text'

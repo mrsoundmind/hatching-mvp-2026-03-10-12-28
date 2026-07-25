@@ -399,7 +399,7 @@ export function ProjectTree({
                 </div>
                 <div className="relative flex-shrink-0">
                   <button
-                    className="opacity-0 group-hover:opacity-100 hatchin-text-muted hover:hatchin-text transition-opacity duration-200"
+                    className="hit-target opacity-0 group-hover:opacity-100 hatchin-text-muted hover:hatchin-text transition-opacity duration-200"
                     onClick={(e) => handleContextMenuToggle(project.id, e)}
                     aria-label="Project options"
                   >
