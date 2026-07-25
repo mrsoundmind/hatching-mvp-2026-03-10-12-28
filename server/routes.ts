@@ -381,8 +381,10 @@ export async function registerRoutes(app: Express, sessionParser?: SessionParser
         return res.status(400).json({ error: "Missing required fields" });
       }
 
+      const feedbackAgent = await storage.getAgent(agentId);
       const updatedProfile = personalityEngine.adaptPersonalityFromFeedback(
-        agentId, userId, feedback, messageContent || '', agentResponse || ''
+        agentId, userId, feedback, messageContent || '', agentResponse || '',
+        feedbackAgent?.role ?? null // v2.2 Phase C: resolve correct role baseline for fresh profiles
       );
 
       // Store feedback for future analysis

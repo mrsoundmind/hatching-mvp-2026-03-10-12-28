@@ -98,6 +98,33 @@ console.log('\nTest 7: Without join-time seed, restarted server loses learned tr
   assert(firstMessageTraits === learnedVerbosity, 'first message after restart uses learned verbosity when join seeds from DB');
 }
 
+console.log('\nTest 8: v2.2 Phase C — 👎 anchors to the role baseline, does not flatten to 0.5');
+{
+  const engine = new PersonalityEvolutionEngine();
+  const role = 'Backend Developer'; // distinct baseline: high technicalDepth, low empathy, high directness
+  const base = { ...engine.getPersonalityProfile('agent-neg', 'user-neg', role).baseTraits };
+  let p: any;
+  for (let i = 0; i < 5; i++) p = engine.adaptPersonalityFromFeedback('agent-neg', 'user-neg', 'negative', '', '', role);
+  const vals: number[] = Object.values(p.adaptedTraits);
+  assert(!vals.every(v => Math.abs(v - 0.55) < 0.06), '👎 does not collapse all traits to a uniform ~0.55');
+  assert(Object.keys(base).every(k => Math.abs(p.adaptedTraits[k] - (base as any)[k]) <= 0.1501), 'traits stay within the role baseline band');
+  assert(p.interactionCount === 5, 'interactionCount accumulates on feedback (was stuck at 0)');
+  assert(p.adaptedTraits.technicalDepth > 0.7 && p.adaptedTraits.empathy < 0.6, 'distinct baseline preserved (technicalDepth high, empathy low)');
+}
+
+console.log('\nTest 9: v2.2 Phase C — 👍 reinforcement stays bounded to the baseline band (no sycophancy runaway)');
+{
+  const engine = new PersonalityEvolutionEngine();
+  const role = 'Backend Developer';
+  const q0 = engine.getPersonalityProfile('agent-pos', 'user-pos', role);
+  const base2 = { ...q0.baseTraits };
+  q0.adaptedTraits.directness = Math.min(1, base2.directness + 0.05); // seed a lean to exercise reinforce
+  for (let i = 0; i < 25; i++) engine.adaptPersonalityFromFeedback('agent-pos', 'user-pos', 'positive', '', '', role);
+  const after = engine.getPersonalityProfile('agent-pos', 'user-pos').adaptedTraits;
+  assert(after.directness <= base2.directness + 0.1501 && after.directness > base2.directness, '👍 reinforcement capped at baseline + 0.15');
+  assert(Object.values(after).every((v: any) => v > 0.02 && v < 0.98), 'no trait pinned at 0/1 by repeated praise');
+}
+
 console.log(`\n${'─'.repeat(50)}`);
 console.log(`Results: ${passed} passed, ${failed} failed`);
 if (failed > 0) { console.error('TESTS FAILED'); process.exit(1); }

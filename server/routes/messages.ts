@@ -282,8 +282,10 @@ export function registerMessageRoutes(app: Express): void {
         const feedback = reactionData.reactionType === 'thumbs_up' ? 'positive' : 'negative';
 
         // Bug 1: seed from DB so learning survives server restart
+        let reactingAgentRole: string | null = null;
         try {
           const agentForSeed = await storage.getAgent(reactionData.agentId);
+          reactingAgentRole = agentForSeed?.role ?? null;
           const persisted = (agentForSeed?.personality as any);
           if (persisted?.adaptedTraits?.[userId] && persisted?.adaptationMeta?.[userId]) {
             personalityEngine.seedProfileFromDB(
@@ -299,8 +301,9 @@ export function registerMessageRoutes(app: Express): void {
           reactionData.agentId,
           userId,
           feedback,
-          '', // User message context would need to be passed from frontend
-          '' // Agent response would need to be retrieved
+          '', // v2.2 Phase C: content-aware adaptation deferred to the outcome-based growth loop
+          '',
+          reactingAgentRole // v2.2 Phase C: resolve the correct role baseline for fresh profiles
         );
 
         // PRES-05: Persist adapted personality traits to database

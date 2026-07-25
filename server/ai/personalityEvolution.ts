@@ -273,44 +273,60 @@ export class PersonalityEvolutionEngine {
     userId: string,
     feedback: 'positive' | 'negative',
     messageContent: string,
-    agentResponse: string
+    agentResponse: string,
+    role?: string | null
   ): PersonalityProfile {
-    const profile = this.getPersonalityProfile(agentId, userId);
+    // v2.2 Phase C: pass role so a freshly-created profile resolves the correct role baseline
+    // (otherwise a first-ever reaction would anchor to the generic fallback, not the role's own).
+    const profile = this.getPersonalityProfile(agentId, userId, role);
+    // v2.2 Phase C: feedback now accumulates. Previously this path never touched interactionCount,
+    // so the persisted count stayed 0 and adaptationConfidence never grew across sessions.
+    profile.interactionCount++;
     const adjustments: PersonalityAdjustment[] = [];
-    
-    if (feedback === 'positive') {
-      // Reinforce current traits slightly
-      Object.keys(profile.adaptedTraits).forEach(trait => {
-        const currentValue = profile.adaptedTraits[trait as keyof PersonalityTraits];
-        const adjustment = currentValue > 0.5 ? 0.02 : -0.02; // Move towards extremes slightly
-        const newValue = Math.max(0, Math.min(1, currentValue + adjustment));
-        
-        if (Math.abs(adjustment) > 0.01) {
-          adjustments.push(
-            this.createAdjustment(trait as keyof PersonalityTraits, currentValue, newValue,
-              'positive_feedback', 'Reinforcing successful personality traits')
-          );
-        }
-      });
-    } else {
-      // Adjust traits towards middle ground
-      Object.keys(profile.adaptedTraits).forEach(trait => {
-        const currentValue = profile.adaptedTraits[trait as keyof PersonalityTraits];
-        const adjustment = currentValue > 0.5 ? -0.05 : 0.05; // Move towards center
-        const newValue = Math.max(0, Math.min(1, currentValue + adjustment));
-        
+
+    // v2.2 Phase C: anchor BOTH feedback directions to the role's OWN baseline. The old math
+    // collapsed every trait toward a generic 0.5 center under 👎 (erasing each role's distinct
+    // personality) and pushed toward the extremes under 👍 (drifting toward sycophancy).
+    //   negative → revert gently toward the role baseline (stay the distinct role, do not flatten)
+    //   positive → reinforce an existing user-specific lean, bounded to a fixed band of the baseline
+    const BAND = 0.15;            // adaptedTraits may never drift more than this from the role baseline
+    const REVERT_STEP = 0.04;     // negative: pull back toward baseline
+    const REINFORCE_STEP = 0.02;  // positive: gentle, bounded personalization
+    const traitKeys = Object.keys(profile.adaptedTraits) as (keyof PersonalityTraits)[];
+    for (const trait of traitKeys) {
+      const base = profile.baseTraits[trait];
+      const current = profile.adaptedTraits[trait];
+      let next: number;
+      if (feedback === 'negative') {
+        const delta = base - current;
+        next = current + Math.sign(delta) * Math.min(REVERT_STEP, Math.abs(delta));
+      } else {
+        const drift = current - base;
+        next = Math.abs(drift) < 0.01 ? current : current + Math.sign(drift) * REINFORCE_STEP;
+      }
+      // Clamp within the baseline band, then to [0,1].
+      next = Math.max(base - BAND, Math.min(base + BAND, next));
+      next = Math.max(0, Math.min(1, next));
+      if (Math.abs(next - current) > 0.001) {
         adjustments.push(
-          this.createAdjustment(trait as keyof PersonalityTraits, currentValue, newValue,
-            'negative_feedback', 'Adjusting personality based on negative feedback')
+          this.createAdjustment(
+            trait, current, next,
+            feedback === 'positive' ? 'positive_feedback' : 'negative_feedback',
+            feedback === 'positive'
+              ? 'Reinforcing user-specific lean, bounded to role baseline'
+              : 'Reverting toward role baseline (no flattening)'
+          )
         );
-      });
+      }
     }
-    
+
     this.applyAdjustments(profile, adjustments);
+    // v2.2 Phase C: confidence grows with accumulated feedback (was stuck because count never moved).
+    profile.adaptationConfidence = Math.min(0.9, 0.1 + profile.interactionCount * 0.05);
     profile.lastUpdated = new Date();
-    
-    console.log(`🔄 Personality updated from ${feedback} feedback: ${adjustments.length} adjustments`);
-    
+
+    console.log(`🔄 Personality updated from ${feedback} feedback: ${adjustments.length} adjustments (count=${profile.interactionCount})`);
+
     return profile;
   }
 
