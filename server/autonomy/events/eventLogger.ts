@@ -276,6 +276,12 @@ export async function logAutonomyEvent(
   if (!wroteToDb) {
     await writeEventToFile(fullEvent);
   }
+  // Best-effort outbound notification (Mattermost, etc.), Phase 1 of the Mattermost bridge.
+  // Lazy-imported and fire-and-forget so it can never add latency to, fail, or load-couple the
+  // event path. No-op unless a Mattermost connection is configured (see server/integrations/).
+  void import('../../integrations/notifier.js')
+    .then((m) => m.dispatchAutonomyEvent(fullEvent))
+    .catch(() => {});
   return fullEvent;
 }
 
