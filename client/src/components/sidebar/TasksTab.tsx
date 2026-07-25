@@ -175,8 +175,8 @@ export function TasksTab({ projectId }: TasksTabProps) {
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-y-auto hide-scrollbar">
       <div className="mb-3 px-1 shrink-0">
-        <p className="text-[12px] font-medium hatchin-text mb-0.5">Mission Board</p>
-        <p className="text-[10px] hatchin-text-muted">Tasks created by Hatches from chat, or added by you.</p>
+        <p className="text-xs font-medium hatchin-text mb-0.5">Mission Board</p>
+        <p className="text-xs hatchin-text-muted">Tasks created by Hatches from chat, or added by you.</p>
       </div>
 
       {isLoading ? (
@@ -186,13 +186,13 @@ export function TasksTab({ projectId }: TasksTabProps) {
       ) : totalBoardTasks === 0 ? (
         <div className="flex-1 flex flex-col items-start justify-center py-8 px-2">
           <p className="text-base font-semibold hatchin-text mb-1">No missions yet.</p>
-          <p className="text-[12px] hatchin-text-muted leading-relaxed mb-6 max-w-[220px]">
+          <p className="text-xs hatchin-text-muted leading-relaxed mb-6 max-w-[220px]">
             Agents create tasks from chat automatically. You can also add your own.
           </p>
           {projectId && (
             <button
               onClick={() => setShowAddTask(v => !v)}
-              className="text-[12px] font-semibold px-3 py-2 rounded-lg border border-[var(--hatchin-border-subtle)] hatchin-text hover:border-[var(--hatchin-blue)] hover:text-[var(--hatchin-blue)] transition-colors"
+              className="text-xs font-semibold px-3 py-2 rounded-lg border border-[var(--hatchin-border-subtle)] hatchin-text hover:border-[var(--hatchin-blue)] hover:text-[var(--hatchin-blue)] transition-colors"
             >
               + New task
             </button>
@@ -212,8 +212,8 @@ export function TasksTab({ projectId }: TasksTabProps) {
                 autoFocus
               />
               <div className="flex gap-1.5">
-                <button onClick={addTask} className="px-3 py-1 bg-[var(--hatchin-blue)] text-white rounded-lg text-[11px] font-medium hover:opacity-90">Add</button>
-                <button onClick={() => { setShowAddTask(false); setNewTaskTitle(''); }} className="px-3 py-1 bg-[var(--hatchin-surface)] hatchin-text rounded-lg text-[11px]">Cancel</button>
+                <button onClick={addTask} className="px-3 py-1 bg-[var(--hatchin-blue)] text-white rounded-lg text-micro font-medium hover:opacity-90">Add</button>
+                <button onClick={() => { setShowAddTask(false); setNewTaskTitle(''); }} className="px-3 py-1 bg-[var(--hatchin-surface)] hatchin-text rounded-lg text-micro">Cancel</button>
               </div>
             </div>
           )}
@@ -227,13 +227,13 @@ export function TasksTab({ projectId }: TasksTabProps) {
           <div className="mt-2 px-1">
             {/* Section header — text-only, no icons */}
             <div className="flex items-center justify-between mb-2 px-1">
-              <p className="text-[11px] font-semibold text-[var(--hatchin-text-muted)] uppercase tracking-wider">
+              <p className="text-micro font-semibold text-[var(--hatchin-text-muted)] uppercase tracking-wider">
                 Tasks
                 <span className="ml-2 font-normal normal-case tracking-normal">{totalBoardTasks}</span>
               </p>
               <button
                 onClick={() => setShowAddTask(v => !v)}
-                className="text-[11px] font-medium text-[var(--hatchin-blue)] hover:opacity-80 transition-opacity"
+                className="text-micro font-medium text-[var(--hatchin-blue)] hover:opacity-80 transition-opacity"
               >
                 + New
               </button>
@@ -255,8 +255,8 @@ export function TasksTab({ projectId }: TasksTabProps) {
                   autoFocus
                 />
                 <div className="flex gap-1.5">
-                  <button onClick={addTask} className="px-3 py-1 bg-[var(--hatchin-blue)] text-white rounded-lg text-[11px] font-medium hover:opacity-90">Add</button>
-                  <button onClick={() => { setShowAddTask(false); setNewTaskTitle(''); }} className="px-3 py-1 bg-[var(--hatchin-surface)] hatchin-text rounded-lg text-[11px]">Cancel</button>
+                  <button onClick={addTask} className="px-3 py-1 bg-[var(--hatchin-blue)] text-white rounded-lg text-micro font-medium hover:opacity-90">Add</button>
+                  <button onClick={() => { setShowAddTask(false); setNewTaskTitle(''); }} className="px-3 py-1 bg-[var(--hatchin-surface)] hatchin-text rounded-lg text-micro">Cancel</button>
                 </div>
               </div>
             )}
@@ -277,12 +277,12 @@ export function TasksTab({ projectId }: TasksTabProps) {
                         ? <ChevronRight className="w-3 h-3 hatchin-text-muted" />
                         : <ChevronDown className="w-3 h-3 hatchin-text-muted" />}
                       <span
-                        className="text-[11px] font-semibold"
+                        className="text-micro font-semibold"
                         style={{ color: section.color }}
                       >
                         {section.title}
                       </span>
-                      <span className="text-[10px] hatchin-text-muted ml-auto">{section.tasks.length}</span>
+                      <span className="text-xs hatchin-text-muted ml-auto">{section.tasks.length}</span>
                     </button>
 
                     {!isCollapsed && (
@@ -310,7 +310,7 @@ export function TasksTab({ projectId }: TasksTabProps) {
                                   className="w-full text-left"
                                 >
                                   <p
-                                    className="text-[12px] leading-snug hatchin-text"
+                                    className="text-xs leading-snug hatchin-text"
                                     style={isDone ? { textDecoration: 'line-through', opacity: 0.5 } : undefined}
                                   >
                                     {task.title}
@@ -318,11 +318,11 @@ export function TasksTab({ projectId }: TasksTabProps) {
                                 </button>
                                 {task.assignee && (
                                   <div className="flex items-center gap-1.5 mt-0.5">
-                                    <p className="text-[10px] font-medium hatchin-text-muted">
+                                    <p className="text-xs font-medium hatchin-text-muted">
                                       {task.assignee}
                                     </p>
-                                    <span className="text-[10px] text-[var(--hatchin-border-subtle)]">•</span>
-                                    <p className="text-[10px] hatchin-text-muted opacity-70">
+                                    <span className="text-xs text-[var(--hatchin-border-subtle)]">•</span>
+                                    <p className="text-xs hatchin-text-muted opacity-70">
                                       System Generated
                                     </p>
                                   </div>

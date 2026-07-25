@@ -572,7 +572,7 @@ export function LeftSidebar({
       {/* Projects Section */}
       <div className="mb-4 min-h-0 flex-1 flex flex-col">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-medium hatchin-text-muted uppercase tracking-wide text-[12px]">
+          <h2 className="font-medium hatchin-text-muted uppercase tracking-wide text-xs">
             Projects
           </h2>
           <button
@@ -633,7 +633,7 @@ export function LeftSidebar({
               <div className="w-10 h-10 rounded-xl bg-hatchin-blue/15 border border-hatchin-blue/20 flex items-center justify-center mb-3">
                 <span className="text-lg">🥚</span>
               </div>
-              <p className="text-[11px] hatchin-text-muted leading-relaxed mb-3">
+              <p className="text-micro hatchin-text-muted leading-relaxed mb-3">
                 Nothing here yet. Press <span className="text-hatchin-blue font-medium">+ New</span> and tell Maya what you want to build.
               </p>
             </div>

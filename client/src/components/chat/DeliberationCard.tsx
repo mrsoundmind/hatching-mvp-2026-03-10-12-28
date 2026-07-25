@@ -56,7 +56,7 @@ export function DeliberationCard({
             <button
               type="button"
               onClick={onDismiss}
-              className="text-[10px] text-hatchin-text-muted hover:text-hatchin-text transition-colors ml-1"
+              className="text-xs text-hatchin-text-muted hover:text-hatchin-text transition-colors ml-1"
             >
               Dismiss
             </button>

@@ -32,13 +32,13 @@ export function TaskPipelineView({ tasks }: TaskPipelineViewProps) {
     <div className="mb-4 px-1">
       {/* Section label */}
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-[11px] font-semibold text-[var(--hatchin-text-muted)] uppercase tracking-wider">
+        <span className="text-micro font-semibold text-[var(--hatchin-text-muted)] uppercase tracking-wider">
           Pipeline
         </span>
         <div className="flex-1 h-px bg-gradient-to-r from-[var(--hatchin-border-subtle)] to-transparent" />
-        <span className="text-[10px] font-semibold hatchin-text">{total} total</span>
+        <span className="text-xs font-semibold hatchin-text">{total} total</span>
       </div>
-      <p className="text-[10px] text-[var(--hatchin-text-muted)] leading-relaxed mb-3">
+      <p className="text-xs text-[var(--hatchin-text-muted)] leading-relaxed mb-3">
         The overall flow of work across all tasks from queue to completion.
       </p>
 
@@ -75,7 +75,7 @@ export function TaskPipelineView({ tasks }: TaskPipelineViewProps) {
               style={{ backgroundColor: stage.color, opacity: stage.count === 0 ? 0.3 : 1 }}
             />
             <span
-              className="text-[10px]"
+              className="text-xs"
               style={{
                 color: stage.count > 0 ? 'var(--hatchin-text)' : 'var(--hatchin-text-muted)',
                 fontWeight: stage.count > 0 ? 600 : 400,

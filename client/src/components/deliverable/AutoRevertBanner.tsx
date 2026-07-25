@@ -74,7 +74,7 @@ export function AutoRevertBanner({
             </div>
             <button
               type="button"
-              className="mt-1 text-[11px] underline underline-offset-2 hover:opacity-80"
+              className="mt-1 text-micro underline underline-offset-2 hover:opacity-80"
               style={{ color: 'hsl(35, 90%, 65%)' }}
               onClick={() => setExpanded((e) => !e)}
               data-testid="auto-revert-banner-expand"
@@ -96,7 +96,7 @@ export function AutoRevertBanner({
         {expanded && (
           <div className="mt-3 space-y-3" data-testid="auto-revert-banner-expanded-content">
             {rejectedContent && (
-              <div className="text-[11px]">
+              <div className="text-micro">
                 <div
                   className="font-medium mb-1"
                   style={{ color: 'hsl(36, 100%, 85%)' }}

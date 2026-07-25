@@ -56,11 +56,11 @@ export function DocumentCard({ doc, onDelete }: DocumentCardProps) {
         </p>
         <div className="flex items-center gap-1.5 mt-0.5">
           <span
-            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${getTypeBadgeClass(doc.type)}`}
+            className={`text-xs font-semibold px-2 py-0.5 rounded-full ${getTypeBadgeClass(doc.type)}`}
           >
             {getBadgeLabel(doc.type)}
           </span>
-          <span className="text-[11px] text-[var(--hatchin-text-muted)]">
+          <span className="text-micro text-[var(--hatchin-text-muted)]">
             {formatDate(doc.createdAt)}
           </span>
         </div>

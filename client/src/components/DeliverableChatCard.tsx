@@ -61,15 +61,15 @@ export function DeliverableChatCard({
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <span
-              className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full"
+              className="text-xs font-bold uppercase px-1.5 py-0.5 rounded-full"
               style={{ backgroundColor: color, color: 'white' }}
             >
               {type.replace(/-/g, ' ')}
             </span>
-            <span className="text-[10px] hatchin-text-muted">
+            <span className="text-xs hatchin-text-muted">
               by {agentName} ({agentRole})
             </span>
-            <span className="text-[10px] hatchin-text-muted ml-auto">
+            <span className="text-xs hatchin-text-muted ml-auto">
               {status === 'complete' ? 'Complete' : status === 'in_review' ? 'In Review' : 'Draft'}
             </span>
           </div>

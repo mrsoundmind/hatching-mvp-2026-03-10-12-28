@@ -31,8 +31,8 @@ export function ActivityTimeRangeToggle({ value, onChange }: ActivityTimeRangeTo
   return (
     <div className="relative inline-flex items-center gap-1.5 rounded-lg bg-[var(--hatchin-surface)] pl-2 pr-1 py-1">
       <Clock className="w-3 h-3 hatchin-text-muted shrink-0" aria-hidden />
-      <span className="text-[10px] font-semibold hatchin-text whitespace-nowrap">{current.label}</span>
-      <span className="text-[8px] hatchin-text-muted pr-1" aria-hidden>▾</span>
+      <span className="text-xs font-semibold hatchin-text whitespace-nowrap">{current.label}</span>
+      <span className="text-xs hatchin-text-muted pr-1" aria-hidden>▾</span>
       {/* Native select overlaid so the control keeps platform keyboard + touch behaviour
           (and the mobile wheel picker) instead of a bespoke menu that has to reimplement it. */}
       <select

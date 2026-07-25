@@ -133,23 +133,23 @@ export function DocumentUploadZone({ projectId, onUploadComplete }: DocumentUplo
       {isUploading ? (
         <div className="flex flex-col items-center gap-1">
           <Loader2 className="w-4 h-4 text-[var(--hatchin-text-muted)] animate-spin" />
-          <span className="text-[12px] text-[var(--hatchin-text-muted)] truncate max-w-[200px]">
+          <span className="text-xs text-[var(--hatchin-text-muted)] truncate max-w-[200px]">
             {uploadingFilename}
           </span>
         </div>
       ) : error ? (
         <div className="flex flex-col items-center gap-1">
           <Upload className="w-5 h-5 text-[var(--hatchin-text-muted)]" />
-          <span className="text-[12px] text-destructive text-center">{error}</span>
+          <span className="text-xs text-destructive text-center">{error}</span>
         </div>
       ) : (
         <div className="flex flex-col items-center gap-1">
           <Upload className="w-5 h-5 text-[var(--hatchin-text-muted)]" />
-          <span className="text-[12px] text-[var(--hatchin-text-muted)]">
+          <span className="text-xs text-[var(--hatchin-text-muted)]">
             Drop a file here or{' '}
             <span className="text-[var(--hatchin-blue)]">browse</span>
           </span>
-          <span className="text-[11px] text-[var(--hatchin-text-muted)]">
+          <span className="text-micro text-[var(--hatchin-text-muted)]">
             PDF, DOCX, TXT, MD — up to 10MB
           </span>
         </div>

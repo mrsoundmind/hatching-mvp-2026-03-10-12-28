@@ -125,7 +125,7 @@ const BentoCard = () => {
                         {tab.badge && (
                           <span
                             className={cn(
-                              "ml-auto text-[8px] leading-none py-0.5 px-1 rounded-md tabular-nums transition-all z-20 relative",
+                              "ml-auto text-xs leading-none py-0.5 px-1 rounded-md tabular-nums transition-all z-20 relative",
                               isActive
                                 ? "bg-primary/10 text-primary border border-primary/20"
                                 : "bg-muted text-muted-foreground border border-transparent",
@@ -160,7 +160,7 @@ const BentoCard = () => {
                   <h3 className="text-xs font-semibold text-foreground tracking-tight line-clamp-1 uppercase opacity-60">
                     {activeTab.header}
                   </h3>
-                  <p className="text-[10px] text-muted-foreground font-normal leading-tight line-clamp-1">
+                  <p className="text-xs text-muted-foreground font-normal leading-tight line-clamp-1">
                     {activeTab.description}
                   </p>
                 </header>
@@ -195,7 +195,7 @@ const OverviewDashboard = () => (
     <div className="relative p-3.5 rounded-xl border border-border/40 bg-gradient-to-br from-background to-muted/20 overflow-hidden">
       <div className="flex flex-col gap-2 relative z-10">
         <div className="flex items-center justify-between">
-          <span className="text-[9px] font-medium text-muted-foreground">Team Performance</span>
+          <span className="text-xs font-medium text-muted-foreground">Team Performance</span>
           <HugeiconsIcon icon={CircleArrowUpRight02Icon} size={12} className="text-primary" />
         </div>
         <div className="flex flex-col gap-0.5">
@@ -208,7 +208,7 @@ const OverviewDashboard = () => (
             />
           </div>
         </div>
-        <span className="text-[9px] text-muted-foreground">Score for Search & Delivery campaigns</span>
+        <span className="text-xs text-muted-foreground">Score for Search & Delivery campaigns</span>
       </div>
       <div className="absolute -right-2 -bottom-2 opacity-5 scale-150 rotate-12">
         <HugeiconsIcon icon={BarChartIcon} size={64} />
@@ -218,15 +218,15 @@ const OverviewDashboard = () => (
     <div className="grid grid-cols-2 gap-2">
       <div className="p-3 rounded-xl border border-border/40 bg-background/50 flex items-center justify-between">
         <div className="flex flex-col">
-          <span className="text-[10px] font-medium text-foreground">1,070</span>
-          <span className="text-[8px] text-muted-foreground uppercase font-medium">Keywords</span>
+          <span className="text-xs font-medium text-foreground">1,070</span>
+          <span className="text-xs text-muted-foreground uppercase font-medium">Keywords</span>
         </div>
         <HugeiconsIcon icon={Search01Icon} size={14} className="opacity-20" />
       </div>
       <div className="p-3 rounded-xl border border-border/40 bg-background/50 flex items-center justify-between">
         <div className="flex flex-col">
-          <span className="text-[10px] font-medium text-foreground">2.3M</span>
-          <span className="text-[8px] text-muted-foreground uppercase font-medium">Credits</span>
+          <span className="text-xs font-medium text-foreground">2.3M</span>
+          <span className="text-xs text-muted-foreground uppercase font-medium">Credits</span>
         </div>
         <HugeiconsIcon icon={InformationCircleIcon} size={14} className="opacity-20" />
       </div>
@@ -238,10 +238,10 @@ const ManagementDashboard = () => (
   <div className="flex flex-col h-full not-prose">
     <div className="rounded-xl border border-border/40 overflow-hidden flex flex-col h-full bg-background/50">
       <div className="bg-muted/30 px-3 py-2 border-b border-border/40 flex items-center justify-between">
-        <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Active Users</span>
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Active Users</span>
         <div className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-md bg-background border border-border/40">
           <HugeiconsIcon icon={Search01Icon} size={10} className="text-muted-foreground/50" />
-          <span className="text-[8px] text-muted-foreground font-medium">Search</span>
+          <span className="text-xs text-muted-foreground font-medium">Search</span>
         </div>
       </div>
       <div className="p-1 flex flex-col gap-0.5">
@@ -256,8 +256,8 @@ const ManagementDashboard = () => (
               <div className={cn("absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-background", user.color)} />
             </div>
             <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-[10px] font-medium text-foreground truncate">{user.name}</span>
-              <span className="text-[8px] text-muted-foreground truncate">{user.role}</span>
+              <span className="text-xs font-medium text-foreground truncate">{user.name}</span>
+              <span className="text-xs text-muted-foreground truncate">{user.role}</span>
             </div>
             <div className="opacity-0 group-hover:opacity-100 transition-opacity">
               <HugeiconsIcon icon={Settings02Icon} size={12} className="text-muted-foreground" />
@@ -278,10 +278,10 @@ const ThreadsDashboard = () => (
       ].map((card, i) => (
         <div key={i} className="p-3.5 rounded-xl border border-border/40 bg-background/50 flex flex-col gap-3 relative overflow-hidden group">
           <div className="flex flex-col gap-1 z-10">
-            <span className="text-[12px] font-medium text-foreground leading-tight">{card.title}</span>
-            <span className="text-[9px] text-muted-foreground leading-tight">{card.desc}</span>
+            <span className="text-xs font-medium text-foreground leading-tight">{card.title}</span>
+            <span className="text-xs text-muted-foreground leading-tight">{card.desc}</span>
           </div>
-          <button className="w-fit flex items-center gap-1.5 px-2 py-1 rounded-md bg-foreground text-background text-[8px] font-semibold transition-transform active:scale-95 group-hover:bg-primary z-10">
+          <button className="w-fit flex items-center gap-1.5 px-2 py-1 rounded-md bg-foreground text-background text-xs font-semibold transition-transform active:scale-95 group-hover:bg-primary z-10">
             <HugeiconsIcon icon={Add01Icon} size={8} strokeWidth={3} />
             Create
           </button>
@@ -294,7 +294,7 @@ const ThreadsDashboard = () => (
         <div className="p-1 px-1.5 rounded-md bg-background border border-border/40">
           <HugeiconsIcon icon={InformationCircleIcon} size={10} className="text-muted-foreground" />
         </div>
-        <span className="text-[9px] text-muted-foreground font-medium">Pin a new item</span>
+        <span className="text-xs text-muted-foreground font-medium">Pin a new item</span>
       </div>
       <HugeiconsIcon icon={Add01Icon} size={12} className="text-muted-foreground/50" />
     </div>
@@ -305,7 +305,7 @@ const ResourcesDashboard = () => (
   <div className="flex flex-col gap-3 h-full overflow-hidden">
     <div className="flex-1 rounded-xl border border-border/40 flex flex-col bg-background/50 overflow-hidden">
       <div className="bg-muted/30 px-3 py-2 border-b border-border/40 flex items-center justify-between">
-        <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Archives & Logs</span>
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Archives & Logs</span>
         <HugeiconsIcon icon={DatabaseIcon} size={12} className="text-muted-foreground/30" />
       </div>
       <div className="flex-1 p-1 overflow-y-auto">
@@ -320,8 +320,8 @@ const ResourcesDashboard = () => (
               <HugeiconsIcon icon={item.icon} size={12} />
             </div>
             <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-[10px] font-medium text-foreground truncate">{item.file}</span>
-              <span className="text-[8px] text-muted-foreground tabular-nums uppercase">{item.size} • {item.type}</span>
+              <span className="text-xs font-medium text-foreground truncate">{item.file}</span>
+              <span className="text-xs text-muted-foreground tabular-nums uppercase">{item.size} • {item.type}</span>
             </div>
             <HugeiconsIcon icon={CircleArrowUpRight02Icon} size={10} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>

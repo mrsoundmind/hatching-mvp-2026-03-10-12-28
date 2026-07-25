@@ -238,7 +238,7 @@ export function MessageBubble({
               transition={{ delay: i * 0.1 }}
               className="flex items-start gap-3 p-2.5 rounded-lg bg-white/5 border border-white/10"
             >
-              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-[10px] font-bold mt-0.5">
+              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-bold mt-0.5">
                 {i + 1}
               </div>
               <div>
@@ -265,7 +265,7 @@ export function MessageBubble({
             >
               <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: member.color || '#A855F7' }} />
               <span className="text-xs font-medium text-foreground">{member.role}</span>
-              {member.name && <span className="text-[10px] text-muted-foreground">· {member.name}</span>}
+              {member.name && <span className="text-xs text-muted-foreground">· {member.name}</span>}
             </motion.div>
           ))}
         </div>

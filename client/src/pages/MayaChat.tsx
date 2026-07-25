@@ -512,7 +512,7 @@ export function MayaChat({ projectId }: MayaChatProps) {
                           <div>
                             <h4 className="text-sm font-medium text-foreground line-clamp-1">{doc.title}</h4>
                             <p className="text-xs text-muted-foreground line-clamp-3 mt-1 leading-relaxed">{doc.content}</p>
-                            <span className="text-[10px] text-muted-foreground mt-2 block">
+                            <span className="text-xs text-muted-foreground mt-2 block">
                               {new Date(doc.createdAt).toLocaleDateString()}
                             </span>
                           </div>

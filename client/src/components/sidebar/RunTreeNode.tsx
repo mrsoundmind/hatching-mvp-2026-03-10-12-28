@@ -156,7 +156,7 @@ export function RunTreeNode({ step, allSteps, depth, onClick }: RunTreeNodeProps
       >
         {/* 18px agent avatar circle with first letter */}
         <span
-          className="w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 mt-0.5"
+          className="w-[18px] h-[18px] rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5"
           style={{ backgroundColor: palette.bg, color: palette.text }}
           aria-hidden
         >
@@ -164,7 +164,7 @@ export function RunTreeNode({ step, allSteps, depth, onClick }: RunTreeNodeProps
         </span>
 
         {/* What happened, in words (wraps naturally — no truncation) */}
-        <span className="text-[11px] leading-snug flex-1 min-w-0 flex flex-col gap-0.5">
+        <span className="text-micro leading-snug flex-1 min-w-0 flex flex-col gap-0.5">
           <span style={{ color: 'var(--hatchin-text)' }}>
             <span className="font-semibold">{lead}</span>
             {body && (
@@ -175,14 +175,14 @@ export function RunTreeNode({ step, allSteps, depth, onClick }: RunTreeNodeProps
             )}
           </span>
           {duration && (
-            <span className="text-[10px] hatchin-text-muted">Finished in {duration}</span>
+            <span className="text-xs hatchin-text-muted">Finished in {duration}</span>
           )}
         </span>
 
         {/* Semantic-word delta badge: "Better" (green) / "Worse" (amber) / "New" (muted pill) */}
         {deltaWord.tone === 'positive' && (
           <span
-            className="text-[10px] font-semibold shrink-0 px-1.5 py-0.5 rounded-full whitespace-nowrap mt-0.5"
+            className="text-xs font-semibold shrink-0 px-1.5 py-0.5 rounded-full whitespace-nowrap mt-0.5"
             style={{
               color: 'var(--hatchin-green)',
               backgroundColor: 'hsla(158, 66%, 47%, 0.12)',
@@ -194,7 +194,7 @@ export function RunTreeNode({ step, allSteps, depth, onClick }: RunTreeNodeProps
         )}
         {deltaWord.tone === 'negative' && (
           <span
-            className="text-[10px] font-semibold shrink-0 px-1.5 py-0.5 rounded-full whitespace-nowrap mt-0.5"
+            className="text-xs font-semibold shrink-0 px-1.5 py-0.5 rounded-full whitespace-nowrap mt-0.5"
             style={{
               color: 'var(--hatchin-orange)',
               backgroundColor: 'hsla(25, 100%, 60%, 0.12)',
@@ -206,7 +206,7 @@ export function RunTreeNode({ step, allSteps, depth, onClick }: RunTreeNodeProps
         )}
         {deltaWord.tone === 'new' && hasDeliverable && (
           <span
-            className="text-[10px] font-medium shrink-0 px-1.5 py-0.5 rounded-full whitespace-nowrap mt-0.5"
+            className="text-xs font-medium shrink-0 px-1.5 py-0.5 rounded-full whitespace-nowrap mt-0.5"
             style={{
               color: 'var(--hatchin-text-muted)',
               border: '1px solid var(--hatchin-border-subtle)',
@@ -222,7 +222,7 @@ export function RunTreeNode({ step, allSteps, depth, onClick }: RunTreeNodeProps
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="ml-6 mt-0.5 text-[10px] hatchin-text-muted hover:hatchin-text transition-colors"
+          className="ml-6 mt-0.5 text-xs hatchin-text-muted hover:hatchin-text transition-colors"
         >
           ···{stepChildren.length} more
         </button>

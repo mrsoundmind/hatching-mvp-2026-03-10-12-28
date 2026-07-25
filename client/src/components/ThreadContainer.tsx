@@ -164,7 +164,7 @@ export function ThreadContainer({
                             if (onMarkRead) onMarkRead(rootMessage.id);
                           }}
                           className="cursor-pointer z-10 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 ml-1.5
-                                   bg-gradient-to-r from-blue-500 to-blue-600 text-white text-[10px] font-medium rounded-full
+                                   bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-medium rounded-full
                                    shadow-lg border border-blue-400/30 backdrop-blur-sm hover:from-blue-400 hover:to-blue-500 transition-colors"
                           data-testid={`badge-unread-${rootMessage.id}`}
                         >
@@ -268,7 +268,7 @@ export function ThreadContainer({
                   if (onMarkRead) onMarkRead(rootMessage.id);
                 }}
                 className="cursor-pointer z-10 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1
-                         bg-gradient-to-r from-blue-500 to-blue-600 text-white text-[10px] font-medium rounded-full
+                         bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-medium rounded-full
                          shadow-lg border border-blue-400/30 backdrop-blur-sm hover:from-blue-400 hover:to-blue-500 transition-colors"
                 data-testid={`badge-unread-preview-${rootMessage.id}`}
               >

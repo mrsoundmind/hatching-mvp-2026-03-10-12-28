@@ -119,14 +119,14 @@ export function AutonomySettingsPanel({ projectId, executionRules }: AutonomySet
     <div ref={panelRef} className="premium-card p-4 space-y-4">
       {/* Section header with gradient divider */}
       <div className="flex items-center gap-2">
-        <span className="text-[11px] font-semibold text-[var(--hatchin-text-muted)] uppercase tracking-wider">
+        <span className="text-micro font-semibold text-[var(--hatchin-text-muted)] uppercase tracking-wider">
           Autonomy Settings
         </span>
         <div className="flex-1 h-px bg-gradient-to-r from-[var(--hatchin-border-subtle)] to-transparent" />
       </div>
 
       {/* Contextual Description */}
-      <p className="text-[11px] text-[var(--hatchin-text-muted)] leading-relaxed bg-[var(--hatchin-blue)]/5 p-2.5 rounded-lg border border-[var(--hatchin-blue)]/10">
+      <p className="text-micro text-[var(--hatchin-text-muted)] leading-relaxed bg-[var(--hatchin-blue)]/5 p-2.5 rounded-lg border border-[var(--hatchin-blue)]/10">
         Controls how much Hatches can do without your approval—from observation to fully independent execution.
       </p>
 
@@ -144,7 +144,7 @@ export function AutonomySettingsPanel({ projectId, executionRules }: AutonomySet
           <p className="text-[13px] font-semibold text-[var(--hatchin-text)]">
             Autonomous execution
           </p>
-          <p className="text-[11px] text-[var(--hatchin-text-muted)] mt-0.5">
+          <p className="text-micro text-[var(--hatchin-text-muted)] mt-0.5">
             {autonomyEnabled ? 'Hatches are working independently' : 'Hatches wait for your input'}
           </p>
         </div>
@@ -161,7 +161,7 @@ export function AutonomySettingsPanel({ projectId, executionRules }: AutonomySet
             className="overflow-hidden"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[12px] text-[var(--hatchin-text-muted)]">Auto-start after</span>
+              <span className="text-xs text-[var(--hatchin-text-muted)]">Auto-start after</span>
               <Select value={inactivityTriggerMinutes} onValueChange={handleInactivityChange}>
                 <SelectTrigger className="h-8 w-[120px] text-xs bg-transparent border-[var(--hatchin-border-subtle)]">
                   <SelectValue />
@@ -212,7 +212,7 @@ export function AutonomySettingsPanel({ projectId, executionRules }: AutonomySet
                 aria-checked={isActive}
                 onClick={() => handleDialChange(level)}
                 whileTap={{ scale: 0.97 }}
-                className={`flex items-center justify-center min-h-[44px] lg:min-h-[34px] text-[11px] font-medium capitalize rounded-xl transition-all duration-200 border ${
+                className={`flex items-center justify-center min-h-[44px] lg:min-h-[34px] text-micro font-medium capitalize rounded-xl transition-all duration-200 border ${
                   isActive 
                     ? 'bg-[var(--glass-frosted-strong)] border-[var(--hatchin-border)] shadow-sm' 
                     : 'bg-[var(--hatchin-surface)] border-transparent text-[var(--hatchin-text-muted)]'
@@ -229,7 +229,7 @@ export function AutonomySettingsPanel({ projectId, executionRules }: AutonomySet
         </div>
 
         {/* Active level description */}
-        <p className="text-[11px] leading-relaxed transition-colors duration-300" style={{ color: config.textColor }}>
+        <p className="text-micro leading-relaxed transition-colors duration-300" style={{ color: config.textColor }}>
           {config.description}
         </p>
       </div>

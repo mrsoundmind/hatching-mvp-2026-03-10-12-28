@@ -15,6 +15,15 @@ export default {
   content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
   theme: {
   	extend: {
+  		// v2.1-UX type scale. 13px is the legibility floor for real text;
+  		// `micro` (11px) is the ONLY permitted sub-floor step, reserved for
+  		// genuine badges / counters / timestamps. `xs` is redefined from
+  		// Tailwind's default 12px up to the 13px floor so every existing
+  		// `text-xs` clears the floor without a per-site edit.
+  		fontSize: {
+  			micro: ['11px', { lineHeight: '1.4' }],
+  			xs: ['13px', { lineHeight: '1.45' }],
+  		},
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',

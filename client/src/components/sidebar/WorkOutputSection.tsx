@@ -46,7 +46,7 @@ export function WorkOutputSection({ projectId }: WorkOutputSectionProps) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-[11px] font-semibold text-[var(--hatchin-text-muted)] uppercase tracking-wider">
+        <span className="text-micro font-semibold text-[var(--hatchin-text-muted)] uppercase tracking-wider">
           Work Outputs
         </span>
         <div className="flex-1 h-px bg-gradient-to-r from-[var(--hatchin-border-subtle)] to-transparent" />
@@ -97,11 +97,11 @@ export function WorkOutputSection({ projectId }: WorkOutputSectionProps) {
                     <div className="flex-1 min-w-0">
                       {/* Wraps to two lines rather than truncating: a work output cut off mid-phrase
                           ("Alex · Draft the onboarding…") hides the one thing the row is for. */}
-                      <p className="text-[12px] text-[var(--hatchin-text)] leading-snug line-clamp-2">
+                      <p className="text-xs text-[var(--hatchin-text)] leading-snug line-clamp-2">
                         {agentName && <span className="font-medium">{agentName} · </span>}
                         {task.title}
                       </p>
-                      <p className="text-[11px] text-[var(--hatchin-text-muted)]">
+                      <p className="text-micro text-[var(--hatchin-text-muted)]">
                         {formatTimestamp(task.updatedAt ?? task.createdAt)}
                       </p>
                     </div>

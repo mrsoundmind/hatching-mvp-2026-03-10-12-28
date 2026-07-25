@@ -78,7 +78,7 @@ export function RubricBreakdown({ rubricScore, rubricVersion }: RubricBreakdownP
     >
       {/* Total row */}
       <div className="flex items-baseline justify-between pb-2 mb-2 border-b border-[var(--hatchin-border-subtle)]">
-        <span className="text-[11px] font-medium tracking-wide hatchin-text-muted">
+        <span className="text-micro font-medium tracking-wide hatchin-text-muted">
           Why this scored {rubricScore.total.toFixed(1)} / 10
         </span>
         <span className="flex items-baseline gap-2">
@@ -89,7 +89,7 @@ export function RubricBreakdown({ rubricScore, rubricVersion }: RubricBreakdownP
             {rubricScore.total.toFixed(1)} / 10
           </span>
           {rubricVersion && (
-            <span className="hatchin-text-muted text-[10px]">v{rubricVersion}</span>
+            <span className="hatchin-text-muted text-xs">v{rubricVersion}</span>
           )}
         </span>
       </div>
@@ -105,7 +105,7 @@ export function RubricBreakdown({ rubricScore, rubricVersion }: RubricBreakdownP
             <span className="font-medium hatchin-text min-w-[120px] shrink-0">
               {humanizeKey(row.criterion)}
             </span>
-            <span className="flex-1 hatchin-text-muted leading-relaxed text-[11px]">
+            <span className="flex-1 hatchin-text-muted leading-relaxed text-micro">
               {row.justification}
             </span>
             <span

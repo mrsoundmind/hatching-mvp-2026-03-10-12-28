@@ -245,7 +245,7 @@ export default function LandingPage() {
             className="text-[22px] md:text-[28px] tracking-tight text-white"
             style={{ fontFamily: "'Poppins', sans-serif" }}
           >
-            Hatchin<sup className="text-[10px] align-super ml-0.5">®</sup>
+            Hatchin<sup className="text-xs align-super ml-0.5">®</sup>
           </span>
 
           <div className="hidden md:flex items-center gap-8">
@@ -292,7 +292,7 @@ export default function LandingPage() {
 
           {/* Scroll indicator */}
           <div className="animate-fade-rise-delay-3 mt-16 flex flex-col items-center gap-2" style={{ color: 'rgba(255,255,255,0.28)' }}>
-            <span className="text-[10px] tracking-[0.22em] uppercase">Scroll to explore</span>
+            <span className="text-xs tracking-[0.22em] uppercase">Scroll to explore</span>
             <ChevronDown className="w-4 h-4 animate-bounce" />
           </div>
         </div>
@@ -352,7 +352,7 @@ export default function LandingPage() {
         {/* FAQ — brutalist unit numbering */}
         <section id="faq" className="w-full max-w-[760px] mx-auto px-6 pt-20 pb-12 md:pt-28 md:pb-16 scroll-reveal scroll-mt-20">
           <div className="text-center mb-14">
-            <div className="brutalist-mono text-[10px] text-white/40 tracking-[0.25em] uppercase mb-3 flex items-center justify-center gap-3">
+            <div className="brutalist-mono text-xs text-white/40 tracking-[0.25em] uppercase mb-3 flex items-center justify-center gap-3">
               <span className="h-px w-8 bg-white/15" />
               <span>02 — FAQ</span>
               <span className="h-px w-8 bg-white/15" />
@@ -379,7 +379,7 @@ export default function LandingPage() {
               <AccordionItem key={faq.id} value={faq.id} className="border-white/10 border-dashed last:border-b-0 px-5 md:px-6">
                 <AccordionTrigger className="cursor-pointer text-left hover:no-underline py-5">
                   <div className="flex items-start gap-4 md:gap-5 flex-1">
-                    <span className="brutalist-mono text-[11px] tracking-[0.15em] text-[#fb923c] mt-0.5 shrink-0">{faq.num}</span>
+                    <span className="brutalist-mono text-micro tracking-[0.15em] text-[#fb923c] mt-0.5 shrink-0">{faq.num}</span>
                     <span className="text-[14px] font-semibold text-white leading-snug">{faq.q}</span>
                   </div>
                 </AccordionTrigger>
@@ -400,7 +400,7 @@ export default function LandingPage() {
         {/* Pricing — brutalist spec-sheet */}
         <section id="pricing" className="w-full max-w-[980px] mx-auto px-6 pt-10 pb-20 md:pt-16 md:pb-28 scroll-reveal scroll-mt-20">
           <div className="text-center mb-14">
-            <div className="brutalist-mono text-[10px] text-white/40 tracking-[0.25em] uppercase mb-3 flex items-center justify-center gap-3">
+            <div className="brutalist-mono text-xs text-white/40 tracking-[0.25em] uppercase mb-3 flex items-center justify-center gap-3">
               <span className="h-px w-8 bg-white/15" />
               <span>03 — PRICING</span>
               <span className="h-px w-8 bg-white/15" />
@@ -416,7 +416,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-2 gap-5">
             {/* FREE / HATCHER */}
             <div className="brutalist-card relative bg-[#08090E] border border-white/[0.12]">
-              <div className="brutalist-mono flex justify-between px-5 py-3 border-b border-white/[0.08] text-[10px] tracking-[0.15em] text-white/40 uppercase">
+              <div className="brutalist-mono flex justify-between px-5 py-3 border-b border-white/[0.08] text-xs tracking-[0.15em] text-white/40 uppercase">
                 <span>TIER 01</span>
                 <span>SKU: HATCHIN-FREE</span>
               </div>
@@ -424,9 +424,9 @@ export default function LandingPage() {
                 <h3 className="text-[22px] md:text-[26px] font-bold tracking-[-0.02em] text-white uppercase mb-5">Hatcher</h3>
                 <div className="brutalist-mono flex items-baseline gap-2 mb-1">
                   <span className="text-[34px] md:text-[40px] font-bold tracking-[-0.02em] text-white">$0.00</span>
-                  <span className="text-[11px] text-white/40 tracking-[0.15em] uppercase">USD / MO</span>
+                  <span className="text-micro text-white/40 tracking-[0.15em] uppercase">USD / MO</span>
                 </div>
-                <div className="brutalist-mono text-[10px] tracking-[0.18em] text-white/35 uppercase pb-5 mb-5 border-b border-white/[0.08]">
+                <div className="brutalist-mono text-xs tracking-[0.18em] text-white/35 uppercase pb-5 mb-5 border-b border-white/[0.08]">
                   BILLING: NONE / FOR: SOLO BUILDERS
                 </div>
                 <div className="grid gap-px bg-white/[0.08] mb-6">
@@ -438,14 +438,14 @@ export default function LandingPage() {
                     "Real-time chat",
                     "Automatic task detection",
                   ].map((f) => (
-                    <div key={f} className="brutalist-mono flex items-center gap-3 bg-[#08090E] px-4 py-2.5 text-[11px] tracking-[0.05em] text-white/65 uppercase">
+                    <div key={f} className="brutalist-mono flex items-center gap-3 bg-[#08090E] px-4 py-2.5 text-micro tracking-[0.05em] text-white/65 uppercase">
                       <span className="text-[#f97316] font-bold tracking-normal">&gt;&gt;&gt;</span>
                       <span>{f}</span>
                     </div>
                   ))}
                 </div>
                 <Link href="/login">
-                  <button className="brutalist-mono w-full py-3.5 border border-white text-white text-[11px] tracking-[0.25em] uppercase hover:bg-white hover:text-[#0A0C13] transition-colors cursor-pointer">
+                  <button className="brutalist-mono w-full py-3.5 border border-white text-white text-micro tracking-[0.25em] uppercase hover:bg-white hover:text-[#0A0C13] transition-colors cursor-pointer">
                     Deploy → Free
                   </button>
                 </Link>
@@ -454,14 +454,14 @@ export default function LandingPage() {
 
             {/* PRO */}
             <div className="brutalist-card relative bg-[#08090E] border border-[#f97316]">
-              <div className="brutalist-mono bg-[#f97316] text-white flex justify-between px-5 py-2 text-[10px] tracking-[0.22em] uppercase">
+              <div className="brutalist-mono bg-[#f97316] text-white flex justify-between px-5 py-2 text-xs tracking-[0.22em] uppercase">
                 <span>[ RECOMMENDED / UNIT-02 ]</span>
                 <span className="flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                   OPERATIONAL
                 </span>
               </div>
-              <div className="brutalist-mono flex justify-between px-5 py-3 border-b border-white/[0.08] text-[10px] tracking-[0.15em] text-white/40 uppercase">
+              <div className="brutalist-mono flex justify-between px-5 py-3 border-b border-white/[0.08] text-xs tracking-[0.15em] text-white/40 uppercase">
                 <span>TIER 02</span>
                 <span>SKU: HATCHIN-PRO</span>
               </div>
@@ -469,9 +469,9 @@ export default function LandingPage() {
                 <h3 className="text-[22px] md:text-[26px] font-bold tracking-[-0.02em] text-white uppercase mb-5">Pro</h3>
                 <div className="brutalist-mono flex items-baseline gap-2 mb-1">
                   <span className="text-[34px] md:text-[40px] font-bold tracking-[-0.02em] text-white">$19.00</span>
-                  <span className="text-[11px] text-white/40 tracking-[0.15em] uppercase">USD / MO</span>
+                  <span className="text-micro text-white/40 tracking-[0.15em] uppercase">USD / MO</span>
                 </div>
-                <div className="brutalist-mono text-[10px] tracking-[0.18em] text-white/35 uppercase pb-5 mb-5 border-b border-white/[0.08]">
+                <div className="brutalist-mono text-xs tracking-[0.18em] text-white/35 uppercase pb-5 mb-5 border-b border-white/[0.08]">
                   BILLING: CONTINUOUS / ANNUAL: $190 (-17%)
                 </div>
                 <div className="grid gap-px bg-white/[0.08] mb-6">
@@ -483,14 +483,14 @@ export default function LandingPage() {
                     "50 background exec / day",
                     "Peer review + safety gates",
                   ].map((f) => (
-                    <div key={f} className="brutalist-mono flex items-center gap-3 bg-[#08090E] px-4 py-2.5 text-[11px] tracking-[0.05em] text-white/65 uppercase">
+                    <div key={f} className="brutalist-mono flex items-center gap-3 bg-[#08090E] px-4 py-2.5 text-micro tracking-[0.05em] text-white/65 uppercase">
                       <span className="text-[#f97316] font-bold tracking-normal">&gt;&gt;&gt;</span>
                       <span>{f}</span>
                     </div>
                   ))}
                 </div>
                 <Link href="/login">
-                  <button className="brutalist-mono w-full py-3.5 bg-[#f97316] hover:bg-[#fb923c] text-white text-[11px] tracking-[0.25em] uppercase transition-colors cursor-pointer">
+                  <button className="brutalist-mono w-full py-3.5 bg-[#f97316] hover:bg-[#fb923c] text-white text-micro tracking-[0.25em] uppercase transition-colors cursor-pointer">
                     Deploy → Pro
                   </button>
                 </Link>
@@ -556,7 +556,7 @@ export default function LandingPage() {
         </div>
 
         <div className="relative z-20 flex min-h-[62px] w-full items-center justify-center border-t border-[rgba(255,255,255,0.08)] px-6 py-4 md:py-0">
-          <div className={`${footerVisible ? "waitlister-enter-fade waitlister-delay-4" : "waitlister-preenter-fade"} flex flex-col items-center justify-center gap-3 text-[12px] font-normal leading-[14.4px] tracking-[-0.04em] text-[#999999] md:flex-row md:gap-3`}>
+          <div className={`${footerVisible ? "waitlister-enter-fade waitlister-delay-4" : "waitlister-preenter-fade"} flex flex-col items-center justify-center gap-3 text-xs font-normal leading-[14.4px] tracking-[-0.04em] text-[#999999] md:flex-row md:gap-3`}>
             <p>
               Proudly Built In{" "}
               <a href="/" className="text-white no-underline transition-colors duration-300 ease-out hover:text-[rgba(255,255,255,0.56)]">Hatchin</a>

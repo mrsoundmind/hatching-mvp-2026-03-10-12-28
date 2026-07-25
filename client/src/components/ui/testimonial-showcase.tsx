@@ -168,7 +168,7 @@ export const TestimonialShowcase: React.FC<TestimonialShowcaseProps> = ({
                   )}
                 >
                   <AvatarImage src={testimonial.author.avatar} alt={testimonial.author.name} />
-                  <AvatarFallback className="bg-muted text-[10px] font-medium">
+                  <AvatarFallback className="bg-muted text-xs font-medium">
                     {testimonial.author.initials ||
                       testimonial.author.name.split(' ').map(n => n[0]).join('').toUpperCase()}
                   </AvatarFallback>

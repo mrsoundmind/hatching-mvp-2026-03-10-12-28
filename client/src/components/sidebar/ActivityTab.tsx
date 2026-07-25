@@ -111,8 +111,8 @@ export function ActivityTab({ projectId, agents }: ActivityTabProps) {
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="mb-2.5 px-1 shrink-0">
-        <p className="text-[12px] font-medium hatchin-text mb-0.5">Live Activity</p>
-        <p className="text-[10px] hatchin-text-muted">Real-time pulse of what your Hatches are working on.</p>
+        <p className="text-xs font-medium hatchin-text mb-0.5">Live Activity</p>
+        <p className="text-xs hatchin-text-muted">Real-time pulse of what your Hatches are working on.</p>
       </div>
 
       {/* Change 1 — glanceable "what's happening now / what needs you" strip.
@@ -241,10 +241,10 @@ function ActivityStatusStrip({
         <div className="flex items-start gap-2.5">
           <span className="w-2 h-2 mt-[3px] rounded-full flex-none animate-pulse" style={{ background: 'var(--hatchin-working-coral)' }} />
           <div className="min-w-0 flex-1">
-            <div className="text-[12px] font-semibold leading-snug" style={{ color: 'var(--hatchin-text-bright)' }}>
+            <div className="text-xs font-semibold leading-snug" style={{ color: 'var(--hatchin-text-bright)' }}>
               {heading}
             </div>
-            <div className="text-[11px] leading-snug mt-0.5 line-clamp-2" style={{ color: 'var(--hatchin-text-muted)' }}>
+            <div className="text-micro leading-snug mt-0.5 line-clamp-2" style={{ color: 'var(--hatchin-text-muted)' }}>
               {sub}
             </div>
           </div>
@@ -252,7 +252,7 @@ function ActivityStatusStrip({
         {pendingCount > 0 && (
           <button
             onClick={onWaitingClick}
-            className="mt-2 w-full inline-flex items-center justify-center gap-1 h-7 rounded-md text-[11px] font-bold transition-opacity hover:opacity-90"
+            className="mt-2 w-full inline-flex items-center justify-center gap-1 h-7 rounded-md text-micro font-bold transition-opacity hover:opacity-90"
             style={{ background: 'var(--hatchin-working-coral)', color: '#231702' }}
           >
             {pendingCount} waiting on you →
@@ -275,10 +275,10 @@ function ActivityStatusStrip({
       >
         <span className="w-2 h-2 mt-[3px] rounded-full flex-none" style={{ background: 'var(--hatchin-working-coral)' }} />
         <div className="min-w-0 flex-1">
-          <div className="text-[12px] font-semibold leading-snug" style={{ color: 'var(--hatchin-text-bright)' }}>
+          <div className="text-xs font-semibold leading-snug" style={{ color: 'var(--hatchin-text-bright)' }}>
             {pendingCount === 1 ? 'One decision is waiting on you' : `${pendingCount} decisions are waiting on you`}
           </div>
-          <div className="text-[11px] leading-snug mt-0.5" style={{ color: 'var(--hatchin-text-muted)' }}>
+          <div className="text-micro leading-snug mt-0.5" style={{ color: 'var(--hatchin-text-muted)' }}>
             Review to let your team keep moving
           </div>
         </div>
@@ -296,15 +296,15 @@ function ActivityStatusStrip({
     >
       <span className="w-2 h-2 rounded-full flex-none" style={{ background: 'var(--hatchin-green)' }} />
       <div className="min-w-0 flex-1">
-        <div className="text-[12px] font-semibold leading-tight truncate" style={{ color: 'var(--hatchin-text-bright)' }}>
+        <div className="text-xs font-semibold leading-tight truncate" style={{ color: 'var(--hatchin-text-bright)' }}>
           All caught up
         </div>
-        <div className="text-[11px] truncate leading-tight mt-0.5" style={{ color: 'var(--hatchin-text-muted)' }}>
+        <div className="text-micro truncate leading-tight mt-0.5" style={{ color: 'var(--hatchin-text-muted)' }}>
           Nothing needs you right now
         </div>
       </div>
       <span
-        className="flex-none inline-flex items-center h-6 px-2.5 rounded-full text-[11px] font-semibold"
+        className="flex-none inline-flex items-center h-6 px-2.5 rounded-full text-micro font-semibold"
         style={{ border: '1px solid var(--hatchin-border-subtle)', color: 'var(--hatchin-text-muted)' }}
       >
         Idle

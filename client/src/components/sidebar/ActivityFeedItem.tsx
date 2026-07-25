@@ -86,6 +86,18 @@ function buildHumanDetail(event: FeedEvent): string | null {
   const d = event.expandableData ?? {};
   const parts: string[] = [];
 
+  // v2.2 Phase D — peer-review verdict. The row already says what was decided (approved / asked for
+  // changes / sent back), so the expand carries WHY: the reviewer's reason and the concrete fixes.
+  if (typeof d.verdict === 'string' && (d.verdict === 'approve' || d.verdict === 'revise' || d.verdict === 'reject')) {
+    const bits: string[] = [];
+    if (typeof d.reasoning === 'string' && d.reasoning.trim()) bits.push(d.reasoning.trim());
+    if (Array.isArray(d.mustFix)) {
+      const fixes = d.mustFix.filter((f): f is string => typeof f === 'string' && f.trim().length > 0);
+      if (fixes.length) bits.push(`Asked to fix: ${fixes.join('; ')}`);
+    }
+    return bits.length ? clip(bits.join(' — '), 400) : null;
+  }
+
   if (typeof d.toAgentName === 'string' && d.toAgentName) parts.push(`Passed to ${d.toAgentName}`);
   if (typeof d.reason === 'string' && d.reason.trim()) parts.push(clip(d.reason));
   if (typeof d.summary === 'string' && d.summary.trim()) parts.push(clip(d.summary));
@@ -118,13 +130,13 @@ export function ActivityFeedItem({ event }: ActivityFeedItemProps) {
         <div className="shrink-0 mt-0.5 opacity-90">
           <EventFace agentName={event.agentName} size={18} />
         </div>
-        <p className="text-[11px] leading-snug flex-1 min-w-0">
+        <p className="text-micro leading-snug flex-1 min-w-0">
           {event.agentName && (
             <span className="hatchin-text opacity-80 font-medium">{`${event.agentName} · `}</span>
           )}
           <span className="hatchin-text-muted">{event.label}</span>
         </p>
-        <span className="text-[10px] hatchin-text-muted opacity-60 shrink-0 whitespace-nowrap">{time}</span>
+        <span className="text-xs hatchin-text-muted opacity-60 shrink-0 whitespace-nowrap">{time}</span>
       </div>
     );
   }
@@ -153,25 +165,25 @@ export function ActivityFeedItem({ event }: ActivityFeedItemProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5 min-w-0">
             {event.agentName && (
-              <span className="text-[12px] font-semibold hatchin-text truncate">{event.agentName}</span>
+              <span className="text-xs font-semibold hatchin-text truncate">{event.agentName}</span>
             )}
             {categoryLabel && (
               <span
-                className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0"
+                className="text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0"
                 style={{ color: accent, backgroundColor: `${accent}1e` }}
               >
                 {categoryLabel}
               </span>
             )}
-            <span className="text-[10px] hatchin-text-muted shrink-0 ml-auto whitespace-nowrap">{time}</span>
+            <span className="text-xs hatchin-text-muted shrink-0 ml-auto whitespace-nowrap">{time}</span>
           </div>
 
           {/* What actually happened, in words */}
-          <p className="text-[12px] hatchin-text leading-snug">{event.label}</p>
+          <p className="text-xs hatchin-text leading-snug">{event.label}</p>
         </div>
 
         {hasDetail && (
-          <span className="text-[10px] hatchin-text-muted opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-1">
+          <span className="text-xs hatchin-text-muted opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-1">
             {expanded ? '▴' : '▾'}
           </span>
         )}
@@ -187,7 +199,7 @@ export function ActivityFeedItem({ event }: ActivityFeedItemProps) {
             className="overflow-hidden"
           >
             <div
-              className="ml-10 mr-2 mb-2 px-3 py-2 rounded-xl text-[12px] hatchin-text-muted leading-relaxed"
+              className="ml-10 mr-2 mb-2 px-3 py-2 rounded-xl text-xs hatchin-text-muted leading-relaxed"
               style={{ background: `${accent}12` }}
             >
               {detail}

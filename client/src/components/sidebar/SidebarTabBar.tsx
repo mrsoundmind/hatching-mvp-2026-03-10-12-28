@@ -37,7 +37,7 @@ export function SidebarTabBar({
             aria-controls={`sidebar-tabpanel-${tab.id}`}
             tabIndex={isActive ? 0 : -1}
             onClick={() => onTabChange(tab.id)}
-            className={`relative z-10 flex items-center justify-center gap-2 rounded-lg px-2 py-2 min-h-[44px] lg:min-h-0 text-[11px] uppercase tracking-wider font-bold transition-colors duration-200 ${
+            className={`relative z-10 flex items-center justify-center gap-2 rounded-lg px-2 py-2 min-h-[44px] lg:min-h-0 text-micro uppercase tracking-wider font-bold transition-colors duration-200 ${
               isActive
                 ? 'text-[var(--hatchin-blue)]'
                 : 'hatchin-text-muted hover:hatchin-text'

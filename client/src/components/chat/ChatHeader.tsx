@@ -48,7 +48,7 @@ export function ChatHeader({
           {contextDisplay.title}
         </h1>
         {chatMode && (
-          <span className="hidden sm:inline text-[11px] hatchin-text-muted">
+          <span className="hidden sm:inline text-micro hatchin-text-muted">
             · {modeLabel}
           </span>
         )}
@@ -72,7 +72,7 @@ export function ChatHeader({
             ))}
             {extra > 0 && (
               <div
-                className="rounded-full ring-2 ring-[var(--hatchin-bg)] bg-[var(--hatchin-surface)] hatchin-text-muted text-[10px] font-semibold flex items-center justify-center"
+                className="rounded-full ring-2 ring-[var(--hatchin-bg)] bg-[var(--hatchin-surface)] hatchin-text-muted text-xs font-semibold flex items-center justify-center"
                 style={{ width: 22, height: 22, marginLeft: -6 }}
               >
                 +{extra}

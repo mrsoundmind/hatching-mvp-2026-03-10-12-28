@@ -1187,7 +1187,7 @@ function MobileTab({
       type="button"
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
-      className="relative flex flex-col items-center justify-center gap-0.5 min-h-[56px] text-[11px] font-semibold transition-colors"
+      className="relative flex flex-col items-center justify-center gap-0.5 min-h-[56px] text-micro font-semibold transition-colors"
       style={{ color: active ? 'var(--hatchin-blue)' : 'var(--hatchin-text-muted)' }}
     >
       {active && (
@@ -1200,7 +1200,7 @@ function MobileTab({
         <Icon className="w-5 h-5" />
         {badge != null && badge > 0 && (
           <span
-            className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold grid place-items-center"
+            className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full text-xs font-bold grid place-items-center"
             style={{ background: 'var(--hatchin-working-coral)', color: '#231702' }}
           >
             {badge}

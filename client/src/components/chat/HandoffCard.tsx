@@ -41,7 +41,7 @@ export function HandoffCard({
     >
       <div className="mx-4 my-1.5 p-3 rounded-xl border border-[var(--hatchin-blue)]/20 bg-[var(--hatchin-blue)]/5 relative">
         {/* Timestamp */}
-        <span className="absolute top-2.5 right-3 text-[10px] text-hatchin-text-muted">
+        <span className="absolute top-2.5 right-3 text-xs text-hatchin-text-muted">
           {formatRelativeTime(timestamp)}
         </span>
 

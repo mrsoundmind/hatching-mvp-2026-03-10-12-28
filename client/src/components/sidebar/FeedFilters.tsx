@@ -33,7 +33,7 @@ export function FeedFilters({
       <div className="flex items-center justify-between gap-2">
         <Select value={activeFilter} onValueChange={onFilterChange}>
           <SelectTrigger 
-            className="h-8 flex-1 text-[11px] font-medium rounded-lg transition-colors border-transparent"
+            className="h-8 flex-1 text-micro font-medium rounded-lg transition-colors border-transparent"
             style={{ 
               backgroundColor: activeFilterColor ? `${activeFilterColor}10` : 'var(--hatchin-surface)'
             }}
@@ -55,7 +55,7 @@ export function FeedFilters({
         {/* Agent filter — only show when there are multiple agents */}
         {agents.length > 1 && (
           <Select value={agentFilter ?? '__all__'} onValueChange={(v) => onAgentFilterChange(v === '__all__' ? null : v)}>
-            <SelectTrigger className="h-8 flex-1 text-[11px] font-medium bg-transparent border-[var(--hatchin-border-subtle)] rounded-lg">
+            <SelectTrigger className="h-8 flex-1 text-micro font-medium bg-transparent border-[var(--hatchin-border-subtle)] rounded-lg">
               <SelectValue placeholder="All agents" />
             </SelectTrigger>
             <SelectContent>

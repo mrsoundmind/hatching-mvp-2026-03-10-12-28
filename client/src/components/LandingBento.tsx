@@ -88,7 +88,7 @@ const ChatDemo = ({ active }: { active: boolean }) => {
           </div>
           <div className="flex-1 flex justify-center">
             <div className="px-4 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06]">
-              <span className="text-[9px] text-white/25 tracking-wider">hatchin.ai / project-chat</span>
+              <span className="text-xs text-white/25 tracking-wider">hatchin.ai / project-chat</span>
             </div>
           </div>
           <div className="flex gap-2">
@@ -130,7 +130,7 @@ const ChatDemo = ({ active }: { active: boolean }) => {
                       <img src={notionistAvatar(msg.agent)} alt={msg.agent} className="w-full h-full" />
                     </motion.div>
                     <div className="flex-1">
-                      <span className="text-[9px] font-semibold uppercase tracking-widest" style={{ color: msg.color + "80" }}>{msg.agent}</span>
+                      <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: msg.color + "80" }}>{msg.agent}</span>
                       <div className="mt-1 p-3 rounded-xl rounded-tl-sm" style={{ background: `linear-gradient(135deg, ${msg.color}08, ${msg.color}03)`, border: `1px solid ${msg.color}12` }}>
                         <p className="text-[13px] text-white/55 leading-relaxed">{msg.text}</p>
                       </div>
@@ -186,7 +186,7 @@ const RolesDemo = ({ active }: { active: boolean }) => {
     ROLE_ROWS.map((row, ri) => (
       <motion.div key={`${reveal ? "r" : "b"}-${ri}`} className="flex gap-3 w-max" animate={{ x: ri % 2 === 0 ? ["0%", "-33.333%"] : ["-33.333%", "0%"] }} transition={{ duration: 20, ease: "linear", repeat: Infinity }}>
         {[...row, ...row, ...row].map((item, idx) => (
-          <div key={`${item.id}-${idx}`} className={cn("flex gap-2 whitespace-nowrap py-2.5 px-4 items-center rounded-full text-[11px]", reveal ? "text-orange-300 font-medium scale-110" : "text-white/15")} style={reveal ? { background: 'linear-gradient(135deg, rgba(249,115,22,0.12), rgba(249,115,22,0.04))', border: '1px solid rgba(249,115,22,0.25)', boxShadow: '0 0 20px rgba(249,115,22,0.08)' } : { background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+          <div key={`${item.id}-${idx}`} className={cn("flex gap-2 whitespace-nowrap py-2.5 px-4 items-center rounded-full text-micro", reveal ? "text-orange-300 font-medium scale-110" : "text-white/15")} style={reveal ? { background: 'linear-gradient(135deg, rgba(249,115,22,0.12), rgba(249,115,22,0.04))', border: '1px solid rgba(249,115,22,0.25)', boxShadow: '0 0 20px rgba(249,115,22,0.08)' } : { background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
             <HugeiconsIcon icon={item.icon} size={13} className={reveal ? "text-orange-400" : ""} />
             <span>{item.label}</span>
           </div>
@@ -242,9 +242,9 @@ const AutonomousDemo = ({ active }: { active: boolean }) => {
           <div className="relative">
             <motion.div className="w-2.5 h-2.5 rounded-full bg-emerald-400" animate={{ boxShadow: ["0 0 0px rgba(52,211,153,0.4)", "0 0 15px rgba(52,211,153,0.6)", "0 0 0px rgba(52,211,153,0.4)"] }} transition={{ duration: 2, repeat: Infinity }} />
           </div>
-          <span className="text-[12px] text-emerald-400/90 font-medium">Team is working</span>
+          <span className="text-xs text-emerald-400/90 font-medium">Team is working</span>
           <div className="ml-auto px-2.5 py-1 rounded-full" style={{ background: 'rgba(52,211,153,0.06)', border: '1px solid rgba(52,211,153,0.15)' }}>
-            <span className="text-[9px] text-emerald-400/50 font-medium">4 tasks in progress</span>
+            <span className="text-xs text-emerald-400/50 font-medium">4 tasks in progress</span>
           </div>
         </div>
 
@@ -285,8 +285,8 @@ const AutonomousDemo = ({ active }: { active: boolean }) => {
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-[12px] font-semibold" style={{ color: item.color }}>{item.agent}</span>
-                  <span className="text-[10px] text-white/15">{item.time}</span>
+                  <span className="text-xs font-semibold" style={{ color: item.color }}>{item.agent}</span>
+                  <span className="text-xs text-white/15">{item.time}</span>
                 </div>
                 <p className="text-[13px] text-white/45 mt-0.5">{item.text}</p>
               </div>
@@ -341,11 +341,11 @@ const BrainDemo = ({ active }: { active: boolean }) => {
         <div className="flex items-center gap-3 mb-5 pb-4 border-b border-white/[0.06]">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center relative" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(99,102,241,0.05))', border: '1px solid rgba(99,102,241,0.2)' }}>
             <motion.div className="absolute inset-0 rounded-xl" animate={syncing ? { boxShadow: ["0 0 0px rgba(99,102,241,0)", "0 0 20px rgba(99,102,241,0.3)", "0 0 0px rgba(99,102,241,0)"] } : {}} transition={{ duration: 1 }} />
-            <span className="text-[9px] text-indigo-400 font-bold relative z-10">🧠</span>
+            <span className="text-xs text-indigo-400 font-bold relative z-10">🧠</span>
           </div>
           <div>
-            <span className="text-[11px] text-white/70 font-medium block">Project Brain</span>
-            <span className="text-[9px] text-white/25">{MEMORY_ITEMS.length} memories synced</span>
+            <span className="text-micro text-white/70 font-medium block">Project Brain</span>
+            <span className="text-xs text-white/25">{MEMORY_ITEMS.length} memories synced</span>
           </div>
           <div className="ml-auto flex -space-x-1.5">
             {SYNC_AGENTS.map((a) => (
@@ -376,12 +376,12 @@ const BrainDemo = ({ active }: { active: boolean }) => {
                 <div className="flex items-start gap-2.5 relative z-10">
                   <span className="text-sm shrink-0 mt-0.5">{item.icon}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[12px] text-white/60 leading-relaxed truncate">{item.text}</p>
+                    <p className="text-xs text-white/60 leading-relaxed truncate">{item.text}</p>
                     <div className="flex items-center gap-2 mt-1.5">
-                      <span className="text-[9px] font-medium" style={{ color: item.whoColor + "80" }}>Added by {item.who}</span>
+                      <span className="text-xs font-medium" style={{ color: item.whoColor + "80" }}>Added by {item.who}</span>
                       {isCurrent && (
                         <div className="flex items-center gap-1">
-                          <motion.span className="text-[8px] text-indigo-400/50" animate={syncing ? { opacity: [0.3, 1, 0.3] } : { opacity: 0.5 }} transition={{ duration: 0.8, repeat: syncing ? Infinity : 0 }}>
+                          <motion.span className="text-xs text-indigo-400/50" animate={syncing ? { opacity: [0.3, 1, 0.3] } : { opacity: 0.5 }} transition={{ duration: 0.8, repeat: syncing ? Infinity : 0 }}>
                             synced →
                           </motion.span>
                           <div className="flex -space-x-1">
@@ -436,8 +436,8 @@ const TaskDemo = ({ active }: { active: boolean }) => {
             <div className="w-6 h-6 rounded-full overflow-hidden" style={{ border: '1px solid rgba(217,70,239,0.25)' }}>
               <img src={notionistAvatar("Maya")} alt="Maya" className="w-full h-full" />
             </div>
-            <span className="text-[10px] text-fuchsia-400/60 font-semibold uppercase tracking-wider">Maya</span>
-            <span className="text-[9px] text-white/15 ml-auto">just now</span>
+            <span className="text-xs text-fuchsia-400/60 font-semibold uppercase tracking-wider">Maya</span>
+            <span className="text-xs text-white/15 ml-auto">just now</span>
           </div>
           <div className="p-4 rounded-xl" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))', border: '1px solid rgba(255,255,255,0.06)' }}>
             <p className="text-[13px] text-white/40 leading-relaxed">
@@ -463,7 +463,7 @@ const TaskDemo = ({ active }: { active: boolean }) => {
               </div>
               <div className="flex items-center gap-2 mt-2">
                 <motion.div className="w-1.5 h-1.5 rounded-full bg-orange-400" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 0.8, repeat: Infinity }} />
-                <span className="text-[10px] text-orange-400/60 font-medium">Analyzing conversation for tasks...</span>
+                <span className="text-xs text-orange-400/60 font-medium">Analyzing conversation for tasks...</span>
               </div>
             </motion.div>
           )}
@@ -495,13 +495,13 @@ const TaskDemo = ({ active }: { active: boolean }) => {
                 <div>
                   <span className="text-[13px] font-medium text-orange-400/90 block">Redesign the onboarding flow</span>
                   <div className="flex items-center gap-3 mt-2">
-                    <span className="text-[10px] text-white/25 flex items-center gap-1.5">
+                    <span className="text-xs text-white/25 flex items-center gap-1.5">
                       <div className="w-4 h-4 rounded-full overflow-hidden" style={{ border: '1px solid rgba(16,185,129,0.25)' }}>
                         <img src={notionistAvatar("Zara")} alt="Zara" className="w-full h-full" />
                       </div>
                       Zara
                     </span>
-                    <span className="text-[9px] text-orange-400/50 px-2 py-0.5 rounded-full" style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.12)' }}>High priority</span>
+                    <span className="text-xs text-orange-400/50 px-2 py-0.5 rounded-full" style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.12)' }}>High priority</span>
                   </div>
                 </div>
               </div>
@@ -559,7 +559,7 @@ export default function LandingBento() {
             return (
               <div key={i} className="flex flex-col gap-5">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] mb-3 block" style={{ color: feat.color }}>
+                  <span className="text-xs font-bold uppercase tracking-[0.25em] mb-3 block" style={{ color: feat.color }}>
                     {feat.label}
                   </span>
                   <h3 className="text-[22px] leading-[1.2] tracking-[-0.5px] text-white font-semibold mb-3" style={{ fontFamily: "'Poppins', sans-serif" }}>
@@ -610,7 +610,7 @@ export default function LandingBento() {
                   transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                 />
               ))}
-              <span className="text-[10px] text-white/15 ml-2 tabular-nums font-mono">{activeIndex + 1}/{FEATURES.length}</span>
+              <span className="text-xs text-white/15 ml-2 tabular-nums font-mono">{activeIndex + 1}/{FEATURES.length}</span>
             </div>
 
             {/* Feature text — slides in from scroll direction */}
@@ -624,7 +624,7 @@ export default function LandingBento() {
                 transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
               >
                 <motion.span
-                  className="text-[10px] font-bold uppercase tracking-[0.25em] mb-4 block"
+                  className="text-xs font-bold uppercase tracking-[0.25em] mb-4 block"
                   style={{ color: FEATURES[activeIndex].color }}
                 >
                   {FEATURES[activeIndex].label}

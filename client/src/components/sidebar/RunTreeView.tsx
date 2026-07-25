@@ -138,7 +138,7 @@ export function RunTreeView({ projectId }: RunTreeViewProps) {
 
   if (isLoading) {
     return (
-      <div className="px-3 py-6 hatchin-text-muted text-[12px] text-center">
+      <div className="px-3 py-6 hatchin-text-muted text-xs text-center">
         Loading run tree…
       </div>
     );
@@ -211,7 +211,7 @@ export function RunTreeView({ projectId }: RunTreeViewProps) {
               <span className="flex-1 min-w-0 flex flex-col gap-0.5">
                 {/* Title — wraps to 2 lines instead of mid-word truncation */}
                 <span
-                  className="text-[12px] font-semibold leading-snug hatchin-text"
+                  className="text-xs font-semibold leading-snug hatchin-text"
                   style={{
                     display: '-webkit-box',
                     WebkitBoxOrient: 'vertical',
@@ -223,7 +223,7 @@ export function RunTreeView({ projectId }: RunTreeViewProps) {
                 </span>
                 {/* Agent chain story — "Alex → Cass → Mira" */}
                 {chainStr && (
-                  <span className="text-[10px] hatchin-text-muted">
+                  <span className="text-xs hatchin-text-muted">
                     {chainStr}
                   </span>
                 )}
@@ -231,7 +231,7 @@ export function RunTreeView({ projectId }: RunTreeViewProps) {
               {/* Semantic-word aggregate badge */}
               {aggWord.tone === 'positive' && (
                 <span
-                  className="text-[10px] font-semibold shrink-0 px-2 py-0.5 rounded-full whitespace-nowrap mt-0.5"
+                  className="text-xs font-semibold shrink-0 px-2 py-0.5 rounded-full whitespace-nowrap mt-0.5"
                   style={{
                     color: 'var(--hatchin-green)',
                     backgroundColor: 'hsla(158, 66%, 47%, 0.12)',
@@ -243,7 +243,7 @@ export function RunTreeView({ projectId }: RunTreeViewProps) {
               )}
               {aggWord.tone === 'negative' && (
                 <span
-                  className="text-[10px] font-semibold shrink-0 px-2 py-0.5 rounded-full whitespace-nowrap mt-0.5"
+                  className="text-xs font-semibold shrink-0 px-2 py-0.5 rounded-full whitespace-nowrap mt-0.5"
                   style={{
                     color: 'var(--hatchin-orange)',
                     backgroundColor: 'hsla(25, 100%, 60%, 0.12)',
@@ -255,7 +255,7 @@ export function RunTreeView({ projectId }: RunTreeViewProps) {
               )}
               {aggWord.tone === 'new' && (
                 <span
-                  className="text-[10px] font-semibold shrink-0 px-2 py-0.5 rounded-full whitespace-nowrap mt-0.5"
+                  className="text-xs font-semibold shrink-0 px-2 py-0.5 rounded-full whitespace-nowrap mt-0.5"
                   style={{
                     color: statusBadge.color,
                     backgroundColor: statusBadge.bg,
@@ -270,7 +270,7 @@ export function RunTreeView({ projectId }: RunTreeViewProps) {
             {isOpen && (
               <div className="pb-2 px-1">
                 {rootSteps.length === 0 ? (
-                  <div className="px-3 py-1.5 text-[10px] hatchin-text-muted italic">
+                  <div className="px-3 py-1.5 text-xs hatchin-text-muted italic">
                     (no steps recorded for this run)
                   </div>
                 ) : (
@@ -285,7 +285,7 @@ export function RunTreeView({ projectId }: RunTreeViewProps) {
                   ))
                 )}
                 {isFlatHistorical && (
-                  <div className="px-3 py-1 text-[9px] hatchin-text-muted italic">
+                  <div className="px-3 py-1 text-xs hatchin-text-muted italic">
                     imported flat from history — newer runs will show full tree
                   </div>
                 )}

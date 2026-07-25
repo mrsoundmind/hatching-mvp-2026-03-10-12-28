@@ -83,7 +83,7 @@ function HandoffChain({ chain }: HandoffChainProps) {
             <span className="text-xs hatchin-text-muted truncate flex-1 min-w-0">
               {event.label}
             </span>
-            <span className="text-[10px] hatchin-text-muted shrink-0">
+            <span className="text-xs hatchin-text-muted shrink-0">
               {formatRelativeTime(event.timestamp)}
             </span>
           </motion.div>

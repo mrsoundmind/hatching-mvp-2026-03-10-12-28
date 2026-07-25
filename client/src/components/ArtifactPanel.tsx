@@ -256,7 +256,7 @@ export function ArtifactPanel({ deliverableId, pendingVersionNumber, onClose }: 
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {/* Type badge */}
           <span
-            className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full shrink-0"
+            className="text-xs font-bold uppercase px-2 py-0.5 rounded-full shrink-0"
             style={{ backgroundColor: typeColor.bg, color: typeColor.text }}
           >
             {deliverable?.type?.replace(/-/g, ' ') || 'Document'}
@@ -289,7 +289,7 @@ export function ArtifactPanel({ deliverableId, pendingVersionNumber, onClose }: 
               <button
                 type="button"
                 onClick={() => setShowRubric((v) => !v)}
-                className="inline-flex items-center gap-1 h-6 px-2.5 rounded-full border text-[11px] font-bold tabular-nums leading-none transition-[filter] hover:brightness-110"
+                className="inline-flex items-center gap-1 h-6 px-2.5 rounded-full border text-micro font-bold tabular-nums leading-none transition-[filter] hover:brightness-110"
                 style={{
                   backgroundColor: active ? baseStyle.bg.replace('0.18', '0.28') : baseStyle.bg,
                   color: baseStyle.color,
@@ -301,7 +301,7 @@ export function ArtifactPanel({ deliverableId, pendingVersionNumber, onClose }: 
                 title={`Why this scored ${total.toFixed(1)} / 10`}
               >
                 {total.toFixed(1)}
-                <span className="text-[10px] opacity-85">★</span>
+                <span className="text-xs opacity-85">★</span>
               </button>
             );
           })()}
@@ -317,11 +317,11 @@ export function ArtifactPanel({ deliverableId, pendingVersionNumber, onClose }: 
 
       {/* Attribution + Status bar */}
       {deliverable && (
-        <div className="px-4 py-2 border-b border-[var(--hatchin-border-subtle)] flex items-center justify-between text-[11px] shrink-0">
+        <div className="px-4 py-2 border-b border-[var(--hatchin-border-subtle)] flex items-center justify-between text-micro shrink-0">
           <div className="flex items-center gap-2">
             {/* Agent circle */}
             <div
-              className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
+              className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white"
               style={{ backgroundColor: typeColor.bg }}
             >
               {(deliverable.agentName || 'A')[0]}
@@ -333,7 +333,7 @@ export function ArtifactPanel({ deliverableId, pendingVersionNumber, onClose }: 
           <div className="flex items-center gap-3">
             {/* Status badge */}
             <span
-              className="font-medium px-2 py-0.5 rounded-full text-[10px]"
+              className="font-medium px-2 py-0.5 rounded-full text-xs"
               style={{ color: statusInfo.color, border: `1px solid ${statusInfo.color}` }}
             >
               {statusInfo.label}
@@ -344,7 +344,7 @@ export function ArtifactPanel({ deliverableId, pendingVersionNumber, onClose }: 
 
       {/* Version navigator */}
       {versions.length > 1 && (
-        <div className="px-4 py-1.5 border-b border-[var(--hatchin-border-subtle)] flex items-center justify-between text-[11px] shrink-0">
+        <div className="px-4 py-1.5 border-b border-[var(--hatchin-border-subtle)] flex items-center justify-between text-micro shrink-0">
           <button
             onClick={() => handleVersionNav('prev')}
             disabled={currentVersion <= 1}
@@ -367,7 +367,7 @@ export function ArtifactPanel({ deliverableId, pendingVersionNumber, onClose }: 
 
       {/* Handoff notes */}
       {deliverable?.handoffNotes && (
-        <div className="px-4 py-2 border-b border-[var(--hatchin-border-subtle)] text-[11px] hatchin-text-muted italic bg-[var(--hatchin-surface)]/30 shrink-0">
+        <div className="px-4 py-2 border-b border-[var(--hatchin-border-subtle)] text-micro hatchin-text-muted italic bg-[var(--hatchin-surface)]/30 shrink-0">
           {deliverable.handoffNotes}
         </div>
       )}
@@ -570,7 +570,7 @@ export function DeliverableList({ projectId, onSelect }: DeliverableListProps) {
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-sm font-medium truncate hatchin-text">{d.title}</span>
                   <span
-                    className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-full shrink-0"
+                    className="text-xs font-semibold uppercase px-1.5 py-0.5 rounded-full shrink-0"
                     style={{ color: statusInfo.color, border: `1px solid ${statusInfo.color}` }}
                   >
                     {statusInfo.label}
@@ -578,12 +578,12 @@ export function DeliverableList({ projectId, onSelect }: DeliverableListProps) {
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span
-                    className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full"
+                    className="text-xs font-bold uppercase px-1.5 py-0.5 rounded-full"
                     style={{ backgroundColor: typeColor.bg, color: typeColor.text }}
                   >
                     {d.type.replace(/-/g, ' ')}
                   </span>
-                  <span className="text-[10px] hatchin-text-muted">
+                  <span className="text-xs hatchin-text-muted">
                     by {d.agentName || 'Agent'}
                   </span>
                 </div>

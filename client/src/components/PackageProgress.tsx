@@ -47,18 +47,18 @@ function PackageCard({ pkg, deliverables, onSelectDeliverable }: PackageCardProp
           <span className="text-lg">{templateInfo.emoji}</span>
           <div>
             <h4 className="text-sm font-semibold hatchin-text">{pkg.name}</h4>
-            <span className="text-[10px] hatchin-text-muted">{templateInfo.label}</span>
+            <span className="text-xs hatchin-text-muted">{templateInfo.label}</span>
           </div>
         </div>
         <div className="flex items-center gap-1.5" style={{ color: statusConfig.color }}>
           <StatusIcon className="w-3.5 h-3.5" />
-          <span className="text-[10px] font-medium">{statusConfig.label}</span>
+          <span className="text-xs font-medium">{statusConfig.label}</span>
         </div>
       </div>
 
       {/* Progress bar */}
       <div className="space-y-1">
-        <div className="flex items-center justify-between text-[10px]">
+        <div className="flex items-center justify-between text-xs">
           <span className="hatchin-text-muted">{completedCount}/{totalExpected} deliverables</span>
           <span className="font-medium" style={{ color: statusConfig.color }}>{progress}%</span>
         </div>
@@ -75,7 +75,7 @@ function PackageCard({ pkg, deliverables, onSelectDeliverable }: PackageCardProp
 
       {/* Working status */}
       {inProgressDeliverable && pkg.status === 'in_progress' && (
-        <div className="text-[11px] hatchin-text-muted flex items-center gap-1.5">
+        <div className="text-micro hatchin-text-muted flex items-center gap-1.5">
           <div className="w-1.5 h-1.5 rounded-full bg-[var(--hatchin-blue)] animate-pulse" />
           {inProgressDeliverable.agentName} is working on {inProgressDeliverable.title}
         </div>
@@ -97,8 +97,8 @@ function PackageCard({ pkg, deliverables, onSelectDeliverable }: PackageCardProp
               ) : (
                 <Clock className="w-3.5 h-3.5 hatchin-text-muted shrink-0" />
               )}
-              <span className="text-[11px] truncate hatchin-text">{d.title}</span>
-              <span className="text-[9px] hatchin-text-muted ml-auto shrink-0">{d.agentName}</span>
+              <span className="text-micro truncate hatchin-text">{d.title}</span>
+              <span className="text-xs hatchin-text-muted ml-auto shrink-0">{d.agentName}</span>
             </button>
           ))}
         </div>

@@ -59,7 +59,7 @@ export function ChatInput({
           <div className="mb-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <div className="text-[11px] uppercase tracking-wide text-blue-300">Replying to {replyingTo.senderName}</div>
+                <div className="text-micro uppercase tracking-wide text-blue-300">Replying to {replyingTo.senderName}</div>
                 <div className="mt-1 text-sm text-foreground truncate">
                   {replyingTo.content.length > 100 ? `${replyingTo.content.substring(0, 100)}...` : replyingTo.content}
                 </div>
@@ -84,7 +84,7 @@ export function ChatInput({
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="flex items-center gap-1 px-2 py-1 text-[11px] text-[var(--hatchin-text-muted)] hover:text-[var(--hatchin-text)] hover:bg-[var(--hatchin-surface-elevated)] rounded-md transition-colors"
+                    className="flex items-center gap-1 px-2 py-1 text-micro text-[var(--hatchin-text-muted)] hover:text-[var(--hatchin-text)] hover:bg-[var(--hatchin-surface-elevated)] rounded-md transition-colors"
                   >
                     <ArrowRightLeft className="w-3 h-3" />
                     Hand off to...
@@ -130,7 +130,7 @@ export function ChatInput({
           />
           {/* Footer with typing indicator + send/stop */}
           <div className="flex items-center justify-between px-2 pb-1.5 pt-0 min-h-[26px]">
-            <div className="text-[11px] text-muted-foreground truncate pr-2">
+            <div className="text-micro text-muted-foreground truncate pr-2">
               {typingColleagues.length > 0 && !isStreaming && (
                 <span>
                   <span className="animate-pulse">•</span>{' '}

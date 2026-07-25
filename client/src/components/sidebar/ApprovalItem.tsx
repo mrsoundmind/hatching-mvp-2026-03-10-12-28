@@ -110,7 +110,7 @@ export function ApprovalItem({ task }: ApprovalItemProps) {
           <div className="flex gap-2 mt-2">
             {isExpired ? (
               <span
-                className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-500/10 text-red-400"
+                className="inline-flex text-xs font-semibold px-2 py-0.5 rounded-full bg-red-500/10 text-red-400"
                 aria-label="Approval expired"
               >
                 Expired
