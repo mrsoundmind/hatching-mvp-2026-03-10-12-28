@@ -1,4 +1,5 @@
 import { useAutonomyFeed } from '@/hooks/useAutonomyFeed';
+import { useAgentWorkingState } from '@/hooks/useAgentWorkingState';
 import { FeedFilters } from './FeedFilters';
 import { ActivityFeedItem } from './ActivityFeedItem';
 import { HandoffChainTimeline } from './HandoffChainTimeline';
@@ -88,12 +89,41 @@ export function ActivityTab({ projectId, agents }: ActivityTabProps) {
     [tasks]
   );
 
+  // Status strip — honest "what is happening now" from real signals only.
+  const workingAgentIds = useAgentWorkingState();
+  const workingNames = useMemo(
+    () => agents.filter(a => workingAgentIds.has(a.id)).map(a => a.name),
+    [agents, workingAgentIds]
+  );
+  // The task a working Hatch is on: newest feed event by a working agent that carries a title.
+  const currentTask = useMemo(() => {
+    if (workingAgentIds.size === 0) return null;
+    const ev = events.find(
+      e => e.agentId && workingAgentIds.has(e.agentId) && typeof e.expandableData?.taskTitle === 'string'
+    );
+    return (ev?.expandableData?.taskTitle as string) || null;
+  }, [events, workingAgentIds]);
+
+  const scrollToApprovals = () => {
+    document.getElementById('activity-pending-approvals')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="mb-3 px-1 shrink-0">
+      <div className="mb-2.5 px-1 shrink-0">
         <p className="text-[12px] font-medium hatchin-text mb-0.5">Live Activity</p>
         <p className="text-[10px] hatchin-text-muted">Real-time pulse of what your Hatches are working on.</p>
       </div>
+
+      {/* Change 1 — glanceable "what's happening now / what needs you" strip.
+          Only honest signals: who is working (useAgentWorkingState), what they're on
+          (latest matching event), and how many need you (pendingApprovals). */}
+      <ActivityStatusStrip
+        workingNames={workingNames}
+        currentTask={currentTask}
+        pendingCount={pendingApprovals.length}
+        onWaitingClick={scrollToApprovals}
+      />
 
       {/* One control row. This was three stacked rows (view toggle, time segments, and
           a pair of counter cards) before the feed even began. The counters showed two
@@ -107,7 +137,7 @@ export function ActivityTab({ projectId, agents }: ActivityTabProps) {
 
       {/* Pending Approvals — pinned directly above the feed when any exist */}
       {pendingApprovals.length > 0 && (
-        <div className="px-1 py-2 border-b border-[var(--hatchin-border-subtle)]">
+        <div id="activity-pending-approvals" className="px-1 py-2 border-b border-[var(--hatchin-border-subtle)]">
           <div className="flex items-center gap-1.5 mb-2 px-1">
             <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
             <p className="text-xs font-semibold text-amber-400">
@@ -174,6 +204,111 @@ export function ActivityTab({ projectId, agents }: ActivityTabProps) {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * ActivityStatusStrip — the one-glance answer to "what is happening, and does it need me?"
+ * Three honest states: a Hatch is working, something is waiting on you, or all caught up.
+ * No vanity counters — every state is either current activity or an action for the user.
+ */
+function ActivityStatusStrip({
+  workingNames,
+  currentTask,
+  pendingCount,
+  onWaitingClick,
+}: {
+  workingNames: string[];
+  currentTask: string | null;
+  pendingCount: number;
+  onWaitingClick: () => void;
+}) {
+  const isWorking = workingNames.length > 0;
+  const workingSurface = {
+    background: 'linear-gradient(180deg, var(--hatchin-working-tint), var(--hatchin-working-tint-2))',
+    border: '1px solid var(--hatchin-working-line)',
+  } as const;
+
+  // Active: a Hatch is working now. Text gets the full width; the "waiting on you"
+  // action drops to its own row so a heading never truncates mid-word in the narrow sidebar.
+  if (isWorking) {
+    const heading =
+      workingNames.length === 1 ? `${workingNames[0]} is working now` : `${workingNames.length} Hatches are working now`;
+    const sub = currentTask ? `on ${currentTask}` : 'on a background task';
+    return (
+      <div data-testid="activity-status-strip" className="mx-1 mb-2 rounded-lg px-3 py-2.5" style={workingSurface}>
+        <div className="flex items-start gap-2.5">
+          <span className="w-2 h-2 mt-[3px] rounded-full flex-none animate-pulse" style={{ background: 'var(--hatchin-working-coral)' }} />
+          <div className="min-w-0 flex-1">
+            <div className="text-[12px] font-semibold leading-snug" style={{ color: 'var(--hatchin-text-bright)' }}>
+              {heading}
+            </div>
+            <div className="text-[11px] leading-snug mt-0.5 line-clamp-2" style={{ color: 'var(--hatchin-text-muted)' }}>
+              {sub}
+            </div>
+          </div>
+        </div>
+        {pendingCount > 0 && (
+          <button
+            onClick={onWaitingClick}
+            className="mt-2 w-full inline-flex items-center justify-center gap-1 h-7 rounded-md text-[11px] font-bold transition-opacity hover:opacity-90"
+            style={{ background: 'var(--hatchin-working-coral)', color: '#231702' }}
+          >
+            {pendingCount} waiting on you →
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // Waiting: nobody working, but something needs the user. The whole strip is the action;
+  // the heading carries the count, so only a compact chevron sits beside it (no crowding pill).
+  if (pendingCount > 0) {
+    return (
+      <button
+        type="button"
+        onClick={onWaitingClick}
+        data-testid="activity-status-strip"
+        className="mx-1 mb-2 w-[calc(100%-0.5rem)] rounded-lg px-3 py-2.5 flex items-start gap-2.5 text-left transition-opacity hover:opacity-95"
+        style={workingSurface}
+      >
+        <span className="w-2 h-2 mt-[3px] rounded-full flex-none" style={{ background: 'var(--hatchin-working-coral)' }} />
+        <div className="min-w-0 flex-1">
+          <div className="text-[12px] font-semibold leading-snug" style={{ color: 'var(--hatchin-text-bright)' }}>
+            {pendingCount === 1 ? 'One decision is waiting on you' : `${pendingCount} decisions are waiting on you`}
+          </div>
+          <div className="text-[11px] leading-snug mt-0.5" style={{ color: 'var(--hatchin-text-muted)' }}>
+            Review to let your team keep moving
+          </div>
+        </div>
+        <span className="flex-none text-[15px] leading-none mt-0.5" style={{ color: 'var(--hatchin-working-coral)' }} aria-hidden="true">→</span>
+      </button>
+    );
+  }
+
+  // Calm: nothing working, nothing pending.
+  return (
+    <div
+      data-testid="activity-status-strip"
+      className="mx-1 mb-2 rounded-lg px-3 py-2 flex items-center gap-2.5"
+      style={{ background: 'var(--hatchin-surface)', border: '1px solid var(--hatchin-border-subtle)' }}
+    >
+      <span className="w-2 h-2 rounded-full flex-none" style={{ background: 'var(--hatchin-green)' }} />
+      <div className="min-w-0 flex-1">
+        <div className="text-[12px] font-semibold leading-tight truncate" style={{ color: 'var(--hatchin-text-bright)' }}>
+          All caught up
+        </div>
+        <div className="text-[11px] truncate leading-tight mt-0.5" style={{ color: 'var(--hatchin-text-muted)' }}>
+          Nothing needs you right now
+        </div>
+      </div>
+      <span
+        className="flex-none inline-flex items-center h-6 px-2.5 rounded-full text-[11px] font-semibold"
+        style={{ border: '1px solid var(--hatchin-border-subtle)', color: 'var(--hatchin-text-muted)' }}
+      >
+        Idle
+      </span>
     </div>
   );
 }

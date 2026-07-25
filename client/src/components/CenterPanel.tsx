@@ -91,6 +91,9 @@ export function CenterPanel({
   const [typingColleagues, setTypingColleagues] = useState<string[]>([]);
   const [isTeamWorking, setIsTeamWorking] = useState(false);
   const [teamWorkingTaskCount, setTeamWorkingTaskCount] = useState(0);
+  const [workingAgentName, setWorkingAgentName] = useState<string | null>(null);
+  const [workingTaskTitle, setWorkingTaskTitle] = useState<string | null>(null);
+  const [workingStartedAt, setWorkingStartedAt] = useState<number | null>(null);
   const [isAutonomyPaused, setIsAutonomyPaused] = useState(false);
   const [approvalRequests, setApprovalRequests] = useState<Array<{
     taskId: string;
@@ -919,6 +922,9 @@ export function CenterPanel({
       if (message.taskCount != null) {
         setTeamWorkingTaskCount(message.taskCount);
       }
+      setWorkingAgentName(message.agentName ?? null);
+      setWorkingTaskTitle(message.taskTitle ?? null);
+      setWorkingStartedAt(Date.now());
       setIsAutonomyPaused(false);
       streaming.requestNotificationPermission();
       if (document.hidden) {
@@ -942,6 +948,9 @@ export function CenterPanel({
     else if (message.type === 'background_execution_completed' || message.type === 'task_execution_completed') {
       setIsTeamWorking(false);
       setTeamWorkingTaskCount(0);
+      setWorkingAgentName(null);
+      setWorkingTaskTitle(null);
+      setWorkingStartedAt(null);
       if (document.hidden) {
         const count = message.completedCount ?? message.taskCount ?? 1;
         streaming.startFlashingTitle(count, 'Work complete');
@@ -996,6 +1005,9 @@ export function CenterPanel({
     }
     else if (message.type === 'task_execution_failed') {
       setIsTeamWorking(false);
+      setWorkingAgentName(null);
+      setWorkingTaskTitle(null);
+      setWorkingStartedAt(null);
       toast({
         title: 'Task failed',
         description: `${message.agentName ?? 'Agent'} couldn't complete the task: ${message.error ?? 'Unknown error'}`,
@@ -1923,6 +1935,9 @@ export function CenterPanel({
             onReply={handleReplyToMessage}
             isTeamWorking={isTeamWorking}
             teamWorkingTaskCount={teamWorkingTaskCount}
+            workingAgentName={workingAgentName}
+            workingTaskTitle={workingTaskTitle}
+            workingStartedAt={workingStartedAt}
             isAutonomyPaused={isAutonomyPaused}
             onTogglePause={() => pauseMutation.mutate(!isAutonomyPaused)}
             pauseLoading={pauseMutation.isPending}

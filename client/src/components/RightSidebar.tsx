@@ -15,9 +15,13 @@ interface RightSidebarProps {
   activeProject: Project | undefined;
   activeTeam?: Team;
   activeAgent?: Agent;
+  /** Optional: open on a specific tab (used by the mobile bottom bar). */
+  initialTab?: 'activity' | 'brain' | 'tasks';
+  /** Fill the parent (mobile in-panel use) instead of the fixed desktop column width/height. */
+  fill?: boolean;
 }
 
-export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSidebarProps) {
+export function RightSidebar({ activeProject, activeTeam, activeAgent, initialTab, fill }: RightSidebarProps) {
   const { state, actions } = useRightSidebarState(activeProject, activeTeam, activeAgent);
   const { unreadCount, clearUnread } = useAutonomyFeed(activeProject?.id);
 
@@ -69,6 +73,15 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
     if (tab === 'activity') clearUnread();
   };
 
+  // When opened to a specific tab (mobile bottom bar), honor it.
+  React.useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+      if (initialTab === 'activity') clearUnread();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTab]);
+
   const [isPanelScrolling, setIsPanelScrolling] = React.useState(false);
   const panelScrollHideTimeoutRef = React.useRef<number | null>(null);
 
@@ -114,11 +127,15 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent }: RightSi
   // shrink-0, so on a ~1280px laptop with the 480px artifact panel open the centre
   // chat was crushed while the sidebar stayed rigid. p-6 inside 320px also left
   // only ~272px of usable content, which is what made every card feel cramped.
-  const asideClassName = `w-72 xl:w-80 2xl:w-[22rem] shrink-0 h-[calc(100vh-20px)] min-h-0 premium-column-bg rounded-2xl p-4 xl:p-6 overflow-y-auto hide-scrollbar my-2.5 relative right-sidebar-scroll ${isPanelScrolling ? 'is-scrolling' : ''}`;
+  const asideClassName = fill
+    ? `w-full h-full min-h-0 premium-column-bg p-4 overflow-y-auto hide-scrollbar relative right-sidebar-scroll ${isPanelScrolling ? 'is-scrolling' : ''}`
+    : `w-72 xl:w-80 2xl:w-[22rem] shrink-0 h-[calc(100vh-20px)] min-h-0 premium-column-bg rounded-2xl p-4 xl:p-6 overflow-y-auto hide-scrollbar my-2.5 relative right-sidebar-scroll ${isPanelScrolling ? 'is-scrolling' : ''}`;
 
   if (activeView === 'none') {
     return (
-      <aside className="w-72 xl:w-80 2xl:w-[22rem] shrink-0 premium-column-bg rounded-2xl p-4 xl:p-6 flex flex-col items-center justify-center my-2.5 relative overflow-hidden">
+      <aside className={fill
+        ? "w-full h-full premium-column-bg p-4 flex flex-col items-center justify-center relative overflow-hidden"
+        : "w-72 xl:w-80 2xl:w-[22rem] shrink-0 premium-column-bg rounded-2xl p-4 xl:p-6 flex flex-col items-center justify-center my-2.5 relative overflow-hidden"}>
         <div className="ambient-glow-top" />
         <div className="text-center hatchin-text-muted">
           <div className="text-4xl mb-4">🧠</div>

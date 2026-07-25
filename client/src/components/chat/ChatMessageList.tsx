@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { PauseCircle, PlayCircle } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import type { Agent } from '@shared/schema';
@@ -35,6 +36,9 @@ interface ChatMessageListProps {
   // Team working
   isTeamWorking: boolean;
   teamWorkingTaskCount: number;
+  workingAgentName: string | null;
+  workingTaskTitle: string | null;
+  workingStartedAt: number | null;
   isAutonomyPaused: boolean;
   onTogglePause: () => void;
   pauseLoading: boolean;
@@ -86,6 +90,9 @@ export function ChatMessageList({
   onReply,
   isTeamWorking,
   teamWorkingTaskCount,
+  workingAgentName,
+  workingTaskTitle,
+  workingStartedAt,
   isAutonomyPaused,
   onTogglePause,
   pauseLoading,
@@ -260,37 +267,17 @@ export function ChatMessageList({
           </div>
         )}
 
-        {/* Team working indicator */}
+        {/* Team working indicator — designed waiting state (additive amber accent, honest data only) */}
         {isTeamWorking && (
-          <div className="flex items-center justify-between px-4 py-2 text-sm text-amber-600 bg-amber-50 rounded-lg mx-4 mb-2">
-            <div className="flex items-center gap-2">
-              <div className="flex gap-1">
-                {!isAutonomyPaused && (
-                  <>
-                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </>
-                )}
-              </div>
-              <span>
-                {isAutonomyPaused
-                  ? 'Autonomous execution paused'
-                  : `Team is working on ${teamWorkingTaskCount} task${teamWorkingTaskCount !== 1 ? 's' : ''}...`}
-              </span>
-            </div>
-            <button
-              onClick={onTogglePause}
-              disabled={pauseLoading}
-              className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md transition-colors hover:bg-amber-100 disabled:opacity-40"
-            >
-              {isAutonomyPaused ? (
-                <><PlayCircle className="w-3.5 h-3.5" /> Resume</>
-              ) : (
-                <><PauseCircle className="w-3.5 h-3.5" /> Pause</>
-              )}
-            </button>
-          </div>
+          <TeamWorkingCard
+            agentName={workingAgentName}
+            taskTitle={workingTaskTitle}
+            startedAt={workingStartedAt}
+            taskCount={teamWorkingTaskCount}
+            isAutonomyPaused={isAutonomyPaused}
+            onTogglePause={onTogglePause}
+            pauseLoading={pauseLoading}
+          />
         )}
 
         {/* Deliberation indicator */}
@@ -332,6 +319,108 @@ export function ChatMessageList({
         }} />
       </div>
 
+    </div>
+  );
+}
+
+/**
+ * TeamWorkingCard — the "your team is working" waiting state.
+ * Shows only honest signals: who is working, on what, and how long it has been running.
+ * No invented percentage — the bar is an indeterminate shimmer, not a progress claim.
+ */
+function TeamWorkingCard({
+  agentName,
+  taskTitle,
+  startedAt,
+  taskCount,
+  isAutonomyPaused,
+  onTogglePause,
+  pauseLoading,
+}: {
+  agentName: string | null;
+  taskTitle: string | null;
+  startedAt: number | null;
+  taskCount: number;
+  isAutonomyPaused: boolean;
+  onTogglePause: () => void;
+  pauseLoading: boolean;
+}) {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (startedAt == null || isAutonomyPaused) return;
+    const tick = () => setElapsed(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [startedAt, isAutonomyPaused]);
+
+  const showAgent = !!agentName && taskCount <= 1;
+  const heading = isAutonomyPaused
+    ? 'Autonomous execution paused'
+    : showAgent
+      ? `${agentName} is working`
+      : `Your team is working on ${taskCount} task${taskCount !== 1 ? 's' : ''}`;
+  const sub = !isAutonomyPaused && showAgent && taskTitle ? `on ${taskTitle}` : null;
+  const elapsedLabel = `${Math.floor(elapsed / 60)}m ${String(elapsed % 60).padStart(2, '0')}s`;
+
+  return (
+    <div
+      className="mx-4 mb-2 rounded-lg px-4 py-3"
+      style={{
+        background: 'linear-gradient(180deg, var(--hatchin-working-tint), var(--hatchin-working-tint-2))',
+        border: '1px solid var(--hatchin-working-line)',
+      }}
+      role="status"
+      aria-live="polite"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          {!isAutonomyPaused && (
+            <span
+              className="w-2 h-2 rounded-full flex-none animate-pulse"
+              style={{ background: 'var(--hatchin-working-coral)' }}
+            />
+          )}
+          <div className="min-w-0">
+            <div className="text-sm font-semibold leading-tight truncate" style={{ color: 'var(--hatchin-text-bright)' }}>
+              {heading}
+            </div>
+            {sub && (
+              <div className="text-xs truncate mt-0.5" style={{ color: 'var(--hatchin-text-muted)' }}>
+                {sub}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-3 flex-none">
+          {!isAutonomyPaused && startedAt != null && (
+            <span className="text-xs tabular-nums" style={{ color: 'var(--hatchin-text-muted)' }}>
+              {elapsedLabel}
+            </span>
+          )}
+          <button
+            onClick={onTogglePause}
+            disabled={pauseLoading}
+            className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md transition-colors hover:bg-white/5 disabled:opacity-40"
+            style={{ color: 'var(--hatchin-working-amber)' }}
+          >
+            {isAutonomyPaused ? (
+              <><PlayCircle className="w-3.5 h-3.5" /> Resume</>
+            ) : (
+              <><PauseCircle className="w-3.5 h-3.5" /> Pause</>
+            )}
+          </button>
+        </div>
+      </div>
+      {!isAutonomyPaused && (
+        <div className="mt-3 h-1.5 rounded-full overflow-hidden relative" style={{ background: 'rgba(255, 255, 255, 0.09)' }}>
+          <span
+            className="team-working-shimmer"
+            style={{ background: 'linear-gradient(90deg, var(--hatchin-working-coral), var(--hatchin-working-amber))' }}
+          />
+        </div>
+      )}
     </div>
   );
 }

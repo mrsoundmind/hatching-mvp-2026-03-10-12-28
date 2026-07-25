@@ -45,6 +45,13 @@
   --hatchin-green: hsl(158, 66%, 47%);
   --hatchin-orange: hsl(25, 100%, 60%);
 
+  /* Working card — NEW additive amber accent (direction-refined), does not touch base colors */
+  --hatchin-working-amber: #F2B441;
+  --hatchin-working-coral: #E8734A;
+  --hatchin-working-tint: rgba(232, 115, 74, 0.12);
+  --hatchin-working-tint-2: rgba(232, 115, 74, 0.05);
+  --hatchin-working-line: rgba(232, 115, 74, 0.32);
+
   /* Premium layout */
   --premium-bg-start: hsl(225, 25%, 99%);
   --premium-bg-end: hsl(225, 20%, 95%);
@@ -109,6 +116,13 @@
   --hatchin-text: hsl(210, 9%, 95%);
   --hatchin-text-muted: hsl(216, 6%, 67%);
   --hatchin-text-bright: hsl(0, 0%, 95%);
+
+  /* Working card — NEW additive amber accent (direction-refined), does not touch base colors */
+  --hatchin-working-amber: #F2B441;
+  --hatchin-working-coral: #E8734A;
+  --hatchin-working-tint: rgba(232, 115, 74, 0.14);
+  --hatchin-working-tint-2: rgba(232, 115, 74, 0.05);
+  --hatchin-working-line: rgba(232, 115, 74, 0.34);
 
   /* Premium layout */
   --premium-bg-start: #1A1D23;
@@ -728,6 +742,23 @@
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 8px;
+}
+
+/* Working card indeterminate progress — an honest "in progress, no known %" signal (direction-refined) */
+@keyframes team-working-shimmer {
+  0% { left: -42%; width: 42%; }
+  50% { width: 58%; }
+  100% { left: 100%; width: 42%; }
+}
+.team-working-shimmer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  animation: team-working-shimmer 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .team-working-shimmer { animation: none; left: 0; width: 100%; opacity: 0.5; }
 }
 
 /* Agent online pulse indicator */

@@ -1,8 +1,8 @@
 import { ErrorBoundary } from 'react-error-boundary';
 import { PanelErrorFallback } from '@/components/ErrorFallbacks';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Menu, PanelRight } from "lucide-react";
+import { Menu, MessageSquare, Sparkles, ListChecks, type LucideIcon } from "lucide-react";
 import { ProjectSelectionProvider, useProjectSelection } from "@/hooks/useProjectSelection";
 
 import { LeftSidebar } from "@/components/LeftSidebar";
@@ -17,7 +17,8 @@ import QuickStartModal from "@/components/QuickStartModal";
 import StarterPacksModal from "@/components/StarterPacksModal";
 import ProjectNameModal from "@/components/ProjectNameModal";
 import UpgradeModal from "@/components/UpgradeModal";
-import type { Project, Team, Agent } from "@shared/schema";
+import type { Project, Team, Agent, Task } from "@shared/schema";
+import { isApprovalExpired } from "@/components/sidebar/approvalUtils";
 import { devLog } from "@/lib/devLog";
 import { useToast } from "@/hooks/use-toast";
 
@@ -74,6 +75,8 @@ function HomeInner() {
   // Mobile drawer state
   const [mobileLeftOpen, setMobileLeftOpen] = useState(false);
   const [mobileRightOpen, setMobileRightOpen] = useState(false);
+  // Which right-panel tab the mobile bottom bar opens to.
+  const [mobileRightTab, setMobileRightTab] = useState<'activity' | 'brain' | 'tasks'>('activity');
 
   const { data: projects = [], refetch: refetchProjects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
@@ -86,6 +89,33 @@ function HomeInner() {
   const { data: agents = [], refetch: refetchAgents } = useQuery<Agent[]>({
     queryKey: ["/api/agents"],
   });
+
+  // Pending-approval count for the mobile bottom-bar "needs you" badge.
+  // Same queryKey + filter as ActivityTab/RightSidebar so it dedupes and stays consistent.
+  const { data: activeProjectTasks } = useQuery<Task[]>({
+    queryKey: ['/api/tasks', `?projectId=${activeProjectId}`],
+    queryFn: async () => {
+      const res = await fetch(`/api/tasks?projectId=${activeProjectId}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!activeProjectId,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
+  const pendingApprovalCount = useMemo(
+    () =>
+      (activeProjectTasks ?? []).filter(t => {
+        const meta = t.metadata as Record<string, unknown>;
+        return (
+          meta?.awaitingApproval === true &&
+          !meta?.approvedAt &&
+          !meta?.rejectedAt &&
+          !isApprovalExpired(t)
+        );
+      }).length,
+    [activeProjectTasks]
+  );
 
   const activeProject = activeProjectId ? projects.find(p => p.id === activeProjectId) : undefined;
   const activeProjectTeams = activeProjectId ? teams.filter(t => t.projectId === activeProjectId) : [];
@@ -917,25 +947,19 @@ function HomeInner() {
         }}
       />
 
-      {/* Mobile header bar — visible on < lg only */}
-      <div className="lg:hidden shrink-0 flex items-center justify-between px-3 h-12 border-b border-border/40 bg-background/80 backdrop-blur-sm">
+      {/* Mobile header bar — visible on < lg only. Projects live behind the menu;
+          Activity/Tasks moved to the bottom tab bar so each surface is one tap. */}
+      <div className="lg:hidden shrink-0 flex items-center gap-2 px-3 h-12 border-b border-border/40 bg-background/80 backdrop-blur-sm">
         <button
           onClick={() => setMobileLeftOpen(true)}
-          className="p-2 rounded-lg hover:bg-muted transition-colors"
-          aria-label="Open navigation"
+          className="p-2 -ml-1 rounded-lg hover:bg-muted transition-colors"
+          aria-label="Open projects"
         >
           <Menu className="w-5 h-5" />
         </button>
-        <span className="text-sm font-semibold tracking-tight">
+        <span className="text-sm font-semibold tracking-tight truncate">
           {activeProject?.name || 'Hatchin'}
         </span>
-        <button
-          onClick={() => setMobileRightOpen(true)}
-          className="p-2 rounded-lg hover:bg-muted transition-colors"
-          aria-label="Open project details"
-        >
-          <PanelRight className="w-5 h-5" />
-        </button>
       </div>
 
       {/* Mobile left drawer */}
@@ -975,23 +999,7 @@ function HomeInner() {
         </SheetContent>
       </Sheet>
 
-      {/* Mobile right drawer */}
-      <Sheet open={mobileRightOpen} onOpenChange={setMobileRightOpen}>
-        <SheetContent side="right" className="p-0 w-[320px] backdrop-blur-xl bg-[var(--glass-frosted-strong)]">
-          <div className="w-10 h-1 bg-[var(--hatchin-border)] rounded-full mx-auto mt-3 mb-0 shrink-0" />
-          <SheetTitle className="sr-only">Project Details</SheetTitle>
-          <SheetDescription className="sr-only">Activity feed, project brain, and approvals</SheetDescription>
-          <ErrorBoundary FallbackComponent={PanelErrorFallback}>
-            <RightSidebar
-              activeProject={activeProject}
-              activeTeam={teams.find(t => t.id === activeTeamId)}
-              activeAgent={agents.find(a => a.id === activeAgentId)}
-            />
-          </ErrorBoundary>
-        </SheetContent>
-      </Sheet>
-
-      <div className="flex-1 min-h-0 flex gap-3">
+      <div className="flex-1 min-h-0 flex gap-3 relative">
         {/* Desktop left sidebar — hidden on mobile */}
         <div className="hidden lg:block h-full">
           <ErrorBoundary FallbackComponent={PanelErrorFallback}>
@@ -1064,7 +1072,51 @@ function HomeInner() {
             />
           </ErrorBoundary>
         </div>
+
+        {/* Mobile right panel — covers chat (< lg) when Activity/Tasks is the active bottom tab.
+            An in-flow overlay (not a Sheet), so the bottom tab bar below stays visible and tappable. */}
+        {mobileRightOpen && (
+          <div className="lg:hidden absolute inset-0 z-20 overflow-hidden bg-[var(--hatchin-panel)]">
+            <ErrorBoundary FallbackComponent={PanelErrorFallback}>
+              <RightSidebar
+                activeProject={activeProject}
+                activeTeam={teams.find(t => t.id === activeTeamId)}
+                activeAgent={agents.find(a => a.id === activeAgentId)}
+                initialTab={mobileRightTab}
+                fill
+              />
+            </ErrorBoundary>
+          </div>
+        )}
       </div>
+
+      {/* Mobile bottom tab bar — Chat / Activity / Tasks, one tap each (< lg only).
+          Replaces the old header panel button; Brain stays reachable via the drawer's own tabs. */}
+      <nav
+        className="lg:hidden shrink-0 grid grid-cols-3 border-t border-border/40 bg-background/90 backdrop-blur-sm"
+        aria-label="Sections"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        <MobileTab
+          label="Chat"
+          icon={MessageSquare}
+          active={!mobileRightOpen}
+          onClick={() => { setMobileRightOpen(false); }}
+        />
+        <MobileTab
+          label="Activity"
+          icon={Sparkles}
+          active={mobileRightOpen && mobileRightTab === 'activity'}
+          badge={pendingApprovalCount}
+          onClick={() => { setMobileRightTab('activity'); setMobileRightOpen(true); }}
+        />
+        <MobileTab
+          label="Tasks"
+          icon={ListChecks}
+          active={mobileRightOpen && mobileRightTab === 'tasks'}
+          onClick={() => { setMobileRightTab('tasks'); setMobileRightOpen(true); }}
+        />
+      </nav>
 
       {/* Egg Hatching Animation */}
       {isEggHatching && ideaProjectData && (
@@ -1112,5 +1164,50 @@ function HomeInner() {
         reason={upgradeReason}
       />
     </div>
+  );
+}
+
+/** One tab in the mobile bottom navigation. Active tab uses the app's blue accent;
+ *  the "needs you" badge uses the coral attention accent. */
+function MobileTab({
+  label,
+  icon: Icon,
+  active,
+  badge,
+  onClick,
+}: {
+  label: string;
+  icon: LucideIcon;
+  active: boolean;
+  badge?: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active ? 'page' : undefined}
+      className="relative flex flex-col items-center justify-center gap-0.5 min-h-[56px] text-[11px] font-semibold transition-colors"
+      style={{ color: active ? 'var(--hatchin-blue)' : 'var(--hatchin-text-muted)' }}
+    >
+      {active && (
+        <span
+          className="absolute top-0 left-1/4 right-1/4 h-0.5 rounded-full"
+          style={{ background: 'var(--hatchin-blue)' }}
+        />
+      )}
+      <span className="relative">
+        <Icon className="w-5 h-5" />
+        {badge != null && badge > 0 && (
+          <span
+            className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold grid place-items-center"
+            style={{ background: 'var(--hatchin-working-coral)', color: '#231702' }}
+          >
+            {badge}
+          </span>
+        )}
+      </span>
+      {label}
+    </button>
   );
 }
