@@ -229,8 +229,12 @@ export async function* generateStreamingResponse(
     if (roleProfile?.criticalThinking) expertiseParts.push(`Critical thinking: ${roleProfile.criticalThinking}`);
     if (characterProfile?.negativeHandling) expertiseParts.push(`Pushback: ${characterProfile.negativeHandling}`);
     if (characterProfile?.collaborationStyle) expertiseParts.push(`Collaboration: ${characterProfile.collaborationStyle}`);
+    // v2.2 Phase E: reframe the block so the third-person expertise prose (written as "Alex thinks...",
+    // "Morgan uses...") reads as the agent's OWN instincts. Without this, the model echoes the third
+    // person and refers to itself by name. Paired with response-rule 15 (speak in the first person),
+    // this fixes self-reference at the root without rewriting 120 prose strings.
     const professionalDepthSection = expertiseParts.length > 0
-      ? `\n--- ROLE EXPERTISE ---\n${expertiseParts.join('\n')}\n--- END ROLE EXPERTISE ---`
+      ? `\n--- ROLE EXPERTISE (this is YOU — your own knowledge, instincts, and way of working. The lines below are written about you in the third person, but you ARE this person: internalize them and always speak in the first person, never about yourself by name) ---\n${expertiseParts.join('\n')}\n--- END ROLE EXPERTISE ---`
       : '';
     const domainIntelligenceSection = ''; // merged into ROLE EXPERTISE above
 
