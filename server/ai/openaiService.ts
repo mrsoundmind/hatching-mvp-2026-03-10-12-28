@@ -300,7 +300,7 @@ export async function* generateStreamingResponse(
 
     // GAP 8: Handoff acknowledgment — when routed from another agent
     const handoffSection = context.handoffFrom
-      ? `\n--- HANDOFF ---\nYou were just looped in from ${context.handoffFrom}. Acknowledge this naturally in your opening — "Alex was right to bring me in here..." or "Good call from the PM side — let me look at this from the ${agentRole} angle..." Keep it brief (half a sentence). Don't make it formal or announce it; just weave it in naturally.\n--- END HANDOFF ---`
+      ? `\n--- HANDOFF ---\nYou were just looped in from ${context.handoffFrom}. Acknowledge the handoff briefly and naturally in your own voice and in the first person (half a sentence at most), then get to work. Do not announce it formally, and do not use a canned phrase or refer to yourself in the third person.\n--- END HANDOFF ---`
       : '';
 
     // GAP 4: First-message opener intelligence
