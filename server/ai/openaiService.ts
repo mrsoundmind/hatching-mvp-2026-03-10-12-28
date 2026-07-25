@@ -7,6 +7,7 @@ import { UserBehaviorAnalyzer, type UserBehaviorProfile, type MessageAnalysis } 
 import { personalityEngine } from './personalityEvolution.js';
 import {
   generateChatWithRuntimeFallback,
+  generateWithPreferredProvider,
   getCurrentRuntimeConfig,
   streamChatWithRuntimeFallback,
   streamWithPreferredProvider,
@@ -495,7 +496,9 @@ Respond as this specific role with appropriate expertise and personality. Keep r
       yield chunk;
     }
 
-    // P3: Fire-and-forget memory extraction — never awaited, never blocks streaming
+    // P3 / v2.2 Phase A: Fire-and-forget memory extraction — never awaited, never blocks streaming.
+    // A generateFn (routed to the FREE Groq tier, same as task extraction) enables the outcome-aware
+    // LLM extraction path so rejected ideas are stored as rejected, not as adopted decisions.
     if (context.projectId && context.conversationId && context.userId && fullResponse.length > 20) {
       extractAndStoreMemory(
         {
@@ -508,6 +511,16 @@ Respond as this specific role with appropriate expertise and personality. Keep r
         },
         {
           createConversationMemory: context.createConversationMemory ?? (async () => {}),
+        },
+        async (prompt: string): Promise<string> => {
+          const completion = await generateWithPreferredProvider({
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.2,
+            maxTokens: 400,
+            timeoutMs: Number(process.env.HARD_RESPONSE_TIMEOUT_MS || 45000),
+            seed: process.env.LLM_MODE === 'test' ? 42 : undefined,
+          }, process.env.GROQ_API_KEY ? 'groq' : 'gemini');
+          return completion.content || '';
         }
       ).catch(() => { /* fire-and-forget — never throw */ });
     }

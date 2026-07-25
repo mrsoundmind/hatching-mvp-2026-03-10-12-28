@@ -2103,8 +2103,8 @@ export function registerChatRoutes(
       responseMessageId = `response-${Date.now()}`;
       let accumulatedContent = '';
 
-      // B3: Extract and store conversation memory BEFORE generating response
-      await extractAndStoreMemory(userMessage, { content: 'Processing...' }, conversationId, projectId);
+      // v2.2 Phase A: memory extraction moved to the outcome-aware memoryExtractor (runs post-response
+      // in openaiService), replacing the crude keyword extractor that stored rejected ideas as decisions.
       await extractUserName(userMessage.content, conversationId);
 
       // Load conversation history for context (with compaction support)
@@ -2160,7 +2160,7 @@ export function registerChatRoutes(
         projectMemories: projectId ? await storage.getRelevantProjectMemories(projectId, {
           query: userMessage.content,
           limit: 12,
-          minImportance: 0.4,
+          minImportance: 4, // v2.2 Phase A: integer 1-10 scale (was 0.4 on the old float scale)
           excludeConversationId: conversationId,
         }).then((mems: any[]) => mems.map((m: any) => `- ${m.content}`).join('\n')).catch(() => null) : null,
         // GAP-7: Derive userDesignation from self-identification patterns in early messages
@@ -2882,8 +2882,8 @@ export function registerChatRoutes(
             await finalizeDeliberationTrace(traceId, accumulatedContent || "");
           }
 
-          // B3: Update stored memory with actual AI response
-          await extractAndStoreMemory(userMessage, savedResponse, conversationId, projectId);
+          // v2.2 Phase A: outcome-aware memory extraction runs fire-and-forget inside the streaming
+          // generator (memoryExtractor via Groq); the crude in-line extractor was retired.
           await logAutonomyEvent({
             eventType: "memory_written",
             projectId,
@@ -3550,62 +3550,14 @@ export function registerChatRoutes(
     }
   }
 
-  // B3: Extract and store conversation memory from user messages
   // ═══════════════════════════════════════════════════════════════
-  // SECTION 6: Memory Extraction & User Name Detection (~lines 3185-3260)
-  // Post-response memory extraction and user name parsing.
+  // SECTION 6: User Name Detection
+  // v2.2 Phase A: the crude keyword extractAndStoreMemory() was removed from here. It stored the raw
+  // user message as a "decision"/"goal" with no accept/reject check, so a rejected idea became an
+  // adopted decision and "6px tap target" became a "Project goal" via the bare word "target". Memory
+  // extraction is now the outcome-aware memoryExtractor (server/ai/memoryExtractor.ts), invoked
+  // fire-and-forget from the streaming generator.
   // ═══════════════════════════════════════════════════════════════
-
-  async function extractAndStoreMemory(userMessage: any, agentResponse: any, conversationId: string, projectId: string) {
-    try {
-      const userContent = userMessage.content.toLowerCase();
-
-      // Extract key decisions and important context
-      if (userContent.includes('decide') || userContent.includes('decision') || userContent.includes('choose')) {
-        await storage.addConversationMemory(
-          conversationId,
-          'decisions',
-          `User decision: ${userMessage.content}`,
-          8
-        );
-      }
-
-      // Extract project requirements or specifications
-      if (userContent.includes('requirement') || userContent.includes('spec') || userContent.includes('need')) {
-        await storage.addConversationMemory(
-          conversationId,
-          'key_points',
-          `Project requirement: ${userMessage.content}`,
-          7
-        );
-      }
-
-      // Extract goals and objectives
-      if (userContent.includes('goal') || userContent.includes('objective') || userContent.includes('target')) {
-        await storage.addConversationMemory(
-          conversationId,
-          'key_points',
-          `Project goal: ${userMessage.content}`,
-          9
-        );
-      }
-
-      // Extract important agent insights from responses
-      const agentContent = agentResponse.content.toLowerCase();
-      if (agentContent.includes('recommend') || agentContent.includes('suggest') || agentContent.includes('propose')) {
-        await storage.addConversationMemory(
-          conversationId,
-          'context',
-          `Agent recommendation: ${agentResponse.content.substring(0, 200)}...`,
-          6
-        );
-      }
-
-      devLog('🧠 Memory extraction completed for conversation:', conversationId);
-    } catch (error) {
-      console.error('❌ Error extracting memory:', error);
-    }
-  }
 
   // Extract user name from messages
   async function extractUserName(content: string, conversationId: string) {

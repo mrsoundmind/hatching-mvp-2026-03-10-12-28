@@ -295,6 +295,13 @@ export interface IStorage {
 }
 
 
+// v2.2 Phase A: normalize memory content for dedup — collapse whitespace, lowercase, cap length.
+// Memory extraction (and post-response re-runs) can produce near-identical rows; this stops them
+// piling up in the shared project memory the agents read back into their prompts.
+function normalizeMemoryContent(content: string): string {
+  return (content || '').toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 120);
+}
+
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
   private projects: Map<string, Project>;
@@ -1173,7 +1180,12 @@ export class MemStorage implements IStorage {
       this.conversationMemories.set(conversationId, []);
     }
 
-    this.conversationMemories.get(conversationId)!.push(memory);
+    const bucket = this.conversationMemories.get(conversationId)!;
+    const norm = normalizeMemoryContent(content);
+    if (bucket.some((m: any) => normalizeMemoryContent(m.content) === norm)) {
+      return; // v2.2 Phase A: skip near-duplicate memory
+    }
+    bucket.push(memory);
     console.log(`💾 Memory stored: ${content.substring(0, 50)}... in conversation ${conversationId}`);
   }
 
@@ -1436,7 +1448,11 @@ export class MemStorage implements IStorage {
     if (!this.conversationMemories.has(data.conversationId)) {
       this.conversationMemories.set(data.conversationId, []);
     }
-    this.conversationMemories.get(data.conversationId)!.push(memory);
+    const bucket = this.conversationMemories.get(data.conversationId)!;
+    const norm = normalizeMemoryContent(data.content);
+    const dup = bucket.find((m: any) => normalizeMemoryContent(m.content) === norm);
+    if (dup) return dup; // v2.2 Phase A: skip near-duplicate memory
+    bucket.push(memory);
     return memory;
   }
 
@@ -2238,6 +2254,11 @@ export class DatabaseStorage implements IStorage {
 
   // Memory (stored in conversationMemory table)
   async addConversationMemory(conversationId: string, memoryType: 'context' | 'summary' | 'key_points' | 'decisions', content: string, importance: number = 5): Promise<void> {
+    const norm = normalizeMemoryContent(content);
+    const existing = await db.select({ content: schema.conversationMemory.content })
+      .from(schema.conversationMemory)
+      .where(eq(schema.conversationMemory.conversationId, conversationId));
+    if (existing.some((r) => normalizeMemoryContent(r.content) === norm)) return; // v2.2 Phase A: skip near-duplicate
     await db.insert(schema.conversationMemory).values({ conversationId, memoryType, content, importance });
   }
   async getConversationMemory(conversationId: string): Promise<any[]> {
@@ -2259,6 +2280,11 @@ export class DatabaseStorage implements IStorage {
 
   // P3: createConversationMemory — insert extracted project memory
   async createConversationMemory(data: { conversationId: string; memoryType: string; content: string; importance: number; agentId?: string | null; }): Promise<unknown> {
+    const norm = normalizeMemoryContent(data.content);
+    const existing = await db.select({ content: schema.conversationMemory.content })
+      .from(schema.conversationMemory)
+      .where(eq(schema.conversationMemory.conversationId, data.conversationId));
+    if (existing.some((r) => normalizeMemoryContent(r.content) === norm)) return null; // v2.2 Phase A: skip near-duplicate
     const [row] = await db.insert(schema.conversationMemory).values({
       conversationId: data.conversationId,
       memoryType: data.memoryType as any,

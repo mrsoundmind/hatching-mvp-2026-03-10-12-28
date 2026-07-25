@@ -3,6 +3,13 @@ const devLog = (...args: unknown[]) => { if (process.env.NODE_ENV !== "productio
 // After every agent response, extracts important facts, decisions, preferences, and open questions.
 // Stores them as project-scoped memories so ALL agents in the project can access them.
 // Fire-and-forget: never awaited in the main response path to avoid blocking streaming.
+//
+// v2.2 Phase A: this is now the SINGLE memory writer (the crude keyword extractor in chat.ts is retired).
+// Two correctness rules enforced here:
+//   1. OUTCOME, not proposal — a rejected idea is stored as rejected, never as an adopted "decision".
+//   2. Schema contract — output conforms to the conversation_memory column contract:
+//        memoryType ∈ {decisions | key_points | context}, importance = integer 1..10.
+//      (memoryExtractor previously emitted singular types + float 0..1, which the readers dropped.)
 
 
 
@@ -15,17 +22,46 @@ interface ExtractMemoryInput {
   userId: string;
 }
 
+// Internal shape produced by the extractors (float importance, granular type).
+// Mapped to the DB schema contract at write time by toDbType()/toDbImportance().
 interface ExtractedMemory {
   content: string;
   memoryType: "decision" | "fact" | "preference" | "open_question";
   importance: number; // 0.0 - 1.0
 }
 
+// DB schema contract: conversation_memory.memory_type is text $type-constrained to this set,
+// and importance is an integer 1..10. Readers depend on these exact values:
+//   getSharedMemoryForAgent filters memoryType === 'decisions' and importance >= 7
+//   getRelevantProjectMemories + openaiService grep the "Open question:" content prefix
+type DbMemoryType = "decisions" | "key_points" | "context";
+
+function toDbType(t: ExtractedMemory["memoryType"]): DbMemoryType {
+  switch (t) {
+    case "decision": return "decisions";
+    case "preference": return "context";
+    case "fact":
+    case "open_question":
+    default: return "key_points";
+  }
+}
+
+// 0..1 float -> integer 1..10. Confirmed decisions are floored to 7 so they surface in the
+// "Recent decisions" reader (getSharedMemoryForAgent filters importance >= 7).
+function toDbImportance(raw: number, t: ExtractedMemory["memoryType"]): number {
+  const clamped = Math.max(0, Math.min(1, Number.isFinite(raw) ? raw : 0.5));
+  let scaled = Math.round(clamped * 10);
+  if (t === "decision") scaled = Math.max(scaled, 7);
+  return Math.max(1, Math.min(10, scaled));
+}
+
 // Minimum combined length to bother extracting (very short exchanges rarely produce useful memories)
 const MIN_COMBINED_LENGTH = 40;
 
-// Simple heuristic extraction — no LLM call needed for basic patterns
-// This keeps memory extraction fast and free
+// Simple heuristic extraction — no LLM call needed for basic patterns. Fallback for short
+// exchanges (< LLM_EXTRACTION_THRESHOLD) where an LLM call is not worth the cost. Note: the
+// heuristic cannot judge accept/reject, so it deliberately does NOT emit "decision" — it records
+// keyword-matched statements as neutral facts/context. Confirmed decisions come from the LLM path.
 function extractMemoriesHeuristically(
   userMessage: string,
   agentResponse: string
@@ -33,7 +69,9 @@ function extractMemoriesHeuristically(
   const memories: ExtractedMemory[] = [];
   const combined = `${userMessage}\n${agentResponse}`;
 
-  // Decision patterns
+  // Decision-shaped patterns — recorded as neutral "fact" (NOT "decision"), because a keyword
+  // match cannot tell an adopted decision from a rejected proposal. Outcome-aware classification
+  // only happens in the LLM path below.
   const decisionPatterns = [
     /we(?:'re| are| will| should) (?:going to |going with |using |building |implement)/gi,
     /(?:decided|agreed|confirmed|finalized) (?:to |on |that )/gi,
@@ -51,8 +89,8 @@ function extractMemoriesHeuristically(
         if (pattern.test(sentence) && sentence.trim().length > 15) {
           memories.push({
             content: sentence.trim().replace(/\s+/g, " "),
-            memoryType: "decision",
-            importance: 0.75,
+            memoryType: "fact",
+            importance: 0.6,
           });
           break;
         }
@@ -101,8 +139,9 @@ function extractMemoriesHeuristically(
   });
 }
 
-// LLM-based semantic extraction — catches nuanced decisions the heuristic misses.
-// Only invoked for substantive exchanges (combined length > 200 chars) when a
+// LLM-based semantic extraction — catches nuanced decisions the heuristic misses AND, crucially,
+// captures the OUTCOME (accepted vs rejected) so a proposal the team killed is never stored as a
+// decision. Only invoked for substantive exchanges (combined length > 200 chars) when a
 // generateFn is supplied by the caller.
 async function extractMemoriesWithLLM(
   userMessage: string,
@@ -111,7 +150,19 @@ async function extractMemoriesWithLLM(
 ): Promise<ExtractedMemory[]> {
   try {
     const combined = `User: ${userMessage}\nAgent: ${agentResponse}`;
-    const prompt = `Extract up to 3 key facts, decisions, or preferences from this exchange. Only extract things that would be useful to remember in a future conversation. Be specific and concrete.
+    const prompt = `Extract up to 3 durable memories from this exchange that a teammate should remember later. Store a resolved, self-contained fact, NOT the raw message.
+
+CRITICAL — capture the OUTCOME, not the proposal:
+- If the user proposed something and the agent REJECTED it or pushed back, record it as rejected (e.g. "Team rejected storing everything in one JSON column because it hurts querying"). Do NOT record it as a decision.
+- Only use type "decision" for something the team actually AGREED to do.
+- If it is still unresolved, use "open_question".
+- Never copy @mentions or the raw wording; write a neutral resolved statement.
+
+Types:
+- "decision": the team agreed to do this (accepted, not merely proposed)
+- "fact": a durable project fact, constraint, or rejected-option record
+- "preference": a stated user or team preference
+- "open_question": an unresolved question
 
 Exchange:
 ${combined}
@@ -119,7 +170,7 @@ ${combined}
 Respond with a JSON array only, no explanation:
 [{"content": "...", "type": "decision|fact|preference|open_question", "importance": 0.0-1.0}]
 
-If nothing important was said, return: []`;
+If nothing durable was said, return: []`;
 
     const result = await generateFn(prompt);
     const trimmed = result.trim();
@@ -139,8 +190,13 @@ If nothing important was said, return: []`;
         const memoryType: ExtractedMemory['memoryType'] = (validTypes as readonly string[]).includes(rawType)
           ? (rawType as ExtractedMemory['memoryType'])
           : 'fact';
+        let content = String(obj.content).trim();
+        // Preserve the "Open question:" content prefix that getRelevantProjectMemories/openaiService grep for.
+        if (memoryType === 'open_question' && !/^open question:/i.test(content)) {
+          content = `Open question: ${content}`;
+        }
         return {
-          content: String(obj.content).trim(),
+          content,
           memoryType,
           importance: Math.max(0, Math.min(1, Number(obj.importance))),
         };
@@ -173,7 +229,8 @@ export async function extractAndStoreMemory(
     let memories: ExtractedMemory[] = [];
 
     // Attempt LLM-based extraction for substantive exchanges when a generate
-    // function is available — it captures semantic meaning the heuristic misses.
+    // function is available — it captures semantic meaning AND accept/reject outcome
+    // the heuristic cannot.
     if (generateFn && combined.length > LLM_EXTRACTION_THRESHOLD) {
       memories = await extractMemoriesWithLLM(
         input.userMessage,
@@ -192,16 +249,18 @@ export async function extractAndStoreMemory(
 
     if (memories.length === 0) return;
 
-    // Store as project-scoped memories (shared bucket for all agents)
+    // Store as project-scoped memories (shared bucket for all agents), conforming to the
+    // conversation_memory schema contract (canonical type + integer importance). The storage
+    // layer dedupes near-identical content, so re-runs and overlapping extractions do not pile up.
     const projectConversationId = `project:${input.projectId}`;
 
     for (const memory of memories.slice(0, 3)) {
       // Cap at 3 per exchange
       await storage.createConversationMemory({
         conversationId: projectConversationId,
-        memoryType: memory.memoryType,
+        memoryType: toDbType(memory.memoryType),
         content: memory.content,
-        importance: memory.importance,
+        importance: toDbImportance(memory.importance, memory.memoryType),
         agentId: null,
       });
     }
