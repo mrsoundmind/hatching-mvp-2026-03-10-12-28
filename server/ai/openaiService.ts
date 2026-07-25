@@ -65,6 +65,8 @@ interface ChatContext {
   // Wave 3 (#79) — uploaded brain documents (project.brain.documents) grounded into the prompt
   brainDocuments?: Array<{ title?: string; content?: string; type?: string }> | null;
   userDesignation?: string | null;
+  // v2.2 Phase F: the user's name (preferredName ?? OAuth name) so agents address them by name.
+  userName?: string | null;
   // GAP-8: Role of the last agent who spoke (enables handoff acknowledgment)
   handoffFrom?: string | null;
   // P3: Injected by routes.ts to enable real memory storage (fire-and-forget)
@@ -302,6 +304,11 @@ export async function* generateStreamingResponse(
     // P6: User designation injection
     const userDesignationSection = context.userDesignation ? `\n--- USER CONTEXT ---\nThe user's role on this project: ${context.userDesignation}\nCalibrate your explanations, assumptions, and collaboration style for someone in this role.\n--- END USER CONTEXT ---` : '';
 
+    // v2.2 Phase F: address the user by name (from their login profile, or a name they gave in chat).
+    const userNameSection = context.userName
+      ? `\n--- WHO YOU'RE TALKING TO ---\nThe user's name is ${context.userName}. Address them by their first name naturally when it feels human — a greeting, a moment of agreement, a check-in — not in every sentence and never forced. You already know their name, so never ask for it.\n--- END WHO YOU'RE TALKING TO ---`
+      : '';
+
     // GAP 8: Handoff acknowledgment — when routed from another agent
     const handoffSection = context.handoffFrom
       ? `\n--- HANDOFF ---\nYou were just looped in from ${context.handoffFrom}. Acknowledge the handoff briefly and naturally in your own voice and in the first person (half a sentence at most), then get to work. Do not announce it formally, and do not use a canned phrase or refer to yourself in the third person.\n--- END HANDOFF ---`
@@ -440,6 +447,7 @@ ${projectContextSection}
 ${projectKnowledgeSection}
 ${projectMemorySection}
 ${openQuestionsSection}
+${userNameSection}
 ${userDesignationSection}
 ${handoffSection}
 ${firstMessageSection}

@@ -102,6 +102,7 @@ export function getStorageModeInfo() {
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
+  setUserPreferredName(userId: string, preferredName: string): Promise<void>; // v2.2 Phase F
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByProviderSub(provider: string, providerSub: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -335,6 +336,7 @@ export class MemStorage implements IStorage {
       id: "seed-user",
       email: "seed@hatchin.local",
       name: "Seed User",
+      preferredName: null,
       avatarUrl: null,
       provider: "legacy",
       providerSub: "seed-user",
@@ -506,6 +508,11 @@ export class MemStorage implements IStorage {
     return this.users.get(id);
   }
 
+  async setUserPreferredName(userId: string, preferredName: string): Promise<void> {
+    const user = this.users.get(userId);
+    if (user) this.users.set(userId, { ...user, preferredName } as User);
+  }
+
   async getUserByEmail(email: string): Promise<User | undefined> {
     return Array.from(this.users.values()).find(
       (user) => user.email.toLowerCase() === email.toLowerCase(),
@@ -531,6 +538,7 @@ export class MemStorage implements IStorage {
       id,
       email: insertUser.email,
       name: insertUser.name,
+      preferredName: (insertUser as any).preferredName ?? null,
       avatarUrl: insertUser.avatarUrl || null,
       provider: insertUser.provider || "google",
       providerSub: insertUser.providerSub,
@@ -1798,6 +1806,9 @@ export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(schema.users).where(eq(schema.users.id, id));
     return user;
+  }
+  async setUserPreferredName(userId: string, preferredName: string): Promise<void> {
+    await db.update(schema.users).set({ preferredName }).where(eq(schema.users.id, userId));
   }
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(schema.users).where(eq(schema.users.email, email));

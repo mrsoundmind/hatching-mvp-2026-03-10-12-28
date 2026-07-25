@@ -18,6 +18,9 @@ export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
+  // v2.2 Phase F: a name the user asks to be called (stated in chat). Persists on the account so it
+  // is remembered across every project, forever. Falls back to `name` (from OAuth) when unset.
+  preferredName: text("preferred_name"),
   avatarUrl: text("avatar_url"),
   provider: text("provider").notNull().default("google"),
   providerSub: text("provider_sub").notNull().unique(),

@@ -2105,7 +2105,7 @@ export function registerChatRoutes(
 
       // v2.2 Phase A: memory extraction moved to the outcome-aware memoryExtractor (runs post-response
       // in openaiService), replacing the crude keyword extractor that stored rejected ideas as decisions.
-      await extractUserName(userMessage.content, conversationId);
+      await extractUserName(userMessage.content, conversationId, (ws as any).__userId);
 
       // Load conversation history for context (with compaction support)
       const recentMessages = await storage.getMessagesByConversation(conversationId);
@@ -2163,6 +2163,9 @@ export function registerChatRoutes(
           minImportance: 4, // v2.2 Phase A: integer 1-10 scale (was 0.4 on the old float scale)
           excludeConversationId: conversationId,
         }).then((mems: any[]) => mems.map((m: any) => `- ${m.content}`).join('\n')).catch(() => null) : null,
+        // v2.2 Phase F: the user's name — a name they gave in chat (preferredName, remembered
+        // across every project), else their login profile name. Lets agents address them by name.
+        userName: await storage.getUser((ws as any).__userId || '').then((u: any) => (u?.preferredName || u?.name || null)).catch(() => null),
         // GAP-7: Derive userDesignation from self-identification patterns in early messages
         userDesignation: (() => {
           const stored = (project.coreDirection as any)?.userRole ?? null;
@@ -3559,28 +3562,35 @@ export function registerChatRoutes(
   // fire-and-forget from the streaming generator.
   // ═══════════════════════════════════════════════════════════════
 
-  // Extract user name from messages
-  async function extractUserName(content: string, conversationId: string) {
+  // Extract a name the user asks to be called, and remember it on their account (v2.2 Phase F).
+  async function extractUserName(content: string, conversationId: string, userId?: string) {
     try {
-      // Look for "my name is [name]" patterns
+      // Only explicit name statements — the old "i am X" / "i'm X" patterns false-matched
+      // "I am thinking" / "I'm excited" and stored garbage as the user's name.
       const namePatterns = [
-        /my name is ([a-zA-Z]+)/i,
-        /i am ([a-zA-Z]+)/i,
-        /call me ([a-zA-Z]+)/i,
-        /i'm ([a-zA-Z]+)/i
+        /\bmy name is ([a-z]+)\b/i,
+        /\byou can call me ([a-z]+)\b/i,
+        /\bcall me ([a-z]+)\b/i,
+        /\bi go by ([a-z]+)\b/i,
       ];
+      const notNames = new Set(['a', 'an', 'the', 'not', 'just', 'so', 'really', 'very', 'here', 'now', 'in', 'on']);
 
       for (const pattern of namePatterns) {
         const match = content.match(pattern);
-        if (match && match[1]) {
+        if (match && match[1] && !notNames.has(match[1].toLowerCase())) {
           const userName = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
+          // Persist on the user so it is remembered across every project, forever.
+          if (userId && userId !== 'anonymous') {
+            await storage.setUserPreferredName(userId, userName).catch(() => { /* non-critical */ });
+          }
+          // Keep a per-conversation hint too (immediate recall in this thread).
           await storage.addConversationMemory(
             conversationId,
             'context',
             `User's name is ${userName}`,
             10 // Very high importance
           );
-          devLog(`👤 User name extracted and stored: ${userName}`);
+          devLog(`👤 User name captured (remembered across projects): ${userName}`);
           break;
         }
       }
