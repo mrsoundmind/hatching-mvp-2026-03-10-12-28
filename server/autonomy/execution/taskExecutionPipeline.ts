@@ -376,6 +376,8 @@ async function executeTaskWithOutput(
     const maxRisk = Math.max(adjustedExecutionRisk, adjustedScopeRisk, adjustedHallucinationRisk);
     let finalOutput = output;
     let peerReviewed = false;
+    let reviewerName: string | null = null;
+    let reviewerRole: string | null = null;
 
     if (maxRisk >= thresholds.peerReviewTrigger) {
       const projectAgents = await input.storage.getAgentsByProject(input.task.projectId);
@@ -431,6 +433,13 @@ async function executeTaskWithOutput(
           finalOutput = peerResult.revisedContent;
         }
         peerReviewed = true;
+        // Phase 1.1 — attribute the reviewer for the completion card.
+        const primaryReview = peerResult?.reviews?.[0];
+        const reviewerAgent = primaryReview
+          ? reviewers.find((r) => r.id === primaryReview.reviewerHatchId)
+          : undefined;
+        reviewerName = reviewerAgent?.name ?? null;
+        reviewerRole = reviewerAgent?.role ?? null;
       } catch {
         console.warn(`[Pipeline] Peer review failed for batched task ${input.task.id} — proceeding without review`);
       }
@@ -473,6 +482,12 @@ async function executeTaskWithOutput(
       taskId: input.task.id,
       agentId: input.agent.id,
       agentName: input.agent.name,
+      agentRole: input.agent.role,
+      taskTitle: input.task.title,
+      peerReviewed,
+      reviewerName,
+      reviewerRole,
+      summary: summarizeOutput(finalOutput),
     });
 
     await updateAgentTrustScore(input.storage, input.agent.id, true);
@@ -672,11 +687,22 @@ export async function executeTask(
           payload: { taskId: input.task.id, taskTitle: input.task.title, agentName: input.agent.name, peerReviewed: true },
         });
 
+        // Phase 1.1 — attribute the reviewer for the completion card.
+        const primaryReview = peerResult.reviews?.[0];
+        const reviewerAgent = primaryReview
+          ? reviewers.find((r) => r.id === primaryReview.reviewerHatchId)
+          : undefined;
         input.broadcastToConversation(input.conversationId, {
           type: 'task_execution_completed',
           taskId: input.task.id,
           agentId: input.agent.id,
           agentName: input.agent.name,
+          agentRole: input.agent.role,
+          taskTitle: input.task.title,
+          peerReviewed: true,
+          reviewerName: reviewerAgent?.name ?? null,
+          reviewerRole: reviewerAgent?.role ?? null,
+          summary: summarizeOutput(finalOutput),
         });
 
         // SAFE-04: Peer-reviewed tasks also earn trust
@@ -734,6 +760,12 @@ export async function executeTask(
       taskId: input.task.id,
       agentId: input.agent.id,
       agentName: input.agent.name,
+      agentRole: input.agent.role,
+      taskTitle: input.task.title,
+      peerReviewed: false,
+      reviewerName: null,
+      reviewerRole: null,
+      summary: summarizeOutput(output),
     });
 
     // SAFE-04: Update agent trust score after successful completion

@@ -186,6 +186,14 @@ const requiredServerSchemas = z.union([
     taskId: z.string(),
     agentId: z.string(),
     agentName: z.string(),
+    // v2.1-UX Phase 1.1 — completion card provenance. Optional for backward
+    // compatibility; producer is always present, reviewer only when peer review ran.
+    agentRole: z.string().optional(),
+    taskTitle: z.string().optional(),
+    peerReviewed: z.boolean().optional(),
+    reviewerName: z.string().nullable().optional(),
+    reviewerRole: z.string().nullable().optional(),
+    summary: z.string().optional(),
   }),
   z.object({
     type: z.literal('background_execution_started'),
