@@ -2,9 +2,28 @@
 
 > **Read this first if you're an AI (Claude Code, Cursor, Windsurf, Copilot, etc.) or a human picking up on Hatchin.** This file tells you what happened, where we are, and what to do next. Session-continuity log — updated at session boundaries.
 
-**Last refreshed:** 2026-07-21
+**Last refreshed:** 2026-07-25
 **Current branch:** `fix/audit-remediation-2026-07-17` (off `wip/pre-reset-2026-04-28`; rollback point `3429a29`)
 **Latest commit:** `aeba012 fix(autonomy): persist approval events + respect assignee on handoff`
+
+## 2026-07-25 — Mattermost bridge milestone scaffolded (stub, no build)
+
+The Slack Workflow Automation strategic thread continued into integrations. Decision: build a chat-platform bridge so Hatchin reaches into the team's existing chat rather than replacing it. Mattermost is the first release channel (open source, self-hostable, no app review); the adapter seam is kept channel-agnostic so Slack and Teams follow (Slack is the eventual real distribution channel). Depth sequencing decided: v1 = approval + notification loop PLUS a thin `/hatchin` one-shot conversation taste, all reusing existing seams (`logAutonomyEvent`, the approve/reject task endpoints, `generateIntelligentResponse`) with NO chat-core refactor; Release 2 = full @mention conversation, gated on extracting a WS-agnostic orchestrator from `handleStreamingColleagueResponse` (~1,878 lines; also pays down Phase 47 #3/#4). Grounded in a Mattermost + Slack seamless-integration research pass (outbound bot WebSocket like Socket Mode removes the public-URL burden, ack-fast-work-async, thread everything, no fake streaming, Mattermost Apps Framework is deprecated).
+
+Scaffolded only, NOT built: restore tag `pre-mattermost-integration` on `2fec8d4`; isolated branch `feat/mattermost-bridge` off that tag; full brief at `.planning/milestones/mattermost-bridge-BRIEF.md`; ROADMAP stub added. v2.1 remains the active milestone (paused on audit remediation). Real precondition before starting: the autonomy loop must produce work worth approving. Also folded into this docs commit: the earlier Phase 47 #19 constellation edits (role-formula enrichment from the claude-skills scan).
+
+---
+
+## 2026-07-23 — Competitive scan + Phase 47 backlog #19 (no code)
+
+A strategy session, not a code change. The user asked how Hatchin compares to (a) Slack Workflow Automation and (b) the circulating Claude "C-suite agent" skill packs (`alirezarezvani/claude-skills`, `alirezarezvani/claude-cto-team`, both MIT). Verdict recorded for continuity:
+- **Slack Workflow Builder** automates the *known* (trigger to predefined steps + connectors); Hatchin handles the *unknown* (ambiguous goal to reasoning + deliverable + handoff). Different category. Don't position Hatchin as "workflow automation"; the moat is the runtime, and Slack is a potential distribution *channel*, not only a rival.
+- **The C-suite skill packs** are commoditized prompt-personas: advisory only, no orchestration, no peer-review-that-runs, no trust scoring, no autonomy, no memory, no product. The repo's own README admits only CEO and CTO are production-ready; the rest are stubs. Our `roleIntelligence.ts` is comparably deep on frameworks. What they genuinely have that we don't is *quantified formulas*, *structured verdict templates*, and *packaging discipline* — all MIT-reusable text.
+- **Action taken:** logged the one useful borrow as **Phase 47 backlog #19** (quantified role formulas for Jordan/Alex/Lumi + a structured peer-review verdict template + per-claim confidence tags, plus two architectural learns: deterministic scoring scripts and progressive-disclosure of heavy domainDepth). NOT built now — v2.1 is paused on the audit-remediation branch and this is polish, not a core-value block, so it waits for the Phase 47 triage per the no-mid-milestone-decimal-hotfixes rule.
+
+No files changed except the status-doc constellation (ROADMAP #19, STATE count 18→19, CLAUDE footer, this log). REQUIREMENTS.md and HATCHIN-COMPLETE-GUIDE.md intentionally untouched: a pre-triage backlog item creates no requirement and ships no feature. Branch and commit unchanged (`aeba012`).
+
+---
 
 ## Wave 8 (2026-07-21) — activity-feed audit fixes
 
