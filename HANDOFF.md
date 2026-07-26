@@ -4,7 +4,17 @@
 
 **Last refreshed:** 2026-07-26
 **Current branch:** `feat/v2.2-intelligence-fixes` (v2.2 intelligence fixes; a parallel session is also committing a UI type-scale refresh onto this branch)
-**Latest commit (this workstream):** `c2887fa feat(activity-feed): surface real peer-review verdicts in the feed (v2.2 Phase D, visibility)`
+**Latest commit (this workstream):** `8f3b5d0 test(voice): lock in + broaden the distinctiveness guarantee (v2.2 T4)`
+
+## 2026-07-26 — v2.2 close-out fix pass (post-QA-audit, cross-verified)
+
+An independent QA browser pass (on production DeepSeek, HEAD, real browser + DB) confirmed all six phases work live and flagged four residuals. We cross-verified each against the live code/DB before touching anything — **two of the four were non-issues**:
+- **T1 (real, fixed, `b99b892`):** the judge was mildly over-eager to "revise" good work (2/6 in calibration, all `minor` severity). A revise now only spends a regeneration when severity is `major`/`critical`; minor revises ship as-is (still logged/visible). Reject (the block) unaffected. Calibration held (0% false-block, 100% catch), integration 7/7.
+- **T2 (not a bug, `b99b892`):** QA's "confidence reads null" — the DB shows confidence IS on the event's `confidence` column (0.9 to 1.0) and reaches the UI via `expandableData`; it was only absent from the payload JSON. Added there too for completeness; nothing was broken.
+- **T3 (non-issue, `9ba5149`):** QA's "a fresh autonomous review folds under its task (trace-grouping)" does not happen — `normalizeAutonomyEvent` gives each review event its own unique trace id, so it renders as its own row. Proven code + DB (size-1 trace group) + live browser (task card and two review cards as separate rows). No product change.
+- **T4 (already strong → locked in, `8f3b5d0`):** the 30 voices are already distinct (measured max Jaccard 0.185, mean 0.090, blind attribution 100%), so a 30-voice rewrite would strip correct domain words to game a metric. Instead we locked it in: `test:voice` gate tightened 0.60 → 0.40 (prints the closest pair each run), blind-attribution eval broadened 5 → 10 roles (10/10, competence held). `roleRegistry` prose and `roleIntelligence.ts` untouched.
+
+Net: the two genuine items fixed, the two non-issues documented with evidence, distinctiveness locked against future erosion. Audit report artifact updated with a "Close-out fix pass" section. Still nothing merged; all on-branch.
 
 ## 2026-07-26 — v2.2 "Hatches That Remember & Grow": Phase D shipped (peer review with teeth)
 
