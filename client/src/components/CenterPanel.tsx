@@ -1613,6 +1613,31 @@ export function CenterPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeProject?.id, currentChatContext?.conversationId]);
 
+  // Phase 1.3 — waiting-state watchdog. If a background run wedges and NO
+  // completion/failure event ever arrives (e.g. a stalled worker, the Wave 7
+  // half-open-socket bug), the working card would animate forever. After a
+  // stall window we resolve it into an honest state instead. Mirrors the 45s
+  // streaming watchdog in useChatStreaming, but longer: autonomous runs legit-
+  // imately take more than a chat stream, so 2 min avoids false positives while
+  // still rescuing a truly stuck indicator. Resets whenever a new run starts.
+  useEffect(() => {
+    if (!isTeamWorking) return;
+    const TEAM_WORKING_STALL_MS = 120_000;
+    const id = window.setTimeout(() => {
+      setIsTeamWorking(false);
+      setTeamWorkingTaskCount(0);
+      setWorkingAgentName(null);
+      setWorkingTaskTitle(null);
+      setWorkingStartedAt(null);
+      toast({
+        title: 'This run stalled',
+        description: 'The team stopped responding. Your task may still be processing, check the Activity tab, and try again if nothing shows up.',
+        duration: 8000,
+      });
+    }, TEAM_WORKING_STALL_MS);
+    return () => window.clearTimeout(id);
+  }, [isTeamWorking, workingStartedAt, toast]);
+
   // === Action Click Handler ===
 
   const handleActionClick = async (action: string) => {
