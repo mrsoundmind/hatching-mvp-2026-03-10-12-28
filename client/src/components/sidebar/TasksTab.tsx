@@ -1,12 +1,13 @@
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Trash2, Play, Lock } from 'lucide-react';
 import { TaskPipelineView } from './TaskPipelineView';
 import { WorkOutputSection } from './WorkOutputSection';
 import { useSidebarEvent } from '@/hooks/useSidebarEvent';
 import { AUTONOMY_EVENTS } from '@/lib/autonomyEvents';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import type { Task } from '@shared/schema';
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -18,14 +19,17 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 interface TasksTabProps {
   projectId: string | undefined;
+  /** Project execution rules — drives the delegation button's autonomy gate. */
+  executionRules?: Record<string, unknown> | null;
 }
 
 /**
  * Tasks Tab — canonical home for all project work.
  */
-export function TasksTab({ projectId }: TasksTabProps) {
+export function TasksTab({ projectId, executionRules }: TasksTabProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
     queryKey: ['/api/tasks', `?projectId=${projectId}`],
@@ -89,6 +93,23 @@ export function TasksTab({ projectId }: TasksTabProps) {
   }, [tasks]);
 
   const totalBoardTasks = taskSections.reduce((sum, s) => sum + s.tasks.length, 0);
+
+  // Phase 1.2 — delegation entrance gating. The server executes tasks whose
+  // status is 'todo', and gates on Pro tier + executionRules.autonomyEnabled;
+  // we mirror that here so the button explains itself instead of no-op'ing.
+  const todoCount = useMemo(() => (tasks ?? []).filter(t => t.status === 'todo').length, [tasks]);
+  const isPro = user?.tier === 'pro';
+  const autonomyEnabled = (executionRules?.autonomyEnabled as boolean | undefined) ?? false;
+
+  const handleDelegate = useCallback(() => {
+    if (!projectId) return;
+    window.dispatchEvent(new CustomEvent('delegate_todos', { detail: { projectId } }));
+    toast({ title: 'On it', description: 'The team is starting on your to-do list.', duration: 4000 });
+  }, [projectId, toast]);
+
+  const openBrainSettings = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('hatchin:open-brain'));
+  }, []);
 
   // Auto-expand Completed exactly once, when it is the ONLY section with anything in
   // it. Fires once (autoExpandedCompleted) so a deliberate collapse by the user sticks.
@@ -222,6 +243,44 @@ export function TasksTab({ projectId }: TasksTabProps) {
         <>
           {/* 1. Task Pipeline visual */}
           {tasks && tasks.length > 0 && <TaskPipelineView tasks={tasks} />}
+
+          {/* 1b. Delegation entrance (Phase 1.2) — makes autonomous execution
+              discoverable instead of hidden behind magic chat phrases. */}
+          {!isPro ? (
+            <div className="mx-1 mt-2 mb-1 rounded-xl px-3.5 py-3 flex flex-col gap-1"
+                 style={{ background: 'var(--hatchin-surface-elevated)', border: '1px solid var(--hatchin-border-subtle)' }}>
+              <span className="flex items-center gap-2 text-xs font-semibold hatchin-text">
+                <Lock className="w-3.5 h-3.5 opacity-80 flex-none" /> Let the team work for you
+              </span>
+              <span className="text-micro hatchin-text-muted leading-relaxed">
+                Autonomous execution is a{' '}
+                <a href="/account" className="text-[var(--hatchin-blue)] font-semibold hover:underline">Pro feature</a>.
+                Upgrade to have the team run tasks in the background.
+              </span>
+            </div>
+          ) : !autonomyEnabled ? (
+            <div className="mx-1 mt-2 mb-1 rounded-xl px-3.5 py-3 flex flex-col gap-1"
+                 style={{ background: 'var(--hatchin-surface-elevated)', border: '1px solid var(--hatchin-border-subtle)' }}>
+              <span className="flex items-center gap-2 text-xs font-semibold hatchin-text">
+                <Lock className="w-3.5 h-3.5 opacity-80 flex-none" /> Autonomy is off
+              </span>
+              <span className="text-micro hatchin-text-muted leading-relaxed">
+                Turn it on in{' '}
+                <button onClick={openBrainSettings} className="text-[var(--hatchin-blue)] font-semibold hover:underline">Brain, Autonomy settings</button>{' '}
+                to let the team work unattended.
+              </span>
+            </div>
+          ) : todoCount > 0 ? (
+            <button
+              onClick={handleDelegate}
+              className="hit-target mx-1 mt-2 mb-1 w-[calc(100%-0.5rem)] flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white transition-[filter] hover:brightness-110"
+              style={{ background: 'var(--hatchin-blue)' }}
+            >
+              <Play className="w-4 h-4 flex-none" fill="currentColor" />
+              Let the team work on these
+              <span className="opacity-80 font-medium">· {todoCount} to-do{todoCount !== 1 ? 's' : ''}</span>
+            </button>
+          ) : null}
 
           {/* 2. Task Board */}
           <div className="mt-2 px-1">

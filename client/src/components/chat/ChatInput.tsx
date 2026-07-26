@@ -20,6 +20,8 @@ interface ChatInputProps {
   onHandoff: (agent: { id: string; name: string; role: string }) => void;
   // Typing indicator bar
   typingColleagues: string[];
+  // Delegation hint (Phase 1.2) — shown only when the team can actually be delegated to.
+  showDelegateHint?: boolean;
 }
 
 export function ChatInput({
@@ -36,6 +38,7 @@ export function ChatInput({
   handoffableAgents,
   onHandoff,
   typingColleagues,
+  showDelegateHint,
 }: ChatInputProps) {
   const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -73,6 +76,20 @@ export function ChatInput({
                 ×
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Delegation hint (Phase 1.2) — teaches the trigger phrase; only when the
+            team can be delegated to, only while the composer is empty and idle. */}
+        {showDelegateHint && !replyingTo && !isStreaming && !inputValue.trim() && (
+          <div className="mb-2 flex items-center gap-2 text-micro text-[var(--hatchin-text-muted)]">
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold"
+              style={{ color: 'var(--hatchin-blue)', background: 'hsla(230, 100%, 71%, 0.1)', border: '1px solid hsla(230, 100%, 71%, 0.25)' }}
+            >
+              ✦ Tip
+            </span>
+            Say <b className="font-semibold text-[var(--hatchin-text)]">&ldquo;go ahead&rdquo;</b> and the team starts on your to-do list.
           </div>
         )}
 

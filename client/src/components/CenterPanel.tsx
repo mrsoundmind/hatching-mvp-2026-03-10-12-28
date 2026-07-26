@@ -1548,6 +1548,71 @@ export function CenterPanel({
     setCompletedCards([]);
   }, [currentChatContext?.conversationId]);
 
+  // Phase 1.2 — delegation entrance. The Tasks-tab button dispatches `delegate_todos`;
+  // we post a normal user message carrying an autonomy trigger phrase so it flows
+  // through the exact same server path (checkForAutonomyTrigger) as typing "go ahead".
+  const handleDelegateTodos = () => {
+    if (!activeProject) return;
+    const baseConv = currentChatContext?.conversationId ?? `project:${activeProject.id}`;
+    const conversationId = getValidConversationIdForSend(baseConv, activeProject);
+    if (!conversationId) return;
+
+    const content = 'Go ahead, work on the to-do list.';
+    if (isDuplicateSendAttempt(conversationId, content)) return;
+
+    const recipients = getMessageRecipients();
+    const tempMessageId = `temp-${Date.now()}`;
+    const timestamp = new Date().toISOString();
+
+    messages.addMessageToConversation(conversationId, {
+      id: tempMessageId,
+      content,
+      senderId: 'user',
+      senderName: 'You',
+      messageType: 'user' as const,
+      timestamp,
+      conversationId,
+      status: 'sending' as const,
+      metadata: { clientTempId: tempMessageId, routing: recipients },
+    });
+
+    const messageData = {
+      type: 'send_message_streaming',
+      conversationId,
+      message: {
+        id: tempMessageId,
+        conversationId,
+        userId: user?.id || 'user',
+        content,
+        messageType: 'user' as const,
+        timestamp,
+        senderName: 'You',
+        metadata: {
+          clientTempId: tempMessageId,
+          idempotencyKey: `${tempMessageId}-${Date.now()}`,
+          routing: {
+            type: recipients.type,
+            scope: recipients.scope,
+            participantCount: recipients.recipients.length,
+            recipients: recipients.recipients.map((p: any) => p.name),
+          },
+        },
+      },
+    };
+
+    streaming.setIsThinking(true);
+    setTypingColleagues([]);
+    sendMessageWithConfirmation(messageData, tempMessageId);
+    streaming.resetPendingResponseTimeout(conversationId, tempMessageId);
+  };
+
+  useEffect(() => {
+    const handler = () => handleDelegateTodos();
+    window.addEventListener('delegate_todos', handler);
+    return () => window.removeEventListener('delegate_todos', handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProject?.id, currentChatContext?.conversationId]);
+
   // === Action Click Handler ===
 
   const handleActionClick = async (action: string) => {
@@ -2073,6 +2138,9 @@ export function CenterPanel({
         handoffableAgents={handoffableAgents}
         onHandoff={handleHandoff}
         typingColleagues={typingColleagues}
+        showDelegateHint={
+          !!(activeProject?.executionRules as any)?.autonomyEnabled && user?.tier === 'pro'
+        }
       />
 
       {/* Add Hatch Modal */}

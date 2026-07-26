@@ -82,6 +82,13 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent, initialTa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTab]);
 
+  // Delegation entrance (Phase 1.2): the "Autonomy is off" hint jumps here.
+  React.useEffect(() => {
+    const handler = () => setActiveTab('brain');
+    window.addEventListener('hatchin:open-brain', handler);
+    return () => window.removeEventListener('hatchin:open-brain', handler);
+  }, [setActiveTab]);
+
   const [isPanelScrolling, setIsPanelScrolling] = React.useState(false);
   const panelScrollHideTimeoutRef = React.useRef<number | null>(null);
 
@@ -192,7 +199,7 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent, initialTa
         className="flex-1 flex flex-col overflow-y-auto hide-scrollbar"
       >
         <ErrorBoundary FallbackComponent={PanelErrorFallback}>
-          <TasksTab projectId={activeProject?.id} />
+          <TasksTab projectId={activeProject?.id} executionRules={activeProject?.executionRules as Record<string, unknown> | null | undefined} />
         </ErrorBoundary>
       </div>
 
