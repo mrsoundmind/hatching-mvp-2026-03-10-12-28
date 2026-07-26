@@ -287,6 +287,7 @@ export async function runPeerReview(input: {
           payload: {
             verdict: verdict.verdict,
             severity: verdict.severity,
+            confidence: verdict.confidence, // T2: also in the payload blob (already on the event's confidence column)
             reasoning: verdict.reasoning,
             mustFix: verdict.mustFix,
             specificProblems: verdict.specificProblems,
@@ -314,8 +315,14 @@ export async function runPeerReview(input: {
         break; // teeth: fall through to the block path below
       }
 
-      // decision === 'revise' — regenerate with the mustFix list if we can and still have a cycle left
-      if (cycle < maxCycles && input.authorGenerate && judgeDecision.mustFix.length > 0) {
+      // decision === 'revise' — regenerate ONLY when the gap is material (major/critical severity).
+      // T1 calibration finding: a "minor"-severity revise is usually the judge polishing already-good
+      // work, and spending a full regeneration on it is wasted cost with no safety benefit. A minor
+      // revise therefore ships as-is (still logged as a review, so it stays visible); only a major or
+      // critical gap earns a rewrite. Reject (real block) is unaffected — this only tunes revise cost.
+      const driverSeverity = judgeDecision.driver?.severity;
+      const materialGap = driverSeverity === 'major' || driverSeverity === 'critical';
+      if (cycle < maxCycles && input.authorGenerate && judgeDecision.mustFix.length > 0 && materialGap) {
         const revisePrompt = [
           'Your work was peer-reviewed and needs revision. Fix these specific issues, keeping everything that was already correct:',
           ...judgeDecision.mustFix.map((fix, idx) => `${idx + 1}. ${fix}`),

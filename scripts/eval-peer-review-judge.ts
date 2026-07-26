@@ -110,8 +110,8 @@ async function main() {
   }
 
   console.log('\nv2.2 Phase D — LLM-as-judge calibration (real Groq judge, blind to authorship)\n');
-  console.log('  case                     label  verdict   conf  ok   note');
-  console.log('  ' + '-'.repeat(92));
+  console.log('  case                     label  verdict   severity  conf  ok   note');
+  console.log('  ' + '-'.repeat(100));
 
   let hardFalseBlock = 0;   // good draft → reject
   let softFalseBlock = 0;   // good draft → revise
@@ -119,6 +119,7 @@ async function main() {
   let caught = 0;           // bad draft → revise or reject
   let missed = 0;           // bad draft → approve
   let nullVerdicts = 0;
+  const reviseSeverities: string[] = [];
   const goods = CASES.filter((c) => c.label === 'good').length;
   const bads = CASES.filter((c) => c.label === 'bad').length;
 
@@ -133,13 +134,19 @@ async function main() {
 
     let decision: JudgeVerdict | 'null' = 'null';
     let conf = 0;
+    let severity = '-';
     if (verdict) {
       const agg = aggregateVerdicts({ verdicts: [verdict], rejectConfidence: 0.7, reviseConfidence: 0.6 });
       decision = agg.decision;
       conf = verdict.confidence;
+      severity = verdict.severity;
     } else {
       nullVerdicts++;
     }
+    // T1: a "revise" only costs a regeneration when the gap is material (major/critical). A minor
+    // revise ships as-is, so needless rewrites of good work go away.
+    const wouldRegen = decision === 'revise' && (severity === 'major' || severity === 'critical');
+    if (decision === 'revise') reviseSeverities.push(`${c.label}:${severity}${wouldRegen ? '(regen)' : '(ship)'}`);
 
     let ok = false;
     if (c.label === 'good') {
@@ -155,7 +162,7 @@ async function main() {
 
     console.log(
       '  ' + c.id.padEnd(24) + ' ' + c.label.padEnd(6) + ' ' +
-      String(decision).padEnd(9) + ' ' + conf.toFixed(2).padEnd(5) + ' ' +
+      String(decision).padEnd(9) + ' ' + severity.padEnd(9) + ' ' + conf.toFixed(2).padEnd(5) + ' ' +
       (ok ? 'yes' : 'NO ').padEnd(4) + ' ' + c.note,
     );
   }
@@ -172,6 +179,9 @@ async function main() {
   console.log('  Hard false-block rate (good wrongly rejected): ' + fmt(hardFalseBlockRate) + '   [gate: 0%]');
   console.log('  Catch rate (bad work stopped):                 ' + fmt(catchRate) + '   [gate: >=75%]');
   console.log('  Miss rate (bad work approved):                 ' + fmt(missRate));
+  console.log('  ' + '-'.repeat(50));
+  console.log('  Revise verdicts (T1 regen gate — only major/critical rewrite):');
+  console.log('    ' + (reviseSeverities.length ? reviseSeverities.join(', ') : 'none'));
   console.log('  ' + '='.repeat(50));
 
   const pass = hardFalseBlock === 0 && catchRate >= 0.75;
