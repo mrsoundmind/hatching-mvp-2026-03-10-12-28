@@ -18,7 +18,13 @@ async function gen(system: string, user: string): Promise<string> {
 async function main() {
   if (!process.env.GROQ_API_KEY) { console.log('SKIP: no GROQ_API_KEY'); process.exit(0); }
 
-  const picks = ['Product Manager', 'Backend Developer', 'UI Designer', 'Growth Marketer', 'Copywriter'];
+  // v2.2 T4: broadened from 5 to 10 diverse roles spanning product, engineering, design, marketing,
+  // data, QA, ops and creative. More options makes the blind attribution strictly harder — a stronger
+  // standing guard that distinctiveness holds across the roster, not just a handful.
+  const picks = [
+    'Product Manager', 'Backend Developer', 'Product Designer', 'Growth Marketer', 'Copywriter',
+    'Data Scientist', 'QA Lead', 'DevOps Engineer', 'Creative Director', 'Operations Manager',
+  ];
   const roles = picks.map(r => (ROLE_DEFINITIONS as any[]).find(d => d.role === r)).filter(Boolean) as any[];
   const question = "We're thinking about adding a dark mode to the app. What's your quick take?";
 

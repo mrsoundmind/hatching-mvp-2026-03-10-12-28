@@ -80,21 +80,33 @@ test("All character names are unique", () => {
   );
 });
 
-// 2. All voicePrompts differ significantly (Jaccard < 0.60)
-test("All voicePrompts differ significantly (Jaccard < 0.60)", () => {
+// 2. All voicePrompts differ significantly — tightened gate (v2.2 T4).
+//
+// The original gate failed only at Jaccard >0.60 / warned >0.50, but the measured maximum across all
+// 30 voices is 0.221 (Nyx <-> Sage, two adjacent quantitative roles that legitimately share domain
+// vocabulary); mean is 0.090. A 0.60 gate could therefore never catch a real regression — a voice
+// could be rewritten generic and blur most of the way toward another before tripping. The audit's
+// stated fear was that "distinctiveness silently erodes again", so this locks in the current strong
+// separation: FAIL >0.40 (≈2× the current max, still generous for legitimate voice evolution),
+// WARN >0.28. The closest observed pair is printed every run as a health signal.
+const VOICE_FAIL = 0.40;
+const VOICE_WARN = 0.28;
+test(`All voicePrompts differ significantly (Jaccard < ${VOICE_FAIL})`, () => {
   const roles = ROLE_DEFINITIONS;
   const wordSets = roles.map((r) => extractWords(r.voicePrompt));
   const violations: string[] = [];
   const warnings: string[] = [];
+  let closest = { pair: "", sim: 0 };
 
   for (let i = 0; i < roles.length; i++) {
     for (let j = i + 1; j < roles.length; j++) {
       const sim = jaccardSimilarity(wordSets[i], wordSets[j]);
-      if (sim > 0.6) {
+      if (sim > closest.sim) closest = { pair: `${roles[i].characterName} <-> ${roles[j].characterName}`, sim };
+      if (sim > VOICE_FAIL) {
         violations.push(
           `${roles[i].characterName} <-> ${roles[j].characterName}: ${sim.toFixed(3)}`,
         );
-      } else if (sim > 0.5) {
+      } else if (sim > VOICE_WARN) {
         warnings.push(
           `${roles[i].characterName} <-> ${roles[j].characterName}: ${sim.toFixed(3)}`,
         );
@@ -102,8 +114,9 @@ test("All voicePrompts differ significantly (Jaccard < 0.60)", () => {
     }
   }
 
+  console.log(`    closest voice pair: ${closest.pair} (${closest.sim.toFixed(3)}) · gate fail>${VOICE_FAIL} warn>${VOICE_WARN}`);
   if (warnings.length > 0) {
-    console.log(`    ⚠ High-similarity warnings (>0.50):`);
+    console.log(`    ⚠ approaching the gate (>${VOICE_WARN}):`);
     for (const w of warnings) {
       console.log(`      ${w}`);
     }
@@ -111,7 +124,7 @@ test("All voicePrompts differ significantly (Jaccard < 0.60)", () => {
 
   assert(
     violations.length === 0,
-    `${violations.length} pair(s) exceed 0.60 similarity:\n      ${violations.join("\n      ")}`,
+    `${violations.length} pair(s) exceed ${VOICE_FAIL} similarity (voices blurring together):\n      ${violations.join("\n      ")}`,
   );
 });
 
