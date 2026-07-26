@@ -41,6 +41,25 @@ async function main() {
 
   const conversationId = `project:${project.id}`;
 
+  // 0) A TASK completion event authored by a DIFFERENT agent, its own trace — to prove the review
+  //    rows below sit as their own rows and do NOT fold under the task (T3 cross-check).
+  const agentsAll = await storage.getAgentsByProject(project.id);
+  const author = agentsAll.find((a) => a.id !== reviewer.id && !a.isSpecialAgent) ?? agentsAll[0];
+  await logAutonomyEvent({
+    eventType: 'autonomous_task_execution',
+    traceId: `seed-task-${randomUUID()}`,
+    projectId: project.id,
+    teamId: null,
+    conversationId,
+    hatchId: author?.id ?? reviewer.id,
+    provider: 'autonomous',
+    mode: 'autonomous',
+    latencyMs: null,
+    confidence: 1.0,
+    riskScore: 0.5,
+    payload: { taskId: `seed-task-${randomUUID()}`, taskTitle: 'Add a favorites feature', agentName: author?.name ?? 'Dev' } as Record<string, unknown>,
+  } as any);
+
   // 1) A REJECT — the QA reviewer catches a real security flaw and sends the work back (the teeth).
   await logAutonomyEvent({
     eventType: 'peer_review_feedback',
