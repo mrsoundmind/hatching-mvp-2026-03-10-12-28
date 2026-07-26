@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PauseCircle, PlayCircle } from 'lucide-react';
+import { PauseCircle, PlayCircle, ShieldCheck } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import type { Agent } from '@shared/schema';
 import type { ChatMode } from '@/lib/chatMode';
@@ -8,6 +8,22 @@ import { MessageBubble } from '../MessageBubble';
 import { HandoffCard } from './HandoffCard';
 import { DeliberationCard } from './DeliberationCard';
 import { AutonomousApprovalCard } from '../AutonomousApprovalCard';
+import AgentAvatar from '@/components/avatars/AgentAvatar';
+
+/**
+ * A finished piece of autonomous work, sourced from the task_execution_completed
+ * WS payload. Drives the completion card (Phase 1.1).
+ */
+export interface CompletedWork {
+  taskId: string;
+  agentName: string;
+  agentRole?: string | null;
+  taskTitle?: string | null;
+  summary?: string | null;
+  peerReviewed?: boolean;
+  reviewerName?: string | null;
+  reviewerRole?: string | null;
+}
 
 interface ChatMessageListProps {
   messages: ChatMessage[];
@@ -42,6 +58,10 @@ interface ChatMessageListProps {
   isAutonomyPaused: boolean;
   onTogglePause: () => void;
   pauseLoading: boolean;
+  // Completed work (Phase 1.1 completion card)
+  completedCards: CompletedWork[];
+  onRefineCompleted: (work: CompletedWork) => void;
+  onDismissCompleted: (taskId: string) => void;
   // Deliberation
   deliberationState: {
     sessionId: string;
@@ -96,6 +116,9 @@ export function ChatMessageList({
   isAutonomyPaused,
   onTogglePause,
   pauseLoading,
+  completedCards,
+  onRefineCompleted,
+  onDismissCompleted,
   deliberationState,
   onDismissDeliberation,
   approvalRequests,
@@ -280,6 +303,19 @@ export function ChatMessageList({
           />
         )}
 
+        {/* Completion cards — the "done" moment (Phase 1.1). Reports what was made,
+            who made it and who reviewed it; the human only judges (Refine / Looks good).
+            Handoff is not offered here — it happens automatically and renders as its
+            own handoff card. */}
+        {completedCards.map((work) => (
+          <TeamCompletionCard
+            key={work.taskId}
+            work={work}
+            onRefine={onRefineCompleted}
+            onDismiss={onDismissCompleted}
+          />
+        ))}
+
         {/* Deliberation indicator */}
         <AnimatePresence>
           {deliberationState && (
@@ -421,6 +457,116 @@ function TeamWorkingCard({
           />
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * TeamCompletionCard — the "done" moment for autonomous work.
+ * Reports what was made, who made it, and who reviewed it (or that it was
+ * auto-completed at low risk). The only actions are human judgment: Refine
+ * (ask for changes) and Looks good (dismiss). No manual hand-off — handoff is
+ * automatic and surfaces as its own card.
+ */
+function TeamCompletionCard({
+  work,
+  onRefine,
+  onDismiss,
+}: {
+  work: CompletedWork;
+  onRefine: (work: CompletedWork) => void;
+  onDismiss: (taskId: string) => void;
+}) {
+  const reviewed = !!work.peerReviewed && !!work.reviewerName;
+
+  return (
+    <div
+      className="mx-4 mb-2 rounded-xl px-4 py-4"
+      style={{
+        background: 'linear-gradient(180deg, var(--hatchin-surface), var(--hatchin-panel))',
+        border: '1px solid var(--hatchin-border-subtle)',
+      }}
+      role="status"
+      aria-live="polite"
+    >
+      {/* Header: green dot + Done + task title */}
+      <div className="flex items-center gap-2 mb-3 min-w-0">
+        <span
+          className="w-2 h-2 rounded-full flex-none"
+          style={{ background: 'var(--hatchin-green)', boxShadow: '0 0 0 4px hsla(158, 66%, 47%, 0.16)' }}
+        />
+        <span className="text-xs font-bold flex-none tracking-wide" style={{ color: 'var(--hatchin-green)' }}>
+          Done
+        </span>
+        {work.taskTitle && (
+          <>
+            <span className="flex-none" style={{ color: 'var(--hatchin-text-muted)', opacity: 0.5 }}>·</span>
+            <span className="text-sm font-semibold truncate" style={{ color: 'var(--hatchin-text-bright)' }}>
+              {work.taskTitle}
+            </span>
+          </>
+        )}
+      </div>
+
+      {/* Summary preview */}
+      {work.summary && (
+        <div
+          className="rounded-lg px-3 py-2.5 mb-3 text-sm leading-relaxed"
+          style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--hatchin-border-subtle)', color: 'var(--hatchin-text)' }}
+        >
+          {work.summary}
+        </div>
+      )}
+
+      {/* People: producer + reviewer (or auto-completed) */}
+      <div className="flex flex-col gap-2 mb-4">
+        <div className="flex items-center gap-2.5 text-sm">
+          <AgentAvatar agentName={work.agentName} role={work.agentRole ?? undefined} size={24} />
+          <span style={{ color: 'var(--hatchin-text)' }}>
+            <span className="font-semibold" style={{ color: 'var(--hatchin-text-bright)' }}>{work.agentName}</span> made this
+            {work.agentRole && (
+              <span className="text-xs" style={{ color: 'var(--hatchin-text-muted)' }}> · {work.agentRole}</span>
+            )}
+          </span>
+        </div>
+        {reviewed ? (
+          <div className="flex items-center gap-2.5 text-sm">
+            <AgentAvatar agentName={work.reviewerName as string} role={work.reviewerRole ?? undefined} size={24} />
+            <span style={{ color: 'var(--hatchin-text)' }}>
+              <span className="font-semibold" style={{ color: 'var(--hatchin-text-bright)' }}>{work.reviewerName}</span> reviewed it
+            </span>
+            <span
+              className="text-micro font-bold px-1.5 py-0.5 rounded-full flex-none"
+              style={{ color: 'var(--hatchin-green)', background: 'hsla(158, 66%, 47%, 0.12)', border: '1px solid hsla(158, 66%, 47%, 0.25)' }}
+            >
+              CHECKED
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--hatchin-text-muted)' }}>
+            <ShieldCheck className="w-3.5 h-3.5 opacity-70 flex-none" />
+            Auto-completed, low risk, no review needed
+          </div>
+        )}
+      </div>
+
+      {/* Actions: judgment only */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onRefine(work)}
+          className="hit-target text-xs font-semibold rounded-lg px-4 py-2 transition-colors hover:bg-white/5"
+          style={{ color: 'var(--hatchin-text)', border: '1px solid var(--hatchin-border)' }}
+        >
+          Refine
+        </button>
+        <button
+          onClick={() => onDismiss(work.taskId)}
+          className="hit-target text-xs font-semibold rounded-lg px-3 py-2 transition-colors hover:text-white"
+          style={{ color: 'var(--hatchin-text-muted)' }}
+        >
+          Looks good
+        </button>
+      </div>
     </div>
   );
 }

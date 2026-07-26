@@ -18,7 +18,7 @@ import type { HandoffAnnouncedPayload } from '@/lib/autonomyEvents';
 import { useChatStreaming } from '@/hooks/useChatStreaming';
 import { useChatMessages } from '@/hooks/useChatMessages';
 import { ChatHeader } from './chat/ChatHeader';
-import { ChatMessageList } from './chat/ChatMessageList';
+import { ChatMessageList, type CompletedWork } from './chat/ChatMessageList';
 import { ChatInput } from './chat/ChatInput';
 
 
@@ -94,6 +94,7 @@ export function CenterPanel({
   const [workingAgentName, setWorkingAgentName] = useState<string | null>(null);
   const [workingTaskTitle, setWorkingTaskTitle] = useState<string | null>(null);
   const [workingStartedAt, setWorkingStartedAt] = useState<number | null>(null);
+  const [completedCards, setCompletedCards] = useState<CompletedWork[]>([]);
   const [isAutonomyPaused, setIsAutonomyPaused] = useState(false);
   const [approvalRequests, setApprovalRequests] = useState<Array<{
     taskId: string;
@@ -975,6 +976,22 @@ export function CenterPanel({
           projectId: activeProject?.id ?? '',
         });
       }
+      // Phase 1.1 — render the completion card. Only per-task completions carry
+      // provenance; the aggregate background_execution_completed does not.
+      if (message.type === 'task_execution_completed' && message.taskId) {
+        const m = message as any;
+        const work: CompletedWork = {
+          taskId: m.taskId,
+          agentName: m.agentName ?? 'A teammate',
+          agentRole: m.agentRole ?? null,
+          taskTitle: m.taskTitle ?? null,
+          summary: m.summary ?? null,
+          peerReviewed: m.peerReviewed ?? false,
+          reviewerName: m.reviewerName ?? null,
+          reviewerRole: m.reviewerRole ?? null,
+        };
+        setCompletedCards((prev) => [...prev.filter((c) => c.taskId !== work.taskId), work]);
+      }
     }
     else if (message.type === 'task_requires_approval') {
       devLog('[Autonomy] Task requires approval:', message.taskId, message.riskReasons);
@@ -1512,6 +1529,25 @@ export function CenterPanel({
     input?.focus();
   };
 
+  // Phase 1.1 — completion card actions. Refine pre-fills the composer to ask for
+  // changes (reusing the handoff/compose pattern); Looks good just dismisses.
+  const handleRefineCompleted = (work: CompletedWork) => {
+    setInputValue(work.taskTitle ? `Refine "${work.taskTitle}": ` : 'Refine this: ');
+    const input = document.querySelector('[data-testid="input-message"]') as HTMLTextAreaElement | null;
+    input?.focus();
+    setCompletedCards((prev) => prev.filter((c) => c.taskId !== work.taskId));
+  };
+
+  const handleDismissCompleted = (taskId: string) => {
+    setCompletedCards((prev) => prev.filter((c) => c.taskId !== taskId));
+  };
+
+  // Clear completion cards when the open conversation changes so they don't linger
+  // in the wrong context.
+  useEffect(() => {
+    setCompletedCards([]);
+  }, [currentChatContext?.conversationId]);
+
   // === Action Click Handler ===
 
   const handleActionClick = async (action: string) => {
@@ -1941,6 +1977,9 @@ export function CenterPanel({
             isAutonomyPaused={isAutonomyPaused}
             onTogglePause={() => pauseMutation.mutate(!isAutonomyPaused)}
             pauseLoading={pauseMutation.isPending}
+            completedCards={completedCards}
+            onRefineCompleted={handleRefineCompleted}
+            onDismissCompleted={handleDismissCompleted}
             deliberationState={deliberationState}
             onDismissDeliberation={() => setDeliberationState(null)}
             approvalRequests={approvalRequests}
