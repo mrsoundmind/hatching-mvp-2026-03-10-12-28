@@ -279,9 +279,9 @@ export default function LandingPage() {
             <em className="not-italic" style={{ color: 'rgba(255,255,255,0.38)' }}>the team to build them.</em>
           </h1>
 
-          <p className="animate-fade-rise-delay text-[15px] sm:text-lg max-w-xl mt-6 md:mt-8 leading-relaxed" style={{ color: 'rgba(255,255,255,0.5)' }}>
-            AI teammates with real personalities — a PM, an engineer, a designer.
-            They think, remember, and care about your project.
+          <p className="animate-fade-rise-delay text-[15px] sm:text-lg max-w-xl mt-6 md:mt-8 leading-relaxed" style={{ color: 'rgba(255,255,255,0.8)' }}>
+            A PM, an engineer, a designer: real AI teammates who plan, push back,
+            and ship the work, not just chat about it.
           </p>
 
           <Link href="/login">
