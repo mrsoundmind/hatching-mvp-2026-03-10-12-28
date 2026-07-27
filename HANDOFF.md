@@ -4,7 +4,15 @@
 
 **Last refreshed:** 2026-07-26
 **Current branch:** `feat/v2.2-intelligence-fixes` (v2.2 intelligence fixes; a parallel session is also committing a UI type-scale refresh onto this branch)
-**Latest commit (this workstream):** `8f3b5d0 test(voice): lock in + broaden the distinctiveness guarantee (v2.2 T4)`
+**Latest commit (this workstream):** `f5682ab feat(peer-review): widen judge coverage so the teeth actually bite (v2.2)`
+
+## 2026-07-27 — peer-review coverage fix (the audit's "start here" open item)
+
+A second independent QA browser pass (production DeepSeek, HEAD) confirmed all six phases + T1-T4 hold, and found the one thing genuinely worth fixing: **the judge protected too thin a slice of work.** Review only fired when `maxRisk >= peerReviewTrigger` (0.35), so any task the safety scorer rated below 0.35 shipped with NO review at all — most ordinary work. The whole DB history had only **8** judge verdicts. Since the judge runs on the FREE Groq tier in the background, that cost-bounding gate was far too narrow.
+
+Fixed `f5682ab`: new `shouldReviewAutonomousOutput()` in `taskExecutionPipeline.ts` replaces the risk-only gate at both call sites — reviews now fire on (1) mid/high risk (unchanged), (2) anything outward-facing/factual regardless of computed risk (a fabricated stat in investor copy scores low yet must be caught), (3) any substantive deliverable; only trivial short acks skip. `peerReviewRunner.ts`: when the pipeline opts into the judge, the legacy risk-only `shouldTriggerPeerReview` no longer vetoes it (reason `coverage_review`). Verified: unit `test-review-coverage` 5/5, integration 9/9 (a low-risk task now judged), and **LIVE before/after via `scripts/verify-review-coverage-live.ts` — verdict count 8 → 11 after 3 ordinary low-risk tasks** (each got a real approve; before, all three shipped unreviewed). Judge quality unchanged (calibration 0% false-block/100% catch); gate:safety + test:integrity green; chat path untouched; off-switch + fail-safe intact. Also resolves the "T1/T2 code-correct but not live-exercised" gap, since the judge now fires on ordinary tasks. Audit report artifact updated. Nothing merged.
+
+Known remaining (minor, from the same pass, not blocking): run-tree `trace_id` doesn't match `autonomy_events` trace ids (can't join a review to its task, confirmed 24 runs / 0 matching events); a verdict event `timestamp` reportedly ~9h off (unconfirmed). Both are feed-lineage niceties, not correctness.
 
 ## 2026-07-26 — v2.2 close-out fix pass (post-QA-audit, cross-verified)
 
