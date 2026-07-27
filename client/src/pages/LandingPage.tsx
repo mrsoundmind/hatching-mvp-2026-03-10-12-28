@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Check } from "lucide-react";
 import { Sparkles } from "@/components/ui/sparkles";
 import LandingBento from "@/components/LandingBento";
 import { TestimonialShowcase } from "@/components/ui/testimonial-showcase";
@@ -455,86 +455,60 @@ export default function LandingPage() {
 
           <div className="grid md:grid-cols-2 gap-5">
             {/* FREE / HATCHER */}
-            <div className="brutalist-card relative bg-[#08090E] border border-white/[0.12]">
-              <div className="brutalist-mono flex justify-between px-5 py-3 border-b border-white/[0.08] text-xs tracking-[0.15em] text-white/40 uppercase">
-                <span>TIER 01</span>
-                <span>SKU: HATCHIN-FREE</span>
+            <div className="relative rounded-2xl border border-white/[0.1] bg-white/[0.02] p-6 md:p-7">
+              <h3 className="text-lg font-bold text-white mb-3">Hatcher</h3>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[40px] font-bold tracking-[-1px] text-white">$0</span>
+                <span className="text-[15px] text-white/50">forever</span>
               </div>
-              <div className="p-6 md:p-7">
-                <h3 className="text-[22px] md:text-[26px] font-bold tracking-[-0.02em] text-white uppercase mb-5">Hatcher</h3>
-                <div className="brutalist-mono flex items-baseline gap-2 mb-1">
-                  <span className="text-[34px] md:text-[40px] font-bold tracking-[-0.02em] text-white">$0.00</span>
-                  <span className="text-micro text-white/40 tracking-[0.15em] uppercase">USD / MO</span>
-                </div>
-                <div className="brutalist-mono text-xs tracking-[0.18em] text-white/35 uppercase pb-5 mb-5 border-b border-white/[0.08]">
-                  BILLING: NONE / FOR: SOLO BUILDERS
-                </div>
-                <div className="grid gap-px bg-white/[0.08] mb-6">
-                  {[
-                    "Unlimited messages",
-                    "3 projects",
-                    "All 30 teammates",
-                    "Pro AI model",
-                    "Real-time chat",
-                    "Automatic task detection",
-                  ].map((f) => (
-                    <div key={f} className="brutalist-mono flex items-center gap-3 bg-[#08090E] px-4 py-2.5 text-micro tracking-[0.05em] text-white/65 uppercase">
-                      <span className="text-[#f97316] font-bold tracking-normal">&gt;&gt;&gt;</span>
-                      <span>{f}</span>
-                    </div>
-                  ))}
-                </div>
-                <Link href="/login">
-                  <button className="brutalist-mono w-full py-3.5 border border-white text-white text-micro tracking-[0.25em] uppercase hover:bg-white hover:text-[#0A0C13] transition-colors cursor-pointer">
-                    Deploy → Free
-                  </button>
-                </Link>
+              <p className="text-sm text-white/55 mt-1.5 pb-5 mb-5 border-b border-white/[0.08]">For solo builders getting started.</p>
+              <div className="flex flex-col gap-2.5 mb-6">
+                {[
+                  "Unlimited messages",
+                  "3 projects",
+                  "All 30 teammates, on the Pro AI model",
+                  "Real-time chat and automatic task detection",
+                ].map((f) => (
+                  <div key={f} className="flex items-start gap-2.5 text-sm text-white/80">
+                    <Check className="w-4 h-4 mt-0.5 text-[#f97316] flex-none" />
+                    <span>{f}</span>
+                  </div>
+                ))}
               </div>
+              <Link href="/login">
+                <button className="w-full py-3.5 rounded-xl border border-white/20 bg-white/[0.06] text-white text-sm font-semibold hover:bg-white/10 transition-colors cursor-pointer">
+                  Start free
+                </button>
+              </Link>
             </div>
 
             {/* PRO */}
-            <div className="brutalist-card relative bg-[#08090E] border border-[#f97316]">
-              <div className="brutalist-mono bg-[#f97316] text-white flex justify-between px-5 py-2 text-xs tracking-[0.22em] uppercase">
-                <span>[ RECOMMENDED / UNIT-02 ]</span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                  OPERATIONAL
-                </span>
+            <div className="relative rounded-2xl border border-[#f97316]/50 bg-[#f97316]/[0.04] p-6 md:p-7">
+              <span className="absolute -top-3 left-6 bg-[#f97316] text-white text-xs font-bold px-3 py-1 rounded-full">Recommended</span>
+              <h3 className="text-lg font-bold text-white mb-3">Pro</h3>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[40px] font-bold tracking-[-1px] text-white">$19</span>
+                <span className="text-[15px] text-white/50">/mo</span>
               </div>
-              <div className="brutalist-mono flex justify-between px-5 py-3 border-b border-white/[0.08] text-xs tracking-[0.15em] text-white/40 uppercase">
-                <span>TIER 02</span>
-                <span>SKU: HATCHIN-PRO</span>
+              <p className="text-sm text-white/55 mt-1.5 pb-5 mb-5 border-b border-white/[0.08]">Or $190 a year, save 17%. For builders shipping real work.</p>
+              <div className="flex flex-col gap-2.5 mb-6">
+                {[
+                  "Everything in Hatcher, unlimited",
+                  "The team works on its own in the background",
+                  "Up to 50 background runs a day",
+                  "Peer review and safety checks on every run",
+                ].map((f) => (
+                  <div key={f} className="flex items-start gap-2.5 text-sm text-white/80">
+                    <Check className="w-4 h-4 mt-0.5 text-[#f97316] flex-none" />
+                    <span>{f}</span>
+                  </div>
+                ))}
               </div>
-              <div className="p-6 md:p-7">
-                <h3 className="text-[22px] md:text-[26px] font-bold tracking-[-0.02em] text-white uppercase mb-5">Pro</h3>
-                <div className="brutalist-mono flex items-baseline gap-2 mb-1">
-                  <span className="text-[34px] md:text-[40px] font-bold tracking-[-0.02em] text-white">$19.00</span>
-                  <span className="text-micro text-white/40 tracking-[0.15em] uppercase">USD / MO</span>
-                </div>
-                <div className="brutalist-mono text-xs tracking-[0.18em] text-white/35 uppercase pb-5 mb-5 border-b border-white/[0.08]">
-                  BILLING: CONTINUOUS / ANNUAL: $190 (-17%)
-                </div>
-                <div className="grid gap-px bg-white/[0.08] mb-6">
-                  {[
-                    "Unlimited everything",
-                    "All 30 teammates",
-                    "Pro AI model",
-                    "Full autonomous execution",
-                    "50 background exec / day",
-                    "Peer review + safety gates",
-                  ].map((f) => (
-                    <div key={f} className="brutalist-mono flex items-center gap-3 bg-[#08090E] px-4 py-2.5 text-micro tracking-[0.05em] text-white/65 uppercase">
-                      <span className="text-[#f97316] font-bold tracking-normal">&gt;&gt;&gt;</span>
-                      <span>{f}</span>
-                    </div>
-                  ))}
-                </div>
-                <Link href="/login">
-                  <button className="brutalist-mono w-full py-3.5 bg-[#f97316] hover:bg-[#fb923c] text-white text-micro tracking-[0.25em] uppercase transition-colors cursor-pointer">
-                    Deploy → Pro
-                  </button>
-                </Link>
-              </div>
+              <Link href="/login">
+                <button className="w-full py-3.5 rounded-xl bg-[#f97316] hover:bg-[#fb923c] text-white text-sm font-semibold transition-colors cursor-pointer">
+                  Start with Pro
+                </button>
+              </Link>
             </div>
           </div>
         </section>
