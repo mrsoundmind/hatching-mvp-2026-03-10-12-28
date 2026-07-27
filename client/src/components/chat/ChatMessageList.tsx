@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PauseCircle, PlayCircle, ShieldCheck } from 'lucide-react';
+import { PauseCircle, PlayCircle, ShieldCheck, Sunrise, X } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import type { Agent } from '@shared/schema';
 import type { ChatMode } from '@/lib/chatMode';
@@ -131,6 +131,10 @@ export function ChatMessageList({
   onApproveTaskSuggestions,
   onDismissTaskSuggestions,
 }: ChatMessageListProps) {
+  // Phase 2.4 — return-briefing cards can be dismissed to a plain bubble (the
+  // message itself stays in history).
+  const [dismissedBriefings, setDismissedBriefings] = useState<Set<string>>(new Set());
+
   return (
     <div className="relative flex-1 min-h-0">
       {/* Connection status banner */}
@@ -190,6 +194,23 @@ export function ChatMessageList({
                 toAgentRole={toAgent?.role}
                 taskTitle={(message.metadata as any)?.taskTitle ?? message.content}
                 timestamp={message.timestamp}
+              />
+            );
+          }
+
+          // Return briefing -> render ReturnBriefingCard (Phase 2.4). Dismissing
+          // falls through to the plain bubble below (message stays in history).
+          const isBriefing = (message.metadata as any)?.isReturnBriefing === true;
+          if (isBriefing && !dismissedBriefings.has(message.id)) {
+            return (
+              <ReturnBriefingCard
+                key={message.id}
+                agentName={message.senderName}
+                content={message.content}
+                timestamp={message.timestamp}
+                completedTasks={Number((message.metadata as any)?.completedTasks ?? 0)}
+                failedTasks={Number((message.metadata as any)?.failedTasks ?? 0)}
+                onDismiss={() => setDismissedBriefings((prev) => new Set(prev).add(message.id))}
               />
             );
           }
@@ -566,6 +587,118 @@ function TeamCompletionCard({
         >
           Looks good
         </button>
+      </div>
+    </div>
+  );
+}
+
+/** Compact relative time for the briefing header ("2h ago", "just now"). */
+function briefingTimeAgo(timestamp: string | Date): string {
+  const t = new Date(timestamp).getTime();
+  if (Number.isNaN(t)) return '';
+  const secs = Math.max(0, Math.floor((Date.now() - t) / 1000));
+  if (secs < 60) return 'just now';
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+/**
+ * ReturnBriefingCard — Maya's "while you were away" summary, framed so it can't
+ * be missed on return. Text is Maya's real briefing; the chips come from the
+ * metadata counts the server already writes. Dismissible (collapses to a plain
+ * bubble; the message stays in history).
+ */
+function ReturnBriefingCard({
+  agentName,
+  content,
+  timestamp,
+  completedTasks,
+  failedTasks,
+  onDismiss,
+}: {
+  agentName: string;
+  content: string;
+  timestamp: string | Date;
+  completedTasks: number;
+  failedTasks: number;
+  onDismiss: () => void;
+}) {
+  return (
+    <div
+      className="mx-4 mb-3 rounded-2xl overflow-hidden"
+      style={{
+        background: 'linear-gradient(180deg, var(--hatchin-surface), var(--hatchin-panel))',
+        border: '1px solid var(--hatchin-border-subtle)',
+      }}
+      role="status"
+      aria-live="polite"
+    >
+      {/* Header */}
+      <div
+        className="flex items-center gap-2 px-4 py-2.5"
+        style={{ borderBottom: '1px solid var(--hatchin-border-subtle)', background: 'rgba(108, 130, 255, 0.06)' }}
+      >
+        <Sunrise className="w-4 h-4 flex-none" style={{ color: 'var(--hatchin-blue)' }} />
+        <span className="text-micro font-bold uppercase tracking-wide" style={{ color: 'var(--hatchin-text-bright)' }}>
+          While you were away
+        </span>
+        <span className="ml-auto text-xs" style={{ color: 'var(--hatchin-text-muted)' }}>
+          {briefingTimeAgo(timestamp)}
+        </span>
+        <button
+          onClick={onDismiss}
+          className="hit-target ml-1 rounded-md p-0.5 hover:bg-white/5 transition-colors"
+          aria-label="Dismiss briefing"
+          style={{ color: 'var(--hatchin-text-muted)' }}
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className="px-4 py-3.5">
+        <div className="flex items-center gap-2.5 mb-2.5">
+          <AgentAvatar characterName={agentName} agentName={agentName} size={26} />
+          <span className="text-sm" style={{ color: 'var(--hatchin-text)' }}>
+            <span className="font-semibold" style={{ color: 'var(--hatchin-text-bright)' }}>{agentName}</span>
+          </span>
+        </div>
+        <p className="text-[15px] leading-relaxed" style={{ color: 'var(--hatchin-text)' }}>{content}</p>
+
+        {(completedTasks > 0 || failedTasks > 0) && (
+          <div className="flex items-center gap-2 flex-wrap mt-3.5">
+            {completedTasks > 0 && (
+              <span
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full"
+                style={{ color: 'var(--hatchin-green)', background: 'hsla(158, 66%, 47%, 0.12)', border: '1px solid hsla(158, 66%, 47%, 0.25)' }}
+              >
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'currentColor' }} />
+                {completedTasks} done
+              </span>
+            )}
+            {failedTasks > 0 && (
+              <>
+                <span
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full"
+                  style={{ color: 'var(--hatchin-working-amber)', background: 'hsla(41, 87%, 60%, 0.12)', border: '1px solid hsla(41, 87%, 60%, 0.28)' }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'currentColor' }} />
+                  {failedTasks} need{failedTasks === 1 ? 's' : ''} your review
+                </span>
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('hatchin:open-activity'))}
+                  className="ml-auto text-xs font-semibold hover:underline"
+                  style={{ color: 'var(--hatchin-working-amber)' }}
+                >
+                  Review &rarr;
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

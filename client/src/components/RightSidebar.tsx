@@ -89,6 +89,14 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent, initialTa
     return () => window.removeEventListener('hatchin:open-brain', handler);
   }, [setActiveTab]);
 
+  // Return-briefing (Phase 2.4): the "Review ->" jump opens the Activity tab
+  // where approvals live.
+  React.useEffect(() => {
+    const handler = () => { setActiveTab('activity'); clearUnread(); };
+    window.addEventListener('hatchin:open-activity', handler);
+    return () => window.removeEventListener('hatchin:open-activity', handler);
+  }, [setActiveTab, clearUnread]);
+
   const [isPanelScrolling, setIsPanelScrolling] = React.useState(false);
   const panelScrollHideTimeoutRef = React.useRef<number | null>(null);
 
