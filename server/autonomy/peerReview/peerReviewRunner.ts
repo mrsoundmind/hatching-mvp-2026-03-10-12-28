@@ -152,7 +152,14 @@ export async function runPeerReview(input: {
     .filter((agent) => agent.id !== input.primaryHatchId)
     .slice(0, Math.max(1, BUDGETS.maxReviewers));
 
-  if (!trigger.triggered || selectedReviewers.length === 0) {
+  // v2.2 coverage fix: when the autonomous pipeline opts into the judge it has ALREADY decided this task
+  // warrants review (broadened coverage in shouldReviewAutonomousOutput). The legacy risk-only trigger
+  // must not veto that — otherwise a low-risk-but-substantive task would be gated here after the pipeline
+  // chose to review it. Force the review through with an explicit reason so the feed/logs still explain why.
+  const forcedByJudge = Boolean(input.enableLlmJudge) && FEATURE_PEER_REVIEW_JUDGE;
+  const effectiveReasons = trigger.triggered ? trigger.reasons : forcedByJudge ? ['coverage_review'] : trigger.reasons;
+
+  if ((!trigger.triggered && !forcedByJudge) || selectedReviewers.length === 0) {
     return {
       triggered: false,
       reason: trigger.reasons,
@@ -177,7 +184,7 @@ export async function runPeerReview(input: {
     riskScore: input.riskScore,
     payload: {
       reviewerIds: selectedReviewers.map((reviewer) => reviewer.id),
-      reasons: trigger.reasons,
+      reasons: effectiveReasons,
     },
   });
 
@@ -504,8 +511,8 @@ export async function runPeerReview(input: {
   }
 
   const reason = judgeDecision
-    ? [...trigger.reasons, `peer_review_${judgeDecision.decision}`, judgeDecision.reasoning]
-    : trigger.reasons;
+    ? [...effectiveReasons, `peer_review_${judgeDecision.decision}`, judgeDecision.reasoning]
+    : effectiveReasons;
 
   return {
     triggered: true,

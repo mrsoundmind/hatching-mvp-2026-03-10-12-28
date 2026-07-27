@@ -56,6 +56,32 @@ function getRoleRiskMultiplier(role: string, taskDescription: string): number {
   return 1.0;
 }
 
+// ── v2.2 coverage fix — widen who gets peer-reviewed ──────────────────────────────────────────────
+// The gate used to be risk-only (maxRisk >= peerReviewTrigger, default 0.35), so any task the safety
+// scorer rated below 0.35 shipped with NO review at all — no deterministic check, no judge. An audit
+// showed that was most ordinary work (only 8 judge verdicts in the whole history). Since the judge runs
+// on the FREE Groq tier in the background, the original cost-bounding was too conservative. This
+// broadens coverage three ways: (1) mid/high-risk still reviewed (unchanged); (2) anything outward-facing
+// or factual is reviewed regardless of computed risk — a low risk score does not mean low importance, a
+// fabricated stat in investor copy can score low yet must be caught; (3) any substantive deliverable is
+// reviewed. Only trivial short acks skip review. Reject/revise behaviour downstream is unchanged.
+const PEER_REVIEW_MIN_CHARS = Number(process.env.PEER_REVIEW_MIN_CHARS ?? 180);
+const OUTWARD_OR_FACTUAL =
+  /\b\d+(\.\d+)?\s*%|\$\s*\d|\b\d{3,}\b|according to|research shows|studies show|statistic|survey|benchmark|guarantee|proven|\bROI\b|conversion rate|\bcustomers?\b|\binvestors?\b|market share|competitor|\blaunch\b|\bpublish\b|\bannounce\b|\bcampaign\b|press release/i;
+
+export function shouldReviewAutonomousOutput(input: {
+  maxRisk: number;
+  peerReviewTrigger: number;
+  taskText: string;
+  output: string;
+}): { review: boolean; reason: string } {
+  if (input.maxRisk >= input.peerReviewTrigger) return { review: true, reason: 'risk_threshold' };
+  const combined = `${input.taskText}\n${input.output}`;
+  if (OUTWARD_OR_FACTUAL.test(combined)) return { review: true, reason: 'outward_or_factual' };
+  if (input.output.trim().length >= PEER_REVIEW_MIN_CHARS) return { review: true, reason: 'substantive_output' };
+  return { review: false, reason: 'trivial_output' };
+}
+
 /**
  * Mark a task complete AND record who did it plus what they produced.
  *
@@ -379,7 +405,13 @@ async function executeTaskWithOutput(
     let reviewerName: string | null = null;
     let reviewerRole: string | null = null;
 
-    if (maxRisk >= thresholds.peerReviewTrigger) {
+    const batchReviewDecision = shouldReviewAutonomousOutput({
+      maxRisk,
+      peerReviewTrigger: thresholds.peerReviewTrigger,
+      taskText: input.task.description ?? input.task.title,
+      output,
+    });
+    if (batchReviewDecision.review) {
       const projectAgents = await input.storage.getAgentsByProject(input.task.projectId);
       const reviewers = projectAgents
         .filter((a) => a.id !== input.agent.id)
@@ -594,9 +626,16 @@ export async function executeTask(
       return { status: 'pending_approval', stepId };
     }
 
-    // SAFE-03: Mid-risk peer review gate (peerReviewTrigger <= risk < clarificationRequiredRisk)
+    // SAFE-03: peer review gate — broadened (v2.2 coverage fix) from risk-only to also cover any
+    // substantive or outward-facing/factual deliverable, so low-risk-but-important work is reviewed too.
     const maxRisk = Math.max(adjustedExecutionRisk, adjustedScopeRisk, adjustedHallucinationRisk);
-    if (maxRisk >= thresholds.peerReviewTrigger) {
+    const reviewDecision = shouldReviewAutonomousOutput({
+      maxRisk,
+      peerReviewTrigger: thresholds.peerReviewTrigger,
+      taskText: input.task.description ?? input.task.title,
+      output,
+    });
+    if (reviewDecision.review) {
       const projectAgents = await input.storage.getAgentsByProject(input.task.projectId);
       const reviewers = projectAgents
         .filter((a) => a.id !== input.agent.id)

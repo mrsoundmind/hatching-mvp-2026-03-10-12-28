@@ -17,7 +17,7 @@ const check = (name: string, cond: boolean, detail = '') => {
   else { fail++; console.log(`  FAIL  ${name}  ${detail}`); }
 };
 
-async function review(task: string, draft: string) {
+async function review(task: string, draft: string, riskScore = 0.5) {
   return runPeerReview({
     projectId: 'itest-project',
     conversationId: 'project:itest-project',
@@ -26,8 +26,8 @@ async function review(task: string, draft: string) {
     reviewers,
     provider: 'autonomous',
     mode: 'autonomous',
-    confidence: 0.5,
-    riskScore: 0.5, // >= peerReviewTrigger (0.35) so review triggers
+    confidence: 1 - riskScore,
+    riskScore, // coverage fix: judge runs even below peerReviewTrigger when enableLlmJudge is set
     userMessage: task,
     draftResponse: draft,
     projectName: 'ITest',
@@ -66,6 +66,16 @@ async function main() {
   check('good draft: judge ran', !!good.judge, JSON.stringify(good.reason));
   check('good draft: NOT blocked', good.clarificationRequired === false, `got ${good.clarificationRequired}`);
   check('good draft: verdict not reject', good.judge?.decision !== 'reject', `got ${good.judge?.decision}`);
+
+  // 3) COVERAGE FIX: a LOW-risk (0.1, below the 0.35 trigger) substantive draft must STILL be judged —
+  //    before the fix, runPeerReview would have vetoed this and shipped it unreviewed.
+  const lowRisk = await review(
+    'Write a short internal note on the deploy.',
+    'The deploy went out at 14:00. Error rate held steady under 0.5% through the window and the new nullable column is populating as expected. No rollback needed. On-call can stand down.',
+    0.1,
+  );
+  check('low-risk draft: judge STILL ran (coverage fix)', !!lowRisk.judge, JSON.stringify(lowRisk.reason));
+  check('low-risk draft: reason marks coverage', lowRisk.reason.includes('coverage_review'), JSON.stringify(lowRisk.reason));
 
   console.log(`\n  ${fail === 0 ? 'PASS' : 'FAIL'} — ${pass} passed, ${fail} failed\n`);
   process.exit(fail === 0 ? 0 : 1);
