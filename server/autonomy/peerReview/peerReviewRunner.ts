@@ -108,6 +108,12 @@ function synthesizeRevisions(input: {
 
 export async function runPeerReview(input: {
   traceId?: string | null;
+  // v2.2 lineage: pointers stamped into the review event payloads so a verdict can be joined back to
+  // the task it reviewed (taskId) and the autonomy run it belongs to (runTraceId = autonomy_runs.trace_id).
+  // These live in the payload only — the per-event grouping trace_id stays unique, so each review keeps
+  // its own feed row (T3 behaviour preserved). Distinct from `traceId` above, which drives the trace store.
+  taskId?: string | null;
+  runTraceId?: string | null;
   roundNoBase?: number;
   projectId: string;
   teamId?: string | null;
@@ -185,6 +191,8 @@ export async function runPeerReview(input: {
     payload: {
       reviewerIds: selectedReviewers.map((reviewer) => reviewer.id),
       reasons: effectiveReasons,
+      taskId: input.taskId ?? null,
+      runTraceId: input.runTraceId ?? null,
     },
   });
 
@@ -302,6 +310,9 @@ export async function runPeerReview(input: {
             reviewerRole: verdict.reviewerRole,
             judgeModel: verdict.judgeModel,
             revisionCycle: cycle,
+            // v2.2 lineage: tie this verdict to the task it reviewed and the run it belongs to.
+            taskId: input.taskId ?? null,
+            runTraceId: input.runTraceId ?? null,
           },
         });
       }

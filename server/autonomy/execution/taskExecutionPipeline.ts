@@ -436,6 +436,9 @@ async function executeTaskWithOutput(
           authorGenerate: input.generateText,
           task: input.task.description ?? input.task.title,
           maxRevisionCycles: BUDGETS.maxRevisionCycles,
+          // v2.2 lineage: tie the review verdict back to its task + autonomy run (payload pointers only)
+          taskId: input.task.id,
+          runTraceId: input.traceId ?? null,
         });
 
         if (peerResult?.clarificationRequired) {
@@ -506,7 +509,7 @@ async function executeTaskWithOutput(
       mode: 'autonomous',
       provider: null,
       teamId: null,
-      payload: { taskId: input.task.id, taskTitle: input.task.title, agentName: input.agent.name, batched: true, peerReviewed },
+      payload: { taskId: input.task.id, taskTitle: input.task.title, agentName: input.agent.name, runTraceId: input.traceId ?? null, batched: true, peerReviewed },
     });
 
     input.broadcastToConversation(input.conversationId, {
@@ -661,6 +664,9 @@ export async function executeTask(
           authorGenerate: input.generateText,
           task: input.task.description ?? input.task.title,
           maxRevisionCycles: BUDGETS.maxRevisionCycles,
+          // v2.2 lineage: tie the review verdict back to its task + autonomy run (payload pointers only)
+          taskId: input.task.id,
+          runTraceId: input.traceId ?? null,
         });
       } catch (peerReviewErr) {
         // Peer review infrastructure failure — log and fall through to non-reviewed path
@@ -723,7 +729,7 @@ export async function executeTask(
           mode: 'autonomous',
           provider: null,
           teamId: null,
-          payload: { taskId: input.task.id, taskTitle: input.task.title, agentName: input.agent.name, peerReviewed: true },
+          payload: { taskId: input.task.id, taskTitle: input.task.title, agentName: input.agent.name, runTraceId: input.traceId ?? null, peerReviewed: true },
         });
 
         // Phase 1.1 — attribute the reviewer for the completion card.
@@ -791,7 +797,7 @@ export async function executeTask(
       mode: 'autonomous',
       provider: null,
       teamId: null,
-      payload: { taskId: input.task.id, taskTitle: input.task.title, agentName: input.agent.name },
+      payload: { taskId: input.task.id, taskTitle: input.task.title, agentName: input.agent.name, runTraceId: input.traceId ?? null },
     });
 
     input.broadcastToConversation(input.conversationId, {
