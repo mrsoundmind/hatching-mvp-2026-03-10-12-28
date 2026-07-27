@@ -7,6 +7,16 @@ import { TestimonialShowcase } from "@/components/ui/testimonial-showcase";
 import HowItWorksBento from "@/components/ui/how-it-works-bento";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import LegalModal from "@/components/legal/LegalModal";
+import AgentAvatar from "@/components/avatars/AgentAvatar";
+
+// Phase 2.2 — pushback proof. Quotes are verbatim from each role's
+// negativeHandling in shared/roleRegistry.ts (em dashes normalized), so the
+// landing shows real teammate voices rather than invented marketing lines.
+const PUSHBACK_QUOTES = [
+  { name: "Dev", role: "Backend Developer", context: "On scaling", quote: "That works for 100 users and falls over at 10,000. Here's why.", tint: "linear-gradient(135deg,#6C82FF,#9F7BFF)" },
+  { name: "Coda", role: "Software Engineer", context: "On skipping tests", quote: "We can skip them now and debug this in production at 2am, or we can write them now. Your call.", tint: "linear-gradient(135deg,#47db9a,#2fb37a)" },
+  { name: "Alex", role: "Product Manager", context: "On a rushed timeline", quote: "This timeline assumes nothing goes wrong, and something always goes wrong.", tint: "linear-gradient(135deg,#F2B441,#E8734A)" },
+];
 
 const avatarFor = (seed: string) =>
   `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(seed)}&backgroundColor=fef3c7,fed7aa,fde68a,fee2e2,e0e7ff,dbeafe`;
@@ -314,6 +324,36 @@ export default function LandingPage() {
 
       {/* ━━━ BENTO GRID ━━━ */}
       <LandingBento />
+
+      {/* ━━━ PUSHBACK PROOF ━━━ */}
+      <section className="relative z-10 w-full max-w-[1080px] mx-auto px-6 py-20 md:py-28 scroll-reveal">
+        <div className="text-center max-w-[600px] mx-auto mb-12 md:mb-16">
+          <h2 className="text-2xl md:text-4xl font-semibold text-white mb-4 tracking-[-0.5px]" style={{ fontFamily: "'Poppins', sans-serif" }}>
+            They don't just agree with you.
+          </h2>
+          <p className="text-white/55 text-base leading-relaxed">
+            Real teammates disagree with you. That's the point. Here's what it sounds like.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
+          {PUSHBACK_QUOTES.map((q) => (
+            <div
+              key={q.name}
+              className="flex flex-col gap-4 rounded-2xl border border-white/[0.08] bg-white/[0.025] px-5 py-6"
+            >
+              <span className="text-micro font-bold uppercase tracking-[0.06em] text-white/40">{q.context}</span>
+              <p className="text-[17px] leading-[1.5] font-medium text-white flex-1">&ldquo;{q.quote}&rdquo;</p>
+              <div className="flex items-center gap-3 pt-1">
+                <AgentAvatar characterName={q.name} role={q.role} size={34} />
+                <div>
+                  <div className="text-sm font-semibold text-white">{q.name}</div>
+                  <div className="text-xs text-white/50">{q.role}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* ━━━ WHITE CARD RISES FROM DARK ━━━ */}
       <div className="bright-section-start w-full pb-0">
