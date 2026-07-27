@@ -239,6 +239,14 @@
 - Mapped to phases: 67 (13 phases including 36.5 hotfix)
 - Unmapped: 0 ✓
 
+## v2.1-UX — Look, Feel and First Impression (separate milestone, source: `.audit-ux-2026-07-20/`)
+
+Shipped 2026-07-27 (Phases 0-2, 13 UI commits, Playwright-verified, on `feat/v2.2-intelligence-fixes`). Requirements are enumerated in the ROADMAP v2.1-UX milestone block; delivered coverage:
+- **Foundation:** Inter actually loads; 13px legibility floor with an on-scale type system (196 arbitrary sub-13px sizes migrated); 44px touch targets on primary controls.
+- **Close the loop:** a completion moment (card) that names producer + reviewer; a discoverable delegation entrance; a stuck-run watchdog.
+- **Ship the story:** legible hero subhead in the product voice; refreshed page/social meta; pushback proof from real `negativeHandling`; plain-voice pricing; return-briefing "While you were away" card.
+- **Deferred (Phase 3, not built):** "Close the laptop…" headline (needs reliability data), onboarding collapse.
+
 ---
 
 *Defined: 2026-04-28*

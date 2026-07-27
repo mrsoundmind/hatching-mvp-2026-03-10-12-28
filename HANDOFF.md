@@ -2,9 +2,22 @@
 
 > **Read this first if you're an AI (Claude Code, Cursor, Windsurf, Copilot, etc.) or a human picking up on Hatchin.** This file tells you what happened, where we are, and what to do next. Session-continuity log — updated at session boundaries.
 
-**Last refreshed:** 2026-07-26
-**Current branch:** `feat/v2.2-intelligence-fixes` (v2.2 intelligence fixes; a parallel session is also committing a UI type-scale refresh onto this branch)
-**Latest commit (this workstream):** `f5682ab feat(peer-review): widen judge coverage so the teeth actually bite (v2.2)`
+**Last refreshed:** 2026-07-27
+**Current branch:** `feat/v2.2-intelligence-fixes` (two workstreams share this branch: v2.2 intelligence fixes + the v2.1-UX UI milestone)
+**Latest commit (v2.2 workstream):** `f5682ab feat(peer-review): widen judge coverage so the teeth actually bite (v2.2)`
+**Latest commit (v2.1-UX UI workstream):** `32468fe feat(ui): render return briefings as a "While you were away" card (Phase 2.4)`
+
+## 2026-07-27 — v2.1-UX milestone shipped (UI polish, parallel workstream)
+
+Separate from the v2.2 intelligence work below, this session ran the **v2.1-UX** milestone (adopted from the 2026-07-20 UX Remediation Brief / `.audit-ux-2026-07-20/`) end to end on this same branch. **13 UI commits, each Playwright-verified on the live server**, all path-disjoint from the v2.2/Mattermost server work (touched only `client/src`, `client/index.html`, `tailwind.config.ts` — plus one disjoint server file, `9a064d6`, extending the `task_execution_completed` WS payload in `taskExecutionPipeline.ts`). Nothing merged.
+
+- **Phase 0 Foundation:** `d675d87` Inter now actually loads (index.html never requested it, so the whole app was on OS fallback) + dropped unused Space Grotesk/DM Sans; `4bc2461` 13px legibility floor — redefined `text-xs`→13px and added `text-micro`=11px in tailwind.config, migrated 196 arbitrary sub-13px sizes across 36 files (verified 0 rendered nodes <11px at 1440 + 375, dense surfaces intact); `f03c00c` 44px hit areas via an invisible `.hit-target` `::after` overlay on the primary controls (kebab, send, +New, Add Hatch, hamburger, filter toggles) — visual size unchanged.
+- **Phase 1 Close the loop:** `9a064d6`+`90af4db` **completion card** — the "done" moment in chat (what was made + producer + reviewer, via new WS provenance fields; actions Keep/Refine/Looks good; NO manual hand-off, since handoff is already automatic; no left accent rail, per user); `a8383a8` **delegation entrance** — a visible "Let the team work on these · N to-dos" button in TasksTab + a composer "go ahead" hint, both gated on Pro + `autonomyEnabled`, firing the existing `checkForAutonomyTrigger` path (no new backend); `67fb230` 2-min **waiting-state watchdog** so a wedged run resolves to an honest toast instead of animating forever.
+- **Phase 2 Ship the story:** `9f9490b` sharper landing subhead (delivery+pushback voice, 80% opacity, headline kept per user); `c8fed03` refreshed stale `<title>`/OG/Twitter meta (was "Every Dream Needs a Team"); `dfeeed9` **"They don't just agree with you."** pushback-proof section — 3 verbatim `negativeHandling` quotes (Dev/Coda/Alex), additive (the animated feature bento kept); `73f2d55` pricing rewritten to plain human voice (dropped SKU/TIER/OPERATIONAL/"Deploy →"), prices + orange Pro accent kept; `32468fe` return briefings render as a **"While you were away"** card (client reads existing `metadata.isReturnBriefing` + counts; verified on a REAL briefing already in history).
+
+**Color rule held throughout:** navy/blue frozen, orange kept, additive amber (work) + green (done) only. Each visible surface was shown to the user as an artifact preview and approved before wiring. **Phase 3** ("Close the laptop…" headline, onboarding collapse) intentionally NOT built. Verification scripts + screenshots live in `.audit-ux-2026-07-20/`. Open: these 13 commits interleave with v2.2 on `feat/v2.2-intelligence-fixes`; if they should live on their own `feat/ui-*` branch that's a pending git decision.
+
+---
 
 ## 2026-07-27 — peer-review coverage fix (the audit's "start here" open item)
 

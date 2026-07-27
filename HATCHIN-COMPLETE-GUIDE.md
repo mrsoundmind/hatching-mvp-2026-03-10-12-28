@@ -2359,4 +2359,17 @@ Fine-grained implementation inventory (file-by-file function catalog) lives in [
 
 *This document is one of six files in the status-doc constellation. When features, architecture, or agent behavior change, this file MUST be refreshed atomically per the memory rule. Its constellation partners are [CLAUDE.md](CLAUDE.md), [HANDOFF.md](HANDOFF.md), [.planning/STATE.md](.planning/STATE.md), [.planning/REQUIREMENTS.md](.planning/REQUIREMENTS.md), and [.planning/ROADMAP.md](.planning/ROADMAP.md).*
 
-*Last refreshed 2026-07-10 covering v2.0 shipped + v2.1 Phases 35 through 38 (Plans 01-04) shipped. Plan 38-05 vibe-check pending. Feature → UI location matrix added §28. Author: Claude Code.*
+### v2.1-UX UI surfaces (shipped 2026-07-27, on `feat/v2.2-intelligence-fixes`)
+
+New/changed user-facing surfaces from the v2.1-UX milestone (Phases 0-2, 13 Playwright-verified commits; source `.audit-ux-2026-07-20/`):
+
+- **Completion card** (chat) — when a Hatch finishes autonomous work, the chat shows a "done" card instead of silently clearing the working pill: what was made (summary), who made it, and who reviewed it (green CHECKED) or "Auto-completed, low risk". Actions are judgment-only (Refine / Looks good); there is no manual hand-off because handoff is automatic. `ChatMessageList.tsx` `TeamCompletionCard`, fed by new `task_execution_completed` payload fields.
+- **Delegation entrance** (Tasks tab + composer) — a visible "Let the team work on these · N to-dos" button (gated on Pro + autonomyEnabled) plus a composer "go ahead" tip, both firing the existing autonomy trigger. Makes background execution discoverable instead of hidden behind magic phrases.
+- **Waiting-state watchdog** — the "team is working" card now times out (2 min) into an honest "this run stalled" toast rather than animating forever.
+- **"While you were away" card** (chat) — Maya's return briefing renders as a framed card with count chips (N done / M needs review) and a Review → jump; reads the existing `metadata.isReturnBriefing`.
+- **Landing page** — sharper hero subhead in the product voice; refreshed page/social meta; a "They don't just agree with you." pushback-proof section (verbatim `negativeHandling` quotes); pricing rewritten to plain human voice (prices + orange Pro accent kept).
+- **Foundation** — Inter now actually loads; a 13px legibility floor with an on-scale type system; 44px touch targets on primary controls.
+
+Color rule held throughout (navy/blue frozen, orange kept, additive amber=work / green=done). Phase 3 (held headline + onboarding collapse) not built. Nothing merged.
+
+*Last refreshed 2026-07-27 covering v2.0 shipped + v2.1 Phases 35 through 38 (Plans 01-04) shipped + v2.1-UX Phases 0-2 shipped (parallel milestone). Plan 38-05 vibe-check pending. Feature → UI location matrix added §28. Author: Claude Code.*
