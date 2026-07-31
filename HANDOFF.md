@@ -23,7 +23,9 @@ User handed over a live functional audit of the right-sidebar **Brain tab** (`.a
 
 Color rule held (navy/blue frozen, orange kept). Path-disjoint from the parallel v2.2/Phase 39 server work. **Constellation:** STATE + ROADMAP + CLAUDE footer + this HANDOFF updated (the Phase 39 session explicitly reserved STATE/ROADMAP for these edits); REQUIREMENTS + COMPLETE-GUIDE intentionally not touched (an IA/presentation fix ships no new feature/requirement — same precedent as 2026-07-23). Nothing merged.
 
-**Next:** merge decision for the whole branch (both workstreams) + `fly deploy`, OR next UI/phase work. The one deferred item is a dev-server restart to live-confirm the server-side title derivation.
+**Follow-on same session (return-briefing bugs, user-reported from a live screenshot):** the "While you were away" card showed **"You"** as the author and appeared **doubled**. Both are pre-existing Phase 2.4 bugs (not from Phase 4). `ebdc719` (UI) — the briefing is stored with `agentId: maya?.id ?? null`; on projects where the special-agent lookup returns null the client falls through to `toDisplayText(senderName, 'You')`, so the card is now forced to Maya whenever the name resolves to missing/'You'/'AI' (verified live: 4 cards on "Phase D Review Demo" flipped You→Maya + Maya avatar). `d249d33` (server) — the join-time trigger was check-then-act (wrote `lastBriefedAt` only after the LLM finished), so two near-simultaneous joins both briefed; added a per-project in-process in-flight guard + an already-briefed-in-window check (single-node safe, takes effect on next server restart). Historical dupe rows remain dismissible (no message-delete endpoint; didn't raw-write the shared DB).
+
+**Next:** merge decision for the whole branch (both workstreams) + `fly deploy`, OR next UI/phase work. Deferred items needing a dev-server restart to live-confirm: the Phase 4 server-side title derivation + this briefing dedup guard.
 
 ## 2026-07-31 — v2.2 Phase 39 Reader Testing Peer Review, Plan 39-01 (server) shipped
 
