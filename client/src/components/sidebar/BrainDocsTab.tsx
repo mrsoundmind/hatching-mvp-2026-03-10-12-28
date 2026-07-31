@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { DocumentUploadZone } from './DocumentUploadZone';
 import { DocumentCard } from './DocumentCard';
@@ -30,6 +30,12 @@ export function BrainDocsTab({ projectId, project }: BrainDocsTabProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
+
+  const { data: packagesData } = useQuery<{ packages: unknown[] }>({
+    queryKey: [`/api/projects/${projectId}/packages`],
+    enabled: !!projectId,
+  });
+  const packages = packagesData?.packages ?? [];
 
   if (!projectId) return null;
 
@@ -105,12 +111,19 @@ export function BrainDocsTab({ projectId, project }: BrainDocsTabProps) {
       </div>
 
       {/* ——— Packages ——— */}
-      <SectionDivider label="Project Knowledge Base" />
+      <SectionDivider label="Packages" />
       <div className="px-2 mb-2">
-        <p className="text-xs hatchin-text-muted leading-relaxed">Resources and context your agents are actively learning from.</p>
+        <p className="text-xs hatchin-text-muted leading-relaxed">Multi-step work running across the team shows up here.</p>
       </div>
       <div className="px-1">
-        <PackageProgress projectId={projectId} />
+        {packages.length > 0 ? (
+          <PackageProgress projectId={projectId} />
+        ) : (
+          <div className="text-center py-4 px-2">
+            <p className="text-xs font-medium hatchin-text mb-0.5">No active packages</p>
+            <p className="text-micro hatchin-text-muted leading-relaxed">Launch a package and its progress across the team lands here.</p>
+          </div>
+        )}
       </div>
 
       {/* ——— Deliverables ——— */}
