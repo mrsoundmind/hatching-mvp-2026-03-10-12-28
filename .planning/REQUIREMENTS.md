@@ -79,10 +79,10 @@
 
 **Theme:** Context-naïve fresh reviewer for doc-type deliverables — catches "this only makes sense if you wrote it" failures.
 
-- [ ] **READ-01**: New `peerReviewMode: 'reader-test'` lens for doc-type deliverables (PRD, blog post, email, copy, brief)
-- [ ] **READ-02**: Reader-test reviewer receives ONLY the deliverable + project name + role context — never the conversation history that produced it
-- [ ] **READ-03**: Reader-test review flags "this assumes context the reader doesn't have" with line-level annotations
-- [ ] **READ-04**: Author Hatch sees reader-test feedback and can accept/reject revisions; tracked as iteration delta on rubric
+- [x] **READ-01**: Fresh-reader review fires on reader-facing doc types (`isReaderFacingDocType`: prd, design-brief, gtm-plan, blog-post, landing-copy, email-sequence, seo-brief, market-research, competitive-analysis, process-doc). ✅ 39-01 server (`server/ai/readerTestReviewer.ts`, cross-model Groq, fail-safe).
+- [x] **READ-02**: Reviewer receives ONLY the document + project name + audience — NEVER the conversation history. ✅ 39-01, proven by prompt-snapshot test `scripts/test-reader-test-context-blind.ts` (18/18).
+- [~] **READ-03**: Review flags "assumes context the reader doesn't have" as quote-anchored annotations, persisted on the deliverable version (`deliverable_versions.reader_test` JSONB). ✅ server (39-01); annotation UI in the Artifact panel pending 39-02.
+- [~] **READ-04**: Revision impact tracked — resolved-annotation count (`resolvedFromPrevious`) + reused frozen-rubric score delta. ✅ server (39-01, live 6/7 resolved); accept/reject UI pending 39-02.
 
 ---
 
@@ -223,7 +223,7 @@
 | ALWY-04 | 38 | ✅ SHIPPED 2026-07-09 via Plan 38-02; unit 12/12 + regression sweep clean + Playwright 2/2 PASS on live server |
 | ALWY-05 | 38 | ✅ SHIPPED 2026-07-10 via Plan 38-03; Playwright 6/6 PASS incl. new Test 5 |
 | ALWY-06 | 38 | ✅ SHIPPED 2026-07-10 via Plan 38-04; Playwright 2/2 PASS on live Groq server |
-| READ-01..04 | 39 | Pending |
+| READ-01..04 | 39 | 39-01 server SHIPPED 2026-07-31 (READ-01/02 done; READ-03/04 server-side done, annotation+accept/reject UI in 39-02) |
 | EVAL-01..04 | 40 | Pending |
 | PHASE-01..04 | 41 | Pending |
 | BLPR-01..06 | 41 | Pending |

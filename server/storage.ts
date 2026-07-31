@@ -279,6 +279,11 @@ export interface IStorage {
       };
     },
   ): Promise<DeliverableVersion | undefined>;
+  // Phase 39 (READ-03) — persist a fresh-reader ("reader test") review onto a deliverable version.
+  updateDeliverableVersionReaderTest(
+    versionId: string,
+    readerTest: NonNullable<DeliverableVersion["readerTest"]>,
+  ): Promise<DeliverableVersion | undefined>;
   getRecentFinalizedDeliverablesByAgent(projectId: string, agentId: string, limit: number): Promise<Deliverable[]>;
 
   // v2.0: Packages
@@ -1568,6 +1573,8 @@ export class MemStorage implements IStorage {
       rubricVersion: null,
       rubricScore: null,
       revertedFromHigherScore: false,
+      // Phase 39 — reader test populated later by reviewDeliverableForReaderTest (null until then)
+      readerTest: null,
     };
     this.deliverableVersions.set(vId, version);
     return deliverable;
@@ -1643,6 +1650,16 @@ export class MemStorage implements IStorage {
     const existing = this.deliverableVersions.get(versionId);
     if (!existing) return undefined;
     const updated = { ...existing, ...fields } as DeliverableVersion;
+    this.deliverableVersions.set(versionId, updated);
+    return updated;
+  }
+  async updateDeliverableVersionReaderTest(
+    versionId: string,
+    readerTest: NonNullable<DeliverableVersion["readerTest"]>,
+  ): Promise<DeliverableVersion | undefined> {
+    const existing = this.deliverableVersions.get(versionId);
+    if (!existing) return undefined;
+    const updated = { ...existing, readerTest } as DeliverableVersion;
     this.deliverableVersions.set(versionId, updated);
     return updated;
   }
@@ -2612,6 +2629,16 @@ export class DatabaseStorage implements IStorage {
   ): Promise<DeliverableVersion | undefined> {
     const [row] = await db.update(schema.deliverableVersions)
       .set(fields)
+      .where(eq(schema.deliverableVersions.id, versionId))
+      .returning();
+    return row;
+  }
+  async updateDeliverableVersionReaderTest(
+    versionId: string,
+    readerTest: NonNullable<DeliverableVersion["readerTest"]>,
+  ): Promise<DeliverableVersion | undefined> {
+    const [row] = await db.update(schema.deliverableVersions)
+      .set({ readerTest })
       .where(eq(schema.deliverableVersions.id, versionId))
       .returning();
     return row;

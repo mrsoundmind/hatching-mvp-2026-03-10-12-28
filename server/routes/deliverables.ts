@@ -294,6 +294,40 @@ export function registerDeliverableRoutes(app: Express, deps: RegisterDeliverabl
     }
   });
 
+  // POST /api/deliverables/:id/reader-test — Phase 39 (READ-01/03/04) manual fresh-reader re-run.
+  // Reviews the CURRENT version through a context-blind reviewer and persists annotations onto it.
+  // Used after a revision to check the fix landed (the auto-run already covers first generation).
+  app.post('/api/deliverables/:id/reader-test', async (req, res) => {
+    const userId = getSessionUserId(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const deliverable = await storage.getDeliverable(req.params.id);
+    if (!deliverable) return res.status(404).json({ error: 'Deliverable not found' });
+
+    const project = await getOwnedProject(deliverable.projectId, userId);
+    if (!project) return res.status(404).json({ error: 'Deliverable not found' });
+
+    try {
+      const { reviewDeliverableForReaderTest } = await import('../ai/deliverableGenerator.js');
+      const outcome = await reviewDeliverableForReaderTest(req.params.id);
+      // 200 with reviewed:false when the type isn't reader-facing or the reviewer was unavailable —
+      // this is a normal, non-error outcome the client renders as "reader test not available".
+      return res.json({
+        reviewed: outcome.reviewed,
+        readerTest: outcome.result
+          ? {
+              annotations: outcome.result.annotations,
+              readableWithoutContext: outcome.result.readableWithoutContext,
+              summary: outcome.result.summary,
+              reviewerModel: outcome.result.reviewerModel,
+            }
+          : null,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || 'Reader test failed' });
+    }
+  });
+
   // === Phase 36 — Feedback endpoints (FBK-02, FBK-03) ===
   // All three follow the existing getSessionUserId + getOwnedProject pattern.
   // 404 (not 403) on ownership mismatch so the user can't infer the existence

@@ -444,6 +444,24 @@ export const deliverableVersions = pgTable("deliverable_versions", {
     reason?: string;
   }>(),
   revertedFromHigherScore: boolean("reverted_from_higher_score").notNull().default(false),
+  // Phase 39 (READ-03) — fresh-reader ("reader test") review of this version. Populated by the
+  // context-blind reviewer (server/ai/readerTestReviewer.ts) for reader-facing doc types only;
+  // null when the type is not reader-facing or the reviewer was unavailable.
+  readerTest: jsonb("reader_test").$type<{
+    annotations: Array<{
+      quote: string;
+      issue: string;
+      severity: "low" | "medium" | "high";
+      suggestion: string;
+      charOffset: number;
+    }>;
+    readableWithoutContext: boolean;
+    summary: string;
+    reviewerModel: string;
+    reviewedAt: string;
+    /** READ-04 — how many of the PRIOR version's annotations this version resolved (0 on first review). */
+    resolvedFromPrevious?: number;
+  }>(),
 }, (table) => ({
   deliverableIdIdx: index("deliverable_versions_deliverable_id_idx").on(table.deliverableId),
   versionIdx: index("deliverable_versions_version_idx").on(table.deliverableId, table.versionNumber),

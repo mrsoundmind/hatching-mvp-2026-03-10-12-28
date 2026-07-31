@@ -727,6 +727,35 @@ Peer review outcomes feed [trustAdapter.ts](server/autonomy/trustScoring/trustAd
 - CLARIFICATION_REQUIRED and BLOCKED reduce the drafter's trust slightly
 - Reviewers who consistently catch bugs earn a higher trust multiplier of their own
 
+### Reader Testing: the fresh-eyes review for documents (v2.2 / Phase 39, server shipped 2026-07-31)
+
+The peer review above checks an agent's *task work* for correctness. Reader testing is a second,
+different reviewer that checks a finished *document* for whether an outsider can actually follow it.
+
+When a Hatch writes a reader-facing document (a PRD, a blog post, a marketing email, landing copy, a
+brief, a research or process writeup), a **fresh reader** reviews it. The catch: this reviewer is shown
+ONLY the finished document plus the project name and who it's for. It never sees the conversation that
+produced the document, that blindness is the whole point. It flags, in plain words, every place where
+understanding secretly needs backstory the real reader doesn't have ("A new reader won't know what 'the
+Tuesday sync' refers to"), anchored to the exact sentence.
+
+- **Runs two ways:** automatically the moment a reader-facing document is written (never blocks the
+  user, it runs in the background), and on demand via a "re-run reader test" after a revision.
+- **Cross-model and fail-safe:** the fresh reader runs on a different AI (free Groq) than the writer, so
+  it can't favor its own family's output; if it ever fails it stays silent rather than blocking, a
+  document is never held hostage to a review hiccup.
+- **Measures whether the fix landed:** after the author addresses the flags, the system counts how many
+  flagged phrases were actually resolved and reuses the frozen-rubric score delta to show the document
+  got clearer.
+- **Only for prose an outsider reads:** structured/internal artifacts (project plans, user-story lists,
+  data reports) are correctly skipped, they're graded on their own terms, not on stranger-readability.
+
+Modules: `server/ai/readerTestReviewer.ts` (the reviewer), `reviewDeliverableForReaderTest()` in
+`server/ai/deliverableGenerator.ts` (orchestration), `POST /api/deliverables/:id/reader-test` (manual
+re-run), `deliverable_versions.reader_test` JSONB (storage). Calibrated live at 100% catch on
+context-heavy docs and 0% false alarms on clean ones. The visible annotation UI in the Artifact panel
+is Plan 39-02.
+
 ---
 
 ## 9. Growing and Learning From Each Other

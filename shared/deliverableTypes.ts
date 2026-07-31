@@ -257,3 +257,37 @@ export function getTypeLabel(type: string): string {
   }
   return type.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
+
+/**
+ * Phase 39 (READ-01) — deliverable types that a reader OUTSIDE the project consumes as prose,
+ * and therefore benefit from a fresh-eyes ("reader test") review before delivery. These are the
+ * documents that fail the "this only makes sense if you wrote it" test: a PRD a stakeholder reads,
+ * a blog post, a marketing email, a landing page, a brief, an external research/analysis writeup,
+ * a process doc read by someone who wasn't in the room.
+ *
+ * Deliberately EXCLUDED (structured/internal scaffolding where cover-to-cover outsider readability
+ * is not the quality bar): tech-spec (internal engineering reference), user-stories (structured
+ * list), content-calendar (schedule), project-plan (task table), data-report (numbers), custom
+ * (unknown shape). The frozen rubric already grades those on their own terms; the reader test adds
+ * value specifically for prose meant to be understood by a stranger.
+ */
+export const READER_FACING_DOC_TYPES: ReadonlySet<string> = new Set([
+  'prd',
+  'design-brief',
+  'gtm-plan',
+  'blog-post',
+  'landing-copy',
+  'email-sequence',
+  'seo-brief',
+  'market-research',
+  'competitive-analysis',
+  'process-doc',
+]);
+
+/**
+ * True when a deliverable type is reader-facing prose (see READER_FACING_DOC_TYPES). Fails closed:
+ * unknown/empty types return false so the reader test never fires on something it wasn't meant for.
+ */
+export function isReaderFacingDocType(type: string): boolean {
+  return READER_FACING_DOC_TYPES.has(type);
+}

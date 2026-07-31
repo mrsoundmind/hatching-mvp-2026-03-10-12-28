@@ -2,10 +2,33 @@
 
 > **Read this first if you're an AI (Claude Code, Cursor, Windsurf, Copilot, etc.) or a human picking up on Hatchin.** This file tells you what happened, where we are, and what to do next. Session-continuity log — updated at session boundaries.
 
-**Last refreshed:** 2026-07-27
+**Last refreshed:** 2026-07-31
 **Current branch:** `feat/v2.2-intelligence-fixes` (two workstreams share this branch: v2.2 intelligence fixes + the v2.1-UX UI milestone)
-**Latest commit (v2.2 workstream):** `f5682ab feat(peer-review): widen judge coverage so the teeth actually bite (v2.2)`
+**Latest commit (v2.2 workstream):** Phase 39 Plan 39-01 (Reader Testing Peer Review, server) — committed 2026-07-31 (prior: `f5682ab` peer-review coverage)
 **Latest commit (v2.1-UX UI workstream):** `32468fe feat(ui): render return briefings as a "While you were away" card (Phase 2.4)`
+
+## 2026-07-31 — v2.2 Phase 39 Reader Testing Peer Review, Plan 39-01 (server) shipped
+
+User chose to start **Phase 39** (next canonical v2.1 roadmap phase) after confirming v2.2 has zero residuals; picked "Both" for when the fresh reader fires (auto on generation + manual re-run). Server half is done and verified; UI half (39-02) is planned but NOT built (goes through the UI-approval gate).
+
+**What it does (plain):** reader-facing documents (PRD, blog, marketing email, landing copy, brief, research/analysis, process doc) get reviewed by a **fresh reader** — an AI shown ONLY the finished document + project name + audience, NEVER the chat that produced it — which flags every place an outsider would get lost, catching "this only makes sense if you wrote it."
+
+**Built (server-only):**
+- `shared/deliverableTypes.ts` — `isReaderFacingDocType()` / `READER_FACING_DOC_TYPES` (10 prose types reviewed, 6 structured/internal excluded, fails closed).
+- `server/ai/readerTestReviewer.ts` (NEW) — context-blind reviewer, cross-model (Groq, ≠ the DeepSeek/Gemini writer → no self-preference), free, fail-safe (`null` → never blocks). Quote-anchored annotations `{quote, issue, severity, suggestion, charOffset}` + `readableWithoutContext` + `summary`; `countResolvedAnnotations()` for READ-04.
+- `shared/schema.ts` — new nullable JSONB `deliverable_versions.reader_test` (db:push applied live). `storage.updateDeliverableVersionReaderTest()` (Mem + DB).
+- `server/ai/deliverableGenerator.ts` — `reviewDeliverableForReaderTest()` orchestrates run+persist; auto fire-and-forget after `generateDeliverable()` for reader-facing types.
+- `server/routes/deliverables.ts` — `POST /api/deliverables/:id/reader-test` manual re-run (ownership-checked).
+
+**Design:** mirrors the v2.2 Phase D LLM-as-judge (`llmJudge.ts`). Key finding: deliverables NEVER called peer review before — this is a NEW reviewer on the document side, independent of the autonomous-task judge (that path untouched).
+
+**Verified (live):** doctype 19/19 · context-blind prompt-snapshot 18/18 (READ-02) · LIVE Groq calibration **100% catch / 0% false-alarm** · LIVE Groq+Supabase integration **10/10** (auto-review populates v1; clean PRD no cry-wolf; project-plan gets no review; after a fix **6/7 flagged phrases resolved**) · `tsc` 0 errors · gate:safety / test:integrity / test:dto green. Run tests: `./node_modules/.bin/tsx [-r dotenv/config] scripts/test-reader-test-*.ts` (npm broken locally; not added to package.json to avoid entangling a sibling's uncommitted edits there).
+
+**Requirements:** READ-01/02 ✅ done; READ-03/04 ✅ server-side (annotations persist + resolved-count + rubric delta), UI pending 39-02.
+
+**Constellation note (parallel-work safety):** STATE.md, ROADMAP.md, package.json carry a **sibling session's uncommitted v2.1-UX Phase 4 (Brain Tab IA) edits**, so they were intentionally NOT staged in the 39-01 commit (staging would sweep the sibling's in-flight work). Their Phase 39 lines land once the branch is clean. This commit staged only: the 6 code files + 4 new test scripts + REQUIREMENTS.md + CLAUDE.md + this HANDOFF + HATCHIN-COMPLETE-GUIDE.md + `.planning/phases/39-reader-testing-peer-review/39-01-PLAN.md`.
+
+**Next:** Plan 39-02 (UI) — render annotations in the Artifact panel (quote-highlighted, self-documenting) + author accept/reject + "re-run reader test" button + clarity-delta display; Playwright the HTTP endpoint live. Goes through the UI-approval gate before any `client/src` edit.
 
 ## 2026-07-27 — v2.1-UX milestone shipped (UI polish, parallel workstream)
 

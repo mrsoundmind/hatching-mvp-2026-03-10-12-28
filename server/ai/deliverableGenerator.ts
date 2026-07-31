@@ -6,10 +6,11 @@
  */
 
 import { storage } from '../storage.js';
-import { getSectionsForType, getTypeLabel } from '@shared/deliverableTypes';
+import { getSectionsForType, getTypeLabel, isReaderFacingDocType } from '@shared/deliverableTypes';
 import { generateChatWithRuntimeFallback } from '../llm/providerResolver.js';
 import type { Deliverable } from '@shared/schema';
 import { scoreIteration, type RubricScoreResult } from './rubricScorer.js';
+import { runReaderTest, countResolvedAnnotations, type ReaderTestResult } from './readerTestReviewer.js';
 
 /**
  * Phase 36 — Iterate result shape (RUBR-02).
@@ -170,7 +171,76 @@ export async function generateDeliverable(input: GenerateDeliverableInput): Prom
     console.warn('[deliverableGenerator] v1 baseline scoring failed', err);
   }
 
+  // Phase 39 (READ-01/03) — for reader-facing prose (PRD, blog, email, brief), run the fresh-reader
+  // review. Fire-and-forget: generation returns immediately so the user never waits; the annotations
+  // land on the version a moment later (the UI picks them up via the versions query / WS refresh).
+  if (isReaderFacingDocType(deliverable.type)) {
+    void reviewDeliverableForReaderTest(deliverable.id).catch((err) => {
+      // eslint-disable-next-line no-console
+      console.warn('[deliverableGenerator] reader test failed', err);
+    });
+  }
+
   return { deliverable, generationTimeMs };
+}
+
+/**
+ * Phase 39 — orchestrate a fresh-reader ("reader test") review of a deliverable's CURRENT version and
+ * persist the annotations onto that version row. Reused by two callers:
+ *   - generateDeliverable (auto, fire-and-forget, on reader-facing doc types)
+ *   - POST /api/deliverables/:id/reader-test (manual re-run, e.g. after a revision — READ-04)
+ *
+ * Fail-safe throughout: a non-reader-facing type, a missing deliverable, or a null reviewer result
+ * all return `{ reviewed: false }` without throwing. The reviewer itself is context-blind (it is
+ * handed only the document + project name + audience, never the conversation) per READ-02.
+ */
+export async function reviewDeliverableForReaderTest(
+  deliverableId: string,
+): Promise<{ reviewed: boolean; result: ReaderTestResult | null; versionId?: string }> {
+  const deliverable = await storage.getDeliverable(deliverableId);
+  if (!deliverable) return { reviewed: false, result: null };
+  if (!isReaderFacingDocType(deliverable.type)) return { reviewed: false, result: null };
+
+  const versions = await storage.getDeliverableVersions(deliverableId);
+  if (!versions.length) return { reviewed: false, result: null };
+  const current = [...versions].sort((a, b) => b.versionNumber - a.versionNumber)[0];
+
+  // Project name + audience are the ONLY context the fresh reader gets (READ-02). Audience is the
+  // "who it's for" the user already captured in the project brain; absent → generic outsider.
+  const project = await storage.getProject(deliverable.projectId);
+  const projectName = project?.name || 'this project';
+  const audience =
+    project?.coreDirection && typeof (project.coreDirection as any).whoFor === 'string'
+      ? ((project.coreDirection as any).whoFor as string)
+      : undefined;
+
+  const result = await runReaderTest({
+    deliverableType: deliverable.type,
+    title: deliverable.title,
+    projectName,
+    audience,
+    content: current.content,
+  });
+  if (!result) return { reviewed: false, result: null, versionId: current.id };
+
+  // READ-04 — how many of the most-recent PRIOR reader-test's annotations this version resolved.
+  const priorReviewed = versions
+    .filter((v) => v.versionNumber < current.versionNumber && v.readerTest?.annotations?.length)
+    .sort((a, b) => b.versionNumber - a.versionNumber)[0];
+  const resolvedFromPrevious = priorReviewed?.readerTest
+    ? countResolvedAnnotations(priorReviewed.readerTest.annotations, current.content)
+    : 0;
+
+  await storage.updateDeliverableVersionReaderTest(current.id, {
+    annotations: result.annotations,
+    readableWithoutContext: result.readableWithoutContext,
+    summary: result.summary,
+    reviewerModel: result.reviewerModel,
+    reviewedAt: new Date().toISOString(),
+    resolvedFromPrevious,
+  });
+
+  return { reviewed: true, result, versionId: current.id };
 }
 
 /**
