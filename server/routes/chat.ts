@@ -464,6 +464,13 @@ export function registerChatRoutes(
   // Track conversations using streaming to prevent double handlers
   const streamingConversations = new Set<string>();
 
+  // UX-03: guard against concurrent return-briefing generation for the same project.
+  // The join handler is check-then-act (reads lastSeenAt, writes lastBriefedAt only
+  // after the LLM finishes), so two joins arriving together — a reconnect or a
+  // re-mounted socket — both pass the threshold and both brief. This in-process set
+  // (single-node) lets only the first join generate; the rest skip.
+  const briefingInFlight = new Set<string>();
+
   // Track active streaming responses to prevent duplicates
   const activeStreamingResponses = new Set<string>();
 
@@ -639,29 +646,40 @@ export function registerChatRoutes(
                   // Update lastSeenAt on every join (tracks presence)
                   await storage.setProjectLastSeenAt(projId, now);
 
-                  // Only brief if user was absent for 15+ minutes
-                  if (lastSeenAt && (now.getTime() - lastSeenAt.getTime()) >= ABSENCE_THRESHOLD_MS) {
-                    const briefing = await generateReturnBriefing({
-                      projectId: projId,
-                      userId: ws.__userId,
-                      lastBriefedAt,    // null-safe: returnBriefing handles null by using epoch
-                      storage,
-                      broadcastToConversation,
-                      generateText: async (prompt: string, system: string) => {
-                        const result = await generateChatWithRuntimeFallback({
-                          messages: [
-                            { role: 'system', content: system },
-                            { role: 'user', content: prompt },
-                          ],
-                          temperature: 0.7,
-                        });
-                        return result.content;
-                      },
-                    });
+                  // Only brief if user was absent for 15+ minutes, no briefing already
+                  // happened within this window, and no other join is mid-generation.
+                  const absentLongEnough =
+                    lastSeenAt && (now.getTime() - lastSeenAt.getTime()) >= ABSENCE_THRESHOLD_MS;
+                  const alreadyBriefedRecently =
+                    lastBriefedAt && (now.getTime() - lastBriefedAt.getTime()) < ABSENCE_THRESHOLD_MS;
 
-                    if (briefing.hasBriefing) {
-                      // Update lastBriefedAt to prevent re-triggering in this absence session
-                      await storage.setProjectLastBriefedAt(projId, now);
+                  if (absentLongEnough && !alreadyBriefedRecently && !briefingInFlight.has(projId)) {
+                    briefingInFlight.add(projId);
+                    try {
+                      const briefing = await generateReturnBriefing({
+                        projectId: projId,
+                        userId: ws.__userId,
+                        lastBriefedAt,    // null-safe: returnBriefing handles null by using epoch
+                        storage,
+                        broadcastToConversation,
+                        generateText: async (prompt: string, system: string) => {
+                          const result = await generateChatWithRuntimeFallback({
+                            messages: [
+                              { role: 'system', content: system },
+                              { role: 'user', content: prompt },
+                            ],
+                            temperature: 0.7,
+                          });
+                          return result.content;
+                        },
+                      });
+
+                      if (briefing.hasBriefing) {
+                        // Update lastBriefedAt to prevent re-triggering in this absence session
+                        await storage.setProjectLastBriefedAt(projId, now);
+                      }
+                    } finally {
+                      briefingInFlight.delete(projId);
                     }
                   }
                 }
