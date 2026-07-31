@@ -117,15 +117,9 @@ export function AutonomySettingsPanel({ projectId, executionRules }: AutonomySet
 
   return (
     <div ref={panelRef} className="premium-card p-4 space-y-4">
-      {/* Section header with gradient divider */}
-      <div className="flex items-center gap-2">
-        <span className="text-micro font-semibold text-[var(--hatchin-text-muted)] uppercase tracking-wider">
-          Autonomy Settings
-        </span>
-        <div className="flex-1 h-px bg-gradient-to-r from-[var(--hatchin-border-subtle)] to-transparent" />
-      </div>
-
-      {/* Contextual Description */}
+      {/* Contextual Description — the outer "Autonomy" SectionDivider in BrainDocsTab
+          is the header now; the old inner "Autonomy Settings" title was a redundant
+          second header for one control (P1-B). */}
       <p className="text-micro text-[var(--hatchin-text-muted)] leading-relaxed bg-[var(--hatchin-blue)]/5 p-2.5 rounded-lg border border-[var(--hatchin-blue)]/10">
         Controls how much Hatches can do without your approval—from observation to fully independent execution.
       </p>
