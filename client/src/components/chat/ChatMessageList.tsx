@@ -202,10 +202,16 @@ export function ChatMessageList({
           // falls through to the plain bubble below (message stays in history).
           const isBriefing = (message.metadata as any)?.isReturnBriefing === true;
           if (isBriefing && !dismissedBriefings.has(message.id)) {
+            // A return briefing is always Maya's. If upstream name resolution fell
+            // through to "You"/"AI"/empty (e.g. the briefing message arrived without a
+            // resolvable agentId), force Maya so the card never reads as the user.
+            const rawName = (message.senderName || '').trim();
+            const briefingAuthor =
+              rawName && rawName !== 'You' && !/^ai(\s|-|$)/i.test(rawName) ? rawName : 'Maya';
             return (
               <ReturnBriefingCard
                 key={message.id}
-                agentName={message.senderName}
+                agentName={briefingAuthor}
                 content={message.content}
                 timestamp={message.timestamp}
                 completedTasks={Number((message.metadata as any)?.completedTasks ?? 0)}
