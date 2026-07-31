@@ -9,7 +9,7 @@
 - ✅ **v2.0 Hatches That Deliver** — Phases 16-21 (shipped 2026-03-30)
 - ⚠️ **v3.0 Hatchin That Works** — Phases 22 + 28 shipped; Phases 23-27, 29-34 re-scoped into V3 (closed 2026-04-28) — [archive](milestones/v3.0-ROADMAP.md)
 - 🚧 **v2.1 Hatches That Self-Improve** — Phases 35-47 (13 phases inc. Phase 47 backlog batch + Phase 36.5 hotfix; 5-7w est. — in progress)
-- 🔨 **v2.1-UX Look, Feel and First Impression** — IN PROGRESS. Phases 0 (Foundation: Inter load, 13px type-scale floor, 44px hit areas), 1 (Close the loop: completion card, delegation entrance, waiting-state watchdog) and 2 (Ship the story: landing subhead + legibility, stale-meta fix, pushback-proof section, plain-voice pricing, "While you were away" card) all shipped 2026-07-27 as 13 Playwright-verified UI commits on `feat/v2.2-intelligence-fixes` (parallel to v2.2). Phase 3 (held "Close the laptop…" headline, onboarding collapse) intentionally NOT built. Color rule held; nothing merged. See the milestone block below.
+- 🔨 **v2.1-UX Look, Feel and First Impression** — IN PROGRESS. Phases 0 (Foundation: Inter load, 13px type-scale floor, 44px hit areas), 1 (Close the loop: completion card, delegation entrance, waiting-state watchdog) and 2 (Ship the story: landing subhead + legibility, stale-meta fix, pushback-proof section, plain-voice pricing, "While you were away" card) all shipped 2026-07-27 as 13 Playwright-verified UI commits on `feat/v2.2-intelligence-fixes` (parallel to v2.2). Phase 3 (held "Close the laptop…" headline, onboarding collapse) intentionally NOT built. **Phase 4 (Brain Tab Information Architecture) ✅ SHIPPED 2026-07-31** from the live Brain-tab audit (`.audit-ux-2026-07-20/BRAIN-TAB-FINDINGS.md`): a labeling + ordering + self-documenting pass on the right-sidebar Brain tab — no functional repair (upload/delete/dial/adherence all verified working live), 6 confirmed presentation bugs fixed in 4 Playwright-verified commits (6177021, 2c6f6a9, 5756cce, 29727a4). Color rule held; nothing merged. See the milestone block below.
 - 📋 **Reach & Integrations — Mattermost Bridge** — NOT STARTED, scoped 2026-07-25. Hatchin reaches into the team's existing chat (Mattermost first; channel-agnostic seam so Slack and Teams follow). v1 = approvals + a `/hatchin` conversation taste with no chat-core refactor; Release 2 = full @mention conversation. Scaffolded on branch `feat/mattermost-bridge` off tag `pre-mattermost-integration`. Full brief: [milestones/mattermost-bridge-BRIEF.md](milestones/mattermost-bridge-BRIEF.md). See the milestone block below.
 - 📋 **Future:** v2.1.5, v2.2, v2.3, v2.4, v2.5, v2.5.5, v2.6, v2.7, v3.0 (Mental Models), v4.0 — see [ROADMAP-V3.md](ROADMAP-V3.md) for full post-v2.0 plan
 
@@ -42,6 +42,58 @@ it read 0 most of the time. Do not reintroduce counter cards.
 requirement IDs and success criteria to be produced by proper planning when the milestone opens.
 
 **Depends on:** v2.1 Phase 38 close-out (Plan 38-05 vibe-check + `38-VERIFICATION.md`) — ✅ met 2026-07-21.
+
+### Phase 4 — Brain Tab Information Architecture (✅ SHIPPED 2026-07-31)
+
+**Shipped:** 4 atomic commits, each verified live on `localhost:5001` — `6177021` (P0-A/B rename
+Packages + honest empty state + kill duplicate name), `2c6f6a9` (P1-A/B reorder Knowledge Base up +
+collapse double Autonomy header), `5756cce` (P1-C real doc titles), `29727a4` (P1-D/E/P2-A count pills
++ header hierarchy + desktop 44px). Verification: `.planning/phases/v2.1-ux-04-brain-tab-ia/VERIFICATION.md`.
+Server-side title derivation (5756cce) is code+unit verified (5/5); live server confirmation folds into
+the next dev-server restart (plain `tsx`, no watch). Nothing merged.
+
+
+**Source:** `.audit-ux-2026-07-20/BRAIN-TAB-FINDINGS.md` — a live functional audit of the right-sidebar
+Brain tab. Every feature was exercised in the running app and all work (upload, delete, autonomy dial,
+knowledge adherence). This phase is **presentation/IA only — no plumbing touched.** Serves as the plan.
+
+**Goal:** The Brain tab stops lying about what it contains. One mislabeled `PackageProgress` widget
+currently wears the knowledge base's name, renders empty, and sits above the real knowledge base —
+making a fully-working tab look broken. Fix the labels, order, and self-documentation.
+
+**Confirmed findings (cross-verified against live code 2026-07-31):**
+- **P0-A** `SectionDivider label="Project Knowledge Base"` renders `<PackageProgress>` (empty widget),
+  comment above it literally says `{/* Packages */}` — `BrainDocsTab.tsx:107-113`.
+- **P0-B** two near-identical section names: "Project Knowledge Base" (line 108) + "Knowledge Base"
+  (line 131).
+- **P1-A** the real Knowledge Base (upload + docs) is dead last, below Deliverables.
+- **P1-B** "Autonomy" divider (`BrainDocsTab.tsx:99`) stacks over `AutonomySettingsPanel`'s own
+  "Autonomy Settings" header (lines 122-124) — two headers, one control.
+- **P1-C** docs created via the JSON POST path default `title` to "Untitled Document"
+  (`server/routes/projects.ts:286`); `DocumentCard` renders it raw with no fallback.
+- **P2-A** no section shows a count/state at a glance (`SectionDivider` takes only `label`).
+
+**Partial (overtaken by Phase 0, reframed not rewritten):**
+- **P1-D** flat header hierarchy — the type migration already ran; the "63% at 11px" figure is stale.
+  Now: only the section-divider labels read small; make headers read as headers within the existing
+  `text-micro` uppercase-label convention (no divergence from app-wide pattern).
+- **P1-E** desktop hit areas — controls now carry `min-h-[44px]` on touch but `lg:` shrinks level
+  buttons to 34px / delete to 32px; close the desktop gap.
+
+**Key files:** `client/src/components/sidebar/BrainDocsTab.tsx`, `AutonomySettingsPanel.tsx`,
+`DocumentCard.tsx`, `server/routes/projects.ts`. Suggested 4 atomic commits (per audit §3):
+(1) P0-A+P0-B rename Packages + kill duplicate name + real empty state; (2) P1-A+P1-B reorder KB up +
+collapse double Autonomy header; (3) P1-C real document titles; (4) P1-D+P1-E+P2-A hierarchy, 44px,
+count pills.
+
+**Standing rules:** additive color only (navy/blue frozen, orange kept); self-documenting (verbs +
+names, count pills not bare numbers); verify in runtime on live server `localhost:5001`; one atomic
+commit per fix; path-disjoint from the parallel v2.2/Mattermost server work on this same branch.
+
+**Depends on:** v2.1-UX Phase 0 (type scale + hit-area foundation) — ✅ shipped 2026-07-27.
+
+**Artifacts:** `.planning/phases/v2.1-ux-04-brain-tab-ia/` (non-colliding dir — the global `NN-`
+scheme's `04` and `39` are already taken; v2.1-UX phases are milestone-relative).
 
 ---
 

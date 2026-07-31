@@ -5,7 +5,25 @@
 **Last refreshed:** 2026-07-31
 **Current branch:** `feat/v2.2-intelligence-fixes` (two workstreams share this branch: v2.2 intelligence fixes + the v2.1-UX UI milestone)
 **Latest commit (v2.2 workstream):** Phase 39 Plan 39-01 (Reader Testing Peer Review, server) — committed 2026-07-31 (prior: `f5682ab` peer-review coverage)
-**Latest commit (v2.1-UX UI workstream):** `32468fe feat(ui): render return briefings as a "While you were away" card (Phase 2.4)`
+**Latest commit (v2.1-UX UI workstream):** `29727a4 fix(ui): Brain tab — count pills, header hierarchy, 44px desktop targets (Phase 4)`
+
+## 2026-07-31 — v2.1-UX Phase 4 (Brain Tab Information Architecture) shipped (UI workstream)
+
+User handed over a live functional audit of the right-sidebar **Brain tab** (`.audit-ux-2026-07-20/BRAIN-TAB-FINDINGS.md`) and said: cross-verify every claim first, then use GSD to add a phase and start. Did exactly that.
+
+**Cross-verification (against live code, not the audit's drifted line numbers):** 6 of 8 findings fully valid + unfixed; 2 partially overtaken by Phase 0. The headline bug was real and exactly as described — one mislabeled `<PackageProgress>` widget produced the empty section, the duplicate name, AND the misleading order all at once. **No functional repair needed:** upload, delete, autonomy dial (toggle + levels + persistence), and knowledge adherence were all re-confirmed working live.
+
+**Added via GSD** as v2.1-UX **Phase 4** — a milestone-relative phase (v2.1-UX tracks phases as ROADMAP prose, not the global `NN-slug` dir scheme, where `04` and `39` are already taken). Artifacts + PLAN + VERIFICATION in `.planning/phases/v2.1-ux-04-brain-tab-ia/`. Showed the current state + a rendered dark-theme "after" mockup and got explicit approval before any `client/src` edit (UI-change protocol).
+
+**4 atomic commits, each verified live on `localhost:5001`:**
+- `6177021` **P0-A/B** — the "Project Knowledge Base" divider rendered `<PackageProgress>` (returns null on 0 packages → empty void). Renamed to **Packages** + honest "No active packages" empty state; duplicate "Knowledge Base" name gone.
+- `2c6f6a9` **P1-A/B** — the real Knowledge Base was dead last, below Deliverables. Reordered to lead: Core Direction → **Knowledge Base** → Autonomy → Deliverables → Packages. Removed the inner "Autonomy Settings" header so there's one Autonomy header.
+- `5756cce` **P1-C** — `server/routes/projects.ts` defaulted brain-doc `title` to "Untitled Document". Now derives a title from the first line of content (server) + a client fallback for legacy rows. Server helper unit 5/5; client fallback verified live (a stored "Untitled Document" rendered as "Espresso sourcing plan"). **Server-side live-confirm deferred** to the next dev-server restart (dev runs plain `tsx`, no watch — didn't restart the shared process without the user's OK).
+- `29727a4` **P1-D/E/P2-A** — count/state pills on every header (Knowledge Base · N, Autonomy · <level>, Deliverables · N, Packages · N); headers read as headers (13px bold bright, was 11px muted); level buttons hold 44px on desktop; delete icon keeps 32px visual but gains a 44px `.hit-target` overlay.
+
+Color rule held (navy/blue frozen, orange kept). Path-disjoint from the parallel v2.2/Phase 39 server work. **Constellation:** STATE + ROADMAP + CLAUDE footer + this HANDOFF updated (the Phase 39 session explicitly reserved STATE/ROADMAP for these edits); REQUIREMENTS + COMPLETE-GUIDE intentionally not touched (an IA/presentation fix ships no new feature/requirement — same precedent as 2026-07-23). Nothing merged.
+
+**Next:** merge decision for the whole branch (both workstreams) + `fly deploy`, OR next UI/phase work. The one deferred item is a dev-server restart to live-confirm the server-side title derivation.
 
 ## 2026-07-31 — v2.2 Phase 39 Reader Testing Peer Review, Plan 39-01 (server) shipped
 
