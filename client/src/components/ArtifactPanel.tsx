@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -12,17 +12,60 @@ import {
   Loader2,
   FileText,
   Trash2,
+  Glasses,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Deliverable } from '@shared/schema';
+import { isReaderFacingDocType } from '@shared/deliverableTypes';
 import { RubricBreakdown } from './deliverable/RubricBreakdown';
 import { AutoRevertBanner } from './deliverable/AutoRevertBanner';
+import { ReaderTestBanner, type ReaderTestData } from './deliverable/ReaderTestBanner';
 import {
   iterateDeliverableResponseSchema,
   type IterateDeliverableResponse,
 } from '@shared/dto/apiSchemas';
+
+/**
+ * Phase 39 — wrap the flagged phrases from an active reader-test annotation in an amber underline,
+ * so a note connects to the exact sentence in the rendered document. Only string children are split
+ * (nested markdown elements like bold/links pass through untouched), and only when there are active
+ * quotes — so a clean doc renders exactly as before.
+ */
+function highlightReaderFlags(node: ReactNode, quoteToIssue: Map<string, string>): ReactNode {
+  if (quoteToIssue.size === 0) return node;
+  if (typeof node === 'string') {
+    const quotes = [...quoteToIssue.keys()];
+    const escaped = quotes.map((q) => q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const re = new RegExp(`(${escaped.join('|')})`, 'g');
+    const parts = node.split(re);
+    if (parts.length === 1) return node;
+    return parts.map((part, i) =>
+      quoteToIssue.has(part) ? (
+        <mark
+          key={i}
+          className="reader-flag"
+          title={`A fresh reader would trip here: ${quoteToIssue.get(part)}`}
+          style={{
+            background: 'transparent',
+            color: 'inherit',
+            borderBottom: '2px solid rgba(245,158,11,0.7)',
+            cursor: 'help',
+          }}
+        >
+          {part}
+        </mark>
+      ) : (
+        <Fragment key={i}>{part}</Fragment>
+      ),
+    );
+  }
+  if (Array.isArray(node)) {
+    return node.map((n, i) => <Fragment key={i}>{highlightReaderFlags(n, quoteToIssue)}</Fragment>);
+  }
+  return node;
+}
 
 // Type badge colors
 const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
@@ -84,6 +127,10 @@ export function ArtifactPanel({ deliverableId, pendingVersionNumber, onClose }: 
     rejectedBreakdown?: Array<{ criterion: string; score: number; justification: string }>;
     rubricVersion?: string | null;
   } | null>(null);
+  // Phase 39 — session-local triage of reader-test spots (not persisted; the authoritative
+  // "did the fix land" signal is a Re-run, which recomputes resolvedFromPrevious server-side).
+  const [addressedSpots, setAddressedSpots] = useState<Set<string>>(new Set());
+  const [dismissedSpots, setDismissedSpots] = useState<Set<string>>(new Set());
 
   // Fetch deliverable
   const { data: deliverableData, isLoading } = useQuery<{ deliverable: Deliverable }>({
@@ -102,6 +149,8 @@ export function ArtifactPanel({ deliverableId, pendingVersionNumber, onClose }: 
       rubricVersion?: string | null;
       rubricScore?: RubricBreakdownScore | null;
       revertedFromHigherScore?: boolean;
+      // Phase 39 (READ-03) — fresh-reader review persisted on the version row.
+      readerTest?: ReaderTestData | null;
     }>;
   }>({
     queryKey: [`/api/deliverables/${deliverableId}/versions`],
@@ -167,6 +216,25 @@ export function ArtifactPanel({ deliverableId, pendingVersionNumber, onClose }: 
     },
   });
 
+  // Phase 39 — manual re-run of the fresh-reader review (READ-04). Reviews the current version and
+  // persists new annotations + resolvedFromPrevious. On success, refetch versions so the banner updates.
+  const readerTestMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/deliverables/${deliverableId}/reader-test`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to run reader test');
+      return res.json();
+    },
+    onSuccess: () => {
+      // A fresh review supersedes the session-local triage from the previous review.
+      setAddressedSpots(new Set());
+      setDismissedSpots(new Set());
+      queryClient.invalidateQueries({ queryKey: [`/api/deliverables/${deliverableId}/versions`] });
+    },
+  });
+
   // Phase 36 — FBK-02 UI dropped per simplification 2026-05-13. Server endpoints
   // (POST /accept, /dismiss) still exist (Wave 2) but no UI surface in this phase;
   // the agent learning signal (FBK-04) uses score history + impressions + edits
@@ -191,11 +259,27 @@ export function ArtifactPanel({ deliverableId, pendingVersionNumber, onClose }: 
   // useEffect from the impression fire so a slow/failed POST cannot delay the banner clear.
   useEffect(() => {
     setRevertBannerState(null);
+    setAddressedSpots(new Set());
+    setDismissedSpots(new Set());
   }, [deliverableId]);
 
   const deliverable = deliverableData?.deliverable;
   const versions = versionsData?.versions || [];
   const currentVersion = deliverable?.currentVersion || 1;
+
+  // Phase 39 — the fresh-reader review lives on the active version row (reader-facing types only).
+  const isReaderFacing = deliverable ? isReaderFacingDocType(deliverable.type) : false;
+  const currentReaderTest: ReaderTestData | null =
+    versions.find((v) => v.versionNumber === currentVersion)?.readerTest ?? null;
+  // Map of still-unresolved flagged phrase → its issue, for the inline amber underlines.
+  const activeFlagMap = new Map<string, string>();
+  if (currentReaderTest && !currentReaderTest.readableWithoutContext) {
+    for (const a of currentReaderTest.annotations) {
+      if (a.quote && !dismissedSpots.has(a.quote) && !addressedSpots.has(a.quote)) {
+        activeFlagMap.set(a.quote, a.issue);
+      }
+    }
+  }
 
   // Phase 37 (D-15, TREE-04) — auto-navigate to pendingVersionNumber when the
   // RunTreeView's open_deliverable dispatch carries a versionNumber. Fires once
@@ -403,6 +487,18 @@ export function ArtifactPanel({ deliverableId, pendingVersionNumber, onClose }: 
 
       {/* Content area */}
       <div className="flex-1 overflow-y-auto px-4 py-4 hide-scrollbar">
+        {/* Phase 39 — Fresh reader review (only on reader-facing docs that have been reviewed) */}
+        {isReaderFacing && currentReaderTest && (
+          <ReaderTestBanner
+            readerTest={currentReaderTest}
+            onRerun={() => readerTestMutation.mutate()}
+            isRerunning={readerTestMutation.isPending}
+            addressed={addressedSpots}
+            dismissed={dismissedSpots}
+            onMarkAddressed={(q) => setAddressedSpots((prev) => new Set(prev).add(q))}
+            onDismiss={(q) => setDismissedSpots((prev) => new Set(prev).add(q))}
+          />
+        )}
         {isLoading ? (
           <div className="space-y-3">
             {[...Array(8)].map((_, i) => (
@@ -411,7 +507,17 @@ export function ArtifactPanel({ deliverableId, pendingVersionNumber, onClose }: 
           </div>
         ) : deliverable?.content ? (
           <div className="prose prose-sm dark:prose-invert max-w-none">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={
+                activeFlagMap.size > 0
+                  ? {
+                      p: ({ children }) => <p>{highlightReaderFlags(children, activeFlagMap)}</p>,
+                      li: ({ children }) => <li>{highlightReaderFlags(children, activeFlagMap)}</li>,
+                    }
+                  : undefined
+              }
+            >
               {deliverable.content}
             </ReactMarkdown>
           </div>
@@ -490,6 +596,22 @@ export function ArtifactPanel({ deliverableId, pendingVersionNumber, onClose }: 
             <Download className="w-3.5 h-3.5" />
             .md
           </button>
+          {/* Phase 39 — first-run entry point for reader-facing docs not yet reviewed. Once a review
+              exists, the banner's own Re-run takes over, so this is hidden to avoid a duplicate action. */}
+          {isReaderFacing && !currentReaderTest && (
+            <button
+              onClick={() => readerTestMutation.mutate()}
+              disabled={readerTestMutation.isPending}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
+                bg-[var(--hatchin-surface)] hover:bg-[var(--hatchin-surface)]/80 disabled:opacity-50 transition-colors min-h-[36px]"
+              style={{ color: '#f6cb7a', border: '1px solid rgba(245,158,11,0.38)' }}
+              data-testid="reader-test-run"
+              title="Have a fresh reader check this document"
+            >
+              {readerTestMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Glasses className="w-3.5 h-3.5" />}
+              Reader test
+            </button>
+          )}
         </div>
       </div>
     </motion.div>

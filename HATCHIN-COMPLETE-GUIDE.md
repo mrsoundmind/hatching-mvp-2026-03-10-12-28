@@ -727,7 +727,7 @@ Peer review outcomes feed [trustAdapter.ts](server/autonomy/trustScoring/trustAd
 - CLARIFICATION_REQUIRED and BLOCKED reduce the drafter's trust slightly
 - Reviewers who consistently catch bugs earn a higher trust multiplier of their own
 
-### Reader Testing: the fresh-eyes review for documents (v2.2 / Phase 39, server shipped 2026-07-31)
+### Reader Testing: the fresh-eyes review for documents (v2.2 / Phase 39, shipped 2026-07-31)
 
 The peer review above checks an agent's *task work* for correctness. Reader testing is a second,
 different reviewer that checks a finished *document* for whether an outsider can actually follow it.
@@ -750,11 +750,16 @@ Tuesday sync' refers to"), anchored to the exact sentence.
 - **Only for prose an outsider reads:** structured/internal artifacts (project plans, user-story lists,
   data reports) are correctly skipped, they're graded on their own terms, not on stranger-readability.
 
+Where you see it: the **Artifact panel**, a "Fresh reader review" banner under the author line
+(`client/src/components/deliverable/ReaderTestBanner.tsx`). It reads as a tiny story, what we did (a
+stranger read it), what we found, exactly where (each flagged sentence gets an inline amber underline in
+the document), and how to fix it, with severity in plain words ("Reader gets stuck", not "HIGH"). Each spot
+has Mark-addressed / Dismiss, and a Re-run button re-checks after edits and reports "Resolved N spots".
+
 Modules: `server/ai/readerTestReviewer.ts` (the reviewer), `reviewDeliverableForReaderTest()` in
 `server/ai/deliverableGenerator.ts` (orchestration), `POST /api/deliverables/:id/reader-test` (manual
-re-run), `deliverable_versions.reader_test` JSONB (storage). Calibrated live at 100% catch on
-context-heavy docs and 0% false alarms on clean ones. The visible annotation UI in the Artifact panel
-is Plan 39-02.
+re-run), `deliverable_versions.reader_test` JSONB (storage), `ReaderTestBanner.tsx` (the UI). Calibrated
+live at 100% catch on context-heavy docs and 0% false alarms on clean ones.
 
 ---
 

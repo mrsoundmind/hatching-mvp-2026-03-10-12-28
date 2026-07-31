@@ -48,7 +48,13 @@ User chose to start **Phase 39** (next canonical v2.1 roadmap phase) after confi
 
 **Constellation note (parallel-work safety):** STATE.md, ROADMAP.md, package.json carry a **sibling session's uncommitted v2.1-UX Phase 4 (Brain Tab IA) edits**, so they were intentionally NOT staged in the 39-01 commit (staging would sweep the sibling's in-flight work). Their Phase 39 lines land once the branch is clean. This commit staged only: the 6 code files + 4 new test scripts + REQUIREMENTS.md + CLAUDE.md + this HANDOFF + HATCHIN-COMPLETE-GUIDE.md + `.planning/phases/39-reader-testing-peer-review/39-01-PLAN.md`.
 
-**Next:** Plan 39-02 (UI) — render annotations in the Artifact panel (quote-highlighted, self-documenting) + author accept/reject + "re-run reader test" button + clarity-delta display; Playwright the HTTP endpoint live. Goes through the UI-approval gate before any `client/src` edit.
+**Plan 39-02 (UI) — SHIPPED 2026-07-31, same session.** Through the UI-approval gate: captured the current Artifact panel via Playwright, published an interactive prototype the user clicked through, sharpened the copy twice for self-documentation (added an always-visible "A teammate read this cold…" explainer; changed severity from "HIGH/MED" to plain words "Reader gets stuck"/"Reader has to guess"), THEN edited `client/src`.
+- `client/src/components/deliverable/ReaderTestBanner.tsx` (NEW) — the Fresh Reader Review banner: explainer line + plain-English verdict + flagged-spot cards, green "reads clean"/amber "needs a look", Mark-addressed/Dismiss triage.
+- `client/src/components/ArtifactPanel.tsx` — renders the banner for reader-facing reviewed docs; `highlightReaderFlags()` underlines flagged phrases inline (string children only); `readerTestMutation` (manual re-run); footer "Reader test" first-run button.
+- Verified LIVE on a **self-owned :5005 server** (memory mode, real Groq; started/stopped by me, sibling's :5001 process never touched): real endpoint returned annotations, real banner rendered amber with 5 real-LLM cards, plain-word severities correct, Mark-addressed faded a card + dropped count 5→4. `tsc` 0 errors. No server changes (the `/versions` endpoint already returns the `reader_test` column). Spec kept: `tests/e2e/public-reader-test-verify.spec.ts`.
+- **READ-01..04 all ✅. Phase 39 complete (server + UI).** Scoped commit: ArtifactPanel + ReaderTestBanner + verify spec + REQUIREMENTS/CLAUDE/HANDOFF/GUIDE/39-01-PLAN. STATE.md + ROADMAP.md STILL deferred (still carry the sibling's uncommitted v2.1-UX Phase 4 edits).
+
+**Next:** Phase 39 is done. Next canonical roadmap phase is 40 (Internal Eval Migration to promptfoo). Or the standing ship-it decision (branch is ~252 commits ahead of `reconcile-codex`).
 
 ## 2026-07-27 — v2.1-UX milestone shipped (UI polish, parallel workstream)
 
