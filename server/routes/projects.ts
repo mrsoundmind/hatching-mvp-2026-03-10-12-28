@@ -8,6 +8,22 @@ import multer from 'multer';
 import path from 'path';
 import { extractDocumentText } from '../lib/extractDocumentText.js';
 
+/**
+ * Derive a scannable brain-document title (P1-C). Uses the supplied title when it's
+ * real; otherwise pulls the first non-empty line of content (stripping markdown
+ * markers) so a document list never shows the useless, identical "Untitled Document".
+ */
+function deriveBrainDocTitle(rawTitle: string | undefined, content: string): string {
+  const t = (rawTitle || '').trim();
+  if (t && t.toLowerCase() !== 'untitled document') return t.slice(0, 200);
+  const firstLine = (content || '')
+    .split('\n')
+    .map(l => l.trim())
+    .find(l => l.length > 0) || '';
+  const cleaned = firstLine.replace(/^#+\s*/, '').replace(/[*_`>#]/g, '').trim();
+  return cleaned ? cleaned.slice(0, 80) : 'Untitled note';
+}
+
 const updateProjectSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   emoji: z.string().max(10).optional(),
@@ -283,7 +299,7 @@ export function registerProjectRoutes(app: Express, deps: RegisterProjectDeps): 
       }
 
       const brainDocSchema = z.object({
-        title: z.string().min(1).max(500).default("Untitled Document"),
+        title: z.string().max(500).optional(),
         content: z.string().max(50000).default(""),
         type: z.enum(['idea-development', 'project-plan', 'meeting-notes', 'research']).default('idea-development'),
       });
@@ -293,7 +309,10 @@ export function registerProjectRoutes(app: Express, deps: RegisterProjectDeps): 
       }
       const newDocument = {
         id: randomUUID(),
-        title: parsed.data.title,
+        // Never store "Untitled Document" — derive a scannable title from the first
+        // line of content when no title is supplied (P1-C). The file-upload path
+        // already uses the filename; this is the JSON/chat-added path.
+        title: deriveBrainDocTitle(parsed.data.title, parsed.data.content),
         content: parsed.data.content,
         type: parsed.data.type,
         createdAt: new Date().toISOString()

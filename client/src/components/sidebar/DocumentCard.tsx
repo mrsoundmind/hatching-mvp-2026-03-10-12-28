@@ -4,8 +4,25 @@ import { FileText, Trash2 } from 'lucide-react';
 interface DocumentCardDoc {
   id: string;
   title: string;
+  content?: string;
   type: string;
   createdAt: string;
+}
+
+/**
+ * Belt-and-suspenders for legacy rows already stored as "Untitled Document" (the
+ * server now derives real titles at creation, P1-C). Falls back to the first line
+ * of content so the list stays scannable.
+ */
+function displayTitle(doc: DocumentCardDoc): string {
+  const t = (doc.title || '').trim();
+  if (t && t.toLowerCase() !== 'untitled document') return t;
+  const firstLine = (doc.content || '')
+    .split('\n')
+    .map(l => l.trim())
+    .find(l => l.length > 0) || '';
+  const cleaned = firstLine.replace(/^#+\s*/, '').replace(/[*_`>#]/g, '').trim();
+  return cleaned ? cleaned.slice(0, 80) : 'Untitled note';
 }
 
 interface DocumentCardProps {
@@ -36,6 +53,7 @@ function getBadgeLabel(type: string): string {
 }
 
 export function DocumentCard({ doc, onDelete }: DocumentCardProps) {
+  const title = displayTitle(doc);
   return (
     <motion.div
       layout
@@ -52,7 +70,7 @@ export function DocumentCard({ doc, onDelete }: DocumentCardProps) {
       {/* Middle: title + meta */}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-[var(--hatchin-text-bright)] truncate">
-          {doc.title}
+          {title}
         </p>
         <div className="flex items-center gap-1.5 mt-0.5">
           <span
@@ -73,7 +91,7 @@ export function DocumentCard({ doc, onDelete }: DocumentCardProps) {
           keeps the 44px target. */}
       <button
         type="button"
-        aria-label={`Delete ${doc.title}`}
+        aria-label={`Delete ${title}`}
         onClick={() => onDelete(doc.id)}
         className="min-h-[44px] min-w-[44px] lg:min-h-0 lg:min-w-0 w-8 h-8 flex items-center justify-center rounded-lg text-[var(--hatchin-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
       >
