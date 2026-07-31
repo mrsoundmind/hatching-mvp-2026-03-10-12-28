@@ -84,16 +84,14 @@ export function DocumentCard({ doc, onDelete }: DocumentCardProps) {
         </div>
       </div>
 
-      {/* Delete button.
-          min-h-auto/min-w-auto are not real Tailwind utilities, so the lg: overrides
-          were silently dropped and this stayed 44x44 on desktop against a 14px icon.
-          min-h-0/min-w-0 are valid and let w-8/h-8 (32px) win from lg up, while touch
-          keeps the 44px target. */}
+      {/* Delete button — stays a compact 32px icon visually, but .hit-target adds an
+          invisible 44px centered hit area on every breakpoint (P1-E), so desktop no
+          longer falls under the 44px minimum the way min-h-0/min-w-0 did. */}
       <button
         type="button"
         aria-label={`Delete ${title}`}
         onClick={() => onDelete(doc.id)}
-        className="min-h-[44px] min-w-[44px] lg:min-h-0 lg:min-w-0 w-8 h-8 flex items-center justify-center rounded-lg text-[var(--hatchin-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+        className="hit-target w-8 h-8 flex items-center justify-center rounded-lg text-[var(--hatchin-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
       >
         <Trash2 className="w-3.5 h-3.5" />
       </button>

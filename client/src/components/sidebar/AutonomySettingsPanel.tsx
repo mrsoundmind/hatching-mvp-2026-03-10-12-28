@@ -126,7 +126,7 @@ export function AutonomySettingsPanel({ projectId, executionRules }: AutonomySet
 
       {/* Toggle row */}
       <div className="flex items-start gap-3">
-        <div className="min-h-[44px] lg:min-h-auto flex items-center">
+        <div className="min-h-[44px] flex items-center">
           <Switch
             checked={autonomyEnabled}
             onCheckedChange={handleToggle}
@@ -206,7 +206,7 @@ export function AutonomySettingsPanel({ projectId, executionRules }: AutonomySet
                 aria-checked={isActive}
                 onClick={() => handleDialChange(level)}
                 whileTap={{ scale: 0.97 }}
-                className={`flex items-center justify-center min-h-[44px] lg:min-h-[34px] text-micro font-medium capitalize rounded-xl transition-all duration-200 border ${
+                className={`flex items-center justify-center min-h-[44px] text-micro font-medium capitalize rounded-xl transition-all duration-200 border ${
                   isActive 
                     ? 'bg-[var(--glass-frosted-strong)] border-[var(--hatchin-border)] shadow-sm' 
                     : 'bg-[var(--hatchin-surface)] border-transparent text-[var(--hatchin-text-muted)]'
