@@ -389,8 +389,8 @@ export function ProjectTree({
                       so attention goes to the chat, not to a wall of color. */}
                   <div className="relative flex-shrink-0 mt-0.5">
                     <Folder
-                      className="w-[18px] h-[18px] transition-colors duration-300"
-                      style={{ color: isWorking ? 'var(--hatchin-working-amber)' : 'var(--hatchin-text-muted)' }}
+                      className={`w-[18px] h-[18px] transition-colors duration-300 ${isWorking ? '' : getProjectIconColor(project.color)}`}
+                      style={isWorking ? { color: 'var(--hatchin-working-amber)' } : undefined}
                     />
                     {isWorking && (
                       <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[var(--hatchin-working-amber)] ring-2 ring-[var(--hatchin-panel)] animate-pulse" />
@@ -410,7 +410,7 @@ export function ProjectTree({
                   ) : (
                     <div className="min-w-0 flex-1">
                       <span
-                        className="block font-semibold hatchin-text line-clamp-2 text-sm leading-tight cursor-pointer"
+                        className={`block font-medium line-clamp-2 text-sm leading-tight cursor-pointer ${isProjectActive && !activeTeamId && !activeAgentId ? 'hatchin-text' : 'hatchin-text-muted'}`}
                         onDoubleClick={() => handleDoubleClick('project', project.id, project.name)}
                       >
                         {highlightMatch(project.name, searchQuery)}
