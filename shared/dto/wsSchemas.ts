@@ -179,6 +179,9 @@ const requiredServerSchemas = z.union([
     type: z.literal('task_requires_approval'),
     taskId: z.string(),
     agentName: z.string(),
+    // What the approval is about — sent by taskExecutionPipeline so the chat card can
+    // show it. Without this key the strict object would strip it (Zod drops unknowns).
+    taskTitle: z.string().optional(),
     riskReasons: z.array(z.string()).optional(),
   }),
   z.object({
