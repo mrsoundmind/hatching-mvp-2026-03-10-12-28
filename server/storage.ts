@@ -240,6 +240,8 @@ export interface IStorage {
   }): Promise<void>;
   getDailyUsage(userId: string, date: string): Promise<UsageDailySummary | undefined>;
   getMonthlyUsage(userId: string, yearMonth: string): Promise<UsageDailySummary[]>;
+  // Tier 0.1 — sum of ALL users' estimated LLM cost (cents) for a date, for the global spend kill.
+  getGlobalDailyCostCents(date: string): Promise<number>;
   updateUserTier(userId: string, tier: 'free' | 'pro', stripeData?: {
     customerId?: string;
     subscriptionId?: string;
@@ -563,9 +565,10 @@ export class MemStorage implements IStorage {
   }
 
   async upsertOAuthUser(input: OAuthUserInput): Promise<User> {
-    const existing =
-      (await this.getUserByProviderSub(input.provider, input.providerSub)) ||
-      (await this.getUserByEmail(input.email));
+    // ACCT-1 — look up strictly by (provider, sub). The prior `|| getUserByEmail()` fallback let a
+    // reassigned/re-registered email hijack the previous owner's account by overwriting provider_sub.
+    // Google's `sub` is stable, so existing users still resolve; no email fallback on OAuth login.
+    const existing = await this.getUserByProviderSub(input.provider, input.providerSub);
     if (existing) {
       const updated: User = {
         ...existing,
@@ -579,6 +582,12 @@ export class MemStorage implements IStorage {
       this.users.set(existing.id, updated);
       return updated;
     }
+
+    // ACCT-1 — email is UNIQUE. If it already belongs to a DIFFERENT account (no matching sub),
+    // reject explicitly instead of taking it over (the old bug) or letting the raw DB unique
+    // violation surface. The OAuth callback maps this to /login?error=email_in_use.
+    const emailOwner = await this.getUserByEmail(input.email);
+    if (emailOwner) throw new Error('OAUTH_EMAIL_CONFLICT');
 
     return this.createUser({
       email: input.email,
@@ -1531,6 +1540,7 @@ export class MemStorage implements IStorage {
   async upsertDailyUsage(): Promise<void> {}
   async getDailyUsage(): Promise<UsageDailySummary | undefined> { return undefined; }
   async getMonthlyUsage(): Promise<UsageDailySummary[]> { return []; }
+  async getGlobalDailyCostCents(): Promise<number> { return 0; }
   async updateUserTier(): Promise<void> {}
   async getUserTier(userId: string): Promise<{ tier: string; subscriptionStatus: string; graceExpiresAt: Date | null } | undefined> {
     const user = this.users.get(userId);
@@ -1816,7 +1826,7 @@ export class MemStorage implements IStorage {
 // ============================================================
 import { db } from "./db";
 import * as schema from "@shared/schema";
-import { eq, and, sql, desc, inArray, isNull, lt } from "drizzle-orm";
+import { eq, and, sql, desc, asc, gt, inArray, isNull, lt } from "drizzle-orm";
 
 export class DatabaseStorage implements IStorage {
   // Users
@@ -1847,9 +1857,10 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
   async upsertOAuthUser(input: OAuthUserInput): Promise<User> {
-    const existing =
-      (await this.getUserByProviderSub(input.provider, input.providerSub)) ||
-      (await this.getUserByEmail(input.email));
+    // ACCT-1 — look up strictly by (provider, sub). The prior `|| getUserByEmail()` fallback let a
+    // reassigned/re-registered email hijack the previous owner's account by overwriting provider_sub.
+    // Google's `sub` is stable, so existing users still resolve; no email fallback on OAuth login.
+    const existing = await this.getUserByProviderSub(input.provider, input.providerSub);
     if (existing) {
       const [updated] = await db
         .update(schema.users)
@@ -1865,6 +1876,12 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return updated;
     }
+
+    // ACCT-1 — email is UNIQUE. If it already belongs to a DIFFERENT account (no matching sub),
+    // reject explicitly instead of taking it over (the old bug) or letting the raw DB unique
+    // violation surface. The OAuth callback maps this to /login?error=email_in_use.
+    const emailOwner = await this.getUserByEmail(input.email);
+    if (emailOwner) throw new Error('OAUTH_EMAIL_CONFLICT');
 
     const [created] = await db
       .insert(schema.users)
@@ -2217,29 +2234,34 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
   async getMessagesByConversation(conversationId: string, options?: { page?: number; limit?: number; before?: string; after?: string; messageType?: string }): Promise<Message[]> {
-    const rows = await db.select().from(schema.messages).where(eq(schema.messages.conversationId, conversationId));
-    let msgs = rows as Message[];
-    if (options?.messageType) msgs = msgs.filter(m => m.messageType === options.messageType);
-    // Sort ascending by createdAt (oldest first)
-    msgs.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-    // Cursor-based filtering
-    if (options?.before) {
-      const cutoff = new Date(options.before).getTime();
-      msgs = msgs.filter(m => new Date(m.createdAt).getTime() < cutoff);
+    // Tier 0.8 (DOS-4 / PERF-2 / BUG-6) — push ordering + limit + cursors into SQL rather than
+    // SELECT *-then-sort/slice-in-JS. This is the highest-frequency query; the old full-history read
+    // was a memory-DoS lever and a scale cliff. The `id` tiebreaker makes same-millisecond ordering
+    // stable (deterministic), fixing the unstable JS sort. Contract preserved: results come back
+    // oldest-first; `limit` returns the most-recent N; page-based does ascending offset paging.
+    const HARD_MAX = Number(process.env.MESSAGES_HARD_MAX ?? 500);
+    const conds = [eq(schema.messages.conversationId, conversationId)];
+    if (options?.messageType) conds.push(eq(schema.messages.messageType, options.messageType as 'user' | 'agent' | 'system'));
+    if (options?.before) conds.push(lt(schema.messages.createdAt, new Date(options.before)));
+    if (options?.after) conds.push(gt(schema.messages.createdAt, new Date(options.after)));
+    const where = and(...conds);
+
+    // Page-based pagination: ascending offset window.
+    if (options?.page && options?.limit) {
+      const rows = await db.select().from(schema.messages).where(where)
+        .orderBy(asc(schema.messages.createdAt), asc(schema.messages.id))
+        .limit(options.limit)
+        .offset((options.page - 1) * options.limit);
+      return rows as Message[];
     }
-    if (options?.after) {
-      const cutoff = new Date(options.after).getTime();
-      msgs = msgs.filter(m => new Date(m.createdAt).getTime() > cutoff);
-    }
-    // Apply pagination: page-based takes priority, otherwise return last N (most recent window)
-    const limit = options?.limit;
-    if (options?.page && limit) {
-      const start = (options.page - 1) * limit;
-      msgs = msgs.slice(start, start + limit);
-    } else if (limit) {
-      msgs = msgs.slice(Math.max(0, msgs.length - limit));
-    }
-    return msgs;
+
+    // Default: the most-recent N (N = limit, else a hard ceiling so an unbounded caller can no longer
+    // read an entire conversation's history), returned oldest-first to preserve the prior contract.
+    const take = Math.min(options?.limit ?? HARD_MAX, HARD_MAX);
+    const rows = await db.select().from(schema.messages).where(where)
+      .orderBy(desc(schema.messages.createdAt), desc(schema.messages.id))
+      .limit(take);
+    return (rows as Message[]).reverse();
   }
   async getMessage(id: string): Promise<Message | undefined> {
     const rows = await db.select().from(schema.messages).where(eq(schema.messages.id, id));
@@ -2487,6 +2509,14 @@ export class DatabaseStorage implements IStorage {
       [userId, `${yearMonth}%`],
     );
     return result.rows;
+  }
+
+  async getGlobalDailyCostCents(date: string): Promise<number> {
+    const [row] = await db
+      .select({ total: sql<number>`COALESCE(SUM(${schema.usageDailySummary.estimatedCostCents}), 0)` })
+      .from(schema.usageDailySummary)
+      .where(eq(schema.usageDailySummary.date, date));
+    return Number(row?.total ?? 0);
   }
 
   async updateUserTier(userId: string, tier: 'free' | 'pro', stripeData?: {

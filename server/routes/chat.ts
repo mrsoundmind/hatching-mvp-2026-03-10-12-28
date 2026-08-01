@@ -74,6 +74,7 @@ import { detectDeliverableIntent } from "../ai/deliverableDetector.js";
 import { compactConversation, getCompactedContext } from "../ai/conversationCompactor.js";
 import { recordUsage } from "../billing/usageTracker.js";
 import { checkAutonomyAccess, checkMessageSafetyCap } from "../middleware/tierGate.js";
+import { checkCostGuard, costGuardMessage } from "../billing/costGuard.js";
 
 // ═══════════════════════════════════════════════════════════════
 // SECTION 1: Autonomy Trigger Detection (~lines 76-136)
@@ -869,6 +870,20 @@ export function registerChatRoutes(
                 message: "Conversation not accessible.",
               });
               break;
+            }
+            // Tier 0.1/0.2 — ALWAYS-ON cost + rate brake, independent of FEATURE_BILLING_GATES.
+            // Prevents a single logged-in user (or a global runaway) from spending unbounded LLM
+            // budget on our keys through the WS path, even when billing gates are off (the default).
+            if (sessionUserId) {
+              const guard = await checkCostGuard(storage, sessionUserId);
+              if (!guard.allowed && guard.reason) {
+                ws.send(JSON.stringify({
+                  type: 'error',
+                  code: guard.reason === 'rate_limit' ? 'RATE_LIMITED' : 'USAGE_LIMIT',
+                  message: costGuardMessage(guard.reason),
+                }));
+                break;
+              }
             }
             // Invisible safety cap — no counter shown, only blocks at abuse-level volumes.
             if (sessionUserId) {

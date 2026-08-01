@@ -149,7 +149,10 @@ function validateGoogleClaims(claims: oidc.IDToken | undefined): VerifiedGoogleI
     throw new Error("Google token email is missing");
   }
 
-  if (claims.email_verified === false) {
+  // ACCT-1 — require email_verified to be explicitly true (was: only rejected an explicit `false`,
+  // so a missing/absent claim slipped through). Defense-in-depth alongside the strict (provider,sub)
+  // lookup: an unverified email must never seed or match an account.
+  if (claims.email_verified !== true) {
     throw new Error("Google email is not verified");
   }
 

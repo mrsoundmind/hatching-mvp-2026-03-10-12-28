@@ -197,6 +197,11 @@ export async function registerRoutes(app: Express, sessionParser?: SessionParser
       });
     } catch (error) {
       console.error("Google auth callback failed:", error);
+      // ACCT-1 — a sign-in whose email already belongs to a different account is rejected (no
+      // takeover). Give it a distinct, clearer message instead of the generic login failure.
+      if (error instanceof Error && error.message === 'OAUTH_EMAIL_CONFLICT') {
+        return res.redirect('/login?error=email_in_use');
+      }
       return res.redirect('/login?error=google_login_failed');
     }
   });
@@ -380,18 +385,33 @@ export async function registerRoutes(app: Express, sessionParser?: SessionParser
 
   app.post("/api/personality/feedback", async (req, res) => {
     try {
-      const { agentId, feedback, messageContent, agentResponse } = req.body;
       // Always use session userId — never trust client-supplied userId
-      const userId = (req.session as any).userId as string;
+      const userId = getSessionUserId(req);
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-      if (!agentId || !userId || !feedback) {
-        return res.status(400).json({ error: "Missing required fields" });
+      // SEC1-1 — validate + bound the body. Was previously unvalidated: arbitrary `feedback` and
+      // unbounded messageContent/agentResponse strings written into the training pipeline.
+      const { agentId, feedback, messageContent, agentResponse } = (req.body ?? {}) as Record<string, unknown>;
+      if (typeof agentId !== "string" || !agentId || (feedback !== "positive" && feedback !== "negative")) {
+        return res.status(400).json({ error: "Invalid feedback payload" });
+      }
+      if ((messageContent != null && (typeof messageContent !== "string" || messageContent.length > 5000)) ||
+          (agentResponse != null && (typeof agentResponse !== "string" || agentResponse.length > 5000))) {
+        return res.status(400).json({ error: "Invalid feedback payload" });
       }
 
       const feedbackAgent = await storage.getAgent(agentId);
+      // SEC1-1 — ownership check: the agent's project must belong to the caller. 404 on mismatch
+      // (matches the sibling routes) so a user cannot write traits/feedback into another user's agent.
+      if (!feedbackAgent) return res.status(404).json({ error: "Agent not found" });
+      const feedbackProject = await storage.getProject(feedbackAgent.projectId);
+      if (!feedbackProject || feedbackProject.userId !== userId) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
       const updatedProfile = personalityEngine.adaptPersonalityFromFeedback(
-        agentId, userId, feedback, messageContent || '', agentResponse || '',
-        feedbackAgent?.role ?? null // v2.2 Phase C: resolve correct role baseline for fresh profiles
+        agentId, userId, feedback, (messageContent as string) || '', (agentResponse as string) || '',
+        feedbackAgent.role ?? null // v2.2 Phase C: resolve correct role baseline for fresh profiles
       );
 
       // Store feedback for future analysis

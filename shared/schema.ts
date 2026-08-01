@@ -172,6 +172,9 @@ export const messages = pgTable("messages", {
 }, (table) => ({
   conversationIdIdx: index("messages_conversation_id_idx").on(table.conversationId),
   createdAtIdx: index("messages_created_at_idx").on(table.createdAt),
+  // Tier 0.8 — composite for the hot getMessagesByConversation path (filter by conversation,
+  // order by created_at). Lets Postgres satisfy the ORDER BY … LIMIT from the index directly.
+  conversationCreatedIdx: index("messages_conversation_created_idx").on(table.conversationId, table.createdAt),
 }));
 
 // Message Reactions Table for AI Training
