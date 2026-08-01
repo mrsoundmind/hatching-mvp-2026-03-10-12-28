@@ -6,6 +6,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsFetching } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import type { Project, Team, Agent } from "@shared/schema";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 /** Skeleton placeholder shown while project data is loading */
 function ProjectTreeSkeleton() {
@@ -129,22 +136,12 @@ export function LeftSidebar({
   }, [showUndoPopup, deletedEntityData]);
 
 
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const projectListRef = useRef<HTMLDivElement>(null);
   const projectScrollHideTimeoutRef = useRef<number | null>(null);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsUserMenuOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  // Radix DropdownMenu handles outside-click + Escape; isUserMenuOpen is kept in sync
+  // via onOpenChange only for the chevron rotation.
 
   // Keyboard shortcut for search
   useEffect(() => {
@@ -510,44 +507,41 @@ export function LeftSidebar({
     >
       <div className="ambient-glow-top" />
 
-      {/* Welcome Header */}
-      <div ref={dropdownRef} className="relative mb-3 pb-3 hatchin-border border-b">
-        <div
-          className="flex items-center justify-between cursor-pointer hover:bg-hatchin-border rounded-lg p-2 transition-colors"
-          onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-              <span className="text-white font-semibold text-sm">{user?.name?.charAt(0).toUpperCase() || 'U'}</span>
-            </div>
-            <span className="text-sm hatchin-text">Welcome, {user?.name || 'User'}</span>
-          </div>
-          <ChevronDown className={`w-3 h-3 hatchin-text-muted transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
-        </div>
-        {/* User Dropdown Menu */}
-        {isUserMenuOpen && (
-          <div className="absolute top-full left-0 right-0 mt-2 hatchin-bg-card border hatchin-border rounded-lg shadow-lg z-50 overflow-hidden">
-            <div className="py-1">
-              <a
-                href="/account"
-                className="w-full flex items-center gap-3 px-3 py-2 text-sm hatchin-text hover:bg-hatchin-border transition-colors"
-              >
+      {/* Welcome Header — keyboard-operable account menu (Radix) */}
+      <div className="relative mb-3 pb-3 hatchin-border border-b">
+        <DropdownMenu onOpenChange={setIsUserMenuOpen}>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label="Account menu"
+              className="w-full flex items-center justify-between cursor-pointer hover:bg-hatchin-border rounded-lg p-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hatchin-blue)] focus-visible:ring-offset-0"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                  <span className="text-white font-semibold text-sm">{user?.name?.charAt(0).toUpperCase() || 'U'}</span>
+                </div>
+                <span className="text-sm hatchin-text">Welcome, {user?.name || 'User'}</span>
+              </div>
+              <ChevronDown className={`w-3 h-3 hatchin-text-muted transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-[var(--radix-dropdown-menu-trigger-width)]">
+            <DropdownMenuItem asChild>
+              <a href="/account" className="flex items-center gap-3 cursor-pointer">
                 <CreditCard className="w-4 h-4" />
-                Account & Billing
+                Account &amp; Billing
               </a>
+            </DropdownMenuItem>
+            <div className="px-1 py-0.5" onClick={(e) => e.stopPropagation()}>
               <ThemeToggle />
-
-              <div className="border-t hatchin-border my-1"></div>
-              <button
-                onClick={signOut}
-                className="w-full flex items-center gap-3 px-3 py-2 text-sm hatchin-text hover:bg-hatchin-border transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                Sign Out
-              </button>
             </div>
-          </div>
-        )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={signOut} className="flex items-center gap-3 cursor-pointer">
+              <LogOut className="w-4 h-4" />
+              Sign Out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       {/* Search Bar */}
       <div className="relative mb-4">
