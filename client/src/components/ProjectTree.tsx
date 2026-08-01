@@ -401,6 +401,7 @@ export function ProjectTree({
                     <Folder
                       className={`w-[18px] h-[18px] transition-colors duration-300 ${isWorking ? '' : getProjectIconColor(project.color)}`}
                       style={isWorking ? { color: 'var(--hatchin-working-amber)' } : undefined}
+                      fill={isProjectActive ? 'currentColor' : 'none'}
                     />
                     {isWorking && (
                       <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[var(--hatchin-working-amber)] ring-2 ring-[var(--hatchin-panel)] animate-pulse" />

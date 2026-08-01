@@ -657,6 +657,18 @@ export function LeftSidebar({
           >
             <Search className="w-[18px] h-[18px]" />
           </button>
+          {/* Expand toggle — kept at the TOP, the same spot the Collapse button occupies in the
+              expanded Projects header (right after search), so it never moves out from under the
+              user's cursor on collapse. */}
+          <button
+            type="button"
+            aria-label="Expand sidebar"
+            title="Expand (⌘\\)"
+            onClick={expandSidebar}
+            className="hit-target w-10 h-10 rounded-lg flex items-center justify-center hatchin-text-muted hover:bg-hatchin-border hover:hatchin-text transition-colors shrink-0"
+          >
+            <PanelLeftOpen className="w-[18px] h-[18px]" />
+          </button>
           <button
             type="button"
             aria-label="New project"
@@ -691,6 +703,7 @@ export function LeftSidebar({
                         <Folder
                           className={`w-5 h-5 transition-colors ${isWorking ? '' : `${projectIconColorClass(project.color)}${isActive ? '' : ' opacity-40'}`}`}
                           style={isWorking ? { color: 'var(--hatchin-working-amber)' } : undefined}
+                          fill={isActive ? 'currentColor' : 'none'}
                         />
                       </button>
                     </TooltipTrigger>
@@ -710,16 +723,6 @@ export function LeftSidebar({
               );
             })}
           </div>
-
-          <button
-            type="button"
-            aria-label="Expand sidebar"
-            title="Expand (⌘\\)"
-            onClick={expandSidebar}
-            className="hit-target w-10 h-10 mt-1.5 rounded-lg flex items-center justify-center hatchin-text-muted hover:bg-hatchin-border hover:hatchin-text transition-colors shrink-0"
-          >
-            <PanelLeftOpen className="w-[18px] h-[18px]" />
-          </button>
         </>
       ) : (
         /* ----------------------- FULL SIDEBAR ----------------------- */
