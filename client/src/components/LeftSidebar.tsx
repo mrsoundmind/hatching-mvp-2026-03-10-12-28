@@ -1,7 +1,7 @@
 import { devLog } from '@/lib/devLog';
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ProjectTree } from "@/components/ProjectTree";
-import { ChevronDown, Search, LogOut, X, CreditCard, Folder, Plus, ChevronRight, PanelLeftClose } from "lucide-react";
+import { ChevronDown, Search, LogOut, X, CreditCard, Folder, Plus, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAgentWorkingState } from "@/hooks/useAgentWorkingState";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -718,7 +718,7 @@ export function LeftSidebar({
             onClick={expandSidebar}
             className="hit-target w-10 h-10 mt-1.5 rounded-lg flex items-center justify-center hatchin-text-muted hover:bg-hatchin-border hover:hatchin-text transition-colors shrink-0"
           >
-            <ChevronRight className="w-[18px] h-[18px]" />
+            <PanelLeftOpen className="w-[18px] h-[18px]" />
           </button>
         </>
       ) : (
@@ -759,7 +759,7 @@ export function LeftSidebar({
                 onClick={collapseSidebar}
                 className="hit-target w-8 h-8 rounded-lg flex items-center justify-center hatchin-text-muted hover:bg-hatchin-border hover:hatchin-text transition-colors"
               >
-                <PanelLeftClose className="w-4 h-4" />
+                <PanelLeftClose className="w-[18px] h-[18px]" />
               </button>
             )}
             <button
