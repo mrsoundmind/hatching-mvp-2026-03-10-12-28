@@ -143,9 +143,18 @@ export function LeftSidebar({
   const persistCollapsed = (next: boolean) => {
     try { localStorage.setItem('hatchin_sidebar_collapsed', String(next)); } catch { /* private mode */ }
   };
-  const expandSidebar = useCallback(() => { setCollapsed(false); persistCollapsed(false); }, []);
-  const collapseSidebar = useCallback(() => { setCollapsed(true); persistCollapsed(true); }, []);
+  // Auto-collapse into focus mode when the active project's team starts working.
+  // Fires at most once per session; any manual toggle disarms it so we never fight
+  // the user's explicit choice ("never trap them"). See the effect below.
+  const autoCollapseArmedRef = useRef(true);
+  const prevActiveWorkingRef = useRef(0);
+  const prevProjectRef = useRef<string | null>(activeProjectId);
+  const autoCollapseInitRef = useRef(false);
+  const disarmAutoCollapse = () => { autoCollapseArmedRef.current = false; };
+  const expandSidebar = useCallback(() => { disarmAutoCollapse(); setCollapsed(false); persistCollapsed(false); }, []);
+  const collapseSidebar = useCallback(() => { disarmAutoCollapse(); setCollapsed(true); persistCollapsed(true); }, []);
   const toggleCollapsed = useCallback(() => {
+    disarmAutoCollapse();
     setCollapsed(prev => { const next = !prev; persistCollapsed(next); return next; });
   }, []);
   const isCollapsed = collapsed && isDesktop;
@@ -211,6 +220,34 @@ export function LeftSidebar({
     document.addEventListener('keydown', handleKeydown);
     return () => document.removeEventListener('keydown', handleKeydown);
   }, [searchQuery, isCollapsed, expandSidebar, toggleCollapsed]);
+
+  // Auto-collapse into focus mode when the ACTIVE project's team goes idle → working.
+  // Only fires on a genuine in-session transition (skips initial load and project
+  // switches), only on desktop, only while expanded, and only once per session
+  // (disarmed after firing or on any manual toggle). Deliberately does NOT persist —
+  // this is transient focus, so the remembered preference reflects manual choices only.
+  useEffect(() => {
+    const activeWorking = activeProjectId
+      ? agents.filter(a => a.projectId === activeProjectId && workingAgents.has(a.id)).length
+      : 0;
+    const sameProject = prevProjectRef.current === activeProjectId;
+    const prev = prevActiveWorkingRef.current;
+    prevProjectRef.current = activeProjectId;
+    prevActiveWorkingRef.current = activeWorking;
+    // Establish a baseline on first run so we never auto-collapse on page load.
+    if (!autoCollapseInitRef.current) { autoCollapseInitRef.current = true; return; }
+    if (
+      isDesktop &&
+      sameProject &&
+      prev === 0 &&
+      activeWorking > 0 &&
+      autoCollapseArmedRef.current &&
+      !collapsed
+    ) {
+      autoCollapseArmedRef.current = false;
+      setCollapsed(true); // transient focus mode — no persistCollapsed on purpose
+    }
+  }, [workingAgents, activeProjectId, agents, isDesktop, collapsed]);
 
   useEffect(() => {
     return () => {
