@@ -3,7 +3,7 @@
 // that a DB read error fails OPEN (never locks users out) while the rate limit stays hard.
 //
 // Run: npx tsx scripts/test-cost-guard.ts
-import { checkCostGuard, costGuardMessage } from '../server/billing/costGuard.js';
+import { checkCostGuard, costGuardMessage, __setSpendAlarmSinkForTests, __resetSpendAlarmForTests } from '../server/billing/costGuard.js';
 
 let pass = 0, fail = 0;
 const check = (n: string, c: boolean, d = '') => { if (c) { pass++; console.log(`  PASS  ${n}`); } else { fail++; console.log(`  FAIL  ${n}  ${d}`); } };
@@ -63,6 +63,23 @@ async function main() {
   // 8. Messages are honest strings.
   check('messages present for all reasons',
     !!costGuardMessage('rate_limit') && !!costGuardMessage('user_daily_cost') && !!costGuardMessage('global_daily_cost'));
+
+  // 9. Tier 0.7 spend alarm: warn band (>=1400, <2000 default) fires ONCE per day, non-blocking.
+  const alarms: number[] = [];
+  __resetSpendAlarmForTests();
+  __setSpendAlarmSinkForTests((info) => alarms.push(info.globalCents));
+  const w1 = await checkCostGuard(mockStorage({ userCents: 0, globalCents: 1500 }), 'u-warn1', t0);
+  check('warn band does NOT block', w1.allowed === true);
+  check('warn band fires the alarm', alarms.length === 1 && alarms[0] === 1500, `alarms=${JSON.stringify(alarms)}`);
+  await checkCostGuard(mockStorage({ userCents: 0, globalCents: 1600 }), 'u-warn2', t0);
+  check('alarm is deduped (once per day)', alarms.length === 1, `alarms=${JSON.stringify(alarms)}`);
+
+  __resetSpendAlarmForTests(); alarms.length = 0;
+  await checkCostGuard(mockStorage({ userCents: 0, globalCents: 1000 }), 'u-below', t0);
+  check('below warn → no alarm', alarms.length === 0);
+  await checkCostGuard(mockStorage({ userCents: 0, globalCents: 2000 }), 'u-kill', t0);
+  check('at kill → blocked, not a warn alarm', alarms.length === 0);
+  __setSpendAlarmSinkForTests(null);
 
   console.log(`\n${fail === 0 ? 'PASS' : 'FAIL'} — ${pass} passed, ${fail} failed`);
   process.exit(fail === 0 ? 0 : 1);

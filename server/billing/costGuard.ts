@@ -25,6 +25,10 @@ const ENABLED = (process.env.COST_GUARD_ENABLED ?? 'true').toLowerCase() !== 'fa
 const MSGS_PER_MIN = Number(process.env.COST_GUARD_MSGS_PER_MIN ?? 40);
 const PER_USER_DAILY_CENTS = Number(process.env.COST_GUARD_USER_DAILY_CENTS ?? 500); // $5 / ~₹430
 const GLOBAL_DAILY_CENTS = Number(process.env.COST_GUARD_GLOBAL_DAILY_CENTS ?? 2000); // $20 / ~₹1,720
+// Tier 0.7 — early warning BEFORE the global kill trips, so an operator can react before users are
+// blocked. Default: 70% of the kill ceiling. Fires at most once per day (deduped), never blocks.
+const GLOBAL_WARN_CENTS = Number(process.env.COST_GUARD_GLOBAL_WARN_CENTS ?? Math.floor(GLOBAL_DAILY_CENTS * 0.7));
+const OPS_ALERT_WEBHOOK_URL = process.env.OPS_ALERT_WEBHOOK_URL;
 
 export type CostGuardReason = 'rate_limit' | 'user_daily_cost' | 'global_daily_cost';
 
@@ -36,6 +40,41 @@ export interface CostGuardResult {
 // Per-user sliding-window message counter (in-memory; process-local — good enough for a single node,
 // and it degrades safe: a second node would each enforce its own window).
 const minuteWindow = new Map<string, { count: number; windowStart: number }>();
+
+// Tier 0.7 — spend alarm. Fires once per day when global spend crosses the warning line (before the
+// kill). Default sink logs + POSTs to OPS_ALERT_WEBHOOK_URL if set; tests can swap it.
+type SpendAlarmSink = (info: { globalCents: number; warnCents: number; killCents: number; date: string }) => void;
+const firedAlarmDates = new Set<string>();
+let alarmSink: SpendAlarmSink = (info) => {
+  // eslint-disable-next-line no-console
+  console.warn(`[CostGuard] SPEND ALARM — global LLM spend ${info.globalCents}¢ crossed warn ${info.warnCents}¢ (kill at ${info.killCents}¢) on ${info.date}`);
+  if (OPS_ALERT_WEBHOOK_URL) {
+    // Fire-and-forget; never let the alert path affect request handling.
+    fetch(OPS_ALERT_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text: `⚠️ Hatchin spend alarm: ${info.globalCents}¢ today (warn ${info.warnCents}¢, kill ${info.killCents}¢)` }),
+    }).catch(() => { /* best-effort */ });
+  }
+};
+
+/** DEV/test hook to observe or stub the alarm sink. */
+export function __setSpendAlarmSinkForTests(fn: SpendAlarmSink | null): void {
+  alarmSink = fn ?? alarmSink;
+}
+/** DEV/test hook to reset the once-per-day dedup. */
+export function __resetSpendAlarmForTests(): void {
+  firedAlarmDates.clear();
+}
+
+function maybeFireSpendAlarm(globalCents: number, date: string): void {
+  if (globalCents < GLOBAL_WARN_CENTS || globalCents >= GLOBAL_DAILY_CENTS) return; // warn band only
+  if (firedAlarmDates.has(date)) return; // once per day
+  firedAlarmDates.add(date);
+  try {
+    alarmSink({ globalCents, warnCents: GLOBAL_WARN_CENTS, killCents: GLOBAL_DAILY_CENTS, date });
+  } catch { /* an alarm must never break request handling */ }
+}
 
 function checkRate(userId: string, now: number): boolean {
   const w = minuteWindow.get(userId);
@@ -74,10 +113,13 @@ export async function checkCostGuard(
     if (usage && usage.estimatedCostCents >= PER_USER_DAILY_CENTS) {
       return { allowed: false, reason: 'user_daily_cost' };
     }
-    const globalCents = await storage.getGlobalDailyCostCents(todayDateStr(now));
+    const date = todayDateStr(now);
+    const globalCents = await storage.getGlobalDailyCostCents(date);
     if (globalCents >= GLOBAL_DAILY_CENTS) {
       return { allowed: false, reason: 'global_daily_cost' };
     }
+    // Tier 0.7 — early warning before the kill (non-blocking, once per day).
+    maybeFireSpendAlarm(globalCents, date);
   } catch (err) {
     // Infra hiccup — do not lock everyone out; the rate limit above still bounds volume.
     console.error('[CostGuard] dollar-cap read failed, failing open:', (err as Error).message);
