@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { PauseCircle, PlayCircle, ShieldCheck, Sunrise, X } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import type { Agent } from '@shared/schema';
@@ -135,6 +135,22 @@ export function ChatMessageList({
   // message itself stays in history).
   const [dismissedBriefings, setDismissedBriefings] = useState<Set<string>>(new Set());
 
+  // Collapse duplicate return briefings from the pre-fix concurrent-join race: a real
+  // briefing needs a 15-min absence, so any briefing within 30s of a kept one is a
+  // race-duplicate. Non-destructive (rows stay in history) and also hides duplicates
+  // predating the server-side in-flight guard. Assumes chronological message order.
+  const duplicateBriefingIds = useMemo(() => {
+    const dupes = new Set<string>();
+    let lastKeptMs = -Infinity;
+    for (const m of messages) {
+      if ((m.metadata as any)?.isReturnBriefing !== true) continue;
+      const t = new Date(m.timestamp).getTime();
+      if (t - lastKeptMs < 30_000) dupes.add(m.id);
+      else lastKeptMs = t;
+    }
+    return dupes;
+  }, [messages]);
+
   return (
     <div className="relative flex-1 min-h-0">
       {/* Connection status banner */}
@@ -201,6 +217,10 @@ export function ChatMessageList({
           // Return briefing -> render ReturnBriefingCard (Phase 2.4). Dismissing
           // falls through to the plain bubble below (message stays in history).
           const isBriefing = (message.metadata as any)?.isReturnBriefing === true;
+          // Hide race-duplicate briefings entirely (card and bubble).
+          if (isBriefing && duplicateBriefingIds.has(message.id)) {
+            return null;
+          }
           if (isBriefing && !dismissedBriefings.has(message.id)) {
             // A return briefing is always Maya's. If upstream name resolution fell
             // through to "You"/"AI"/empty (e.g. the briefing message arrived without a
