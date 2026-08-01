@@ -1,6 +1,7 @@
-import type { Express, Request } from 'express';
+import type { Express, Request, Response } from 'express';
 import { storage } from '../storage.js';
 import { z } from 'zod';
+import { checkCostGuard, costGuardMessage } from '../billing/costGuard.js';
 
 export interface RegisterDeliverableDeps {
   broadcastToConversation: (conversationId: string, data: unknown) => void;
@@ -41,6 +42,18 @@ export function registerDeliverableRoutes(app: Express, deps: RegisterDeliverabl
     const project = await storage.getProject(projectId);
     if (!project) return null;
     return (project as any).userId === userId ? project : null;
+  };
+
+  // Tier 0.2 (DOS-3) — the same always-on cost/rate brake used on the chat WS path, applied to the
+  // LLM-spending HTTP endpoints (generate / iterate / reader-test / packages) so they can't be used
+  // to bypass the guard. Returns true if allowed; on block it writes 429 and returns false.
+  const enforceCostGuard = async (userId: string, res: Response): Promise<boolean> => {
+    const guard = await checkCostGuard(storage, userId);
+    if (!guard.allowed && guard.reason) {
+      res.status(429).json({ error: costGuardMessage(guard.reason), code: guard.reason });
+      return false;
+    }
+    return true;
   };
 
   // GET /api/projects/:projectId/deliverables
@@ -236,6 +249,8 @@ export function registerDeliverableRoutes(app: Express, deps: RegisterDeliverabl
     const agent = await storage.getAgent(parsed.data.agentId);
     if (!agent) return res.status(404).json({ error: 'Agent not found' });
 
+    if (!(await enforceCostGuard(userId, res))) return;
+
     try {
       const { generateDeliverable } = await import('../ai/deliverableGenerator.js');
       const result = await generateDeliverable({
@@ -272,6 +287,8 @@ export function registerDeliverableRoutes(app: Express, deps: RegisterDeliverabl
 
     const { instruction } = z.object({ instruction: z.string().min(1).max(2000) }).parse(req.body);
 
+    if (!(await enforceCostGuard(userId, res))) return;
+
     try {
       const { iterateDeliverable } = await import('../ai/deliverableGenerator.js');
       const result = await iterateDeliverable(
@@ -306,6 +323,8 @@ export function registerDeliverableRoutes(app: Express, deps: RegisterDeliverabl
 
     const project = await getOwnedProject(deliverable.projectId, userId);
     if (!project) return res.status(404).json({ error: 'Deliverable not found' });
+
+    if (!(await enforceCostGuard(userId, res))) return;
 
     try {
       const { reviewDeliverableForReaderTest } = await import('../ai/deliverableGenerator.js');
@@ -413,6 +432,9 @@ export function registerDeliverableRoutes(app: Express, deps: RegisterDeliverabl
 
     const project = await getOwnedProject(parsed.data.projectId, userId);
     if (!project) return res.status(404).json({ error: 'Project not found' });
+
+    // DOS-3 — packages fan out LLM work across N agents; gate before creating/executing.
+    if (!(await enforceCostGuard(userId, res))) return;
 
     const pkg = await storage.createPackage(parsed.data);
 

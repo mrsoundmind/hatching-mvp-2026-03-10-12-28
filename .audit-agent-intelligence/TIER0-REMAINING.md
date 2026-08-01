@@ -7,6 +7,7 @@ Branch `feat/v2.2-intelligence-fixes`. Nothing merged. Each fix self-reviewed + 
 | Item | Finding | Commit | Verification |
 |---|---|---|---|
 | Cost brakes (rate + per-user $ cap + global kill, flag-independent) | DOS-1, DOS-2 | `cc0fb6f` | unit 9/9 + live WS block with gates OFF |
+| Cost guard on LLM-spending HTTP endpoints (generate/iterate/reader-test/packages) | DOS-3 | (this commit) | live: 2nd generate → 429 at cap=1 |
 | IDOR on /api/personality/feedback (ownership + validation) | SEC1-1 | `cc0fb6f` | live HTTP 6/6 |
 | Account takeover (strict provider,sub + email_verified + explicit conflict) | ACCT-1 | `cc0fb6f` | unit 6/6 |
 | Hot-query cap (SQL order/limit/cursor + composite index + tiebreaker) | DOS-4, PERF-2, BUG-6 | `cc0fb6f` | live Supabase 8/8 |
