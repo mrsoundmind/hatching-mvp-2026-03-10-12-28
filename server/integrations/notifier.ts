@@ -14,6 +14,10 @@ import { getMattermostConfig, type MattermostConfig } from './config.js';
 import { formatAutonomyEvent } from './mattermost/formatter.js';
 import { postToMattermost } from './mattermost/mattermostAdapter.js';
 import { buildApprovalAttachments } from './mattermost/approvalButtons.js';
+import { getSlackConfig, type SlackConfig } from './slack/config.js';
+import { formatAutonomyEvent as formatSlackEvent } from './slack/formatter.js';
+import { postToSlack } from './slack/slackAdapter.js';
+import { buildApprovalActionsBlock } from './slack/approvalBlocks.js';
 
 export interface NotifierChannel {
   readonly name: string;
@@ -21,11 +25,21 @@ export interface NotifierChannel {
   notify(event: AutonomyEvent): Promise<void>;
 }
 
-/** Pure gate: notify only for the mapped project and an enabled event type. Exported for tests. */
-export function shouldNotifyMattermost(event: AutonomyEvent, config: MattermostConfig | null): boolean {
+/** Pure gate: notify only for the mapped project and an enabled event type. Channel-agnostic. */
+function shouldNotify(event: AutonomyEvent, config: { projectId: string; enabledEvents: Set<string> } | null): boolean {
   if (!config) return false;
   if (!event.projectId || event.projectId !== config.projectId) return false;
   return config.enabledEvents.has(event.eventType);
+}
+
+/** Pure gate for Mattermost. Exported for tests. */
+export function shouldNotifyMattermost(event: AutonomyEvent, config: MattermostConfig | null): boolean {
+  return shouldNotify(event, config);
+}
+
+/** Pure gate for Slack. Exported for tests. */
+export function shouldNotifySlack(event: AutonomyEvent, config: SlackConfig | null): boolean {
+  return shouldNotify(event, config);
 }
 
 class MattermostNotifierChannel implements NotifierChannel {
@@ -47,7 +61,27 @@ class MattermostNotifierChannel implements NotifierChannel {
   }
 }
 
-const channels: NotifierChannel[] = [new MattermostNotifierChannel()];
+class SlackNotifierChannel implements NotifierChannel {
+  readonly name = 'slack';
+
+  shouldNotify(event: AutonomyEvent): boolean {
+    return shouldNotifySlack(event, getSlackConfig());
+  }
+
+  async notify(event: AutonomyEvent): Promise<void> {
+    const config = getSlackConfig();
+    if (!config) return;
+    const formatted = formatSlackEvent(event, config.appBaseUrl);
+    if (!formatted) return;
+    // Approval events get interactive Approve/Reject buttons when Socket Mode is configured
+    // (appToken present, so a listener is running). Everything else is a section + deep link.
+    const actions = buildApprovalActionsBlock(event, config);
+    const blocks = actions ? [...formatted.blocks, actions] : formatted.blocks;
+    await postToSlack(config, { channel: config.channelId, text: formatted.text, blocks });
+  }
+}
+
+const channels: NotifierChannel[] = [new MattermostNotifierChannel(), new SlackNotifierChannel()];
 
 /**
  * Fan out an autonomy event to every configured channel. Never throws.

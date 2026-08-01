@@ -18,6 +18,7 @@ import { registerChatRoutes } from "./routes/chat.js";
 import { registerBillingRoutes } from "./routes/billing.js";
 import { registerDeliverableRoutes } from "./routes/deliverables.js";
 import { registerIntegrationRoutes } from "./routes/integrations.js";
+import { startSlackSocketMode } from "./integrations/slack/socketMode.js";
 import {
   buildGoogleAuthorizationUrl,
   exchangeGoogleAuthorizationCode,
@@ -546,6 +547,9 @@ export async function registerRoutes(app: Express, sessionParser?: SessionParser
   registerProjectRoutes(app, { broadcastToConversation });
   registerTaskRoutes(app, { broadcastToConversation, broadcastToProject });
   registerIntegrationRoutes(app, { broadcastToConversation, broadcastToProject });
+  // Slack inbound arrives over an outbound Socket Mode WebSocket (no public URL). Inert unless
+  // SLACK_APP_TOKEN is configured, so this is safe to call unconditionally.
+  startSlackSocketMode({ broadcastToConversation, broadcastToProject });
   registerBillingRoutes(app);
   registerDeliverableRoutes(app, { broadcastToConversation });
 
