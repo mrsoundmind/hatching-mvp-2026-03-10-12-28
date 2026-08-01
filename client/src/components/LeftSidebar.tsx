@@ -157,7 +157,27 @@ export function LeftSidebar({
     disarmAutoCollapse();
     setCollapsed(prev => { const next = !prev; persistCollapsed(next); return next; });
   }, []);
-  const isCollapsed = collapsed && isDesktop;
+  // Hover-to-peek: while collapsed on desktop, hovering the rail expands the full list so
+  // browsing projects is easy; moving the mouse away drops back to the rail. The sidebar stays
+  // in flow (grows in place) — an absolute overlay reflowed the layout under the cursor and
+  // caused an enter/leave feedback loop, so in-flow growth is the stable choice.
+  const [peeking, setPeeking] = useState(false);
+  const peekTimerRef = useRef<number | null>(null);
+  const railActive = collapsed && isDesktop;   // in the thin-rail zone
+  const isCollapsed = railActive && !peeking;  // rail content vs full; hover peeks it open
+  const startPeek = () => {
+    if (!railActive) return;
+    if (peekTimerRef.current) window.clearTimeout(peekTimerRef.current);
+    // small hover-intent delay so brushing past the rail doesn't pop it open
+    peekTimerRef.current = window.setTimeout(() => setPeeking(true), 120);
+  };
+  const endPeek = () => {
+    if (peekTimerRef.current) { window.clearTimeout(peekTimerRef.current); peekTimerRef.current = null; }
+    setPeeking(false);
+  };
+  useEffect(() => () => { if (peekTimerRef.current) window.clearTimeout(peekTimerRef.current); }, []);
+  // Never leave a stale peek when we exit the rail zone (manual expand, resize to mobile).
+  useEffect(() => { if (!railActive) setPeeking(false); }, [railActive]);
 
   // Reuse the ProjectTree colour mapping so a folder keeps its project's identity colour.
   const projectIconColorClass = (color?: string) => {
@@ -593,6 +613,8 @@ export function LeftSidebar({
     <aside
       className={`${isCollapsed ? 'w-[60px] px-2 items-center overflow-visible' : 'w-[260px] p-3 overflow-hidden'} h-[calc(100vh-20px)] min-h-0 premium-column-bg rounded-2xl ml-2.5 my-2.5 relative flex flex-col transition-[width] duration-300 ease-out`}
       onWheel={handleSidebarWheel}
+      onMouseEnter={startPeek}
+      onMouseLeave={endPeek}
     >
       <div className="ambient-glow-top" />
 
