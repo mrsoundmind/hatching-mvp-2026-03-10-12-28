@@ -99,6 +99,7 @@ export function CenterPanel({
   const [approvalRequests, setApprovalRequests] = useState<Array<{
     taskId: string;
     agentName: string;
+    taskTitle: string;
     riskReasons: string[];
     projectId: string;
   }>>([]);
@@ -1002,7 +1003,8 @@ export function CenterPanel({
         ...prev.filter((r) => r.taskId !== message.taskId),
         {
           taskId: message.taskId ?? '',
-          agentName: message.agentName ?? 'Agent',
+          agentName: message.agentName ?? '',
+          taskTitle: message.taskTitle ?? '',
           riskReasons: message.riskReasons ?? [],
           projectId: currentProjectId,
         },

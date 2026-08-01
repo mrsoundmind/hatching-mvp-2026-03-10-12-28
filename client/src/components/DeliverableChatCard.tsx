@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { FileText, ExternalLink } from 'lucide-react';
+import { resolveAgentName } from '@/lib/agentDisplay';
 
 interface DeliverableChatCardProps {
   deliverableId: string;
@@ -117,7 +118,7 @@ export function DeliverableProposalCard({
         </div>
         <div className="flex-1">
           <p className="text-sm hatchin-text">
-            {agentName} thinks it's a good time to create a <strong>{title}</strong>.
+            {resolveAgentName(agentName, 'Your team')} thinks it's a good time to create a <strong>{title}</strong>.
           </p>
           <div className="flex items-center gap-2 mt-3">
             <button

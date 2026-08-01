@@ -384,6 +384,7 @@ async function executeTaskWithOutput(
         type: 'task_requires_approval',
         taskId: input.task.id,
         agentName: input.agent.name,
+        taskTitle: input.task.title,
         riskReasons: safety.reasons,
       });
       await logApprovalRequired(input, safety.reasons, Math.max(adjustedExecutionRisk, adjustedScopeRisk, adjustedHallucinationRisk));
@@ -450,6 +451,7 @@ async function executeTaskWithOutput(
             type: 'task_requires_approval',
             taskId: input.task.id,
             agentName: input.agent.name,
+            taskTitle: input.task.title,
             riskReasons: peerResult.reason,
           });
           await logApprovalRequired(input, peerResult.reason, null);
@@ -615,6 +617,7 @@ export async function executeTask(
         type: 'task_requires_approval',
         taskId: input.task.id,
         agentName: input.agent.name,
+        taskTitle: input.task.title,
         riskReasons: safety.reasons,
       });
       await logApprovalRequired(input, safety.reasons, Math.max(adjustedExecutionRisk, adjustedScopeRisk, adjustedHallucinationRisk));
@@ -682,6 +685,7 @@ export async function executeTask(
           type: 'task_requires_approval',
           taskId: input.task.id,
           agentName: input.agent.name,
+          taskTitle: input.task.title,
           riskReasons: peerResult.reason,
         });
         await logApprovalRequired(input, peerResult.reason, null);
@@ -918,7 +922,10 @@ export async function handleTaskJob(
       type: 'task_requires_approval',
       taskId: job.data.taskId,
       agentName: 'System',
-      riskReasons: ['Daily autonomous execution limit reached. This task will resume tomorrow or can be manually approved.'],
+      // A code (not a raw sentence) so the shared humanizer renders it — a plain sentence would be
+      // dropped by humanizeRiskReasons and the card would show blank. The card guards the 'System'
+      // actor so it reads as a decision, not a fake teammate.
+      riskReasons: ['daily_cost_cap_reached'],
     });
     return;
   }

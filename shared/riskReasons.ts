@@ -23,6 +23,7 @@ const EXACT: Record<string, string> = {
   future_claim_request: 'Makes a claim about the future',
   scope_mismatch_agent_vs_project: 'Reaches beyond this agent’s usual scope',
   autonomous_context_risk_boost: 'Running autonomously, so held to a higher bar',
+  daily_cost_cap_reached: 'Your team hit today’s work limit — approve to run this now, or it resumes tomorrow',
 };
 
 // Prefix codes carry a matched phrase or regex source after the colon (e.g. `high_impact_action:delete`

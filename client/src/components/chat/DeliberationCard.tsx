@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, ChevronDown, Check } from 'lucide-react';
+import { isGenericAgentName } from '@/lib/agentDisplay';
 
 interface DeliberationCardProps {
   agentNames: string[];
@@ -63,10 +64,18 @@ export function DeliberationCard({
           )}
         </div>
 
-        {/* Agent names row */}
-        <span className="text-xs text-hatchin-text-muted mt-1 block">
-          {agentNames.join(' + ')} {agentNames.length === 1 ? 'is' : 'are'} working through this
-        </span>
+        {/* Agent names row — drop generic placeholders ('Agents'); if none are real,
+            fall back to an honest collective label with the right verb. */}
+        {(() => {
+          const realNames = agentNames.filter((n) => !isGenericAgentName(n));
+          const whoLabel = realNames.length > 0 ? realNames.join(' + ') : 'The team';
+          const verb = realNames.length > 1 ? 'are' : 'is';
+          return (
+            <span className="text-xs text-hatchin-text-muted mt-1 block">
+              {whoLabel} {verb} working through this
+            </span>
+          );
+        })()}
 
         {/* Expandable detail section */}
         <AnimatePresence>

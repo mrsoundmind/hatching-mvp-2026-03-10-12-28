@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { isApprovalExpired, APPROVAL_EXPIRY_MS } from './approvalUtils';
 import { humanizeRiskReasons } from '@shared/riskReasons';
+import { resolveAgentName } from '@/lib/agentDisplay';
 import type { Task } from '@shared/schema';
 
 interface ApprovalItemProps {
@@ -67,7 +68,7 @@ export function ApprovalItem({ task }: ApprovalItemProps) {
   });
 
   const isLoading = approveMutation.isPending || rejectMutation.isPending;
-  const agentName = task.assignee ?? 'Hatch';
+  const agentName = resolveAgentName(task.assignee, 'Your team');
   const riskScore = meta?.riskScore as number | undefined;
   const borderColor =
     riskScore && riskScore >= 0.6

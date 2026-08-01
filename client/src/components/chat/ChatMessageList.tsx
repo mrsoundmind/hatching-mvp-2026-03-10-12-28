@@ -9,6 +9,7 @@ import { HandoffCard } from './HandoffCard';
 import { DeliberationCard } from './DeliberationCard';
 import { AutonomousApprovalCard } from '../AutonomousApprovalCard';
 import AgentAvatar from '@/components/avatars/AgentAvatar';
+import { resolveAgentName } from '@/lib/agentDisplay';
 
 /**
  * A finished piece of autonomous work, sourced from the task_execution_completed
@@ -75,6 +76,7 @@ interface ChatMessageListProps {
   approvalRequests: Array<{
     taskId: string;
     agentName: string;
+    taskTitle: string;
     riskReasons: string[];
     projectId: string;
   }>;
@@ -204,9 +206,9 @@ export function ChatMessageList({
             return (
               <HandoffCard
                 key={message.id}
-                fromAgentName={message.senderName}
+                fromAgentName={resolveAgentName(message.senderName, 'A teammate')}
                 fromAgentRole={(message.metadata as any)?.agentRole}
-                toAgentName={toAgent?.name ?? 'Team'}
+                toAgentName={resolveAgentName(toAgent?.name, 'the team')}
                 toAgentRole={toAgent?.role}
                 taskTitle={(message.metadata as any)?.taskTitle ?? message.content}
                 timestamp={message.timestamp}
@@ -225,9 +227,7 @@ export function ChatMessageList({
             // A return briefing is always Maya's. If upstream name resolution fell
             // through to "You"/"AI"/empty (e.g. the briefing message arrived without a
             // resolvable agentId), force Maya so the card never reads as the user.
-            const rawName = (message.senderName || '').trim();
-            const briefingAuthor =
-              rawName && rawName !== 'You' && !/^ai(\s|-|$)/i.test(rawName) ? rawName : 'Maya';
+            const briefingAuthor = resolveAgentName(message.senderName, 'Maya');
             return (
               <ReturnBriefingCard
                 key={message.id}
@@ -386,6 +386,7 @@ export function ChatMessageList({
                 key={req.taskId}
                 taskId={req.taskId}
                 agentName={req.agentName}
+                taskTitle={req.taskTitle}
                 riskReasons={req.riskReasons}
                 onApprove={onApprove}
                 onReject={onReject}
@@ -568,9 +569,9 @@ function TeamCompletionCard({
       {/* People: producer + reviewer (or auto-completed) */}
       <div className="flex flex-col gap-2 mb-4">
         <div className="flex items-center gap-2.5 text-sm">
-          <AgentAvatar agentName={work.agentName} role={work.agentRole ?? undefined} size={24} />
+          <AgentAvatar agentName={resolveAgentName(work.agentName, 'Your team')} role={work.agentRole ?? undefined} size={24} />
           <span style={{ color: 'var(--hatchin-text)' }}>
-            <span className="font-semibold" style={{ color: 'var(--hatchin-text-bright)' }}>{work.agentName}</span> made this
+            <span className="font-semibold" style={{ color: 'var(--hatchin-text-bright)' }}>{resolveAgentName(work.agentName, 'Your team')}</span> made this
             {work.agentRole && (
               <span className="text-xs" style={{ color: 'var(--hatchin-text-muted)' }}> · {work.agentRole}</span>
             )}

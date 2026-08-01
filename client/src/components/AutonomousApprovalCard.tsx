@@ -1,10 +1,13 @@
 import { motion } from 'framer-motion';
 import { AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import { humanizeRiskReasons } from '@shared/riskReasons';
+import { resolveAgentName, isGenericAgentName } from '@/lib/agentDisplay';
 
 export interface AutonomousApprovalCardProps {
   taskId: string;
   agentName: string;
+  /** What the approval is about — shown so the card is never a nameless "needs approval". */
+  taskTitle?: string;
   riskReasons: string[];
   onApprove: (taskId: string) => void;
   onReject: (taskId: string) => void;
@@ -14,11 +17,24 @@ export interface AutonomousApprovalCardProps {
 export function AutonomousApprovalCard({
   taskId,
   agentName,
+  taskTitle,
   riskReasons,
   onApprove,
   onReject,
   isLoading,
 }: AutonomousApprovalCardProps) {
+  // WHO: a real agent, or nothing (never "System"/"Agent"/blank rendered as a teammate). When the
+  // actor is generic (e.g. a system-level cost-cap block), we frame it as a decision, not a teammate.
+  const hasRealAgent = !isGenericAgentName(agentName);
+  const who = resolveAgentName(agentName, '');
+  const headline = hasRealAgent ? `${who} needs your approval` : 'A decision is waiting on you';
+
+  // WHY: humanized reasons only (raw safety codes are telemetry). If everything drops and there's no
+  // title to lean on, show a neutral line so the card is never contentless.
+  const reasons = humanizeRiskReasons(riskReasons);
+  const title = (taskTitle ?? '').trim();
+  const fallbackContext = reasons.length === 0 && !title ? 'Review the details before you decide.' : '';
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -34,14 +50,23 @@ export function AutonomousApprovalCard({
         {/* Content */}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-[var(--hatchin-text-bright)]">
-            {agentName} needs your approval
+            {headline}
           </p>
-          {/* Plain-language reasons only. The raw safety codes are telemetry (#43); a humanizer maps
+
+          {/* WHAT — the task being approved. */}
+          {title && (
+            <p className="mt-1 text-xs text-[var(--hatchin-text)] truncate">{title}</p>
+          )}
+
+          {/* WHY — plain-language reasons only. The raw safety codes are telemetry (#43); a humanizer maps
               them and drops anything unrecognized so a new code can never leak here. */}
-          {humanizeRiskReasons(riskReasons).length > 0 && (
+          {reasons.length > 0 && (
             <p className="mt-1 text-xs text-muted-foreground">
-              {humanizeRiskReasons(riskReasons).join(' · ')}
+              {reasons.join(' · ')}
             </p>
+          )}
+          {fallbackContext && (
+            <p className="mt-1 text-xs text-muted-foreground">{fallbackContext}</p>
           )}
 
           {/* Action buttons */}
