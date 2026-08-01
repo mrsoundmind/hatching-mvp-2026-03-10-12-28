@@ -129,14 +129,6 @@ export function ProjectTree({
     }
   };
 
-  // Stable per-project identity color (distinct without emoji/initials). Hashed from
-  // the id so it never shifts. The chip that carries it also carries the working pulse.
-  const PROJECT_ACCENTS = ['#6C82FF', '#34C78C', '#9F7BFF', '#F2994A', '#FF7A6B', '#46C7C7', '#E879C9', '#F2C94C'];
-  const getProjectAccent = (id: string) => {
-    let h = 0;
-    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-    return PROJECT_ACCENTS[h % PROJECT_ACCENTS.length];
-  };
 
   // State for inline editing
   const [editingProject, setEditingProject] = useState<string | null>(null);
@@ -353,9 +345,8 @@ export function ProjectTree({
 
         const isProjectExpanded = expandedProjects.has(project.id);
 
-        // Team-pulse: identity color + live working state (real signal, same set that
-        // drives the agent avatars) + Hatch count.
-        const accent = getProjectAccent(project.id);
+        // Team-pulse: live working state (real signal, same set that drives the agent
+        // avatars) + Hatch count. No per-project color — the sidebar stays calm.
         const projectHatches = agents.filter(a => a.projectId === project.id && !a.isSpecialAgent);
         const hatchCount = projectHatches.length;
         const workingCount = agents.filter(a => a.projectId === project.id && workingAgents.has(a.id)).length;
@@ -393,10 +384,17 @@ export function ProjectTree({
                       )
                     )}
                   </div>
-                  {/* Identity chip — stable per-project color; pulses amber while the team works */}
-                  <div className="relative flex-shrink-0 mt-0.5 w-[18px] h-[18px]">
-                    <div className="w-[18px] h-[18px] rounded-[5px]" style={{ backgroundColor: accent }} />
-                    {isWorking && <span className="project-working-pulse-ring" />}
+                  {/* Neutral folder keeps the sidebar calm and says "project"; it only
+                      lights amber (with a pulsing dot) while this project's team is working,
+                      so attention goes to the chat, not to a wall of color. */}
+                  <div className="relative flex-shrink-0 mt-0.5">
+                    <Folder
+                      className="w-[18px] h-[18px] transition-colors duration-300"
+                      style={{ color: isWorking ? 'var(--hatchin-working-amber)' : 'var(--hatchin-text-muted)' }}
+                    />
+                    {isWorking && (
+                      <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[var(--hatchin-working-amber)] ring-2 ring-[var(--hatchin-panel)] animate-pulse" />
+                    )}
                   </div>
                   {editingProject === project.id ? (
                     <input
