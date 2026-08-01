@@ -2,10 +2,27 @@
 
 > **Read this first if you're an AI (Claude Code, Cursor, Windsurf, Copilot, etc.) or a human picking up on Hatchin.** This file tells you what happened, where we are, and what to do next. Session-continuity log — updated at session boundaries.
 
-**Last refreshed:** 2026-07-31
+**Last refreshed:** 2026-08-01
 **Current branch:** `feat/v2.2-intelligence-fixes` (two workstreams share this branch: v2.2 intelligence fixes + the v2.1-UX UI milestone)
 **Latest commit (v2.2 workstream):** Phase 39 Plan 39-01 (Reader Testing Peer Review, server) — committed 2026-07-31 (prior: `f5682ab` peer-review coverage)
-**Latest commit (v2.1-UX UI workstream):** `29727a4 fix(ui): Brain tab — count pills, header hierarchy, 44px desktop targets (Phase 4)`
+**Latest commit (v2.1-UX UI workstream):** `5226136 feat(ui): auto-collapse to the focus rail when the team starts working (Phase 5)`
+
+## 2026-08-01 — v2.1-UX Phase 5 (Left Sidebar: folder redesign + collapsible focus rail) (UI workstream)
+
+User handed over a live left-sidebar audit; cross-verified 6/8 findings valid (rejected P1-B alignment + P1-D row-height). During execution the scope evolved well past the audit with live design feedback: over ~8 visual iterations the user rejected emojis and initials and a "scattered, colours everywhere" look, landing on **"attention belongs in the chat, not the nav."** So the audit's P0-B emoji fix was **dropped** and the sidebar was redesigned around **folder identity + a collapsible focus rail**. Every action stayed working — this is presentation + accessibility only, `client/src` only, path-disjoint from the parallel v2.2/Phase 39 server work.
+
+**Shipped this session (all Playwright-verified live on a running server):**
+- **Row redesign** (`6f78897`/`7f43efe`/`1c88d5a`/`3dfcf92`, prior turns): folder-identity + name-led (medium weight, idle names dimmer than chat, active bright), expanded-project-as-container with nested connector, live team pulse (amber), colour reserved for working state only, no left accent-rail (`feedback_no_left_accent_rail`, saved this session).
+- **Approval buttons never wrap** (`8dd519a`) → `feedback_ui_self_documenting` rule #7 added.
+- **P0-A account menu** (`5dc8965`) — Radix `DropdownMenu`, was a non-keyboard `<div onClick>`. Verified: BUTTON/aria-haspopup=menu/tabindex 0, opens on click, Account & Billing + Sign Out.
+- **Collapse-to-focus-rail** (`e01a107`) — a remembered 60px rail (⌘\ / a Collapse button in the Projects header / the rail's bottom `›`). Chat gains the width automatically (it's `flex-1`), so **zero home.tsx/server changes**; desktop-only via `matchMedia` so the mobile drawer (same component) stays full. Everything stays reachable when collapsed: account avatar opens the menu, search expands-then-focuses, + New opens Quick Start, each folder shows its name on a **Radix portal tooltip** (portals out so the scrollable rail never clips it). Colour only means "look here": active = full colour + highlight (opacity 1), team-working = amber + live count (`useAgentWorkingState`, cross-project), idle = dimmed to **0.4** (the user's explicit ask this turn). Verified live: collapse/expand all three ways, 60↔260, dimming numerically (active 1 / 10 idle folders 0.4), amber badge fired from a real `agent_working_state` event, tooltip unclipped, account menu from the rail avatar, remembered across reload.
+- **Auto-collapse when the team starts working** (`5226136`) — user chose this trigger (over first-message / manual-only) via popup. Active-project idle→working transition folds into the rail. Guarded so it never traps: only a genuine in-session transition (skips page load + project switches), desktop-only, while expanded, **once per session**, and **any manual toggle disarms it**; deliberately does **not** persist (transient focus, so the remembered preference reflects manual choices only). Verified live: idle→working on the active project collapsed 260→60 without persisting; firing for a NON-active project's agent did nothing; after a manual expand a second work-start did not re-collapse.
+
+**Remaining (accessibility, not yet done):** P0-C keyboard-operable project tree (roving tabindex + arrows), P1-C touch/keyboard kebab, P1-D 44px "+ New" hit area.
+
+**Constellation:** STATE + ROADMAP (my own uncommitted Phase 5 lines, rewritten to reflect the pivot) + CLAUDE footer + this HANDOFF updated together; REQUIREMENTS + COMPLETE-GUIDE intentionally not touched (a presentation/UX pass ships no new feature/requirement — same precedent as Phase 4 / 2026-07-23). Nothing merged.
+
+---
 
 ## 2026-07-31 — v2.1-UX Phase 4 (Brain Tab Information Architecture) shipped (UI workstream)
 

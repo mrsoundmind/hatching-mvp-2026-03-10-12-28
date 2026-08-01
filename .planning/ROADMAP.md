@@ -95,6 +95,36 @@ commit per fix; path-disjoint from the parallel v2.2/Mattermost server work on t
 **Artifacts:** `.planning/phases/v2.1-ux-04-brain-tab-ia/` (non-colliding dir — the global `NN-`
 scheme's `04` and `39` are already taken; v2.1-UX phases are milestone-relative).
 
+### Phase 5 — Left Sidebar (added 2026-08-01, IN PROGRESS)
+
+**Source:** live left-sidebar audit (user, 2026-08-01), cross-verified against code + running app
+(6/8 findings valid; rejected **P1-B** folder-alignment — live left-edges all 61px — and **P1-D's
+"36 vs 53px row-height"** sub-claim — rows uniform 36px live). During execution the scope evolved with
+live design feedback well past the original audit: the user rejected the emoji direction ("no emojis")
+and the flat list, so instead of the audit's P0-B emoji fix the sidebar was **redesigned around folder
+identity + a collapsible focus rail**. Presentation/accessibility only — every action stayed working.
+
+**Shipped (all Playwright-verified live, `client/src` only):**
+- **Row redesign** (`6f78897` identity + name-led + live team pulse, `7f43efe` expanded-project-as-
+  container, `1c88d5a` calm neutral folders — colour only for working state, `3dfcf92` blue folder +
+  dimmer idle names + medium weight): converged over ~8 iterations on the user's rule "attention belongs
+  in the chat, not scattered." No emoji, no initials, no left accent-rail (see `feedback_no_left_accent_rail`).
+- **Approval buttons never wrap** (`8dd519a`) — shared with `feedback_ui_self_documenting` rule #7.
+- **P0-A account menu** (`5dc8965`) — Radix `DropdownMenu`, was a non-keyboard `<div onClick>`.
+- **Collapse-to-focus-rail** (`e01a107`) — remembered 60px rail (⌘\ / header Collapse / rail chevron),
+  desktop-only via matchMedia (mobile drawer untouched), chat gains the width automatically. Folders keep
+  identity: active = full colour + highlight, team-working = amber + live count (cross-project via
+  `useAgentWorkingState`), idle = dimmed to 0.4. Account/search/+New/portal-tooltips all reachable.
+- **Auto-collapse when the team starts working** (`5226136`) — active-project idle→working transition
+  folds into the rail; fires once/session, any manual toggle disarms, never persists (transient focus).
+
+**Remaining (accessibility):** P0-C keyboard-operable project tree (roving tabindex + arrows), P1-C
+touch/keyboard-reachable kebab, P1-D 44px "+ New" hit area. P0-B emoji **dropped** (design pivot).
+
+**Key files:** `client/src/components/LeftSidebar.tsx`, `client/src/components/ProjectTree.tsx`.
+Artifacts + PLAN: `.planning/phases/v2.1-ux-05-left-sidebar/`. Color rule held; path-disjoint from the
+parallel v2.2/Phase 39 server work. Nothing merged.
+
 ---
 
 ## 📋 Reach & Integrations — Mattermost Bridge (scoped 2026-07-25, NOT STARTED)
