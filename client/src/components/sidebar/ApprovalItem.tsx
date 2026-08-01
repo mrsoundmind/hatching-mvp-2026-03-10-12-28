@@ -123,10 +123,10 @@ export function ApprovalItem({ task }: ApprovalItemProps) {
                   onClick={() => approveMutation.mutate()}
                   aria-label={`Approve task: ${task.title}`}
                   whileHover={{ scale: 1.02 }}
-                  className="inline-flex items-center gap-2 px-3 py-2 min-h-[44px] lg:min-h-auto text-xs font-medium rounded-lg bg-[var(--hatchin-blue)] text-white hover:bg-[var(--hatchin-blue)]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] text-xs font-medium rounded-lg whitespace-nowrap bg-[var(--hatchin-blue)] text-white hover:bg-[var(--hatchin-blue)]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  Approve Task
+                  <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                  Approve
                 </motion.button>
 
                 <motion.button
@@ -134,10 +134,10 @@ export function ApprovalItem({ task }: ApprovalItemProps) {
                   disabled={isLoading}
                   onClick={() => rejectMutation.mutate()}
                   aria-label={`Reject task: ${task.title}`}
-                  className="inline-flex items-center gap-2 px-3 py-2 min-h-[44px] lg:min-h-auto text-xs font-medium rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] text-xs font-medium rounded-lg whitespace-nowrap border border-red-500/30 text-red-400 hover:bg-red-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  <XCircle className="w-3.5 h-3.5" />
-                  Reject Task
+                  <XCircle className="w-3.5 h-3.5 shrink-0" />
+                  Reject
                 </motion.button>
               </>
             )}
