@@ -360,11 +360,21 @@ export function ProjectTree({
             <div className="space-y-0.5">
               {/* Project Level */}
               <div
-                className={`flex items-start justify-between px-3 py-2 rounded-xl cursor-pointer transition-[background-color,box-shadow] duration-200 group hover:bg-[var(--glass-hover-bg)] hover:shadow-sm relative ${isProjectActive && !activeTeamId && !activeAgentId
+                className={`flex items-start justify-between px-3 py-2 rounded-xl cursor-pointer transition-[background-color,box-shadow] duration-200 group hover:bg-[var(--glass-hover-bg)] hover:shadow-sm relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hatchin-blue)] ${isProjectActive && !activeTeamId && !activeAgentId
                   ? 'bg-[var(--glass-frosted-strong)] elevation-1'
                   : ''
                 }`}
+                tabIndex={0}
                 onClick={() => onSelectProject(project.id)}
+                onKeyDown={(e) => {
+                  // Only act on keys that land on the row itself, so Enter/Space inside the
+                  // rename input or the options button never also fires a project switch.
+                  if (e.target !== e.currentTarget) return;
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onSelectProject(project.id);
+                  }
+                }}
               >
                 <div className="flex items-start gap-2.5 min-w-0 flex-1">
                   <div
@@ -430,7 +440,7 @@ export function ProjectTree({
                 </div>
                 <div className="relative flex-shrink-0">
                   <button
-                    className="hit-target opacity-0 group-hover:opacity-100 hatchin-text-muted hover:hatchin-text transition-opacity duration-200"
+                    className="hit-target opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(pointer:coarse)]:opacity-100 hatchin-text-muted hover:hatchin-text transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hatchin-blue)] rounded"
                     onClick={(e) => handleContextMenuToggle(project.id, e)}
                     aria-label="Project options"
                   >
@@ -531,11 +541,19 @@ export function ProjectTree({
                       <div key={team.id} className="space-y-1" role="treeitem" aria-expanded={isTeamExpanded}>
                         {/* Team Level */}
                         <div
-                          className={`flex items-center justify-between px-3 py-1.5 rounded-xl cursor-pointer transition-all duration-200 group hover:bg-[var(--glass-hover-bg)] hover:shadow-sm relative font-normal text-[var(--hatchin-text-muted)] ${isTeamActive && !activeAgentId
+                          className={`flex items-center justify-between px-3 py-1.5 rounded-xl cursor-pointer transition-all duration-200 group hover:bg-[var(--glass-hover-bg)] hover:shadow-sm relative font-normal text-[var(--hatchin-text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hatchin-blue)] ${isTeamActive && !activeAgentId
                             ? 'bg-[var(--glass-frosted-strong)] sidebar-active-accent elevation-1 !text-[var(--hatchin-text)]'
                             : ''
                             }`}
+                          tabIndex={0}
                           onClick={() => onSelectTeam(team.id)}
+                          onKeyDown={(e) => {
+                            if (e.target !== e.currentTarget) return;
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              onSelectTeam(team.id);
+                            }
+                          }}
                         >
                           <div className="flex items-center gap-2.5 min-w-0 flex-1">
                             <div
@@ -581,7 +599,7 @@ export function ProjectTree({
                           </div>
                           {onDeleteTeam && (
                             <button
-                              className="opacity-0 group-hover:opacity-100 hatchin-text-muted hover:text-red-400 transition-all flex-shrink-0 p-1"
+                              className="hit-target opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(pointer:coarse)]:opacity-100 hatchin-text-muted hover:text-red-400 transition-all flex-shrink-0 p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hatchin-blue)]"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setShowTeamDeleteConfirm(team.id);
@@ -660,11 +678,19 @@ export function ProjectTree({
                                 <div
                                   key={agent.id}
                                   role="treeitem"
-                                  className={`flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition-all duration-200 relative group hover:bg-[var(--glass-hover-bg)] hover:shadow-sm ${isAgentActive
+                                  tabIndex={0}
+                                  className={`flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition-all duration-200 relative group hover:bg-[var(--glass-hover-bg)] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hatchin-blue)] ${isAgentActive
                                     ? 'bg-[var(--glass-frosted-strong)] sidebar-active-accent elevation-1'
                                     : ''
                                     }`}
                                   onClick={() => onSelectAgent(agent.id)}
+                                  onKeyDown={(e) => {
+                                    if (e.target !== e.currentTarget) return;
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault();
+                                      onSelectAgent(agent.id);
+                                    }
+                                  }}
                                 >
                                   <div className="flex items-center gap-2 min-w-0 flex-1">
                                     <React.Suspense fallback={<div className={`w-5 h-5 rounded-full flex-shrink-0 ${getAgentColors(agent.role).avatarBg}`} />}>
@@ -692,7 +718,7 @@ export function ProjectTree({
                                   </div>
                                   {onDeleteAgent && (
                                     <button
-                                      className="opacity-0 group-hover:opacity-100 hatchin-text-muted hover:text-red-400 transition-all flex-shrink-0 p-1"
+                                      className="hit-target opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(pointer:coarse)]:opacity-100 hatchin-text-muted hover:text-red-400 transition-all flex-shrink-0 p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hatchin-blue)]"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setShowAgentDeleteConfirm(agent.id);
@@ -772,11 +798,19 @@ export function ProjectTree({
                         <div
                           key={agent.id}
                           role="treeitem"
-                          className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 relative group hover:bg-hatchin-border hover:shadow-sm ${isAgentActive
+                          tabIndex={0}
+                          className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 relative group hover:bg-hatchin-border hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hatchin-blue)] ${isAgentActive
                             ? 'bg-hatchin-blue/10'
                             : ''
                             }`}
                           onClick={() => onSelectAgent(agent.id)}
+                          onKeyDown={(e) => {
+                            if (e.target !== e.currentTarget) return;
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              onSelectAgent(agent.id);
+                            }
+                          }}
                         >
                           <div className="flex items-center gap-2 min-w-0 flex-1">
                             <React.Suspense fallback={<div className={`w-5 h-5 rounded-full flex-shrink-0 ${getAgentColors(agent.role).avatarBg}`} />}>
@@ -804,7 +838,7 @@ export function ProjectTree({
                           </div>
                           {onDeleteAgent && (
                             <button
-                              className="opacity-0 group-hover:opacity-100 hatchin-text-muted hover:text-red-400 transition-all flex-shrink-0 p-1"
+                              className="hit-target opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(pointer:coarse)]:opacity-100 hatchin-text-muted hover:text-red-400 transition-all flex-shrink-0 p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hatchin-blue)]"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setShowAgentDeleteConfirm(agent.id);
