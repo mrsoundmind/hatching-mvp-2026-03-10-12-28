@@ -68,6 +68,51 @@ export async function recordUsage(
   }
 }
 
+// --- BUG-3 interim: estimated cost for turns without provider token metadata ---
+// Conservative input estimate per agent generation (system prompt + brain + memory + history).
+// Rounds up on purpose: a cost GUARD should err toward stopping spend, not under-counting it.
+// Calibrate against a real LangSmith trace when convenient.
+const EST_PROMPT_TOKENS_PER_GEN = Number(process.env.COST_EST_PROMPT_TOKENS_PER_GEN ?? 3500);
+const CHARS_PER_TOKEN = 4;
+
+/**
+ * Record an ESTIMATED cost for a turn whose provider token usage isn't captured (multi-agent team
+ * turns, safety interventions). Makes the per-user + global $ caps approximately see this spend until
+ * ARCH-1 threads real usage through the response path. Cost-only (messages: 0) so it does not inflate
+ * the message-count cap — the inbound send was already counted at ingress. Never throws.
+ */
+export async function recordEstimatedUsage(
+  storage: IStorage,
+  userId: string,
+  provider: ProviderId,
+  model: string,
+  generationCount: number,
+  outputText: string,
+): Promise<void> {
+  const promptTokens = Math.max(1, generationCount) * EST_PROMPT_TOKENS_PER_GEN;
+  const completionTokens = Math.ceil((outputText?.length ?? 0) / CHARS_PER_TOKEN);
+  const costCents = estimateCostCents(model, {
+    promptTokens, completionTokens, totalTokens: promptTokens + completionTokens,
+  });
+  // estimated_cost_cents is an INTEGER column. Round, and skip a zero: that covers free models (Groq,
+  // cost 0) AND sub-cent turns (a single flash team turn is ~0.2¢ — immaterial per the recalibration,
+  // and not worth a phantom 0-cost write). Premium-tier turns (~cents) record and accumulate.
+  const rounded = Math.round(costCents);
+  if (rounded <= 0) return;
+  try {
+    await storage.upsertDailyUsage(userId, todayDateStr(), {
+      messages: 0,                       // cost-only: the turn was already counted at ingress
+      promptTokens, completionTokens, totalTokens: promptTokens + completionTokens,
+      costCents: rounded,
+      standardMessages: 0, premiumMessages: 0, autonomyExecutions: 0,
+    });
+    // eslint-disable-next-line no-console
+    console.log(`[UsageTracker] estimated multi-agent cost recorded: ~${rounded}¢ (${generationCount} gens, est)`);
+  } catch (err) {
+    console.error('[UsageTracker] estimated usage failed:', (err as Error).message);
+  }
+}
+
 export async function getDailyMessageCount(
   storage: IStorage,
   userId: string,

@@ -72,7 +72,7 @@ import { detectCompletionSignal } from "../ai/tasks/completionDetector.js";
 import { extractOrganicTasks } from "../ai/tasks/organicExtractor.js";
 import { detectDeliverableIntent } from "../ai/deliverableDetector.js";
 import { compactConversation, getCompactedContext } from "../ai/conversationCompactor.js";
-import { recordUsage } from "../billing/usageTracker.js";
+import { recordUsage, recordEstimatedUsage } from "../billing/usageTracker.js";
 import { checkAutonomyAccess, checkMessageSafetyCap } from "../middleware/tierGate.js";
 import { checkCostGuard, costGuardMessage } from "../billing/costGuard.js";
 
@@ -2380,6 +2380,15 @@ export function registerChatRoutes(
           devLog('🤝 Generating multi-agent team response...');
           // Capture the returned content into the outer accumulator so it persists (fixes empty-save).
           accumulatedContent = await handleMultiAgentResponse(selectedAgents, userMessage, chatContext, sharedMemory, responseMessageId, conversationId, ws, abortController);
+
+          // BUG-3 interim: multi-agent turns don't set llmMetadata, so their $ spend was invisible to
+          // both dollar caps (only the message-count rate limit bounded them). Record a conservative
+          // estimate so the caps see it. Fire-and-forget; free models (Groq) self-skip inside.
+          const maUserId = (ws as any).__userId as string | undefined;
+          if (maUserId) {
+            const maRt = getCurrentRuntimeConfig();
+            void recordEstimatedUsage(storage, maUserId, maRt.provider, maRt.model, selectedAgents.length, accumulatedContent ?? '');
+          }
         } else if (respondingAgent && !isPmFallback && !isSystemFallback) {
           // Single agent response (existing logic)
           devLog('🔄 Generating single agent streaming response...');
