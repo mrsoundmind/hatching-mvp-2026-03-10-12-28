@@ -605,6 +605,17 @@
   box-shadow: 0 0 8px rgba(108, 130, 255, 0.3);
 }
 
+/* Project identity chip working pulse — amber, rounded-square (reuses the avatar keyframe) */
+.project-working-pulse-ring {
+  animation: avatar-working-pulse 2s ease-out infinite;
+  border: 2px solid var(--hatchin-working-amber);
+  border-radius: 7px;
+  position: absolute;
+  inset: -2px;
+  pointer-events: none;
+  box-shadow: 0 0 8px rgba(242, 180, 65, 0.35);
+}
+
 /* 14c — One-shot green flash on save */
 @keyframes flash-save-border {
   0% {

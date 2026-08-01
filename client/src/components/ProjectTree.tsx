@@ -129,6 +129,15 @@ export function ProjectTree({
     }
   };
 
+  // Stable per-project identity color (distinct without emoji/initials). Hashed from
+  // the id so it never shifts. The chip that carries it also carries the working pulse.
+  const PROJECT_ACCENTS = ['#6C82FF', '#34C78C', '#9F7BFF', '#F2994A', '#FF7A6B', '#46C7C7', '#E879C9', '#F2C94C'];
+  const getProjectAccent = (id: string) => {
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+    return PROJECT_ACCENTS[h % PROJECT_ACCENTS.length];
+  };
+
   // State for inline editing
   const [editingProject, setEditingProject] = useState<string | null>(null);
   const [editingTeam, setEditingTeam] = useState<string | null>(null);
@@ -344,6 +353,14 @@ export function ProjectTree({
 
         const isProjectExpanded = expandedProjects.has(project.id);
 
+        // Team-pulse: identity color + live working state (real signal, same set that
+        // drives the agent avatars) + Hatch count.
+        const accent = getProjectAccent(project.id);
+        const projectHatches = agents.filter(a => a.projectId === project.id && !a.isSpecialAgent);
+        const hatchCount = projectHatches.length;
+        const workingCount = agents.filter(a => a.projectId === project.id && workingAgents.has(a.id)).length;
+        const isWorking = workingCount > 0;
+
         return (
           <div key={project.id} className="flex flex-col" role="treeitem" aria-expanded={isProjectExpanded}>
             {index > 0 && (
@@ -352,15 +369,15 @@ export function ProjectTree({
             <div className="space-y-0.5">
               {/* Project Level */}
               <div
-                className={`flex items-center justify-between px-3 py-1.5 rounded-xl cursor-pointer transition-all duration-200 group hover:bg-[var(--glass-hover-bg)] hover:shadow-sm relative ${isProjectActive && !activeTeamId && !activeAgentId
-                  ? 'bg-[var(--glass-frosted-strong)] sidebar-active-accent elevation-1'
+                className={`flex items-start justify-between px-3 py-2 rounded-xl cursor-pointer transition-[background-color,box-shadow] duration-200 group hover:bg-[var(--glass-hover-bg)] hover:shadow-sm relative ${isProjectActive && !activeTeamId && !activeAgentId
+                  ? 'bg-[var(--glass-frosted-strong)] elevation-1'
                   : ''
                 }`}
                 onClick={() => onSelectProject(project.id)}
               >
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div className="flex items-start gap-2.5 min-w-0 flex-1">
                   <div
-                    className="flex-shrink-0 w-4 flex justify-center"
+                    className="flex-shrink-0 w-4 flex justify-center pt-1"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (projectTeams.length > 0) {
@@ -376,7 +393,11 @@ export function ProjectTree({
                       )
                     )}
                   </div>
-                  <Folder className={`w-4 h-4 flex-shrink-0 ${getProjectIconColor(project.color)}`} />
+                  {/* Identity chip — stable per-project color; pulses amber while the team works */}
+                  <div className="relative flex-shrink-0 mt-0.5 w-[18px] h-[18px]">
+                    <div className="w-[18px] h-[18px] rounded-[5px]" style={{ backgroundColor: accent }} />
+                    {isWorking && <span className="project-working-pulse-ring" />}
+                  </div>
                   {editingProject === project.id ? (
                     <input
                       ref={inputRef}
@@ -389,12 +410,24 @@ export function ProjectTree({
                       style={{ width: `${Math.max(editValue.length * 8, 60)}px` }}
                     />
                   ) : (
-                    <span
-                      className="font-medium hatchin-text truncate text-sm cursor-pointer hover:bg-hatchin-border/50 px-1 py-0.5 rounded"
-                      onDoubleClick={() => handleDoubleClick('project', project.id, project.name)}
-                    >
-                      {highlightMatch(project.name, searchQuery)}
-                    </span>
+                    <div className="min-w-0 flex-1">
+                      <span
+                        className="block font-semibold hatchin-text line-clamp-2 text-sm leading-tight cursor-pointer"
+                        onDoubleClick={() => handleDoubleClick('project', project.id, project.name)}
+                      >
+                        {highlightMatch(project.name, searchQuery)}
+                      </span>
+                      <span
+                        className="block text-micro mt-0.5"
+                        style={isWorking ? { color: 'var(--hatchin-working-amber)', fontWeight: 600 } : undefined}
+                      >
+                        {isWorking ? (
+                          `${workingCount} ${workingCount === 1 ? 'Hatch' : 'Hatches'} working`
+                        ) : (
+                          <span className="hatchin-text-muted">{hatchCount} {hatchCount === 1 ? 'Hatch' : 'Hatches'}</span>
+                        )}
+                      </span>
+                    </div>
                   )}
                 </div>
                 <div className="relative flex-shrink-0">
