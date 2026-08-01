@@ -120,7 +120,20 @@ export function useChatMessages(options: UseChatMessagesOptions): ChatMessagesSt
         const convoId = conversationId;
         const existing = prev[convoId] || [];
 
-        const activeMessages = existing.filter(m => m.status === 'streaming' || m.status === 'sending');
+        // Keep in-flight streaming placeholders, AND any just-sent optimistic message that this
+        // refetch's payload doesn't include yet. Without the second clause, a refetch that resolves
+        // before the server has persisted the user's message (e.g. the reconnect refetch fired when
+        // returning from being away) rebuilds the list from the API alone and silently drops the
+        // user's own message — it only reappears on the next refetch. A user message is 'sending'
+        // for only a few ms before it's bumped to 'sent'/'delivered', so status alone isn't enough;
+        // gate on "not in the API window yet" so the API stays authoritative once it catches up
+        // (dedup by id below), and WS reconciliation still collapses a temp id into its real one.
+        const apiIds = new Set(transformedMessages.map((m: any) => m.id));
+        const activeMessages = existing.filter(m =>
+          m.status === 'streaming' ||
+          m.status === 'sending' ||
+          (!apiIds.has(m.id) && (m.status === 'sent' || m.status === 'delivered' || m.status === 'failed'))
+        );
         const activeIds = new Set(activeMessages.map(m => m.id));
 
         const newMessages = transformedMessages.filter((m: any) => !activeIds.has(m.id));
