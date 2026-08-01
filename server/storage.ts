@@ -242,6 +242,9 @@ export interface IStorage {
   getMonthlyUsage(userId: string, yearMonth: string): Promise<UsageDailySummary[]>;
   // Tier 0.1 — sum of ALL users' estimated LLM cost (cents) for a date, for the global spend kill.
   getGlobalDailyCostCents(date: string): Promise<number>;
+  // Tier 0.6 — liveness ping for the health check. Resolves if the backing store is reachable;
+  // throws/rejects if it is not (DatabaseStorage runs SELECT 1). MemStorage is always reachable.
+  ping(): Promise<void>;
   updateUserTier(userId: string, tier: 'free' | 'pro', stripeData?: {
     customerId?: string;
     subscriptionId?: string;
@@ -1541,6 +1544,7 @@ export class MemStorage implements IStorage {
   async getDailyUsage(): Promise<UsageDailySummary | undefined> { return undefined; }
   async getMonthlyUsage(): Promise<UsageDailySummary[]> { return []; }
   async getGlobalDailyCostCents(): Promise<number> { return 0; }
+  async ping(): Promise<void> { /* in-memory store is always reachable */ }
   async updateUserTier(): Promise<void> {}
   async getUserTier(userId: string): Promise<{ tier: string; subscriptionStatus: string; graceExpiresAt: Date | null } | undefined> {
     const user = this.users.get(userId);
@@ -2517,6 +2521,11 @@ export class DatabaseStorage implements IStorage {
       .from(schema.usageDailySummary)
       .where(eq(schema.usageDailySummary.date, date));
     return Number(row?.total ?? 0);
+  }
+
+  async ping(): Promise<void> {
+    // Tier 0.6 — cheap DB liveness probe for the health check. Throws if the DB is unreachable.
+    await db.execute(sql`SELECT 1`);
   }
 
   async updateUserTier(userId: string, tier: 'free' | 'pro', stripeData?: {

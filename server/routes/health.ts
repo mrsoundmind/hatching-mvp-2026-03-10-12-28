@@ -40,21 +40,37 @@ export function registerHealthRoute(app: Express, deps: RegisterHealthDeps): voi
       const ollamaStatus = providerHealth['ollama-test']?.status || 'down';
       const modelAvailable = diagnostics ? diagnostics.modelAvailable : runtime.provider !== 'ollama-test';
 
+      // Tier 0.6 (OBS-2 / REL-4) — the DB is the one dependency that makes this instance unable to
+      // serve. Ping it so a wedged/DB-down instance reports unhealthy (503) and Fly pulls it from
+      // rotation. An LLM-provider outage is NOT infra-down: the app still serves (fallbacks + non-LLM
+      // routes), so it degrades (200) rather than being killed.
+      let dbReachable = true;
+      try {
+        await deps.storage.ping();
+      } catch {
+        dbReachable = false;
+      }
+
       const status: 'ok' | 'degraded' | 'down' =
-        providerHealth[runtime.provider]?.status === 'down' || wsHealth.status === 'down'
+        !dbReachable || providerHealth[runtime.provider]?.status === 'down' || wsHealth.status === 'down'
           ? 'down'
           : providerHealth[runtime.provider]?.status === 'degraded' || wsHealth.status === 'degraded'
             ? 'degraded'
             : 'ok';
 
+      // 503 ONLY when the instance genuinely cannot serve (DB unreachable). Provider-down alone
+      // stays 200 so Fly does not kill an instance that can still serve via fallbacks.
+      const httpCode = dbReachable ? 200 : 503;
+
       // Unauthenticated requests get minimal info only
       const isAuthenticated = !!(req.session as any)?.userId;
       if (!isAuthenticated) {
-        return res.json({ status, time: new Date().toISOString() });
+        return res.status(httpCode).json({ status, time: new Date().toISOString() });
       }
 
-      res.json({
+      res.status(httpCode).json({
         status,
+        database: { status: dbReachable ? 'ok' : 'down' },
         server: {
           status: 'ok',
           time: new Date().toISOString(),

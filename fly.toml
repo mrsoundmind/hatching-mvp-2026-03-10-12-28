@@ -24,6 +24,18 @@ primary_region = "bom"
     hard_limit = 250
     soft_limit = 200
 
+  # Tier 0.6 (OBS-2) — pull a wedged / DB-unreachable instance from rotation. Target is /health, NOT
+  # /api/health: the latter sits behind the `app.use('/api', requireAuth)` guard and 401s for an
+  # unauthenticated prober, which would make Fly kill every instance. /health is the same handler
+  # (DB ping + 503 only when infra is down; an LLM-provider outage stays 200 so a still-serviceable
+  # instance is not killed). grace_period covers cold start under min_machines_running = 0.
+  [[http_service.checks]]
+    method = "get"
+    path = "/health"
+    interval = "15s"
+    timeout = "4s"
+    grace_period = "20s"
+
 [[vm]]
   memory = "1gb"
   cpu_kind = "shared"
