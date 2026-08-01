@@ -522,7 +522,7 @@ export function ProjectTree({
                   transition={{ duration: 0.2, ease: 'easeInOut' }}
                   className="overflow-hidden"
                 >
-                <div className="ml-7 space-y-1" role="group">
+                <div className="ml-[19px] pl-3 mt-0.5 mb-1.5 border-l border-[var(--hatchin-border-subtle)] space-y-1" role="group">
                   {/* Teams */}
                   {projectTeams.map(team => {
                     const teamAgents = agents.filter(a => a.teamId === team.id && !a.isSpecialAgent);
