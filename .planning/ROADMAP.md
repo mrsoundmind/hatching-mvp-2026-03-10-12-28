@@ -117,9 +117,17 @@ identity + a collapsible focus rail**. Presentation/accessibility only — every
   `useAgentWorkingState`), idle = dimmed to 0.4. Account/search/+New/portal-tooltips all reachable.
 - **Auto-collapse when the team starts working** (`5226136`) — active-project idle→working transition
   folds into the rail; fires once/session, any manual toggle disarms, never persists (transient focus).
+- **Matched collapse/expand icons** (`ff1060f`) — the two toggles were a `PanelLeftClose`/`ChevronRight`
+  mismatch; now the mirror pair `PanelLeftClose` / `PanelLeftOpen`, both 18px, one control.
+- **P0-C / P1-C / P1-D accessibility** (`020e48c`) — project/team/agent rows were `<div onClick>` with
+  no tabIndex; now tabbable + Enter/Space activate (guarded so the rename input never double-fires) +
+  focus ring. Options/delete buttons were `opacity-0 group-hover` only (unreachable on touch/keyboard);
+  now reveal on `:focus-visible` and coarse pointers, with the 44px hit-target. P1-D "+ New" was already
+  44px via `hit-target`. Verified live: 11 focusable rows, Tab reveals the kebab, Enter switches project.
 
-**Remaining (accessibility):** P0-C keyboard-operable project tree (roving tabindex + arrows), P1-C
-touch/keyboard-reachable kebab, P1-D 44px "+ New" hit area. P0-B emoji **dropped** (design pivot).
+**Also fixed this session (cross-cutting, not Phase-5-scoped):** every in-chat pop-up card now names a
+real teammate and shows what it's about (`835518a`) — see the STATE roadmap-evolution note / CLAUDE
+footer. P0-B emoji **dropped** (design pivot). **Phase 5 accessibility complete.**
 
 **Key files:** `client/src/components/LeftSidebar.tsx`, `client/src/components/ProjectTree.tsx`.
 Artifacts + PLAN: `.planning/phases/v2.1-ux-05-left-sidebar/`. Color rule held; path-disjoint from the
