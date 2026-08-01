@@ -1,8 +1,10 @@
 import { devLog } from '@/lib/devLog';
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { ProjectTree } from "@/components/ProjectTree";
-import { ChevronDown, Search, LogOut, X, CreditCard } from "lucide-react";
+import { ChevronDown, Search, LogOut, X, CreditCard, Folder, Plus, ChevronRight, PanelLeftClose } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useAgentWorkingState } from "@/hooks/useAgentWorkingState";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useIsFetching } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import type { Project, Team, Agent } from "@shared/schema";
@@ -119,6 +121,46 @@ export function LeftSidebar({
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Which agents are executing background work right now (live via WS). Used by the
+  // collapsed rail to glow a project folder amber even when you're not looking at it.
+  const workingAgents = useAgentWorkingState();
+
+  // Focus mode — collapse the nav to a thin rail so the chat/work gets the room.
+  // Remembered across sessions. Only ever active on desktop (the mobile drawer, which
+  // mounts this same component, must always show the full sidebar).
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem('hatchin_sidebar_collapsed') === 'true'; } catch { return false; }
+  });
+  const [isDesktop, setIsDesktop] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(min-width: 1024px)').matches : true
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const handler = () => setIsDesktop(mq.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  const persistCollapsed = (next: boolean) => {
+    try { localStorage.setItem('hatchin_sidebar_collapsed', String(next)); } catch { /* private mode */ }
+  };
+  const expandSidebar = useCallback(() => { setCollapsed(false); persistCollapsed(false); }, []);
+  const collapseSidebar = useCallback(() => { setCollapsed(true); persistCollapsed(true); }, []);
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed(prev => { const next = !prev; persistCollapsed(next); return next; });
+  }, []);
+  const isCollapsed = collapsed && isDesktop;
+
+  // Reuse the ProjectTree colour mapping so a folder keeps its project's identity colour.
+  const projectIconColorClass = (color?: string) => {
+    switch (color) {
+      case 'green': return 'text-hatchin-green';
+      case 'purple': return 'text-hatchin-purple';
+      case 'amber': return 'text-[#FFB547]';
+      case 'red': return 'text-[#FF4E6A]';
+      default: return 'text-hatchin-blue';
+    }
+  };
+
   // Add Project flow modals
   const [showQuickStart, setShowQuickStart] = useState(false);
   const [showStarterPacks, setShowStarterPacks] = useState(false);
@@ -143,12 +185,22 @@ export function LeftSidebar({
   // Radix DropdownMenu handles outside-click + Escape; isUserMenuOpen is kept in sync
   // via onOpenChange only for the chevron rotation.
 
-  // Keyboard shortcut for search
+  // Keyboard shortcuts: ⌘K search, ⌘\ collapse/expand, Esc clears search
   useEffect(() => {
     const handleKeydown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
-        searchInputRef.current?.focus();
+        // Search input only exists when expanded — open the rail first.
+        if (isCollapsed) {
+          expandSidebar();
+          requestAnimationFrame(() => searchInputRef.current?.focus());
+        } else {
+          searchInputRef.current?.focus();
+        }
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
+        e.preventDefault();
+        toggleCollapsed();
       }
       if (e.key === 'Escape' && searchQuery) {
         setSearchQuery("");
@@ -158,7 +210,7 @@ export function LeftSidebar({
 
     document.addEventListener('keydown', handleKeydown);
     return () => document.removeEventListener('keydown', handleKeydown);
-  }, [searchQuery]);
+  }, [searchQuery, isCollapsed, expandSidebar, toggleCollapsed]);
 
   useEffect(() => {
     return () => {
@@ -502,30 +554,42 @@ export function LeftSidebar({
 
   return (
     <aside
-      className="w-[260px] h-[calc(100vh-20px)] min-h-0 premium-column-bg overflow-hidden p-3 rounded-2xl ml-2.5 my-2.5 relative flex flex-col"
+      className={`${isCollapsed ? 'w-[60px] px-2 items-center overflow-visible' : 'w-[260px] p-3 overflow-hidden'} h-[calc(100vh-20px)] min-h-0 premium-column-bg rounded-2xl ml-2.5 my-2.5 relative flex flex-col transition-[width] duration-300 ease-out`}
       onWheel={handleSidebarWheel}
     >
       <div className="ambient-glow-top" />
 
-      {/* Welcome Header — keyboard-operable account menu (Radix) */}
-      <div className="relative mb-3 pb-3 hatchin-border border-b">
+      {/* Account menu — Radix, keyboard-operable. Full "Welcome, X" row when expanded,
+          just the avatar when collapsed into the rail. */}
+      <div className={isCollapsed ? 'mb-2 shrink-0' : 'relative mb-3 pb-3 hatchin-border border-b'}>
         <DropdownMenu onOpenChange={setIsUserMenuOpen}>
           <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              aria-label="Account menu"
-              className="w-full flex items-center justify-between cursor-pointer hover:bg-hatchin-border rounded-lg p-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hatchin-blue)] focus-visible:ring-offset-0"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-semibold text-sm">{user?.name?.charAt(0).toUpperCase() || 'U'}</span>
+            {isCollapsed ? (
+              <button
+                type="button"
+                aria-label="Account menu"
+                title={`Welcome, ${user?.name || 'User'}`}
+                className="hit-target w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hatchin-blue)]"
+              >
+                <span className="text-white font-semibold text-sm">{user?.name?.charAt(0).toUpperCase() || 'U'}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                aria-label="Account menu"
+                className="w-full flex items-center justify-between cursor-pointer hover:bg-hatchin-border rounded-lg p-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hatchin-blue)] focus-visible:ring-offset-0"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                    <span className="text-white font-semibold text-sm">{user?.name?.charAt(0).toUpperCase() || 'U'}</span>
+                  </div>
+                  <span className="text-sm hatchin-text">Welcome, {user?.name || 'User'}</span>
                 </div>
-                <span className="text-sm hatchin-text">Welcome, {user?.name || 'User'}</span>
-              </div>
-              <ChevronDown className={`w-3 h-3 hatchin-text-muted transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
-            </button>
+                <ChevronDown className={`w-3 h-3 hatchin-text-muted transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+            )}
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-[var(--radix-dropdown-menu-trigger-width)]">
+          <DropdownMenuContent align="start" className={isCollapsed ? 'w-56' : 'w-[var(--radix-dropdown-menu-trigger-width)]'}>
             <DropdownMenuItem asChild>
               <a href="/account" className="flex items-center gap-3 cursor-pointer">
                 <CreditCard className="w-4 h-4" />
@@ -543,6 +607,86 @@ export function LeftSidebar({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {isCollapsed ? (
+        /* ----------------------- COLLAPSED RAIL ----------------------- */
+        <>
+          <button
+            type="button"
+            aria-label="Search projects — expands the sidebar"
+            title="Search (⌘K)"
+            onClick={() => { expandSidebar(); requestAnimationFrame(() => searchInputRef.current?.focus()); }}
+            className="hit-target w-10 h-10 rounded-lg flex items-center justify-center hatchin-text-muted hover:bg-hatchin-border hover:hatchin-text transition-colors shrink-0"
+          >
+            <Search className="w-[18px] h-[18px]" />
+          </button>
+          <button
+            type="button"
+            aria-label="New project"
+            title="New project"
+            onClick={handleAddProjectClick}
+            className="hit-target w-10 h-10 rounded-lg flex items-center justify-center text-hatchin-blue hover:bg-hatchin-blue/10 transition-colors shrink-0"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+
+          <div className="w-7 h-px bg-[var(--hatchin-border-subtle)] my-1.5 shrink-0" />
+
+          {/* Project folders. Colour only ever means "look here": working = amber + count,
+              active = full colour, everything idle dims back so attention stays on the work. */}
+          <div className="flex-1 min-h-0 w-full flex flex-col items-center gap-1.5 overflow-y-auto overflow-x-visible hide-scrollbar">
+            {projects.map((project) => {
+              const workingCount = agents.filter(a => a.projectId === project.id && workingAgents.has(a.id)).length;
+              const isWorking = workingCount > 0;
+              const isActive = project.id === activeProjectId;
+              return (
+                <div key={project.id} className="relative shrink-0">
+                  {/* Radix Tooltip portals out of the scrollable rail so the folder name
+                      is never clipped — the escape hatch for the name while collapsed. */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={project.name}
+                        onClick={() => onSelectProject(project.id)}
+                        className={`hit-target w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${isActive ? 'bg-[var(--glass-frosted-strong)]' : 'hover:bg-hatchin-border'}`}
+                      >
+                        <Folder
+                          className={`w-5 h-5 transition-colors ${isWorking ? '' : `${projectIconColorClass(project.color)}${isActive ? '' : ' opacity-40'}`}`}
+                          style={isWorking ? { color: 'var(--hatchin-working-amber)' } : undefined}
+                        />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      {project.name}{isActive ? ' · active' : isWorking ? ` · ${workingCount} working` : ''}
+                    </TooltipContent>
+                  </Tooltip>
+                  {isWorking && (
+                    <span
+                      className="pointer-events-none absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] px-1 rounded-full text-[9px] font-bold flex items-center justify-center ring-2 ring-[var(--hatchin-panel)]"
+                      style={{ background: 'var(--hatchin-working-amber)', color: '#231702' }}
+                    >
+                      {workingCount}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            aria-label="Expand sidebar"
+            title="Expand (⌘\\)"
+            onClick={expandSidebar}
+            className="hit-target w-10 h-10 mt-1.5 rounded-lg flex items-center justify-center hatchin-text-muted hover:bg-hatchin-border hover:hatchin-text transition-colors shrink-0"
+          >
+            <ChevronRight className="w-[18px] h-[18px]" />
+          </button>
+        </>
+      ) : (
+        /* ----------------------- FULL SIDEBAR ----------------------- */
+        <>
       {/* Search Bar */}
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 hatchin-text-muted" />
@@ -569,12 +713,25 @@ export function LeftSidebar({
           <h2 className="font-medium hatchin-text-muted uppercase tracking-wide text-xs">
             Projects
           </h2>
-          <button
-            onClick={handleAddProjectClick}
-            className="hit-target px-3 py-1.5 btn-primary-glow rounded-full text-xs font-semibold btn-press"
-          >
-            + New
-          </button>
+          <div className="flex items-center gap-1.5">
+            {isDesktop && (
+              <button
+                type="button"
+                aria-label="Collapse sidebar"
+                title="Collapse (⌘\\)"
+                onClick={collapseSidebar}
+                className="hit-target w-8 h-8 rounded-lg flex items-center justify-center hatchin-text-muted hover:bg-hatchin-border hover:hatchin-text transition-colors"
+              >
+                <PanelLeftClose className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              onClick={handleAddProjectClick}
+              className="hit-target px-3 py-1.5 btn-primary-glow rounded-full text-xs font-semibold btn-press"
+            >
+              + New
+            </button>
+          </div>
         </div>
 
         <div
@@ -634,6 +791,9 @@ export function LeftSidebar({
           )}
         </div>
       </div>
+        </>
+      )}
+
       {/* Add Project Modals */}
       <QuickStartModal
         isOpen={showQuickStart}
