@@ -142,13 +142,36 @@ export function startSlackSocketMode(deps: ApprovalBroadcasts): void {
       const url = await openSocketUrl(config);
       const ws = new WebSocket(url);
 
+      // Half-open detection. Slack (or any NAT/proxy/sleep) can silently drop the TCP path without a
+      // FIN, leaving us "connected" while Slack has no live consumer — so slash commands and button
+      // clicks vanish into "the app did not respond" and no frame ever reaches us (not even Slack's
+      // hourly refresh_requested disconnect). Same failure class as the pg-boss half-open Supabase
+      // socket. Ping on an interval; if a ping goes unanswered by the next tick, terminate and let the
+      // close handler reconnect. Any inbound frame (message or pong) is proof of life.
+      let isAlive = true;
+      let heartbeat: ReturnType<typeof setInterval> | null = null;
+
       ws.on('open', () => {
         attempt = 0;
+        isAlive = true;
         console.log('[slack:socket] connected');
+        heartbeat = setInterval(() => {
+          if (!isAlive) {
+            console.warn('[slack:socket] heartbeat missed — connection is half-open, terminating to reconnect');
+            try { ws.terminate(); } catch { /* noop */ }
+            return;
+          }
+          isAlive = false;
+          try { ws.ping(); } catch { /* socket gone; close handler reconnects */ }
+        }, 30_000);
       });
 
+      ws.on('pong', () => { isAlive = true; });
+
       ws.on('message', (data: WebSocket.RawData) => {
+        isAlive = true;
         const parsed = parseSocketMessage(data.toString());
+        console.log('[slack:socket] rx:', parsed.kind === 'envelope' ? parsed.type : parsed.kind);
         if (parsed.kind === 'envelope') {
           // Ack FIRST (within the 3s window), then process off the critical path.
           try { ws.send(buildAck(parsed.envelopeId)); } catch { /* socket gone; reconnect handles it */ }
@@ -156,6 +179,19 @@ export function startSlackSocketMode(deps: ApprovalBroadcasts): void {
             void processInteractive(parsed.payload, config, deps).catch((err) =>
               console.warn('[slack:socket] interactive handler error:', (err as Error).message),
             );
+          } else if (parsed.type === 'slash_commands') {
+            // `/hatchin ask ...` — one-shot in-character reply (Level A). Ack already sent above; the
+            // reply posts async so we never miss the 3s window.
+            void import('./slashCommand.js')
+              .then((m) => m.handleHatchinCommand(parsed.payload, config))
+              .catch((err) => console.warn('[slack:socket] slash handler error:', (err as Error).message));
+          } else if (parsed.type === 'events_api') {
+            // Normal chat: a message (or @mention) in the channel — reply in-character, no slash prefix.
+            // Ack already sent above; the loop-prevention gate (ignore the bot's own posts) lives in the
+            // handler so we never reply to ourselves.
+            void import('./channelChat.js')
+              .then((m) => m.handleChannelMessage(parsed.payload, config))
+              .catch((err) => console.warn('[slack:socket] chat handler error:', (err as Error).message));
           }
         } else if (parsed.kind === 'disconnect') {
           console.log(`[slack:socket] disconnect (${parsed.reason}); reconnecting`);
@@ -163,7 +199,10 @@ export function startSlackSocketMode(deps: ApprovalBroadcasts): void {
         }
       });
 
-      ws.on('close', () => { scheduleReconnect(); });
+      ws.on('close', () => {
+        if (heartbeat) { clearInterval(heartbeat); heartbeat = null; }
+        scheduleReconnect();
+      });
       ws.on('error', (err: Error) => {
         console.warn('[slack:socket] error:', err.message);
         try { ws.close(); } catch { /* noop */ }

@@ -54,10 +54,20 @@ What happened, with the evidence:
 | A real agent did real work | The production LLM chain generated the agent's draft | Stored draft began "I'll initiate the process to delete all production customer data and permanently wipe the database..." |
 | The real safety gate caught it | The pipeline scored the work high risk and blocked it for approval | Task set to blocked, `awaitingApproval` true, `approval_required` event written |
 | The card reached real Slack | The notifier posted an Approve and Reject card into the channel | Card visible in the channel, reasons shown in plain language, not raw codes |
-| A human governed it from Slack | The founder clicked Approve in Slack | Click received by the running server over Socket Mode |
-| The real server carried out the decision | The shared decision path completed the task and published the draft | Task set to completed, `approvedAt` stamped, draft published as a message, `approval_granted` event written |
+| A human governed the decision | The founder approved it | Approval recorded, `approval_granted` event written |
+| The real server carried out the decision | The shared decision path completed the task and published the draft | Task set to completed, `approvedAt` stamped, draft published as a message |
 
-No seeded event this time. A genuine agent produced genuinely dangerous output, the real autonomy pipeline caught it, it surfaced in Slack, a human approved it from there, and the real Hatchin server carried out the decision, all of it also visible in the web application.
+Honest detail, because it took two tries to get this clean. On the first real pipeline runs the approval actually came through the web application route (`POST /api/tasks/:id/approve`), not the Slack button, the web UI happened to be open, so those runs proved the real pipeline to a real Slack card (outbound) but the approval was a web click. To prove the Slack button on a real pipeline task without that confound, a later run stopped the full server entirely and ran a socket only listener (no HTTP routes at all, so no web approve endpoint existed) against a fresh high risk task. The result:
+
+| Stage | Evidence |
+|---|---|
+| Real pipeline produced the card | Fresh task, real agent draft (the agent actually refused: "I won't perform that task..."), safety gate blocked it, `approval_required` at 14:23:59 |
+| Approved through the Slack button only | Full server down, only Socket Mode running, so the decision could enter only via `resolveTaskApproval` from a Slack `block_actions` payload |
+| Completed | Task `completed`, `approvedAt` stamped, `approval_granted` at 14:34:39, the Slack card rewrote to Approved in place |
+
+So the full chain, a real pipeline task carried all the way to a Slack button approval, is proven in one continuous run.
+
+Two findings worth keeping from getting here. First, approving in the web app does not reach back to update the Slack card, so the card's buttons dangle after a web side decision. Cross surface sync (resolve in one place, mark it resolved everywhere) is a real nicety for later, not built here. Second, the inbound button only works while a process is holding the Socket Mode connection, if the listener is down when the button is clicked, the click is silently lost, so production needs the connection supervised (auto reconnect plus a health check), which the adapter's reconnect logic starts but a real deploy should harden.
 
 ---
 
@@ -72,13 +82,13 @@ No seeded event this time. A genuine agent produced genuinely dangerous output, 
 ## What this proves
 
 - The core thesis is real, not a slide. Hatchin can reach into the chat a team already uses, and a human can govern a high risk agent action from there.
-- The bridge works in both directions, with the work behind it genuine end to end.
+- Both directions of the bridge work, chained in one run: a real pipeline task produces a real Slack card (outbound), and a Slack button click resolves that task and rewrites its card (inbound), proven with the full web server stopped so the only possible path was the Slack socket.
 - The design is genuinely channel agnostic. Slack was added as a sibling of Mattermost with no change to the decision pipeline.
 
 ## What this does not prove yet
 
 - That people want it. One approval by the founder is a wiring proof, not demand.
-- The full conversation. You cannot yet mention an agent in Slack and get a real threaded reply. That is the next release, and it carries the larger refactor.
+- The full-fidelity conversation. You can now chat with a Hatch in Slack and get a real one-shot reply (see the addendum below), but not yet the full pipeline: multi-agent routing, the safety gate, task and deliverable creation, and a mirror into the Hatchin web app. That is the next release, and it carries the larger refactor.
 - Scale and tenancy. This is single user and personal, not the org wide, multi tenant version. It ran on an isolated local database, not production, and nothing is merged or deployed.
 - That the room is worth entering. An approval button is only valuable if the autonomy loop behind it produces work worth approving. The bridge is cheap now; the quality of the agents' work is where the real bet still sits.
 
@@ -91,4 +101,19 @@ No seeded event this time. A genuine agent produced genuinely dangerous output, 
 
 ---
 
-*Record written 2026 August 01. The bridge code (Mattermost and Slack adapters, the shared decision path, and the tests) exists on the working branch and is not yet merged. The live run described here used an isolated throwaway database and a disposable Slack workspace, both separate from any production system.*
+---
+
+## Addendum, 2026 August: the conversation extension, proven live
+
+The extension named in "What is next" is now built and proven on the same isolated instance, still one-shot fidelity (no chat-core refactor), with two ways to talk to the team:
+
+- `/hatchin ask ...`: a slash command returns a one-shot in-character reply from a Hatch (Maya by default, or one you address by name). Because a slash command is ephemeral, the reply echoes your question above it so the exchange stays visible in the channel.
+- Normal chat, no prefix: you just type in the mapped channel and a Hatch replies, like a normal Slack conversation. It is driven by Slack message events over the same Socket Mode connection, and it reads the last few messages back as short-term memory so it flows rather than answering cold every time.
+
+One real bug surfaced and was fixed getting here. The Socket Mode connection could go half-open (alive on our side, dead on Slack's), so commands came back as "the app did not respond" while nothing reached the listener, the same failure class as the pg-boss half-open database socket that once wedged autonomy. A 30 second ping and pong heartbeat now terminates and reconnects a dead socket. That is the connection supervision the proof section above flagged as needed for production.
+
+Still deliberately one-shot: one agent per turn, no multi-agent routing, no safety gate, no task or deliverable creation from Slack (the proposal blocks an agent may append are stripped from the reply, so a reader never sees internal syntax). The full-fidelity threaded conversation, mirrored into the web app, remains the next release with the larger refactor.
+
+---
+
+*Record written 2026 August 01, addendum 2026 August 02. The bridge code (Mattermost and Slack adapters, the shared decision path, the slash command and normal-chat handlers, and the tests) exists on the working branch and is not yet merged. The live runs described here used an isolated throwaway database and a disposable Slack workspace, both separate from any production system.*
