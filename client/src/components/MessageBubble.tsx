@@ -9,6 +9,7 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } 
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
+import { SourceChips } from './chat/SourceChips';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 
@@ -327,7 +328,9 @@ export function MessageBubble({
                 )}
 
                 {/* C4.3: Markdown support for message content */}
-                <div className="text-sm leading-relaxed">
+                {/* Force readable near-white message text so it never depends on a
+                    possibly-broken --foreground var (dark-on-dark bug). */}
+                <div className="text-sm leading-relaxed" style={{ color: '#F5F6FA' }}>
                   {/* Show role-specific thinking phrase when streaming with empty content */}
                   {isAgent && message.isStreaming && safeContent.trim() === '' ? (
                     <div className="flex items-center space-x-2">
@@ -390,6 +393,9 @@ export function MessageBubble({
 
                       {/* Render parsed Generative UI Widget if present */}
                       {renderWidget(widget)}
+
+                      {/* v2.3 Per-role RAG: Sources chips from the reply's inline citations (agent replies only) */}
+                      {isAgent && <SourceChips content={cleanText} />}
                     </>
                   )}
                 </div>

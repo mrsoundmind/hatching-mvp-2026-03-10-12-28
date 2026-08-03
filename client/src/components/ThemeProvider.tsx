@@ -46,10 +46,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [theme, setTheme]);
 
   useEffect(() => {
-    applyTheme(theme);
+    // While dark is forced, always apply dark regardless of the state value — this
+    // self-heals any session that got stuck on "light" (e.g. from the old OS-change bug).
+    applyTheme(FORCE_DARK_MODE ? "dark" : theme);
   }, [theme]);
 
   useEffect(() => {
+    // Light mode is force-disabled (FORCE_DARK_MODE), so the OS switching between
+    // light/dark must NOT flip the app. This handler used to remove the `dark` class
+    // when macOS went light, which left --foreground on its near-black light value
+    // while every panel stayed dark → unreadable dark-on-dark text everywhere
+    // (account menu, chat bubbles, dropdowns). Bail out entirely while dark is forced.
+    if (FORCE_DARK_MODE) return;
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handler = (e: MediaQueryListEvent) => {
       if (!localStorage.getItem("hatchin-theme")) {

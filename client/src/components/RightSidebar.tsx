@@ -150,12 +150,13 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent, initialTa
     return (
       <aside className={fill
         ? "w-full h-full premium-column-bg p-4 flex flex-col items-center justify-center relative overflow-hidden"
-        : "w-72 xl:w-80 2xl:w-[22rem] shrink-0 premium-column-bg rounded-2xl p-4 xl:p-6 flex flex-col items-center justify-center my-2.5 relative overflow-hidden"}>
+        : "w-72 xl:w-80 2xl:w-[22rem] shrink-0 h-[calc(100vh-20px)] min-h-0 premium-column-bg rounded-2xl p-4 xl:p-6 flex flex-col items-center justify-center my-2.5 relative overflow-hidden"}>
         <div className="ambient-glow-top" />
-        <div className="text-center hatchin-text-muted">
+        <div className="text-center max-w-[220px]">
           <div className="text-4xl mb-4">🧠</div>
-          <p className="text-sm">
-            Select a project to view its overview
+          <p className="text-sm font-medium hatchin-text-bright mb-1">Nothing selected yet</p>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Pick a project on the left to see its overview here.
           </p>
         </div>
       </aside>

@@ -387,9 +387,11 @@ const getColorClasses = (color: string) => {
   return colorMap[color] || 'bg-gray-500';
 };
 
-export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, existingAgents, activeTeamId }: AddHatchModalProps) {
+export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, activeTeamId }: AddHatchModalProps) {
   const [activeTab, setActiveTab] = useState<'teams' | 'individual'>('teams');
   const [searchQuery, setSearchQuery] = useState('');
+  // Inline message for the Teams tab (e.g. when a pack is already on the project).
+  const [packMessage, setPackMessage] = useState<string | null>(null);
 
   // Filter templates based on search
   const filteredTeamTemplates = useMemo(() => {
@@ -420,8 +422,25 @@ export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, exis
 
   const handleUseTemplate = async (template: TeamTemplate) => {
     if (!activeProject) return;
+    setPackMessage(null);
 
     try {
+      // Guard (P0-C): don't silently add the same pack twice. If a team with this
+      // pack's name already exists on the project, block with a clear message instead
+      // of creating a duplicate team. Fail-open: if the check itself errors, proceed.
+      try {
+        const teamsResponse = await fetch(`/api/projects/${activeProject.id}/teams`);
+        if (teamsResponse.ok) {
+          const existingTeams = await teamsResponse.json();
+          if (Array.isArray(existingTeams) && existingTeams.some((t: any) => t.name === template.name)) {
+            setPackMessage(`${template.name} is already on your project. Add individual teammates instead, or remove the existing team first.`);
+            return;
+          }
+        }
+      } catch {
+        // If the duplicate check fails, let creation proceed rather than blocking.
+      }
+
       // First, create the team
       const teamData = {
         name: template.name,
@@ -446,14 +465,12 @@ export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, exis
       const newTeam = await teamResponse.json();
       devLog('Team created successfully:', newTeam);
 
-      // Then, create all agents and assign them to the new team
+      // Then, create every agent the pack promises and assign them to the new team.
+      // We intentionally do NOT skip roles that already exist elsewhere on the project
+      // (P0-A/P0-B): each team is self-contained, so "Use Pack" always delivers the full
+      // roster shown on the card, and the Teams tab now matches the Individual tab, which
+      // already allows duplicate roles.
       for (const templateAgent of template.agents) {
-        // Check if agent with this role already exists in this project
-        const existingAgent = existingAgents.find(agent =>
-          agent.role === templateAgent.role && agent.projectId === activeProject.id
-        );
-        if (existingAgent) continue; // Skip if already exists
-
         const agentData: Omit<Agent, 'id'> = {
           name: templateAgent.name, // Use character name from template
           role: templateAgent.role,
@@ -590,7 +607,7 @@ export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, exis
                   <div className="p-4">
                     <div className="space-y-1">
                       <button
-                        onClick={() => setActiveTab('teams')}
+                        onClick={() => { setActiveTab('teams'); setPackMessage(null); }}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 ${activeTab === 'teams'
                           ? 'bg-hatchin-blue text-white'
                           : 'text-muted-foreground hover:text-hatchin-text-bright hover:bg-hatchin-surface-elevated'
@@ -607,7 +624,7 @@ export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, exis
                       </button>
 
                       <button
-                        onClick={() => setActiveTab('individual')}
+                        onClick={() => { setActiveTab('individual'); setPackMessage(null); }}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 mt-[13px] mb-[13px] ${activeTab === 'individual'
                           ? 'bg-hatchin-blue text-white'
                           : 'text-muted-foreground hover:text-hatchin-text-bright hover:bg-hatchin-surface-elevated'
@@ -636,7 +653,7 @@ export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, exis
                         type="text"
                         placeholder={activeTab === 'teams' ? 'Search team templates...' : 'Search teammates...'}
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => { setSearchQuery(e.target.value); setPackMessage(null); }}
                         className="w-full pl-10 pr-4 py-3 bg-hatchin-surface border border-hatchin-border-subtle rounded-xl text-hatchin-text-bright placeholder-muted-foreground focus:border-hatchin-blue focus:outline-none focus:ring-1 focus:ring-hatchin-blue transition-colors"
                       />
                     </div>
@@ -645,12 +662,22 @@ export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, exis
                   {/* Content Grid */}
                   <div className="flex-1 p-6 overflow-y-auto">
                     {activeTab === 'teams' ? (
-                      <div
-                        className="grid gap-4 grid-cols-3"
-                        style={{
-                          gridTemplateColumns: 'repeat(3, 1fr)'
-                        }}
-                      >
+                      <>
+                        {packMessage && (
+                          <div
+                            role="status"
+                            className="mb-4 flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
+                          >
+                            <span aria-hidden="true">⚠️</span>
+                            <span>{packMessage}</span>
+                          </div>
+                        )}
+                        <div
+                          className="grid gap-4 grid-cols-3"
+                          style={{
+                            gridTemplateColumns: 'repeat(3, 1fr)'
+                          }}
+                        >
                         {filteredTeamTemplates.map((template) => (
                           <motion.div
                             key={template.id}
@@ -718,7 +745,8 @@ export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, exis
                             </div>
                           </motion.div>
                         ))}
-                      </div>
+                        </div>
+                      </>
                     ) : (
                       <div
                         className="grid gap-4 grid-cols-3"

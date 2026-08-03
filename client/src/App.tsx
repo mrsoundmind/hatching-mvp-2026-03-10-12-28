@@ -9,7 +9,13 @@ import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
 import LandingPage from "@/pages/LandingPage";
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
+
+// LandingPageV2 is lazy-loaded so its ported `clickup-ported.css` — which contains
+// UNSCOPED global `.text-sm/.text-md/.text-xl/.text-xs` color rules (#090c1d) — does
+// NOT load on the main app and paint dark-navy text over every menu/chat/dropdown.
+// The stylesheet now only loads when someone actually visits /v2.
+const LandingPageV2 = lazy(() => import("@/pages/LandingPageV2"));
 import { ErrorBoundary } from "react-error-boundary";
 import AutonomyDashboard from "@/devtools/autonomyDashboard";
 import AccountPage from "@/pages/AccountPage";
@@ -65,6 +71,13 @@ function Router() {
   return (
     <Switch>
       <Route path="/landing" component={LandingPage} />
+      {/* Landing v2 prototype. Additive only: /landing is untouched.
+          Lazy + Suspense so its global-leaking stylesheet stays off the main app. */}
+      <Route path="/v2">
+        <Suspense fallback={null}>
+          <LandingPageV2 />
+        </Suspense>
+      </Route>
       <Route path="/login" component={LoginPage} />
       <Route path="/">
         {isLoading ? (
