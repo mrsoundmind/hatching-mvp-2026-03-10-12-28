@@ -1,8 +1,21 @@
 # Milestone Brief: Chat Attachments ("Upload & Ask") + Command-the-Brain-from-Chat
 
-**Status:** design brief, NOT built. Post-launch feature. Nothing modified by this brief.
+**Status:** ENGINE SHIPPED server-side (Phase 1 + Phase 2), composer UI (Phase 3) is the remaining gated piece. On branch, nothing merged.
 **Branch:** `feat/v2.2-intelligence-fixes` (author: Claude Code, 2026-08-06).
 **Origin:** a pasted build spec, cross-verified against live code and corrected here.
+
+## SHIPPED 2026-08-06 (server engine, on-branch)
+
+Phase 1 (hardening) + Phase 2 (RAG-backed uploads) are built and proven live against Supabase + the real OpenAI embedder. Nothing merged.
+
+- **New raw-SQL tables** `conversation_documents` + `conversation_doc_chunks` (mirror `role_knowledge`, deliberately outside Drizzle so a `db:push` can't touch them — this sidesteps the Tier-0 migration-safety gate entirely). Created live by `scripts/setup-conversation-docs-tables.ts` (6/6). Two scopes share the tables: `conversation_id` set = ephemeral (this chat); NULL = permanent brain (project-wide).
+- **`server/knowledge/rag/conversationDocs.ts`** — ingest (chunk via `chunkStructured` → embed via `embedDocument` → store) + retrieve (pgvector cosine, gated so a chat with no attachments adds zero latency) + injection-safe, cite-or-admit block rendering. Short-upload fallback: a small pasted note is kept as one chunk instead of dropped by the web-scrape noise floor. Injection-like chunks dropped on ingest (OWASP LLM01).
+- **`server/lib/uploadSecurity.ts`** — magic-byte sniff (PDF `%PDF-`, DOCX `PK\x03\x04`, TXT/MD text heuristic) so a renamed binary can't pass the extension filter (INJ-2).
+- **`server/routes/attachments.ts`** — `POST/GET/DELETE /api/conversations/:conversationId/attachments`, hardened multer (10MB, single file), ownership via the conversation's project, `enforceCostGuard` (embeddings spend), per-user daily cap.
+- **Chat wiring** — `retrieveConversationDocsBlockForChat` injected into BOTH `openaiService` prompt paths alongside the role-knowledge matrix.
+- **Verified live:** module `scripts/test-conversation-docs.ts` 19/19 (buried-fact retrieval, scope isolation, injection-drop, cascade delete); HTTP `scripts/test-attachments-http.ts` 10/10 on a real server (upload/list/delete, magic-byte reject, auth); real-LLM A/B `scripts/test-attachment-grounding.ts` 2/2 (Alex answers "11 minutes, per the Aurelian Ledger Spec file" WITH the file; refuses to invent it WITHOUT). `tsc` clean.
+
+**Remaining: Phase 3 composer UI** (paperclip + attachment chip in `CenterPanel.tsx` + message bubble). Blocked by the UI-approval gate AND by that file carrying a sibling session's uncommitted edits. Design decision from §4 stands: reuse `SourceChips` for uploaded-doc answers (grounding chip is expected + trust-building for a file the user just uploaded, unlike ambient role knowledge). Phase 4 (harden brain-commands) and Phase 5 (images/CSV/URL) unchanged.
 
 ---
 

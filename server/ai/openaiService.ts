@@ -15,6 +15,7 @@ import {
 import type { LLMResponseMetadata } from '../llm/providerTypes.js';
 import { loadRoleBrain, renderRoleBrainContext } from '../knowledge/roleBrains/loader.js';
 import { retrieveKnowledgeBlockForChat } from '../knowledge/rag/retriever.js';
+import { retrieveConversationDocsBlockForChat } from '../knowledge/rag/conversationDocs.js';
 import { getCharacterProfile } from './characterProfiles.js';
 import { getRoleIntelligence } from '@shared/roleIntelligence';
 import { loadRoleSkillsWithUpdates } from '../knowledge/skillUpdates/skillUpdateStore.js';
@@ -206,6 +207,10 @@ export async function* generateStreamingResponse(
     // hybrid (vector+keyword) + rerank, injected as a role-attributed, injection-safe, cite-or-admit
     // block. Gated + fail-safe (returns '' on any error, so a chat turn never breaks).
     const retrievedKnowledgeSection = await retrieveKnowledgeBlockForChat(userMessage, context.conversationHistory);
+
+    // Chat Attachments — RAG-retrieve chunks from files the user attached to THIS conversation (or the
+    // project brain) and inject them grounded + injection-safe. Gated + fail-safe: no attachments => ''.
+    const conversationDocsSection = await retrieveConversationDocsBlockForChat(context.conversationId, context.projectId, userMessage);
 
     // Use the same prompt architecture as non-streaming responses for consistency
     const basePrompt = createPromptTemplate({
@@ -467,6 +472,7 @@ ${personalityPrompt}
 ${roleBrainContext}
 --- END ROLE BRAIN ---
 ${retrievedKnowledgeSection}
+${conversationDocsSection}
 
 ${opinionSection}
 ${reasoningHintSection}
@@ -662,6 +668,7 @@ export async function generateIntelligentResponse(
     const roleBrainContext = renderRoleBrainContext(roleBrain);
     // v2.3 THE MATRIX (non-streaming path) — same cross-role router as the streaming path.
     const retrievedKnowledgeSectionNs = await retrieveKnowledgeBlockForChat(userMessage, context.conversationHistory);
+    const conversationDocsSectionNs = await retrieveConversationDocsBlockForChat(context.conversationId, context.projectId, userMessage);
 
     // Create context-aware prompt using our template system
     const basePrompt = createPromptTemplate({
@@ -687,7 +694,7 @@ export async function generateIntelligentResponse(
       messages: [
         {
           role: 'system',
-          content: `${enhancedPrompt}\n\n--- ROLE BRAIN ---\n${roleBrainContext}\n--- END ROLE BRAIN ---${retrievedKnowledgeSectionNs}\n\nNEVER attach a URL or cite a source from memory; only cite sources explicitly provided to you above. With no provided source, state the point plainly and attach no link.\n\n${AGENT_CAPABILITY_ENVELOPE}${context.autonomyLevel === 'autonomous' ? AUTONOMOUS_DIRECTIVE_BLOCK : ''}${context.autonomyLevel === 'autonomous' && context.agentIsSpecial ? `\n\n${MAYA_AUTONOMOUS_OVERRIDE}` : ''}`
+          content: `${enhancedPrompt}\n\n--- ROLE BRAIN ---\n${roleBrainContext}\n--- END ROLE BRAIN ---${retrievedKnowledgeSectionNs}${conversationDocsSectionNs}\n\nNEVER attach a URL or cite a source from memory; only cite sources explicitly provided to you above. With no provided source, state the point plainly and attach no link.\n\n${AGENT_CAPABILITY_ENVELOPE}${context.autonomyLevel === 'autonomous' ? AUTONOMOUS_DIRECTIVE_BLOCK : ''}${context.autonomyLevel === 'autonomous' && context.agentIsSpecial ? `\n\n${MAYA_AUTONOMOUS_OVERRIDE}` : ''}`
         },
         {
           role: 'user',
