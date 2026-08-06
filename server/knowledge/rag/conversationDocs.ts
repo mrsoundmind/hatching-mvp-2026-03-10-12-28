@@ -259,6 +259,21 @@ export async function deleteConversationDocument(documentId: string): Promise<bo
   return (res.rowCount ?? 0) > 0;
 }
 
+/**
+ * Promote a conversation-scoped (ephemeral) document to the project brain: it becomes retrievable
+ * project-wide (every agent, every chat). Re-scopes the doc AND its chunks to conversation_id NULL so
+ * the brain branch of the retrieval query matches. No re-embedding needed — the vectors are unchanged.
+ */
+export async function promoteToBrain(documentId: string): Promise<boolean> {
+  const res = await pool.query(
+    `UPDATE conversation_documents SET scope = 'brain', conversation_id = NULL WHERE id = $1`,
+    [documentId],
+  );
+  if (!res.rowCount) return false;
+  await pool.query(`UPDATE conversation_doc_chunks SET conversation_id = NULL WHERE document_id = $1`, [documentId]);
+  return true;
+}
+
 /** Count a user's uploads today (UTC) for the per-user daily cap. */
 export async function countUserUploadsToday(userId: string): Promise<number> {
   const res = await pool.query(

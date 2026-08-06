@@ -1,7 +1,9 @@
 import { useRef, useEffect } from 'react';
-import { ArrowRightLeft, ArrowUpIcon } from 'lucide-react';
+import { ArrowRightLeft, ArrowUpIcon, Paperclip } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import AgentAvatar from '@/components/avatars/AgentAvatar';
+import { useAttachments } from '@/hooks/useAttachments';
+import { AttachmentChip } from './AttachmentChip';
 
 interface ChatInputProps {
   inputValue: string;
@@ -22,6 +24,8 @@ interface ChatInputProps {
   typingColleagues: string[];
   // Delegation hint (Phase 1.2) — shown only when the team can actually be delegated to.
   showDelegateHint?: boolean;
+  // Chat Attachments — the current conversation (used to scope file uploads). Attach is disabled without it.
+  conversationId?: string;
 }
 
 export function ChatInput({
@@ -39,8 +43,17 @@ export function ChatInput({
   onHandoff,
   typingColleagues,
   showDelegateHint,
+  conversationId,
 }: ChatInputProps) {
   const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { attachments, upload, remove, addToBrain } = useAttachments(conversationId);
+
+  const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    files.forEach((f) => upload(f));
+    e.target.value = ''; // allow re-picking the same file
+  };
 
   const resizeComposer = (el: HTMLTextAreaElement | null) => {
     if (!el) return;
@@ -92,6 +105,26 @@ export function ChatInput({
             Say <b className="font-semibold text-[var(--hatchin-text)]">&ldquo;go ahead&rdquo;</b> and the team starts on your to-do list.
           </div>
         )}
+
+        {/* Chat Attachments — tray of files attached to this conversation (one tap, stays in this chat). */}
+        {attachments.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2" data-testid="attachment-tray">
+            {attachments.map((att) => (
+              <AttachmentChip key={att.localId} att={att} onRemove={remove} onAddToBrain={addToBrain} />
+            ))}
+          </div>
+        )}
+
+        {/* Hidden native file picker driven by the paperclip button. */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.docx,.txt,.md"
+          multiple
+          onChange={onPickFiles}
+          className="hidden"
+          data-testid="attachment-file-input"
+        />
 
         <form onSubmit={onSubmit} className="relative bg-[var(--hatchin-surface)]/60 backdrop-blur-md rounded-xl border border-[var(--hatchin-border)]">
           {/* Hand off to... dropdown */}
@@ -145,15 +178,29 @@ export function ChatInput({
             className="w-full bg-transparent px-3 py-2 text-sm text-[var(--hatchin-text)] placeholder:text-[var(--hatchin-text-muted)] focus:outline-none focus-visible:ring-0 resize-none min-h-[32px] max-h-[180px] overflow-y-auto border-none"
             style={{ overflow: 'hidden' }}
           />
-          {/* Footer with typing indicator + send/stop */}
+          {/* Footer with attach + typing indicator + send/stop */}
           <div className="flex items-center justify-between px-2 pb-1.5 pt-0 min-h-[26px]">
-            <div className="text-micro text-muted-foreground truncate pr-2">
-              {typingColleagues.length > 0 && !isStreaming && (
-                <span>
-                  <span className="animate-pulse">•</span>{' '}
-                  {typingColleagues.join(', ')} {typingColleagues.length === 1 ? 'is' : 'are'} typing…
-                </span>
-              )}
+            <div className="flex items-center gap-1 min-w-0">
+              {/* Chat Attachments — paperclip opens the native file picker. Needs a conversation to scope to. */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!conversationId}
+                title={conversationId ? 'Attach a file (PDF, DOCX, TXT, MD)' : 'Open a chat to attach a file'}
+                aria-label="Attach a file"
+                data-testid="attachment-button"
+                className="hit-target flex-none rounded-lg p-1.5 text-[var(--hatchin-text-muted)] hover:text-[var(--hatchin-orange)] hover:bg-[var(--hatchin-surface-elevated)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Paperclip className="w-4 h-4" />
+              </button>
+              <div className="text-micro text-muted-foreground truncate pr-2">
+                {typingColleagues.length > 0 && !isStreaming && (
+                  <span>
+                    <span className="animate-pulse">•</span>{' '}
+                    {typingColleagues.join(', ')} {typingColleagues.length === 1 ? 'is' : 'are'} typing…
+                  </span>
+                )}
+              </div>
             </div>
             {isStreaming ? (
               <button

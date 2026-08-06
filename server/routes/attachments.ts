@@ -15,6 +15,7 @@ import {
   listConversationDocuments,
   getConversationDocument,
   deleteConversationDocument,
+  promoteToBrain,
   countUserUploadsToday,
   type DocScope,
 } from '../knowledge/rag/conversationDocs.js';
@@ -137,6 +138,29 @@ export function registerAttachmentRoutes(app: Express) {
     } catch (error) {
       console.error('Failed to list attachments:', error);
       return res.status(500).json({ error: 'Failed to list attachments' });
+    }
+  });
+
+  // PATCH /api/conversations/:conversationId/attachments/:docId — promote a chat file to the project brain.
+  app.patch('/api/conversations/:conversationId/attachments/:docId', async (req, res) => {
+    try {
+      const userId = getSessionUserId(req);
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+      const conversationId = req.params.conversationId;
+      const project = await getOwnedProjectForConversation(conversationId, userId);
+      if (!project) return res.status(404).json({ error: 'Conversation not found' });
+
+      const doc = await getConversationDocument(req.params.docId);
+      if (!doc || doc.projectId !== (project as any).id) return res.status(404).json({ error: 'Attachment not found' });
+
+      if (req.body?.scope !== 'brain') {
+        return res.status(400).json({ error: "Only { scope: 'brain' } is supported" });
+      }
+      const promoted = await promoteToBrain(req.params.docId);
+      return res.json({ id: req.params.docId, scope: 'brain', promoted });
+    } catch (error) {
+      console.error('Failed to promote attachment:', error);
+      return res.status(500).json({ error: 'Failed to update attachment' });
     }
   });
 
