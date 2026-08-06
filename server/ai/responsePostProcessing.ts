@@ -157,7 +157,21 @@ function removeAiIsms(input: string): string {
  * Vary between these patterns to avoid repetition.
  */
 
-const FORCED_NEXT_STEP_REGEX = /next step\s*:\s*share your top priority[^.]*\./gi;
+// Strip a formulaic labeled action line ("Next step:", "Next action:", "Next 10-minute move:",
+// "Smallest next action:"). Keep the content, drop the label, so the reply ends like a human
+// instead of a tacked-on checklist. Matches only at a line start to avoid mid-sentence false hits.
+const FORCED_NEXT_STEP_REGEX = /(^|\n|[.!?]\s+)[ \t]*(?:next step|next action|next 10[\s-]?minute move|smallest next action)[ \t]*:[ \t]*/gi;
+
+// ─── No em/en dashes (project rule: agents write with commas, not dashes) ──────
+// Only targets em (—) and en (–) dashes, never the hyphen (-), so "product-market", "5-user",
+// and code stay intact. Numeric ranges become "to"; every other dash becomes a comma.
+function stripDashes(input: string): string {
+  return input
+    .replace(/(\d)\s*[—–]\s*(\d)/g, '$1 to $2')  // "5–10" → "5 to 10"
+    .replace(/\s*[—–]\s*/g, ', ')                 // em/en dash as punctuation → comma
+    .replace(/\s*,\s*,\s*/g, ', ')                // collapse doubled commas the swap can create
+    .replace(/\s+,/g, ',');                       // tidy " ," → ","
+}
 
 const SOFT_CLOSINGS_EXCITED = [
   "What are you most hyped about?",
@@ -200,8 +214,8 @@ function applyAdaptiveClosing(
   state: UserSignals['emotionalState'],
   autonomyLevel?: string,
 ): string {
-  // Remove the forced next step if present
-  let output = input.replace(FORCED_NEXT_STEP_REGEX, '').trim();
+  // Strip the forced next-step LABEL if present, keep the content that follows
+  let output = input.replace(FORCED_NEXT_STEP_REGEX, '$1').trim();
 
   // Phase 38 Site 3 — autonomous mode suppresses soft-closing questions
   // ("Never Stop, Never Ask" — the whole point is to commit, not invite more questions)
@@ -269,6 +283,13 @@ export function applyTeammateToneGuard(
   if (deFormatted !== output) {
     output = deFormatted;
     reasons.push('stripped_chat_unfriendly_formatting');
+  }
+
+  // 3.5 Strip em/en dashes (project rule — agents write with commas, not dashes)
+  const deDashed = stripDashes(output);
+  if (deDashed !== output) {
+    output = deDashed;
+    reasons.push('stripped_dashes');
   }
 
   // 4. Adaptive length — mirror user's message depth

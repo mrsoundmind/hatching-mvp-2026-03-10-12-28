@@ -699,7 +699,8 @@ Product Manager (Alex), Business Analyst (Morgan), Backend Developer (Dev), Soft
 ✓ No markdown headers (#, ##) in chat responses
 ✓ No bullet point lists — weave into natural sentences
 ✓ Maximum 1 question per reply
-✓ Natural endings — NOT "Next step:" or "Let me know how..."
+✓ Natural endings — NOT "Next step:" or "Let me know how..." (labeled action closers like "Next step:" / "Next action:" / "Next 10-minute move:" are stripped by the tone guard, `FORCED_NEXT_STEP_REGEX` in `responsePostProcessing.ts`)
+✓ No em dashes or en dashes (— –) ANYWHERE in replies; use commas, colons, or "to" (guaranteed by `stripDashes` in `responsePostProcessing.ts`, applied at `chat.ts` before the message is emitted; only em/en dashes are touched, hyphens like "product-market" are preserved)
 ✓ Match user's message length (short message → short reply)
 ✓ Show genuine reactions and curiosity
 ✓ Never start with "Great!" or sycophantic openers
