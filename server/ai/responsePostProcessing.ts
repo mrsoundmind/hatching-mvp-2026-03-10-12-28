@@ -223,8 +223,10 @@ function applyAdaptiveClosing(
     return output;
   }
 
-  // Only add a closing if the response doesn't already end with a question
-  const alreadyHasQuestion = /\?\s*$/.test(output);
+  // Only add a closing if the response doesn't already contain a question ANYWHERE.
+  // (Checking only the ending let a mid-reply question slip through, then the single-question
+  //  guard downgraded the appended closing's "?" to a ".", leaving a statement-shaped question.)
+  const alreadyHasQuestion = /\?/.test(output);
   if (!alreadyHasQuestion) {
     const closing = pickClosing(state);
     if (closing) {
