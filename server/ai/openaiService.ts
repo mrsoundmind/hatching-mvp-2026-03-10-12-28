@@ -14,6 +14,7 @@ import {
 } from '../llm/providerResolver.js';
 import type { LLMResponseMetadata } from '../llm/providerTypes.js';
 import { loadRoleBrain, renderRoleBrainContext } from '../knowledge/roleBrains/loader.js';
+import { retrieveKnowledgeBlockForChat } from '../knowledge/rag/retriever.js';
 import { getCharacterProfile } from './characterProfiles.js';
 import { getRoleIntelligence } from '@shared/roleIntelligence';
 import { loadRoleSkillsWithUpdates } from '../knowledge/skillUpdates/skillUpdateStore.js';
@@ -199,6 +200,12 @@ export async function* generateStreamingResponse(
     const roleProfile = roleProfiles[agentRole] || roleProfiles['Product Manager'];
     const roleBrain = await loadRoleBrain(agentRole);
     const roleBrainContext = renderRoleBrainContext(roleBrain);
+
+    // v2.3 THE MATRIX — cross-role knowledge router: search ALL role libraries for the best knowledge
+    // for this question (not just the responding role), rewriting the query with conversation context,
+    // hybrid (vector+keyword) + rerank, injected as a role-attributed, injection-safe, cite-or-admit
+    // block. Gated + fail-safe (returns '' on any error, so a chat turn never breaks).
+    const retrievedKnowledgeSection = await retrieveKnowledgeBlockForChat(userMessage, context.conversationHistory);
 
     // Use the same prompt architecture as non-streaming responses for consistency
     const basePrompt = createPromptTemplate({
@@ -433,6 +440,7 @@ After 5+ exchanges, if you've learned something significant about the project, s
 4. ONE question max. Delete all but the most important.
 5. Name things a real ${agentRoleLabel} would know — specific tools, frameworks, failure patterns. No generic advice anyone could give.
 6. If asked for an opinion, give one. "I think X" not "there are several factors."
+7. NEVER attach a URL or cite a source from memory. Only cite sources explicitly provided to you in an EXPERT KNOWLEDGE / SOURCES block. With no provided source, state the point plainly and attach no link or citation.
 --- END ABSOLUTE FORMAT RULES ---`;
 
     // Create system prompt based on role and context
@@ -458,6 +466,7 @@ ${personalityPrompt}
 --- ROLE BRAIN ---
 ${roleBrainContext}
 --- END ROLE BRAIN ---
+${retrievedKnowledgeSection}
 
 ${opinionSection}
 ${reasoningHintSection}
@@ -651,6 +660,8 @@ export async function generateIntelligentResponse(
     const roleProfile = roleProfiles[agentRole] || roleProfiles['Product Manager'];
     const roleBrain = await loadRoleBrain(agentRole);
     const roleBrainContext = renderRoleBrainContext(roleBrain);
+    // v2.3 THE MATRIX (non-streaming path) — same cross-role router as the streaming path.
+    const retrievedKnowledgeSectionNs = await retrieveKnowledgeBlockForChat(userMessage, context.conversationHistory);
 
     // Create context-aware prompt using our template system
     const basePrompt = createPromptTemplate({
@@ -676,7 +687,7 @@ export async function generateIntelligentResponse(
       messages: [
         {
           role: 'system',
-          content: `${enhancedPrompt}\n\n--- ROLE BRAIN ---\n${roleBrainContext}\n--- END ROLE BRAIN ---\n\n${AGENT_CAPABILITY_ENVELOPE}${context.autonomyLevel === 'autonomous' ? AUTONOMOUS_DIRECTIVE_BLOCK : ''}${context.autonomyLevel === 'autonomous' && context.agentIsSpecial ? `\n\n${MAYA_AUTONOMOUS_OVERRIDE}` : ''}`
+          content: `${enhancedPrompt}\n\n--- ROLE BRAIN ---\n${roleBrainContext}\n--- END ROLE BRAIN ---${retrievedKnowledgeSectionNs}\n\nNEVER attach a URL or cite a source from memory; only cite sources explicitly provided to you above. With no provided source, state the point plainly and attach no link.\n\n${AGENT_CAPABILITY_ENVELOPE}${context.autonomyLevel === 'autonomous' ? AUTONOMOUS_DIRECTIVE_BLOCK : ''}${context.autonomyLevel === 'autonomous' && context.agentIsSpecial ? `\n\n${MAYA_AUTONOMOUS_OVERRIDE}` : ''}`
         },
         {
           role: 'user',

@@ -13,7 +13,7 @@ Kept in sync with reality per [feedback_always_update_claudemd.md](https://claud
 1. [What is Hatchin?](#1-what-is-hatchin)
 2. [Core Concepts](#2-core-concepts)
 3. [User-Facing Features](#3-user-facing-features)
-4. [All 30 AI Agent Roles](#4-all-30-ai-agent-roles)
+4. [All 34 AI Agent Roles](#4-all-30-ai-agent-roles)
 5. [Starter Pack Templates](#5-starter-pack-templates)
 6. [AI System Architecture](#6-ai-system-architecture)
 7. [Autonomy System](#7-autonomy-system)
@@ -309,7 +309,7 @@ The main app uses a three-panel layout with responsive breakpoints:
 
 ---
 
-## 4. All 30 AI Agent Roles
+## 4. All 34 AI Agent Roles
 
 Each role has a character name, emoji, color identity, voice prompt, domain expertise, critical thinking style, pushback behavior, collaboration style, handoff protocol, and peer review lens.
 
@@ -347,6 +347,10 @@ Each role has a character name, emoji, color identity, voice prompt, domain expe
 | 28 | Instructional Designer | Lee | 🎓 | Blue | Curriculum design, learning experiences, course structure |
 | 29 | Audio Editor | Vince | 🎵 | Amber | Audio production, podcast editing, sound design |
 | 30 | **Idea Partner (Maya)** | Maya | ✦ | Teal | **SPECIAL**: project-level intelligence, brainstorming, strategic guidance, voice snaps to committed-synthesizer at level 4 (Phase 38-03) |
+| 31 | Finance Analyst | Juhi | 🧮 | Emerald | Unit economics, FP&A, SaaS metrics (NRR, Rule of 40, CAC payback), cash flow, scenario modeling |
+| 32 | Legal Counsel | Ira | ⚖️ | Slate | Contracts, IP and licensing, privacy/compliance (GDPR, CCPA), entity + equity, risk allocation (not the department of no) |
+| 33 | Sales Lead | Dana | 🤝 | Rose | B2B/SaaS consultative sales: qualification (MEDDIC/BANT), discovery, value selling, objection handling, pipeline |
+| 34 | Customer Success Manager | Tess | 🌱 | Teal | Onboarding to first value, adoption, health scoring, churn prevention, renewals + expansion (owns the outcome, not just satisfaction) |
 
 ### Role Intelligence Architecture
 
@@ -413,6 +417,17 @@ A/B eval validated 2026-07-10: **7/9 → 9/9 markers (+22pp lift)**. Wren gained
 Other 27 roles untouched.
 
 ---
+
+### Per-Role Deep Knowledge (RAG) + Cross-Role Matrix
+
+Every role is backed by a deep, citable knowledge base so agents reason like top-1% practitioners, not only from the base model's general training.
+
+- **Per-role corpus:** 34 role libraries, 4,107 knowledge chunks, gathered from authoritative primary sources (official docs, standards bodies, recognized experts) as faithful extracts with real source URLs. Stored in Postgres `role_knowledge` (pgvector), embedded with OpenAI `text-embedding-3-small` at 768 dimensions.
+- **The cross-role matrix:** for any question the retriever searches ALL 34 libraries (not just the answering agent's), fuses vector + keyword results (reciprocal-rank), reranks, dedups, and caps per role, so the best expertise anywhere on the team informs the answer. Example: a churn question pulls the Customer Success playbook and the Finance retention view together.
+- **Faithful + injection-safe:** agents cite only sources actually provided (never from memory), retrieved text is treated as untrusted input (OWASP framing), and citation shows up as natural framework-naming in the reply rather than clutter (deliberate product choice, no chip on every message).
+- **Pluggable embedder** via `RAG_EMBED_PROVIDER` (openai | ollama | gemini); one vector space per corpus (never mix providers). Relevance floor `RAG_MIN_SCORE` calibrated per embedder (0.40 for OpenAI's cosine scale).
+- **Key modules:** `server/knowledge/rag/{embeddings,store,retriever,ingest}.ts`; seed corpus in `server/knowledge/rag/seed/`; the chat seam is `retrieveKnowledgeBlockForChat` in [server/ai/openaiService.ts](server/ai/openaiService.ts). Kill switch: `RAG_ENABLED`.
+- **Measured (cross-model blind judge, matrix off vs on):** a UX competence benchmark lifted expert-rubric scores from 4.40 to 5.00 out of 5 (+14%); a whole-team benchmark shows the largest, repeatable gains on specialized roles (Legal 4.5 to 5.0), with strong base-model roles already at ceiling on common questions. Status: built and proven on-branch, not yet wired into the production deploy.
 
 ## 5. Starter Pack Templates
 

@@ -1,0 +1,100 @@
+[
+  {
+    "role": "Content Writer",
+    "url": "https://www.nngroup.com/articles/how-users-read-on-the-web/",
+    "title": "How Users Read on the Web, Jakob Nielsen (Nielsen Norman Group)",
+    "date": "1997-09-30",
+    "trustTier": "A",
+    "text": "Nielsen Norman Group research, first published on 30 September 1997, found that web users do not read comprehensively. In the study, 79 percent of test users always scanned any new page they came across, and only 16 percent read word by word. Because of this scanning behavior, effective web content should be built for skimming rather than linear reading. Recommended structural techniques include highlighted keywords (including hypertext links), meaningful sub-headings, bulleted lists, one idea per paragraph, the inverted pyramid style that puts the conclusion first, and roughly half the word count (or less) of conventional writing. The study also found that users detested marketese, the boastful, promotional style common on commercial sites. Rewriting content to be objective rather than promotional improved measured usability by 27 percent, using a scannable layout improved it by 47 percent, and concise text improved it by 58 percent. When all three improvements were combined, usability rose by 124 percent. Nielsen's explanation is that promotional language imposes a cognitive burden, because readers must work to filter hyperbole from fact, which slows comprehension and navigation. Credibility also matters online: high-quality graphics, strong writing, and outbound hypertext links that show the author did research all raise perceived trustworthiness, a real concern given the anonymity of the web."
+  },
+  {
+    "role": "Content Writer",
+    "url": "https://www.nngroup.com/articles/inverted-pyramid/",
+    "title": "The Inverted Pyramid: Writing for Comprehension (Nielsen Norman Group)",
+    "date": "2018-02-11",
+    "trustTier": "A",
+    "text": "Nielsen Norman Group, in an article dated 11 February 2018, defines the inverted pyramid as a structure where the most important information, or what might even be considered the conclusion, is presented first. The name comes from picturing broad, essential facts at the top narrowing to smaller supporting details below, like a triangle balanced on its point. This structure suits web writing because online readers often consume only a single paragraph or sentence, and skimmers may stop reading at any point yet still need to retain the main idea. Benefits include faster comprehension through an early mental model, decreased interaction cost, and resilience for readers who leave early. NN/g recommends five steps to apply it: identify the single key fact, rank secondary information by how much it matters to the audience, write concisely in plain language, frontload every content element by importance, and consider adding summary highlights. The principle applies at every level: each headline, each paragraph opening, and each sentence beginning should carry information-forward value so the core message survives regardless of how deeply someone reads."
+  },
+  {
+    "role": "Copywriter",
+    "url": "https://copyblogger.com/copywriting-101/",
+    "title": "Copywriting 101: How to Craft Compelling Copy (Copyblogger)",
+    "trustTier": "A",
+    "text": "Copyblogger defines copywriting as the art and science of strategically delivering words, whether written or spoken, that get people to take some form of action, such as purchasing a product or service or subscribing to a newsletter, and it observes that professional copywriters rank among the highest paid writers in the world. The resource points to several named persuasion frameworks, including the 1-2-3-4 Formula for persuasive copy and the Problem, Agitate, Solve method, which it describes as a way to dominate any social media platform. It also references 10 principles for turning into a killer copywriter and 7 copywriting strategies drawn from historically successful practitioners. Copyblogger emphasizes that the headline is the most critical copywriting skill, because most persuasive writing sinks or swims right out of the gate based on the reader's snap judgment; it cites the Cosmo Headline Technique as a source of inspiration and even offers contradictory guidance on whether the headline should be written first or last. Educational offerings include a free eBook, Copywriting 101: How to Craft Compelling Copy, plus paid Academy courses spanning copywriting, SEO, and content distribution. No publication date is shown on the page."
+  },
+  {
+    "role": "Copywriter",
+    "url": "https://copyblogger.com/magnetic-headlines/",
+    "title": "How to Write Magnetic Headlines (Copyblogger)",
+    "date": "2024-03-08",
+    "trustTier": "A",
+    "text": "Copyblogger, in a headline guide updated 8 March 2024, lays out a three-step framework for writing magnetic headlines. First, be clear about what the content actually delivers, because a misleading headline attracts the wrong audience and triggers negative algorithmic signals. Second, identify the primary goal of the person searching for the topic; for example, a reader looking up how to write a headline fundamentally wants to increase clicks. Third, add intrigue through a benefit, a pain point, an objection, or proof, though this step ranks least important if the first two are solid. The core principle is that the ultimate headline hack is communicating that your content is the solution that helps the reader achieve their goal or solve their problem, and that clarity beats cleverness: if the value is not immediately obvious, people will not click. Audience knowledge matters, since technical jargon narrows reach while broad pain points appeal more widely. Practical tactics include building a swipe file of top-performing headlines in your niche, writing at least ten variations before choosing one, testing headlines before publishing, respecting platform character limits (SEO typically allows about 70 characters maximum), writing the headline before drafting the content so the two align, and deciding deliberately whether keywords serve your platform strategy."
+  },
+  {
+    "role": "Copywriter",
+    "url": "https://en.wikipedia.org/wiki/AIDA_(marketing)",
+    "title": "AIDA (marketing) model (Wikipedia)",
+    "date": "2026-07-24",
+    "trustTier": "B",
+    "text": "The AIDA model, as documented on Wikipedia (page last updated 24 July 2026), is a foundational hierarchy-of-effects framework in marketing communications, created by the American advertising pioneer E. St. Elmo Lewis in the early 1900s. It breaks persuasion into four sequential stages: Attention (or Awareness), Interest, Desire, and Action. Attention initiates consumer awareness of a category, product, or brand, usually through advertising exposure. Interest follows as the consumer learns about the brand's benefits and how it fits their life. Desire is the development of a favorable disposition toward the brand. Action covers forming purchase intent, comparison shopping, trial, or the actual purchase. The stages form a linear progression rooted in stimulus-response theory, with advertising as the stimulus and the buying decision as the response. The acronym gained formal recognition in 1921, when C. P. Russell noted that reading downward, the first letters spell the opera Aida. Because the original model neglects post-purchase effects, several variants exist: the AIDAS model adds Satisfaction as a final stage, the AISDALSLove model adds Search, Like/dislike, Share, and Love/Hate to fit digital and social media, and Betancur's NAITDASE model emphasizes trust preceding the desire and action stages."
+  },
+  {
+    "role": "Growth Marketer",
+    "url": "https://andrewchen.com/how-to-solve-the-cold-start-problem/",
+    "title": "How to solve the cold start problem, Andrew Chen (andrewchen.com)",
+    "trustTier": "A",
+    "text": "Andrew Chen frames the cold start problem as the central challenge for social and network products: reaching sufficient network density before trying to scale. Rather than chasing viral growth too early, founders should first build a small-to-medium network of highly engaged users, on the order of 10,000-plus active users adding hundreds per day at a 20 percent-plus DAU/MAU ratio. He describes four strategies to overcome the cold start. Single user utility means designing standalone value that works before network effects arrive, as Pinterest did for collecting inspiration, LinkedIn as an online resume, and Tumblr for personal blogging. Publishing into pre-existing networks leverages an established platform to bootstrap adoption, as Instagram did by letting people share filtered photos to Facebook. Small network requirements means designing so the product is meaningful with minimal critical mass: Skype needs only two users, whereas a broad social network needs many. Local network saturation targets a hyper-connected vertical or community where dense existing relationships aid retention, as with Facebook at Harvard, Twitter at SXSW, and Snapchat in Southern California high schools. Chen warns that big, unfocused launches often fail because they generate user volume without achieving the minimum network density, and that a high-density small network outperforms a large, loosely connected audience because users need enough content and feedback loops to stay engaged."
+  },
+  {
+    "role": "Growth Marketer",
+    "url": "https://www.productplan.com/glossary/aarrr-framework/",
+    "title": "AARRR Framework (Pirate Metrics) glossary entry (ProductPlan)",
+    "trustTier": "B",
+    "text": "The AARRR framework, known as Pirate Metrics, was developed by Dave McClure, a Silicon Valley investor and founder of 500 Startups, to help startups focus on metrics that affect business health rather than vanity metrics like social media likes. It tracks five user-behavior stages: Acquisition, how people discover the product; Activation, whether users take the desired first actions; Retention, whether activated users keep engaging; Referral, whether users recommend the product to others; and Revenue, whether customers are willing to pay. McClure called it Pirate Metrics because AARRR sounds like a pirate's exclamation. ProductPlan describes a four-step implementation: identify a specific conversion metric for each stage, set up tracking tools such as Google Analytics, run A/B tests to optimize performance at each level, and adjust marketing and product initiatives based on the results. For each stage teams should estimate dollar amounts to judge whether an initiative drives profitable growth, and should measure real revenue targets including minimum revenue, break-even revenue, and revenue exceeding customer acquisition cost, so that acquisition and activation spending is validated by returns. No publication date is shown."
+  },
+  {
+    "role": "Marketing Specialist",
+    "url": "https://contentmarketinginstitute.com/what-is-content-marketing",
+    "title": "What Is Content Marketing? (Content Marketing Institute)",
+    "trustTier": "A",
+    "text": "The Content Marketing Institute defines content marketing as a strategic marketing approach focused on creating and distributing valuable, relevant, and consistent content to attract and retain a clearly defined audience, and ultimately to drive profitable customer action. Rather than pitching products directly, the method delivers genuinely useful information that addresses the audience's challenges, whether professional in B2B or personal in B2C. This help-first philosophy is what distinguishes strategic content from what CMI calls informational spam sent by companies trying to sell first. Effective execution requires a documented strategy that is integrated across marketing activities including email, social media, SEO, PR, and paid advertising, rather than treating content as an isolated tactic. Organizations that apply content marketing strategically can expect benefits such as increased sales, reduced costs, stronger customer loyalty, and content that itself becomes a revenue stream. CMI notes that many prominent organizations use the approach, from AARP and the Cleveland Clinic to Salesforce and government agencies, and frames content marketing as essential infrastructure for modern marketing overall, with growing attention to AI's role in storytelling, content creation, and SEO optimization."
+  },
+  {
+    "role": "Marketing Specialist",
+    "url": "https://en.wikipedia.org/wiki/Marketing_mix",
+    "title": "Marketing mix (Wikipedia)",
+    "trustTier": "B",
+    "text": "The marketing mix is a foundational strategy concept describing the set of controllable marketing tools a firm uses to pursue its objectives in a target market. E. Jerome McCarthy introduced the modern 4 Ps model in 1960, building on earlier work by James Culliton and Neil Borden in the late 1940s. Product covers tangible goods and intangible services, including decisions about quality, branding, and warranties. Price covers list pricing, discount pricing, special offers, and credit terms. Place refers to distribution channels and market access. Promotion covers advertising, public relations, and sales activity used to communicate the offer to potential customers. As services marketing grew, Booms and Bitner proposed a 7 Ps extension in 1981, adding People (service staff embody the brand's values and quality), Process (the procedures through which the service is delivered), and Physical Evidence (tangible cues such as facilities, design, and signage that signal service quality). In 1990 Robert Lauterborn offered a customer-centric alternative, the 4 Cs: Consumer wants and needs, Cost (total cost of ownership), Convenience, and Communication, reframing the discipline from a supply focus to a demand focus."
+  },
+  {
+    "role": "Social Media Manager",
+    "url": "https://sproutsocial.com/insights/social-media-statistics/",
+    "title": "Social Media Statistics You Need to Know (Sprout Social)",
+    "date": "2026-02-09",
+    "trustTier": "A",
+    "text": "Sprout Social's social media statistics report, dated 9 February 2026, estimates about 5.66 billion active social media users worldwide, with the typical user active on 6.75 platforms per month and spending roughly 2 hours and 40 minutes per day on social apps. Facebook remains the largest network at 3.07 billion monthly active users, followed by Instagram and YouTube at roughly 3 billion and 2.6 billion, while LinkedIn serves 1.3 billion members across 200 countries and TikTok reaches 1.99 billion in monthly ad reach. Discovery behavior is shifting: social platforms drive over 60 percent of product discovery while Google holds only 34.5 percent of search share, and 52 percent of users trust brand information found on social media more than information from Google or AI. On performance, short-form video delivers the strongest B2B ROI at 41 percent, ahead of brand storytelling at 38 percent and testimonials at 34 percent. Engagement rates differ sharply by platform: TikTok leads at 3.70 percent, Instagram at 0.48 percent, and Facebook at 0.15 percent. Responsiveness is now a competitive necessity: 73 percent of consumers say they will switch to a competitor if a brand does not respond on social media, and about 81 percent report that social media prompts spontaneous purchases multiple times a year."
+  },
+  {
+    "role": "Social Media Manager",
+    "url": "https://buffer.com/resources/best-time-to-post-on-social-media/",
+    "title": "Best Time to Post on Social Media (Buffer)",
+    "date": "2026-03-25",
+    "trustTier": "A",
+    "text": "Buffer's best-time-to-post analysis, dated 25 March 2026, examined over 52 million posts across major platforms, including nearly 10 million Instagram posts, about 5 million LinkedIn posts, 7.1 million TikTok posts, 8.7 million X posts, and 2.5 million Threads posts, studying engagement by hour and day of the week. Facebook and Instagram both peaked at 9 a.m. on Thursdays, with Wednesday the strongest day overall and weekends consistently underperforming. LinkedIn showed a shift from 2025, with afternoon and evening slots from 3 to 6 p.m. now outperforming traditional workday hours, suggesting people engage outside the office. TikTok bucked the weekday pattern: Saturday and Sunday mornings plus 6 to 11 p.m. evenings drove the highest engagement, while Wednesday was weakest. YouTube Shorts peaked on Friday at 4 p.m., while long-form videos performed best on Sunday at 10 a.m. Both X (Twitter) and Threads optimized around 9 a.m. on weekdays, again with Wednesday strongest. Buffer stresses that timing is only one small piece of a complex puzzle, and that consistency, content quality, and audience relevance matter significantly more than timing alone."
+  },
+  {
+    "role": "Email Specialist",
+    "url": "https://mailchimp.com/resources/email-marketing-benchmarks/",
+    "title": "Email Marketing Benchmarks and Statistics by Industry (Mailchimp)",
+    "date": "2023-12",
+    "trustTier": "A",
+    "text": "Mailchimp's email marketing benchmarks, published December 2023 and drawn from analysis of billions of emails monthly for campaigns reaching at least 1,000 subscribers, show that open and click rates vary widely by industry. The platform-wide average open rate is 35.63 percent and the average click rate is 2.62 percent. By sector, Non-Profits lead on opens at 40.04 percent, followed by Education and Training at 35.64 percent, Business and Finance at 31.35 percent, and E-commerce at 29.81 percent. On clicks, Non-Profits again lead at 3.27 percent, followed by Education and Training at 3.02 percent, Business and Finance at 2.78 percent, and E-commerce at 1.74 percent. Unsubscribe rates stay low across sectors, ranging from 0.15 percent for Business and Finance to a 0.22 percent all-users average, with E-commerce at 0.19 percent and Non-Profits at 0.18 percent. Mailchimp advises marketers to contextualize their own metrics against these baselines when setting realistic targets, and cautions that Apple's Mail Privacy Protection can affect the accuracy of reported open rates, so those figures should be interpreted carefully."
+  },
+  {
+    "role": "Email Specialist",
+    "url": "https://www.litmus.com/resources/email-marketing-roi",
+    "title": "Email Marketing ROI guide (Litmus)",
+    "trustTier": "A",
+    "text": "Litmus reports that email marketing drives exceptional financial returns compared with competing marketing channels, delivering an ROI of $36 for every dollar spent, which it presents as the highest return of any channel in a marketer's toolkit. Its ROI analysis examines returns across several dimensions: organizational factors such as company size and industry vertical; email program characteristics such as list size and sending frequency; testing practices such as spam-filter validation and A/B testing; content strategies such as dynamic elements and animated content; and analytics infrastructure. Looking at these dimensions together helps marketers identify which operational choices correlate with stronger returns. One counterintuitive finding challenges conventional wisdom: single opt-in (SOI) permission programs now show an 80 percent higher return than double opt-in (DOI) programs, so unless a regulation mandates double confirmation, organizations may improve financial performance by adopting single opt-in instead. No explicit publication or last-updated date is shown on the page; the guide is presented as current reference material from Litmus, which now operates under Validity Engage."
+  }
+]

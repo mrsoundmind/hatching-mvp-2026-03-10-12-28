@@ -1,0 +1,82 @@
+[
+  {
+    "role": "Product Manager",
+    "url": "https://www.intercom.com/blog/rice-simple-prioritization-for-product-managers/",
+    "title": "RICE: Simple prioritization for product managers (Intercom)",
+    "date": "2025",
+    "trustTier": "B",
+    "text": "The RICE framework helps product managers evaluate and rank project ideas using four measurable factors: Reach, Impact, Confidence, and Effort. Each component addresses a common prioritization bias: Reach combats the tendency to favor personally appealing features, Impact ensures focus on meaningful goals, Confidence tempers enthusiasm for poorly-understood ideas, and Effort promotes efficiency by accounting for resource requirements.\n\nReach measures how many people a project will affect within a defined time period, expressed as number of people or events per time period, such as customers per quarter. Teams should rely on actual product metrics rather than estimates. Impact quantifies the effect on each individual using a scale where 3 equals massive impact, 2 means high, 1 indicates medium, 0.5 represents low, and 0.25 signifies minimal. Confidence applies a percentage modifier: 100% for high confidence, 80% for medium, 50% for low, and below 50% for a total moonshot, reflecting the reliability of the underlying estimates. Effort represents the total person-months required across all disciplines, using whole numbers or 0.5 increments to avoid false precision.\n\nThe scoring formula is (Reach x Impact x Confidence) divided by Effort, which yields total impact per time worked and enables direct project comparison. However, RICE functions as a decision-support tool rather than an absolute law; dependency requirements and strategic necessities may justify working on lower-scoring initiatives."
+  },
+  {
+    "role": "Product Manager",
+    "url": "https://www.svpg.com/product-vs-feature-teams/",
+    "title": "Product vs Feature Teams (Marty Cagan, SVPG)",
+    "date": "2019-08-29",
+    "trustTier": "A",
+    "text": "Marty Cagan distinguishes organizational models for teams doing product work. Delivery or scrum teams operate under a backlog-administrator model focused purely on output, which Cagan argues resembles repackaged waterfall and is not used at true tech companies. Feature teams and empowered product teams appear superficially similar but operate fundamentally differently.\n\nEmpowered product teams are cross-functional units combining product, design, and engineering. They receive problem statements framed around business outcomes rather than predetermined features. Their purpose is to solve problems in ways customers love, yet that work for the business. The product manager owns ensuring value and business viability, designers ensure usability, and engineers ensure feasibility. This requires product managers with deep customer knowledge, industry understanding, and business acumen, which Cagan describes as non-negotiable.\n\nFeature teams instead receive a prioritized list called the roadmap specifying which features to build. The stakeholders requesting features implicitly assume responsibility for proving value and viability, though they typically blame the team if results disappoint. The product manager role degrades into project management and gap-filling design work. This model struggles to attract and retain strong talent because engineers and designers recognize the limited autonomy. Diagnostic questions: are you assigned problems or features, do you experience role confusion, and do you spend time on project management rather than discovery?"
+  },
+  {
+    "role": "Product Manager",
+    "url": "https://www.producttalk.org/2021/08/opportunity-solution-tree/",
+    "title": "Opportunity Solution Trees (Teresa Torres, Product Talk)",
+    "date": "2023-12-06",
+    "trustTier": "A",
+    "text": "Opportunity solution trees are visual frameworks that help product teams navigate continuous discovery and align around a path to a desired business outcome. The tree structures product thinking into four hierarchical levels: a clearly defined business or product outcome at the root, an opportunity space of unmet customer needs and pain points, potential solutions addressing those opportunities, and assumption tests that validate solution viability.\n\nThe framework resolves the tension between business value and customer value. As Teresa Torres explains, an outcome sits atop the tree because when we create business value, we earn the right to serve our customer over time. Opportunities emerge from story-based customer interviews rather than internal brainstorming, and they represent genuine customer needs distinct from proposed solutions. A critical test: if an opportunity is really a solution in disguise, it lacks alternative approaches. Teams then brainstorm multiple solutions for a single target opportunity, test the underlying assumptions, and decide iteratively whether to refine, pivot, or pursue a different opportunity. This continuous cycle keeps teams aligned while managing the inherent messiness of discovery."
+  },
+  {
+    "role": "Software Engineer",
+    "url": "https://martinfowler.com/articles/microservices.html",
+    "title": "Microservices (James Lewis & Martin Fowler)",
+    "date": "2014-03-25",
+    "trustTier": "A",
+    "text": "The microservice architectural style develops a single application as a suite of small services, each running in its own process and communicating with lightweight mechanisms, often an HTTP resource API. Services are organized around business capabilities, are independently deployable through automation, and may use different languages and data stores with minimal centralized management.\n\nThe architecture has nine defining characteristics. Componentization via services treats independently deployable services as primary components rather than libraries. Organization around business capabilities groups teams and services by business function rather than technology layer. Products not projects emphasizes long-term team ownership and operational responsibility. Smart endpoints and dumb pipes places business logic in services while keeping communication infrastructure simple. Decentralized governance lets teams choose appropriate technologies. Decentralized data management lets each service manage its own storage. Infrastructure automation leverages continuous deployment and automated testing. Design for failure requires services to handle dependency failures gracefully, for example with circuit breakers. Evolutionary design prioritizes replaceability and supports refactoring service boundaries as understanding improves.\n\nThe authors temper the advantages (independent scaling, deployment velocity, explicit boundaries) with real concerns: distributed systems introduce complexity around eventual consistency and compensating transactions, refactoring across service boundaries is substantially harder, and success depends heavily on team skill and getting boundaries right initially."
+  },
+  {
+    "role": "Software Engineer",
+    "url": "https://sre.google/sre-book/service-level-objectives/",
+    "title": "Service Level Objectives (Google SRE Book)",
+    "date": "2016",
+    "trustTier": "A",
+    "text": "The Google SRE book defines three interconnected concepts for managing reliability. A Service Level Indicator (SLI) is a carefully defined quantitative measure of some aspect of the level of service provided; common SLIs include request latency, error rate, throughput, and availability. A Service Level Objective (SLO) is a target value or range for a service level measured by an SLI, essentially the goal you commit to. A Service Level Agreement (SLA) is a contract with explicit consequences, often financial penalties, if the SLOs are not met. The distinction matters: if there is no explicit consequence, you are almost certainly looking at an SLO, not an SLA.\n\nThe guidance is to work backward from user needs rather than what is easily measurable. When aggregating metrics, percentiles are more informative than averages, because a system can look fine on average while 5% of requests run far slower than the median; use high percentiles like the 99th or 99.9th to capture worst-case experience.\n\nSLO targets should avoid perfectionism. An error budget allows an SLO to be missed at a specified rate rather than demanding 100% uptime, which would stifle innovation and deployment velocity. Practical guidance: don't base targets only on current performance, keep definitions simple, keep few SLOs with genuine business value, and refine over time. Note the over-achievement trap: users adapt to actual performance rather than the stated promise, which is why Google's Chubby service eventually required planned outages to reset dependency expectations."
+  },
+  {
+    "role": "Software Engineer",
+    "url": "https://12factor.net/",
+    "title": "The Twelve-Factor App",
+    "date": "2017",
+    "trustTier": "A",
+    "text": "The Twelve-Factor App is a methodology for building software-as-a-service applications that emphasizes declarative setup automation, maximum portability between execution environments, and suitability for cloud deployment, enabling continuous deployment and scaling without major architectural changes.\n\nThe twelve factors are: I. Codebase, one codebase tracked in version control, many deploys. II. Dependencies, explicitly declare and isolate dependencies rather than relying on system-wide packages. III. Config, store configuration in environment variables, keeping secrets out of code. IV. Backing services, treat databases, caches, and queues as attached resources that can be swapped without code changes. V. Build, release, run, strictly separate the build stage from release and run. VI. Processes, run the app as stateless processes that don't rely on local storage between requests. VII. Port binding, export services via port binding rather than a separate web server. VIII. Concurrency, scale horizontally by running multiple independent processes. IX. Disposability, design for fast startup and graceful shutdown. X. Dev/prod parity, keep development, staging, and production as similar as possible. XI. Logs, treat logs as event streams written to standard output. XII. Admin processes, run one-off admin tasks as separate processes."
+  },
+  {
+    "role": "Software Engineer",
+    "url": "https://martinfowler.com/bliki/MonolithFirst.html",
+    "title": "MonolithFirst (Martin Fowler)",
+    "date": "2015-06-03",
+    "trustTier": "A",
+    "text": "Martin Fowler observes that successful microservices adoption typically follows a pattern: teams begin with a monolith, hit scaling problems, then decompose into services. Systems built as microservices from the start frequently run into serious difficulty. This led colleagues to advocate that you shouldn't start a new project with microservices, even if you're sure the application will be big enough to eventually warrant them.\n\nMicroservices carry a significant premium, the overhead of managing distributed services, which is only justified for sufficiently complex systems. During early development, when teams prioritize speed and feedback, that premium is counterproductive. Establishing proper service boundaries requires understanding stable bounded contexts, which architects struggle to identify correctly at inception, and refactoring across services is far harder than within a monolith.\n\nRecommended paths: design a modular monolith upfront, gradually peel microservices off the monolith's edges, treat the monolith as a sacrificial architecture destined for replacement, or start with coarse-grained services before subdividing. Fowler acknowledges the counterargument that existing microservices experience can accelerate a team, but that assumes the expertise is already there."
+  },
+  {
+    "role": "SEO Specialist",
+    "url": "https://developers.google.com/search/docs/fundamentals/creating-helpful-content",
+    "title": "Creating helpful, people-first content (Google Search Central)",
+    "date": "2025-12-10",
+    "trustTier": "A",
+    "text": "Google's automated ranking systems prioritize helpful, reliable information created to benefit people, not content created to manipulate search rankings. Legitimate SEO helps search engines discover people-first content, but using automation to produce content primarily to manipulate rankings violates spam policies.\n\nCreators should self-assess across dimensions. On content and quality, ask whether pages offer original information, reporting, research, or analysis, and whether they avoid simply copying or rewriting other sources. On expertise, demonstrate authority through clear sourcing, author credentials, and factual accuracy, and provide accurate authorship information such as bylines where readers expect it.\n\nGoogle's systems consider E-E-A-T: Experience, Expertise, Authoritativeness, and Trustworthiness, with trust being the most important. A conversational who-how-why model helps: clarify who created the content via visible bylines, explain how it was produced (especially for AI-assisted work), and establish why it exists, which should be to help people rather than attract search traffic. Red flags of search-engine-first content include producing lots of content across many topics hoping some performs, using extensive automation, writing on trending topics without genuine expertise, changing publication dates to seem fresh, or targeting arbitrary word counts."
+  },
+  {
+    "role": "SEO Specialist",
+    "url": "https://ahrefs.com/blog/search-traffic-study/",
+    "title": "96.55% of pages get no search traffic (Ahrefs study)",
+    "date": "2023-12-01",
+    "trustTier": "B",
+    "text": "In an Ahrefs analysis of roughly 14 billion pages in the Content Explorer database, the vast majority of web content receives no search visibility: 96.55% of all pages get zero traffic from Google, and a further 1.94% receive between one and ten monthly visits. Only about 3.45% of indexed pages generate any measurable organic search traffic.\n\nTwo caveats: the 14-billion-page sample, while large, is a relatively small portion of the web compared with Ahrefs' larger Site Explorer index of 340.8 billion pages and skews slightly toward higher-quality content; and traffic estimates derive from a keyword database of roughly 651 million terms, which may miss extreme long-tail queries.\n\nThe study identified three main reasons pages fail to earn traffic: they target topics with no search demand, they lack the backlinks needed to rank for competitive keywords, or they fail to match search intent. There are clear correlations between backlink quantity and both traffic and rankings, though pages on high-authority domains can occasionally rank for low-competition topics without links."
+  },
+  {
+    "role": "SEO Specialist",
+    "url": "https://ahrefs.com/blog/topical-authority/",
+    "title": "Topical Authority (Ahrefs)",
+    "date": "2026-06-01",
+    "trustTier": "B",
+    "text": "Topical authority is when search engines recognize a website as the trusted expert source on a subject across a full range of related queries, not merely individual keywords. It is built by covering a subject comprehensively and connecting that content so search engines understand how it relates. This differs from domain authority, which measures backlink strength; a specialized site with low domain rating can outrank stronger competitors by owning a niche more thoroughly.\n\nThe architecture rests on pillar pages and cluster content. Pillar pages give a broad topic overview and act as hubs, while cluster pages target specific subtopics and questions as spokes. The approach requires topic-based keyword research to identify all the talking points in a subject, then organizing them into clusters by search intent. Selectivity matters: publishing content outside your core topic can dilute authority signals rather than strengthen them. Internal linking connects the pieces so search engines can map relationships.\n\nEffective topical authority demands coverage depth over volume, relevant external links from topically aligned sources, regular refreshes of outdated content, and closing coverage gaps competitors might fill. Expect 6 to 12 months for significant movement."
+  }
+]

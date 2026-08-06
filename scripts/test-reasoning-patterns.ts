@@ -36,6 +36,10 @@ const VALID_CATEGORIES = new Set([
   "marketing",
   "data",
   "operations",
+  "finance",
+  "legal",
+  "sales",
+  "customer-success",
   "specialist",
   "special",
 ]);
