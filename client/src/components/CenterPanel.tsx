@@ -2005,7 +2005,7 @@ export function CenterPanel({
       />
 
       {/* Message Display Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div data-tour="chat" className="flex-1 flex flex-col overflow-hidden">
         {messages.currentMessages.length === 0 && !streaming.isStreaming && !streaming.isThinking ? (
           /* Welcome Screen */
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
@@ -2129,6 +2129,7 @@ export function CenterPanel({
         onInputChange={setInputValue}
         onSubmit={handleChatSubmit}
         placeholder={contextDisplay.placeholder || 'Message your team...'}
+        conversationId={currentChatContext?.conversationId}
         isStreaming={(() => {
           // Derived: the button can only show "stop" if a message in the active
           // conversation is literally streaming right now. No amount of event

@@ -59,7 +59,7 @@ export function WelcomeModal({ isOpen, onClose, onGetStarted }: WelcomeModalProp
               transition={{ duration: 0.3 }}
               className="text-3xl font-bold tracking-tight text-hatchin-text-bright"
             >
-              Your AI team just woke up.
+              You're not building alone.
             </motion.h1>
             <motion.p
               initial={{ opacity: 0, y: 6 }}
@@ -67,7 +67,7 @@ export function WelcomeModal({ isOpen, onClose, onGetStarted }: WelcomeModalProp
               transition={{ duration: 0.3, delay: 0.06 }}
               className="text-muted-foreground text-base leading-relaxed max-w-xs mx-auto"
             >
-              Describe an idea to Maya and watch it become a plan, team, and roadmap in seconds.
+              Hatchin is a team of AI specialists that live in your project.
             </motion.p>
           </div>
 
@@ -82,7 +82,7 @@ export function WelcomeModal({ isOpen, onClose, onGetStarted }: WelcomeModalProp
               onClick={onGetStarted}
               className="group relative w-full px-6 py-4 bg-gradient-to-r from-hatchin-blue to-[#4F6BFF] hover:from-hatchin-blue/90 hover:to-[#3D5BFF] text-white rounded-xl font-bold text-lg transition-all duration-300 shadow-[0_8px_25px_rgba(108,130,255,0.3)] hover:shadow-[0_12px_35px_rgba(108,130,255,0.4)] active:scale-[0.98] outline-none border-0"
             >
-              <span className="relative z-10">Talk to Maya →</span>
+              <span className="relative z-10">Meet your team →</span>
               <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl" />
             </button>
           </motion.div>

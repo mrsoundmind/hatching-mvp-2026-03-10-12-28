@@ -1,6 +1,6 @@
 import { ErrorBoundary } from 'react-error-boundary';
 import { PanelErrorFallback } from '@/components/ErrorFallbacks';
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Menu, MessageSquare, Sparkles, ListChecks, type LucideIcon } from "lucide-react";
 import { ProjectSelectionProvider, useProjectSelection } from "@/hooks/useProjectSelection";
@@ -11,6 +11,7 @@ import { RightSidebar } from "@/components/RightSidebar";
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { EggHatchingAnimation } from "@/components/EggHatchingAnimation";
 import { OnboardingManager } from "@/components/OnboardingManager";
+import { TourOverlay, TOUR_DONE_KEY } from "@/components/onboarding/TourOverlay";
 import { ArtifactPanel } from "@/components/ArtifactPanel";
 import { AnimatePresence } from "framer-motion";
 import QuickStartModal from "@/components/QuickStartModal";
@@ -59,6 +60,45 @@ function HomeInner() {
   const [showStarterPacks, setShowStarterPacks] = useState(false);
   const [showProjectName, setShowProjectName] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // First-run coachmark tour: armed when a project is created via onboarding,
+  // fired once the new project is active and its panels have rendered.
+  const [pendingTour, setPendingTour] = useState(false);
+  const [tourActive, setTourActive] = useState(false);
+
+  // Teach-first onboarding: a brand-new user is taught on a REAL, temporary demo
+  // project (seeded via a starter pack so the sidebar/chat/brain are populated).
+  // It is removed when the tour ends and they go on to start their own project.
+  const DEMO_PROJECT_NAME = "Demo · Meet your team";
+  const demoProjectIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!pendingTour || !activeProjectId) return;
+    // Never fire while a creation modal is still open. A Radix modal disables
+    // pointer events on everything outside it, which would freeze the tour's
+    // own buttons (Next/Skip). Wait until the modal closes, then fire.
+    if (showProjectName || showQuickStart || showStarterPacks) return;
+    // Already seen, or no desktop layout to spotlight (mobile panels live in
+    // drawers) — skip gracefully without ever showing it.
+    const isDesktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches;
+    if (localStorage.getItem(TOUR_DONE_KEY) || !isDesktop) {
+      setPendingTour(false);
+      // Safety net: if a demo was somehow seeded but the tour can't render here,
+      // tear it down and advance onboarding instead of dead-ending on 'teach'.
+      if (demoProjectIdRef.current) {
+        void cleanupDemoProject().finally(() => {
+          window.dispatchEvent(new CustomEvent('hatchin:onboarding-teach-done'));
+        });
+      }
+      return;
+    }
+    // Let the sidebar/chat/brain finish rendering the new project first.
+    const t = setTimeout(() => {
+      setTourActive(true);
+      setPendingTour(false);
+    }, 700);
+    return () => clearTimeout(t);
+  }, [pendingTour, activeProjectId, showProjectName, showQuickStart, showStarterPacks]);
   const [upgradeReason, setUpgradeReason] = useState<string>('project_limit');
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
@@ -619,6 +659,102 @@ function HomeInner() {
     }, 500);
   };
 
+  // ---- Teach-first onboarding: seed + tear down the temporary demo project ----
+
+  // Create a real, temporary demo project (a SaaS starter pack, so it comes with
+  // real teammates), select it, and fire the guided tour on it. Self-contained on
+  // purpose: it never routes through the normal create handlers, so it cannot
+  // affect ordinary project creation. On any failure it advances the user to the
+  // path choice rather than stranding them on the teach step.
+  const seedDemoProject = async () => {
+    // The guided tour is a desktop-only enhancement that runs once. If it won't
+    // run here (mobile / narrow window / already seen), skip the demo entirely
+    // and go straight to the path choice — never seed a throwaway we can't teach
+    // on, and never dead-end onboarding waiting for a tour that won't fire.
+    const isDesktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches;
+    if (!isDesktop || localStorage.getItem(TOUR_DONE_KEY)) {
+      window.dispatchEvent(new CustomEvent('hatchin:onboarding-teach-done'));
+      return;
+    }
+    try {
+      // Remove any stale demo left over from a previous incomplete run.
+      try {
+        const existing = await fetch('/api/projects').then((r) => r.json());
+        if (Array.isArray(existing)) {
+          for (const p of existing) {
+            if (p?.name === DEMO_PROJECT_NAME && p?.id) {
+              await fetch(`/api/projects/${p.id}`, { method: 'DELETE' }).catch(() => {});
+            }
+          }
+        }
+      } catch { /* ignore */ }
+
+      // No egg-hatch animation for the throwaway demo — seed quietly so the tour
+      // starts fast (the celebratory hatch is saved for the user's real project).
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: DEMO_PROJECT_NAME,
+          description: 'A quick look at how your team works.',
+          emoji: '🚀',
+          color: 'blue',
+          starterPackId: 'saas-startup',
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to seed demo project');
+      const project = await res.json();
+      demoProjectIdRef.current = project.id;
+
+      queryClient.setQueryData(["/api/projects"], (old: any) =>
+        Array.isArray(old) ? [...old, project] : [project]);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/projects"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/teams"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/agents"] }),
+      ]);
+
+      setActiveProjectId(project.id);
+      setActiveTeamId(null);
+      setActiveAgentId(null);
+      setExpandedProjects(new Set([project.id]));
+      try {
+        const teams = await fetch(`/api/projects/${project.id}/teams`).then((r) => r.json());
+        if (Array.isArray(teams)) setExpandedTeams(new Set(teams.map((t: any) => t.id)));
+      } catch { /* ignore */ }
+
+      setPendingTour(true); // fire the guided tour on the real demo project
+    } catch (error) {
+      console.error('seedDemoProject failed:', error);
+      demoProjectIdRef.current = null;
+      // Don't strand the user on the teach step — send them to the path choice.
+      window.dispatchEvent(new CustomEvent('hatchin:onboarding-teach-done'));
+    }
+  };
+
+  // Delete the temporary demo project once the tour is over.
+  const cleanupDemoProject = async () => {
+    const id = demoProjectIdRef.current;
+    if (!id) return;
+    demoProjectIdRef.current = null;
+    try { await fetch(`/api/projects/${id}`, { method: 'DELETE' }); } catch { /* ignore */ }
+    setActiveProjectId(null);
+    setActiveTeamId(null);
+    setActiveAgentId(null);
+    queryClient.setQueryData(["/api/projects"], (old: any) =>
+      Array.isArray(old) ? old.filter((p: any) => p?.id !== id) : old);
+    queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+  };
+
+  // OnboardingManager asks us to seed the demo project when the user enters the
+  // teach step.
+  useEffect(() => {
+    const onSeed = () => { void seedDemoProject(); };
+    window.addEventListener('hatchin:onboarding-seed-demo', onSeed);
+    return () => window.removeEventListener('hatchin:onboarding-seed-demo', onSeed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Agent creation handler
   const handleCreateAgent = async (agentData: Omit<Agent, 'id'>) => {
     try {
@@ -931,10 +1067,12 @@ function HomeInner() {
         onComplete={(path, templateData) => {
           if (path === 'idea') {
             // Fallback: show the project name modal instead of auto-creating with generic name
+            setPendingTour(true);
             setSelectedTemplate(null);
             setShowProjectName(true);
           } else if (path === 'template' && templateData) {
             // Handle template path - create project from template
+            setPendingTour(true);
             handleCreateProjectFromTemplate(templateData, templateData.title, templateData.description);
           } else if (path === 'scratch') {
             // Handle scratch path - just continue with existing projects
@@ -942,6 +1080,7 @@ function HomeInner() {
           }
         }}
         onStartWithIdeaPromptName={() => {
+          setPendingTour(true);
           setSelectedTemplate(null);
           setShowProjectName(true);
         }}
@@ -1089,6 +1228,20 @@ function HomeInner() {
           </div>
         )}
       </div>
+
+      {/* First-run coachmark tour over the real app (desktop). */}
+      {tourActive && (
+        <TourOverlay
+          onDone={() => {
+            setTourActive(false);
+            // Tear down the temporary demo project, then let onboarding move on
+            // to the user's own project. (No-ops when the tour wasn't a demo.)
+            void cleanupDemoProject().finally(() => {
+              window.dispatchEvent(new CustomEvent('hatchin:onboarding-teach-done'));
+            });
+          }}
+        />
+      )}
 
       {/* Mobile bottom tab bar — Chat / Activity / Tasks, one tap each (< lg only).
           Replaces the old header panel button; Brain stays reachable via the drawer's own tabs. */}
