@@ -8,6 +8,16 @@
 **Latest commit (v2.2 workstream):** Phase 39 Plans 39-01 (server) + 39-02 (UI), committed 2026-07-31 (prior: `f5682ab` peer-review coverage)
 **Latest commit (v2.1-UX UI workstream):** `c76fb4e fix(chat): don't drop the user's just-sent message on a refetch race` (+ `a99cfb3` hover-to-peek, `556f60a` rail refinements, `835518a`/`ee5c5bf` chat-card fix)
 
+## 2026-08-07: Chat Attachments — composer UI shipped + proven end-to-end (knowledge workstream)
+
+`c585ec6` builds the front-of-house for the attachment engine: the paperclip button + file chip in the composer, **one-tap model** (user rejected the forced this-chat/brain menu on 2026-08-06 as confusing; attach stays in the chat, an optional "Add to project brain" link promotes it project-wide). New `useAttachments.ts` hook + `AttachmentChip.tsx` + edits to the clean `ChatInput.tsx`; server got `promoteToBrain()` + a PATCH route. The 1-line `conversationId` prop in `CenterPanel.tsx` got swept into a parallel session's onboarding commit `af4be6b` (code correct, just shared attribution).
+
+**Proven live end-to-end** on my own isolated `:5018` server (real providers): paperclip renders → pick file → `POST /attachments` 201 (1 chunk) → chip flips to Ready → asked "how long is the Nimbus free trial?" → Maya replied "exactly 23 days", naming the attached spec (grounded) → remove works. Playwright 1/1 + screenshot. tsc clean.
+
+Environment note for future sessions: the running `:5001` dev server serves the working tree's CLIENT via Vite HMR but NOT server code (tsx has no watch), so a new API route needs a server restart to test through :5001. And the Supabase pooler caps at **15 clients in session mode**, so stale/orphan dev servers on old ports (5005/5007/5011/5012/5017 were days-old zombies) saturate it and block new boots — clean them up (user-authorized) before booting a fresh server. Retention answered for the user: attachments persist forever + stay agent-searchable until deleted with the ×; nothing auto-expires ("ephemeral" = conversation-scoped, not time-limited).
+
+---
+
 ## 2026-08-06: Chat Attachments — RAG-backed "Upload & Ask" ENGINE shipped server-side (knowledge workstream)
 
 Goal from the user: "add the attachment thing in the chat that we talked about" (the brief `.planning/milestones/chat-attachments-BRIEF.md`). Built the whole server engine so a user can attach a file to a chat and get an answer grounded in it. On branch, nothing merged, additive + fail-safe.

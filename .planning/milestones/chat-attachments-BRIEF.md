@@ -1,6 +1,9 @@
 # Milestone Brief: Chat Attachments ("Upload & Ask") + Command-the-Brain-from-Chat
 
-**Status:** ENGINE SHIPPED server-side (Phase 1 + Phase 2), composer UI (Phase 3) is the remaining gated piece. On branch, nothing merged.
+**Status:** ENGINE (Phase 1+2) + COMPOSER UI (Phase 3) SHIPPED and proven end-to-end in a real browser. On branch, nothing merged. Phase 4 (harden brain-commands) + Phase 5 (images/CSV/URL) remain.
+
+## SHIPPED 2026-08-07 (composer UI, on-branch, proven live)
+`c585ec6` — the paperclip button + file chip, one-tap model (no forced menu). `client/src/components/chat/ChatInput.tsx` (paperclip bottom-left + hidden picker + tray), new `client/src/hooks/useAttachments.ts` (upload/remove/add-to-brain, loads this chat's files on mount, fail-safe), new `client/src/components/chat/AttachmentChip.tsx` (type badge, filename, size, Uploading→Ready, optional Add-to-brain, remove). Server: `promoteToBrain()` + `PATCH /api/conversations/:id/attachments/:docId` re-scopes a chat file project-wide (no re-embed). `CenterPanel.tsx` passes `conversationId` to ChatInput (that 1-line prop landed in `af4be6b`, swept into a parallel session's onboarding commit — code correct, attribution shared). **Verified live end-to-end on an isolated :5018 server (real DeepSeek/Gemini, real OpenAI embedder):** upload `POST /attachments` → 201 + 1 chunk, chip → Ready, asked "how long is the Nimbus free trial?" → Maya answered "exactly 23 days" naming the attached Nimbus Onboarding Spec (grounded), remove works. Playwright 1/1 + screenshot. tsc clean. Only note: reaching this needed freeing the Supabase 15-client pool by killing 5 day-old orphan dev servers (Aug 1-3, user-authorized) since the running :5001 had stale server code.
 **Branch:** `feat/v2.2-intelligence-fixes` (author: Claude Code, 2026-08-06).
 **Origin:** a pasted build spec, cross-verified against live code and corrected here.
 
