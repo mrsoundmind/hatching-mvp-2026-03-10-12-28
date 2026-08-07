@@ -118,9 +118,15 @@ function HomeInner() {
   // Which right-panel tab the mobile bottom bar opens to.
   const [mobileRightTab, setMobileRightTab] = useState<'activity' | 'brain' | 'tasks'>('activity');
 
-  const { data: projects = [], refetch: refetchProjects } = useQuery<Project[]>({
+  const { data: projects = [], refetch: refetchProjects, isSuccess: projectsSettled } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
   });
+
+  // Server truth for "is this a returning user?": onboarding is for brand-new
+  // accounts only. Any real (non-demo) project means they've been here before,
+  // so they must never be routed through the teach flow — regardless of whether
+  // the local onboarding flag survived a browser change / cache clear.
+  const hasExistingProjects = projects.some((p) => p.name !== DEMO_PROJECT_NAME);
 
   const { data: teams = [], refetch: refetchTeams } = useQuery<Team[]>({
     queryKey: ["/api/teams"],
@@ -1064,6 +1070,8 @@ function HomeInner() {
     <div className="app-mesh-bg fixed inset-0 overflow-hidden flex flex-col">
       {/* Onboarding System */}
       <OnboardingManager
+        projectsSettled={projectsSettled}
+        hasExistingProjects={hasExistingProjects}
         onComplete={(path, templateData) => {
           if (path === 'idea') {
             // Fallback: show the project name modal instead of auto-creating with generic name
