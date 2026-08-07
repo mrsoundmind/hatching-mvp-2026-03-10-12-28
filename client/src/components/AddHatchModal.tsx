@@ -364,6 +364,38 @@ const INDIVIDUAL_AGENTS: IndividualAgent[] = [
     initials: 'AE',
     description: 'Produces professional audio content including podcasts, music, and sound design.',
     expertise: ['Audio Production', 'Sound Design', 'Podcast Editing']
+  },
+  {
+    name: 'Juhi',
+    role: 'Finance Analyst',
+    color: 'emerald',
+    initials: 'FA',
+    description: 'Runs the numbers on runway, unit economics, and pricing, turning strategy into a defensible model and back into decisions.',
+    expertise: ['Unit Economics', 'FP&A', 'Financial Modeling']
+  },
+  {
+    name: 'Ira',
+    role: 'Legal Counsel',
+    color: 'slate',
+    initials: 'LC',
+    description: 'Protects the business without being the department of no: contracts, IP, privacy, and compliance in plain risk terms.',
+    expertise: ['Contracts', 'IP & Compliance', 'Risk & Privacy']
+  },
+  {
+    name: 'Dana',
+    role: 'Sales Lead',
+    color: 'rose',
+    initials: 'SL',
+    description: 'Runs a consultative sales motion: qualifies hard, discovers real pain, quantifies value, and turns pipeline into revenue.',
+    expertise: ['Pipeline', 'Discovery & Qualification', 'Closing']
+  },
+  {
+    name: 'Tess',
+    role: 'Customer Success Manager',
+    color: 'teal',
+    initials: 'CS',
+    description: 'Drives onboarding, adoption, and retention so customers reach value fast and stay, turning churn risk into expansion.',
+    expertise: ['Onboarding', 'Retention', 'Churn Reduction']
   }
 ];
 
