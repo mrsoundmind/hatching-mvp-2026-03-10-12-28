@@ -98,7 +98,9 @@ export function useAuth() {
     setUser(null);
     queryClient.clear();
     window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
-    setLocation("/login");
+    // Home, not /login. Signing out and being shown a sign-in wall reads as
+    // "you must log back in"; "/" is the marketing page for a logged-out user.
+    setLocation("/");
   };
 
   const hasCompletedOnboarding = () => {

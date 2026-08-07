@@ -1,0 +1,214 @@
+/* Landing v3 — scoped design tokens.
+ *
+ * Ported from the FIMI mockup's globals.css (Tailwind v4 @theme) down to plain
+ * CSS custom properties, because this app is on Tailwind v3. Every rule is
+ * nested under `.lv3` or `.lv3-editorial`, so loading this file cannot repaint
+ * the app the way landing-v2's clickup-ported.css did with its unscoped
+ * `.text-sm` colour rules.
+ *
+ * The palette is FIMI's structure with Hatchin's colours: fim-green -> Hatchin
+ * blue #6C82FF, fim-blue -> Hatchin purple, aurora -> mint, and the navy field
+ * is #0A0C13 so the editorial sections meet the existing dark hero on exactly
+ * the same colour.
+ */
+
+.lv3 {
+  /* surfaces */
+  --lv3-paper: #ffffff;
+  /* deepened from #f4f5fb (1.26:1 vs white) so alternating sections actually
+   * separate instead of both reading as "white" */
+  --lv3-candle: #eceffa;
+  --lv3-navy-900: #0a0c13; /* same field as the hero video backdrop */
+  --lv3-navy: #14182f; /* headings */
+
+  /* text — the soft tones were raised for contrast. The two dimmer steps are
+   * now solid colours rather than alpha, so a mono label on a tinted panel does
+   * not wash out into the fill behind it. All three clear 4.5:1 on white. */
+  --lv3-ink: #161b30;
+  --lv3-soft: #3f465e; /* body, was #565e7a */
+  --lv3-soft-70: #4e5670; /* secondary, was 70% alpha */
+  --lv3-soft-55: #626a83; /* mono labels, was 55% alpha */
+
+  /* accents. Measured against white:
+   *   blue   #4257e8 = 5.4:1  (was #5468f0 at 4.55, scraping AA)
+   *   amber  #8a5d05 = 5.5:1  (was #b97e0a at 3.47, FAILED AA as text)
+   *   purple #7a4fe8 = 5.6:1  (was #8a63f5 at 4.2)
+   * Brighter tones stay available as *-fill for bars, dots and backgrounds,
+   * where contrast rules do not apply and the vivid colour is the point. */
+  --lv3-blue: #4257e8;
+  --lv3-blue-700: #3446c9;
+  --lv3-blue-fill: #6c82ff;
+  --lv3-purple: #7a4fe8;
+  --lv3-purple-fill: #9f7bff;
+  --lv3-amber: #8a5d05;
+  --lv3-amber-fill: #f2b441;
+  --lv3-mint: #7ee8c0; /* light-on-dark only */
+
+  /* The page IS its lines: every section is a 1px bordered panel. At #d9dcea
+   * they measured 1.37:1 against white and the layout read as fog. #b9c0d8 is
+   * 2.1:1 — present enough to be a line, quiet enough to stay background. */
+  --lv3-border: #b9c0d8;
+  --lv3-border-strong: #98a1c0;
+
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* FIMI's `@layer base { * { @apply border-border } }`, scoped to the editorial
+ * half only. The hero sits outside .lv3-editorial so its liquid-glass borders
+ * are left exactly as they are. */
+.lv3-editorial *,
+.lv3-editorial *::before,
+.lv3-editorial *::after {
+  border-color: var(--lv3-border);
+}
+
+.lv3 ::selection {
+  background: var(--lv3-blue);
+  color: #fff;
+}
+
+/* ── type scale ─────────────────────────────────────────────────────── */
+
+.lv3-display {
+  font-family: "Poppins", system-ui, sans-serif;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+
+.lv3-hero-type {
+  font-family: "Poppins", system-ui, sans-serif;
+  font-size: clamp(2.4rem, 5.4vw, 4.4rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+}
+
+.lv3-serif-em {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+}
+
+.lv3-label {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+
+.lv3-num {
+  font-family: "Poppins", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* ── colour utilities (scoped, so they cannot collide app-wide) ─────── */
+
+.lv3 .lv3-t-navy {
+  color: var(--lv3-navy);
+}
+.lv3 .lv3-t-ink {
+  color: var(--lv3-ink);
+}
+.lv3 .lv3-t-soft {
+  color: var(--lv3-soft);
+}
+.lv3 .lv3-t-soft-70 {
+  color: var(--lv3-soft-70);
+}
+.lv3 .lv3-t-soft-55 {
+  color: var(--lv3-soft-55);
+}
+.lv3 .lv3-t-blue {
+  color: var(--lv3-blue);
+}
+.lv3 .lv3-t-purple {
+  color: var(--lv3-purple);
+}
+.lv3 .lv3-t-amber {
+  color: var(--lv3-amber);
+}
+.lv3 .lv3-t-mint {
+  color: var(--lv3-mint);
+}
+
+.lv3 .lv3-bg-paper {
+  background-color: var(--lv3-paper);
+}
+.lv3 .lv3-bg-candle {
+  background-color: var(--lv3-candle);
+}
+.lv3 .lv3-bg-navy {
+  background-color: var(--lv3-navy-900);
+}
+.lv3 .lv3-bg-blue {
+  background-color: var(--lv3-blue);
+}
+.lv3 .lv3-bg-blue-soft {
+  background-color: rgba(108, 130, 255, 0.08);
+}
+.lv3 .lv3-bg-purple-soft {
+  background-color: rgba(159, 123, 255, 0.1);
+}
+.lv3 .lv3-bg-amber-soft {
+  background-color: rgba(242, 180, 65, 0.12);
+}
+
+.lv3 .lv3-bd-blue {
+  border-color: rgba(108, 130, 255, 0.4);
+}
+.lv3 .lv3-bd-navy {
+  border-color: var(--lv3-navy);
+}
+
+/* ── the cited-source chip (FIMI's signature evidence-chip) ─────────── */
+
+.lv3-chip {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+  color: var(--lv3-soft);
+}
+.lv3-chip b {
+  color: var(--lv3-navy);
+  font-weight: 600;
+}
+
+/* ── the section rail ───────────────────────────────────────────────── */
+/* FIMI shows its rail from lg, but its content column is the same max-w-6xl
+ * (1152px), so below ~1440px the rail's active label sits on top of the first
+ * words of every paragraph. Verified in the browser at 1440. The rail only
+ * appears once the viewport is wide enough to give it a real gutter. */
+.lv3-rail {
+  display: none;
+}
+@media (min-width: 1440px) {
+  .lv3-rail {
+    display: block;
+  }
+}
+
+/* ── the clinical grid used behind the closing band ─────────────────── */
+
+.lv3-grid-field {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 46px 46px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lv3 *,
+  .lv3 *::before,
+  .lv3 *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

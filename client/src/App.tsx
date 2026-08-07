@@ -16,6 +16,12 @@ import { useEffect, lazy, Suspense } from "react";
 // NOT load on the main app and paint dark-navy text over every menu/chat/dropdown.
 // The stylesheet now only loads when someone actually visits /v2.
 const LandingPageV2 = lazy(() => import("@/pages/LandingPageV2"));
+// LandingPageV3 — the FIMI-style editorial/bento direction. Its stylesheet IS
+// fully scoped under .lv3, so it cannot leak the way v2's does; it is lazy for
+// bundle size only (framer-motion sections + the 34-avatar roster).
+const LandingPageV3 = lazy(() => import("@/pages/LandingPageV3"));
+// v4 — same page, Prisma hero instead. Shares every section with v3 by import.
+const LandingPageV4 = lazy(() => import("@/pages/LandingPageV4"));
 import { ErrorBoundary } from "react-error-boundary";
 import AutonomyDashboard from "@/devtools/autonomyDashboard";
 import AccountPage from "@/pages/AccountPage";
@@ -23,6 +29,7 @@ import PrivacyPage from "@/pages/legal/PrivacyPage";
 import TermsPage from "@/pages/legal/TermsPage";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AppErrorFallback } from "@/components/ErrorFallbacks";
+import { TeachDemo } from "@/components/onboarding/TeachDemo"; // reusable interactive product demo (for the homepage later); dev preview at /dev/teachdemo
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isSignedIn, isLoading } = useAuth();
@@ -70,12 +77,25 @@ function Router() {
   const { isSignedIn, isLoading } = useAuth();
   return (
     <Switch>
+      {/* v1, kept reachable for reference now that v3 is the live home page */}
       <Route path="/landing" component={LandingPage} />
       {/* Landing v2 prototype. Additive only: /landing is untouched.
           Lazy + Suspense so its global-leaking stylesheet stays off the main app. */}
       <Route path="/v2">
         <Suspense fallback={null}>
           <LandingPageV2 />
+        </Suspense>
+      </Route>
+      {/* v3 is the live home page. /v3 stays as a stable direct link. */}
+      <Route path="/v3">
+        <Suspense fallback={null}>
+          <LandingPageV3 />
+        </Suspense>
+      </Route>
+      {/* v4 — hero variant. Everything below the fold is v3's, by import. */}
+      <Route path="/v4">
+        <Suspense fallback={null}>
+          <LandingPageV4 />
         </Suspense>
       </Route>
       <Route path="/login" component={LoginPage} />
@@ -102,7 +122,11 @@ function Router() {
         ) : isSignedIn ? (
           <Home />
         ) : (
-          <LandingPage />
+          /* v4 is the home page a logged-out visitor gets. v3 stays at /v3
+             and v1 at /landing. Suspense because the page is lazy. */
+          <Suspense fallback={null}>
+            <LandingPageV4 />
+          </Suspense>
         )}
       </Route>
       <Route path="/maya/:projectId">
@@ -122,6 +146,13 @@ function Router() {
           <AuthGuard>
             <AutonomyDashboard />
           </AuthGuard>
+        </Route>
+      )}
+      {/* Dev preview of the reusable interactive product demo (destined for the
+          homepage later). DEV-only; not part of the onboarding flow. */}
+      {import.meta.env.DEV && (
+        <Route path="/dev/teachdemo">
+          <TeachDemo isOpen onDone={() => window.location.reload()} />
         </Route>
       )}
       <Route path="/legal/privacy" component={PrivacyPage} />

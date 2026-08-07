@@ -1,10 +1,28 @@
+// Sign in.
+//
+// Rebuilt to match landing v3. It was the last page still speaking v1's
+// language: a particle field, a frosted liquid-glass card, "Hatchin." with an
+// indigo full stop, and a shadcn default button. Someone clicking "Start free"
+// on v3 landed somewhere that looked like a different product.
+//
+// It now echoes the v3 hero directly — same video, same scrim, same wordmark,
+// same blue pill — with the editorial white card the rest of the page uses.
+//
+// NOTE: this route is shared. /landing (v1) and every AuthGuard redirect land
+// here too, so v1 now leads into a v3-styled sign-in. That is the intended
+// direction of travel, but it is a cross-page change, not a v3-only one.
+//
+// landing-v3.css is imported for its tokens. Every rule in it is scoped under
+// .lv3, so loading it here cannot restyle anything else.
+
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
+import { ArrowLeft } from "lucide-react";
+
 import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Particles } from "@/components/ui/particles";
-import { ChevronLeftIcon } from "lucide-react";
 import LegalModal from "@/components/legal/LegalModal";
+import Wordmark from "@/components/landing-v3/Wordmark";
+import "@/components/landing-v3/landing-v3.css";
 
 function sanitizeNextPath(value: string | null): string {
   if (!value) return "/";
@@ -50,71 +68,102 @@ export default function LoginPage() {
   if (!isLoading && isSignedIn) return null;
 
   return (
-    <div className="relative md:h-screen md:overflow-hidden w-full bg-background">
-      <Particles color="#aaaaaa" quantity={400} ease={12} staticity={20} size={0.8} className="absolute inset-0" />
-      <div aria-hidden className="absolute inset-0 isolate -z-10 contain-strict">
-        <div className="bg-[radial-gradient(68.54%_68.72%_at_55.02%_31.46%,--theme(--color-foreground/.06)_0,hsla(0,0%,55%,.02)_50%,--theme(--color-foreground/.01)_80%)] absolute top-0 left-0 h-[1280px] w-[560px] -translate-y-[350px] -rotate-45 rounded-full" />
-        <div className="bg-[radial-gradient(50%_50%_at_50%_50%,--theme(--color-foreground/.04)_0,--theme(--color-foreground/.01)_80%,transparent_100%)] absolute top-0 left-0 h-[1280px] w-[240px] [translate:5%_-50%] -rotate-45 rounded-full" />
-        <div className="bg-[radial-gradient(50%_50%_at_50%_50%,--theme(--color-foreground/.04)_0,--theme(--color-foreground/.01)_80%,transparent_100%)] absolute top-0 left-0 h-[1280px] w-[240px] -translate-y-[350px] -rotate-45 rounded-full" />
-      </div>
-      <div className="relative mx-auto flex min-h-screen max-w-6xl flex-col justify-center px-4">
-        <Button variant="ghost" className="absolute top-4 left-4" asChild>
-          <a href="/">
-            <ChevronLeftIcon className="me-1 size-4" />
-            Home
+    <div className="lv3 relative min-h-screen w-full overflow-hidden bg-[#0A0C13]">
+      {/* the hero's own footage, so signing in feels like the same place */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 z-0 h-full w-full object-cover"
+      >
+        <source
+          src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260314_131748_f2ca2a28-fed7-44c8-b9a9-bd9acdd5ec31.mp4"
+          type="video/mp4"
+        />
+      </video>
+      <div
+        aria-hidden
+        className="absolute inset-0 z-[1]"
+        style={{ background: "rgba(10,12,19,0.62)" }}
+      />
+
+      <div className="relative z-10 mx-auto flex min-h-screen max-w-6xl flex-col px-5 py-6 sm:px-8">
+        <div className="flex items-center justify-between">
+          <Wordmark tone="light" />
+          <a
+            href="/"
+            className="inline-flex items-center gap-1.5 text-sm text-white/60 transition-colors hover:text-white"
+          >
+            <ArrowLeft className="size-4" />
+            Back
           </a>
-        </Button>
+        </div>
 
-        <div className="liquid-glass mx-auto w-full max-w-md rounded-3xl p-10 shadow-2xl shadow-black/40">
-          <div className="flex flex-col space-y-10">
-            <p className="text-2xl font-semibold tracking-tight text-white">Hatchin<span className="text-indigo-400">.</span></p>
-
-            <div className="flex flex-col space-y-3">
-              <h1 className="font-heading text-2xl font-bold tracking-wide text-white">Sign In or Join Now!</h1>
-              <p className="text-white/60 text-base">Your AI team is ready. Let's build something worth hatching.</p>
-            </div>
+        <div className="flex flex-1 items-center justify-center py-12">
+          <div className="lv3-editorial w-full max-w-[420px] rounded-xl border bg-white p-8 shadow-2xl shadow-black/30 sm:p-10">
+            <span className="lv3-label lv3-t-blue">Start free</span>
+            <h1
+              className="lv3-t-navy mt-3 text-[30px] font-bold leading-tight tracking-[-0.02em]"
+              style={{ fontFamily: "'Poppins', sans-serif" }}
+            >
+              Meet your team.
+            </h1>
+            <p className="lv3-t-soft mt-3 text-[15px] leading-relaxed">
+              They plan, push back, and hand back finished work.
+            </p>
 
             {authError && (
-              <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-                Authentication failed. Please try again.
+              <div
+                className="mt-6 border px-4 py-3 text-sm"
+                style={{
+                  borderColor: "rgba(192,49,26,0.35)",
+                  background: "rgba(192,49,26,0.06)",
+                  color: "#a32a16",
+                }}
+              >
+                {authError === "email_in_use"
+                  ? "That email is already registered with a different sign-in method."
+                  : "Sign in failed. Please try again."}
               </div>
             )}
 
-            <Button type="button" size="lg" className="w-full" asChild>
-              <a href={`/api/auth/google/start?returnTo=${encodeURIComponent(nextPath)}`}>
-                <GoogleIcon className="me-2 size-4" />
-                Continue with Google
-              </a>
-            </Button>
+            <a
+              href={`/api/auth/google/start?returnTo=${encodeURIComponent(nextPath)}`}
+              className="mt-7 inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-full text-[15px] font-medium text-white transition-transform hover:scale-[1.02]"
+              style={{ background: "var(--lv3-blue)", boxShadow: "0 8px 26px rgba(66,87,232,0.35)" }}
+            >
+              <GoogleIcon className="size-4" />
+              Continue with Google
+            </a>
 
-            <p className="text-muted-foreground text-sm">
-              By clicking continue, you agree to our{" "}
-              <a
-                href="/legal/terms"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setLegalModal({ open: true, type: "terms" });
-                }}
-                className="hover:text-primary underline underline-offset-4"
+            <p className="lv3-label lv3-t-soft-55 mt-4 text-center">
+              Free forever plan · no card needed
+            </p>
+
+            <p className="lv3-t-soft-55 mt-7 border-t pt-5 text-[12.5px] leading-relaxed">
+              By continuing you agree to our{" "}
+              <button
+                type="button"
+                onClick={() => setLegalModal({ open: true, type: "terms" })}
+                className="underline underline-offset-4 transition-colors hover:text-[#14182f]"
               >
                 Terms of Service
-              </a>{" "}
+              </button>{" "}
               and{" "}
-              <a
-                href="/legal/privacy"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setLegalModal({ open: true, type: "privacy" });
-                }}
-                className="hover:text-primary underline underline-offset-4"
+              <button
+                type="button"
+                onClick={() => setLegalModal({ open: true, type: "privacy" })}
+                className="underline underline-offset-4 transition-colors hover:text-[#14182f]"
               >
                 Privacy Policy
-              </a>
+              </button>
               .
             </p>
           </div>
         </div>
       </div>
+
       <LegalModal
         open={legalModal.open}
         onOpenChange={(open) => setLegalModal((prev) => ({ ...prev, open }))}
