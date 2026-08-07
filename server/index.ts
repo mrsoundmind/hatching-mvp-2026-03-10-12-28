@@ -54,11 +54,17 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      // fonts.googleapis.com serves the @font-face STYLESHEET, and it is a
+      // style-src origin, not a font-src one. Without it every Google font on
+      // the site is blocked in production and the whole page silently falls
+      // back to system type. fontSrc's blanket `https:` covers the .woff2
+      // files but never gets a chance to, because the stylesheet that
+      // references them never loads. Found live on hatchin-mvp.fly.dev.
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       imgSrc: ["'self'", "data:", "https:"],
       mediaSrc: ["'self'", "https:", "blob:"],
       connectSrc: ["'self'", "wss:", "ws:", "https:"],
-      fontSrc: ["'self'", "https:", "data:"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "https:", "data:"],
     }
   } : false, // disabled in dev to allow Vite inline scripts
 }));
