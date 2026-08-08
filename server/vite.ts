@@ -71,10 +71,40 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  // Hashed build output is immutable by construction: the filename changes
+  // whenever the bytes do. Serving it with max-age=0 made every visitor
+  // re-request every chunk on every navigation, which is both slow and, on a
+  // cold-starting machine, an extra chance to fail.
+  app.use(
+    "/assets",
+    express.static(path.join(distPath, "assets"), {
+      immutable: true,
+      maxAge: "1y",
+      fallthrough: true,
+    }),
+  );
 
-  // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
+  // index.html must NEVER be cached: it is what points at the current hashes.
+  // A stale copy sends browsers looking for chunks that no longer exist.
+  app.use(
+    express.static(distPath, {
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith("index.html")) {
+          res.setHeader("Cache-Control", "no-cache, must-revalidate");
+        }
+      },
+    }),
+  );
+
+  // SPA fallback. Deliberately NOT applied to /assets: a missing chunk there
+  // must 404, not silently return index.html, or the browser tries to parse
+  // HTML as a JS module and reports a confusing "failed to fetch module".
+  app.use("*", (req, res) => {
+    if (req.originalUrl.startsWith("/assets/")) {
+      res.status(404).type("text/plain").send("Not found");
+      return;
+    }
+    res.setHeader("Cache-Control", "no-cache, must-revalidate");
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

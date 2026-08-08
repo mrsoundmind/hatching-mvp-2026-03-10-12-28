@@ -20,8 +20,14 @@ const LandingPageV2 = lazy(() => import("@/pages/LandingPageV2"));
 // fully scoped under .lv3, so it cannot leak the way v2's does; it is lazy for
 // bundle size only (framer-motion sections + the 34-avatar roster).
 const LandingPageV3 = lazy(() => import("@/pages/LandingPageV3"));
-// v4 — same page, Prisma hero instead. Shares every section with v3 by import.
-const LandingPageV4 = lazy(() => import("@/pages/LandingPageV4"));
+// v4 is the home page, so it is imported EAGERLY, not lazily. Every visitor
+// hits `/`, so code-splitting it buys nothing and costs a second network
+// round trip that can fail: with min_machines_running = 0 the machine cold
+// starts, and a dynamic import issued during that boot rejects with
+// "Failed to fetch dynamically imported module". Seen in production.
+// Its stylesheet is safe to bundle eagerly because landing-v3.css is scoped
+// entirely under .lv3 (unlike landing-v2's, which is why THAT one is lazy).
+import LandingPageV4 from "@/pages/LandingPageV4";
 import { ErrorBoundary } from "react-error-boundary";
 import AutonomyDashboard from "@/devtools/autonomyDashboard";
 import AccountPage from "@/pages/AccountPage";
@@ -93,11 +99,7 @@ function Router() {
         </Suspense>
       </Route>
       {/* v4 — hero variant. Everything below the fold is v3's, by import. */}
-      <Route path="/v4">
-        <Suspense fallback={null}>
-          <LandingPageV4 />
-        </Suspense>
-      </Route>
+      <Route path="/v4" component={LandingPageV4} />
       <Route path="/login" component={LoginPage} />
       <Route path="/">
         {isLoading ? (
@@ -124,9 +126,7 @@ function Router() {
         ) : (
           /* v4 is the home page a logged-out visitor gets. v3 stays at /v3
              and v1 at /landing. Suspense because the page is lazy. */
-          <Suspense fallback={null}>
-            <LandingPageV4 />
-          </Suspense>
+          <LandingPageV4 />
         )}
       </Route>
       <Route path="/maya/:projectId">
