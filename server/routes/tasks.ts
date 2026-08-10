@@ -391,4 +391,52 @@ export function registerTaskRoutes(app: Express, deps: RegisterTaskDeps): void {
       res.status(500).json({ error: "Failed to delete task" });
     }
   });
+
+  // The "missing link" — connect a task to the document it produces (and back). Stored in the
+  // existing metadata JSONB on both rows, so there is NO schema migration. Linking a todo task also
+  // moves it to in_progress; passing { deliverableId: null } clears the link. Ownership: the task and
+  // the deliverable must both belong to a project the caller owns, and to the SAME project.
+  const linkSchema = z.object({ deliverableId: z.string().min(1).nullable() }).strict();
+  app.post("/api/tasks/:id/link-deliverable", async (req, res) => {
+    try {
+      const userId = getSessionUserId(req);
+      if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+      const task = await storage.getTask(req.params.id);
+      if (!task) return res.status(404).json({ error: "Task not found" });
+      if (!(await getOwnedProject(task.projectId, userId))) return res.status(404).json({ error: "Task not found" });
+
+      const parsed = linkSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid link data", details: parsed.error.errors });
+      const { deliverableId } = parsed.data;
+
+      // Unlink path: clear the pointer on the task (and the back-pointer on the old deliverable).
+      if (deliverableId === null) {
+        const oldId = (task.metadata as any)?.deliverableId;
+        if (oldId) {
+          const old = await storage.getDeliverable(oldId);
+          if (old) await storage.updateDeliverable(oldId, { metadata: { ...(old.metadata as any), taskId: undefined } });
+        }
+        const updated = await storage.updateTask(task.id, { metadata: { ...(task.metadata as any), deliverableId: undefined } });
+        return res.json(updated);
+      }
+
+      // Link path: the deliverable must exist and share the task's project.
+      const deliverable = await storage.getDeliverable(deliverableId);
+      if (!deliverable || deliverable.projectId !== task.projectId) {
+        return res.status(404).json({ error: "Deliverable not found in this project" });
+      }
+
+      await storage.updateDeliverable(deliverableId, { metadata: { ...(deliverable.metadata as any), taskId: task.id } });
+      const updated = await storage.updateTask(task.id, {
+        metadata: { ...(task.metadata as any), deliverableId },
+        // A task with a document in flight is no longer just "to do".
+        ...(task.status === "todo" ? { status: "in_progress" as const } : {}),
+      });
+      return res.json(updated);
+    } catch (error) {
+      console.error("Failed to link task to deliverable:", error);
+      return res.status(500).json({ error: "Failed to link task to deliverable" });
+    }
+  });
 }

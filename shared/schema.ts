@@ -226,6 +226,9 @@ export const tasks = pgTable("tasks", {
     messageId?: string;
     estimatedHours?: number;
     actualHours?: number;
+    // Task <-> deliverable link (the "missing link"). Stored in the existing JSONB so no DB migration
+    // is needed. deliverableId points to the document this task produces.
+    deliverableId?: string;
   }>().default({}),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -415,6 +418,8 @@ export const deliverables = pgTable("deliverables", {
     references?: string[];
     generationTimeMs?: number;
     chainPosition?: number;
+    // Deliverable <-> task link (the "missing link"), back-reference to the task this doc fulfills.
+    taskId?: string;
   }>().default({}),
   // Phase 36 (FBK-01) — accept/dismiss timestamps + impression/edit counters
   userAcceptedAt: timestamp("user_accepted_at"),
