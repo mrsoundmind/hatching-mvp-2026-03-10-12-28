@@ -13,10 +13,11 @@ primary_region = "bom"
   force_https = true
   auto_stop_machines = "stop"
   auto_start_machines = true
-  # min=0 → machine fully stops when idle, saves ~$6.48/mo while pre-public.
-  # Cold start adds ~3-5s for the first visitor after an idle window.
-  # Flip back to 1 once we start driving real public traffic.
-  min_machines_running = 0
+  # min=1 since 2026-08-10. At min=0 the machine fully stopped and the first
+  # visitor after an idle window waited ~14s (measured, not the ~3-5s
+  # originally assumed) and could hit a failed dynamic import mid-boot.
+  # Costs ~$6.48/mo (₹557). Drop back to 0 if this goes dormant again.
+  min_machines_running = 1
   processes = ["app"]
 
   [http_service.concurrency]

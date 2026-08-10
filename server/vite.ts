@@ -71,6 +71,66 @@ export function serveStatic(app: Express) {
     );
   }
 
+  // Serve the .br / .gz siblings written by scripts/precompress.mjs.
+  //
+  // Nothing was compressed before this: the main bundle went out at 1.93 MB
+  // with no content-encoding, whatever the client asked for. Express does not
+  // compress by default and Fly's proxy does not either.
+  //
+  // This must run BEFORE the express.static handlers below, and it rewrites
+  // req.url to the encoded file while pinning the Content-Type from the
+  // ORIGINAL extension, because express.static would otherwise see ".br" and
+  // label a JavaScript bundle as application/octet-stream, which browsers
+  // refuse to execute as a module.
+  const ENCODINGS: Array<[string, string]> = [
+    ["br", ".br"],
+    ["gzip", ".gz"],
+  ];
+  // Explicit, because express.static.mime is not on Express 5's types and we
+  // only ever rewrite to files precompress.mjs produced, which is this set.
+  const MIME: Record<string, string> = {
+    ".js": "application/javascript",
+    ".css": "text/css",
+    ".html": "text/html",
+    ".svg": "image/svg+xml",
+    ".json": "application/json",
+    ".map": "application/json",
+    ".txt": "text/plain",
+    ".xml": "application/xml",
+  };
+  app.use((req, res, next) => {
+    if (req.method !== "GET" && req.method !== "HEAD") return next();
+
+    const accept = req.headers["accept-encoding"];
+    if (typeof accept !== "string") return next();
+
+    const urlPath = req.url.split("?")[0];
+    const ext = path.extname(urlPath);
+    if (!ext || ext === ".br" || ext === ".gz") return next();
+
+    // Resolve the type FIRST. Setting Content-Encoding before we know we can
+    // label the body correctly would leave that header on a response we then
+    // decline to rewrite, and the browser would try to brotli-decode plain
+    // bytes.
+    const type = MIME[ext];
+    if (!type) return next();
+
+    for (const [token, suffix] of ENCODINGS) {
+      if (!accept.includes(token)) continue;
+      const candidate = path.join(distPath, urlPath + suffix);
+      // guard against path traversal before touching the filesystem
+      if (!candidate.startsWith(distPath + path.sep)) return next();
+      if (!fs.existsSync(candidate)) continue;
+
+      res.setHeader("Content-Encoding", token);
+      res.setHeader("Vary", "Accept-Encoding");
+      res.setHeader("Content-Type", `${type}; charset=UTF-8`);
+      req.url = urlPath + suffix;
+      return next();
+    }
+    return next();
+  });
+
   // Hashed build output is immutable by construction: the filename changes
   // whenever the bytes do. Serving it with max-age=0 made every visitor
   // re-request every chunk on every navigation, which is both slow and, on a
