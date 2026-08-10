@@ -79,10 +79,10 @@ Turn every starter pack from "3 generic agents + one welcome line" into a comple
 
 ---
 
-## Open decisions (resolve before Phase 1 planning)
+## Decisions (resolved 2026-08-10)
 
-- **D-1 — Flagship pack:** which pack to prove first (SaaS Startup vs Restaurant Launch vs another closer to the target user). Blocks Phase 1.
-- **D-2 — Tier/monetization (OPS-03):** deep packs Pro-only, or available to everyone? Affects scope + cost.
+- **D-1 — Flagship pack: RESOLVED → BOTH SaaS Startup AND Restaurant Launch.** Prove both flagships end-to-end (one digital/tech pack, one local/physical pack) so the 4-layer template is validated across two very different business shapes before scaling. SaaS already exists in the picker; Restaurant is a NEW pack (new "Local & Services" category card → mockup-first UI gate for the card, blueprint data authored now).
+- **D-2 — Tier/monetization (OPS-03): RESOLVED → deep packs available to EVERYONE for now.** Build and test with no Pro gate; add the Pro-only gate later once the value is proven live. OPS-03's tier switch is deferred to BIAB-2, but the default is "all users" until then.
 
 ## Future requirements (deferred beyond this milestone)
 

@@ -21,9 +21,12 @@ So per parallel-work-safety, this milestone's Requirements + Roadmap were author
 ## Sequencing
 This is a **post-launch** milestone. It must not delay shipping the already-built, proven work (34-role RAG, audit remediation, chat attachments). Prove ONE flagship pack end-to-end first, then scale.
 
-## Open decisions (needed before BIAB-1 planning)
-- **D-1 — Flagship pack:** SaaS Startup vs Restaurant Launch vs another closer to the target user.
-- **D-2 — Tier/monetization:** deep packs Pro-only, or available to everyone?
+## Decisions (resolved 2026-08-10)
+- **D-1 — Flagship pack: BOTH SaaS Startup + Restaurant Launch** (digital + local/physical; prove the template across two very different business shapes).
+- **D-2 — Tier/monetization: deep packs for EVERYONE now**, add the Pro gate later once proven.
+
+## Status
+BIAB-0 in progress (started 2026-08-10). See ROADMAP.md "Status".
 
 ## Progress against the milestone (already done, on branch)
 - **PROC-06** (task ↔ deliverable link): server data + logic DONE, commit `69d4e54` (stored in existing metadata JSONB, no migration; HTTP 11/11 live). Clickable UI (UX-03) remains, mockup-first.

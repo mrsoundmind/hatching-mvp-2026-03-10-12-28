@@ -204,6 +204,14 @@ export const DELIVERABLE_TYPE_REGISTRY: RoleDeliverableMap[] = [
         sections: ['Process Overview', 'Scope', 'Roles & Responsibilities', 'Step-by-Step Procedure', 'Quality Checks', 'Exception Handling'],
         estimatedMinutes: 2,
       },
+      {
+        // Business-in-a-Box (DOC-02) — SOP as a distinct staged document type.
+        type: 'sop',
+        label: 'Standard Operating Procedure',
+        description: 'A repeatable, step-by-step procedure anyone on the team can follow',
+        sections: ['Purpose & Scope', 'Roles & Responsibilities', 'Step-by-Step Procedure', 'Tools & Inputs', 'Quality Checks', 'Exceptions & Escalation', 'Revision History'],
+        estimatedMinutes: 2,
+      },
     ],
   },
   {
@@ -214,6 +222,57 @@ export const DELIVERABLE_TYPE_REGISTRY: RoleDeliverableMap[] = [
         label: 'Data Analysis Report',
         description: 'Insights from data with visualizations',
         sections: ['Executive Summary', 'Methodology', 'Key Findings', 'Data Visualizations', 'Recommendations', 'Appendix'],
+        estimatedMinutes: 3,
+      },
+    ],
+  },
+  // Business-in-a-Box (DOC-02) — new pre-scaffolded document types packs seed. Keyed under the role
+  // that owns each one so getDeliverableTypesForRole resolves real types (not the custom fallback),
+  // and getSectionsForType/getTypeLabel find the section schema + label.
+  {
+    role: 'Business Strategist',
+    types: [
+      {
+        type: 'business-plan',
+        label: 'Business Plan',
+        description: 'The founding document: what you are building, for whom, how it makes money, and the path to get there',
+        sections: ['Executive Summary', 'Problem & Opportunity', 'Solution & Product', 'Market & Customers', 'Business Model & Pricing', 'Go-to-Market', 'Competition', 'Team', 'Financial Summary', 'Milestones & Risks'],
+        estimatedMinutes: 4,
+      },
+    ],
+  },
+  {
+    role: 'Finance Analyst',
+    types: [
+      {
+        type: 'financial-model',
+        label: 'Financial Model',
+        description: 'The numbers behind the plan: revenue, costs, unit economics, and how long the money lasts',
+        sections: ['Assumptions', 'Revenue Model', 'Unit Economics', 'Cost Structure', 'Cash Flow & Runway', 'Break-Even Analysis', 'Scenarios (Base / Best / Worst)'],
+        estimatedMinutes: 3,
+      },
+    ],
+  },
+  {
+    role: 'Legal Counsel',
+    types: [
+      {
+        type: 'legal-checklist',
+        label: 'Legal & Compliance Checklist',
+        description: 'The typical legal, tax, and compliance steps for this business (verify locally, consult a professional — not legal advice)',
+        sections: ['Entity & Registration', 'Contracts & Terms', 'Intellectual Property', 'Licenses & Permits', 'Data & Privacy', 'Tax Registration', 'Verify-Locally Notes'],
+        estimatedMinutes: 2,
+      },
+    ],
+  },
+  {
+    role: 'Brand Strategist',
+    types: [
+      {
+        type: 'brand-guide',
+        label: 'Brand Guide',
+        description: 'How the brand looks, sounds, and shows up everywhere',
+        sections: ['Brand Story & Positioning', 'Voice & Tone', 'Logo & Usage', 'Color Palette', 'Typography', 'Imagery & Iconography', "Do's and Don'ts"],
         estimatedMinutes: 3,
       },
     ],

@@ -1,6 +1,8 @@
 import { type User, type InsertUser, type Project, type InsertProject, type Team, type InsertTeam, type Agent, type InsertAgent, type Conversation, type InsertConversation, type Message, type InsertMessage, type MessageReaction, type InsertMessageReaction, type TypingIndicator, type InsertTypingIndicator, type Task, type InsertTask, type UsageDailySummary, type Deliverable, type InsertDeliverable, type DeliverableVersion, type InsertDeliverableVersion, type DeliverablePackage, type InsertDeliverablePackage, type AutonomyRun, type InsertAutonomyRun, type AutonomyRunStep, type InsertAutonomyRunStep } from "@shared/schema";
 import { starterPacksByCategory, allHatchTemplates } from "@shared/templates";
 import { ROLE_DEFINITIONS } from "@shared/roleRegistry";
+import { getPackBlueprint } from "@shared/packBlueprints";
+import { seedPackBlueprint } from "./starterPacks/seedBlueprint";
 
 // #153: starter-pack templates use role-as-name (name === role), so pack agents showed the role
 // twice ("Product Manager" / "Product Manager"). Resolve the character name (Alex, Coda…) from the
@@ -878,6 +880,16 @@ export class MemStorage implements IStorage {
   async initializeStarterPackProject(projectId: string, starterPackId: string): Promise<void> {
     const project = this.projects.get(projectId);
     if (!project) return;
+
+    // Business-in-a-Box (BIAB-0): packs with a deep blueprint get the full guided
+    // setup — right team + prefilled direction + staged tasks + document scaffolds +
+    // task↔document links — via the shared, storage-interface seeder. Packs without a
+    // blueprint fall through to the legacy team-only seeding below.
+    const blueprint = getPackBlueprint(starterPackId);
+    if (blueprint) {
+      await seedPackBlueprint(this, projectId, blueprint);
+      return;
+    }
 
     // Find the starter pack from templates
     let starterPack = null;
@@ -2130,6 +2142,15 @@ export class DatabaseStorage implements IStorage {
     });
   }
   async initializeStarterPackProject(projectId: string, starterPackId: string): Promise<void> {
+    // Business-in-a-Box (BIAB-0): packs with a deep blueprint get the full guided
+    // setup — right team + prefilled direction + staged tasks + document scaffolds +
+    // task↔document links — via the shared, storage-interface seeder (idempotent).
+    // Packs without a blueprint fall through to the legacy team-only seeding below.
+    const blueprint = getPackBlueprint(starterPackId);
+    if (blueprint) {
+      await seedPackBlueprint(this, projectId, blueprint);
+      return;
+    }
     // Delegate to in-memory logic then persist — use MemStorage helper pattern
     const mem = new MemStorage();
     // We call the in-memory version to get structured data, then persist it

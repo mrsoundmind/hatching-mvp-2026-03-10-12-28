@@ -229,6 +229,14 @@ export const tasks = pgTable("tasks", {
     // Task <-> deliverable link (the "missing link"). Stored in the existing JSONB so no DB migration
     // is needed. deliverableId points to the document this task produces.
     deliverableId?: string;
+    // Business-in-a-Box (BIAB-0). Prefilled pack tasks carry their lifecycle stage + intra-stage
+    // order so the journey renders in the right sequence, plus provenance. All in the existing JSONB,
+    // no migration. stage ∈ prerequisites | build | launch | grow. producesDocType = the deliverable
+    // type this task is expected to produce (feeds the task↔doc scaffold link).
+    stage?: "prerequisites" | "build" | "launch" | "grow";
+    order?: number;
+    fromBlueprint?: string;
+    producesDocType?: string;
   }>().default({}),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -404,7 +412,10 @@ export const deliverables = pgTable("deliverables", {
     "prd" | "tech-spec" | "design-brief" | "gtm-plan" | "user-stories" |
     "blog-post" | "landing-copy" | "content-calendar" | "email-sequence" |
     "seo-brief" | "project-plan" | "competitive-analysis" | "market-research" |
-    "process-doc" | "data-report" | "custom"
+    "process-doc" | "data-report" | "custom" |
+    // Business-in-a-Box (DOC-02) — new pre-scaffolded document types packs seed. Text column has no
+    // DB check constraint, so this union is a TypeScript-only extension; no migration needed.
+    "business-plan" | "financial-model" | "legal-checklist" | "brand-guide" | "sop"
   >(),
   status: text("status").notNull().$type<"draft" | "in_review" | "complete">().default("draft"),
   content: text("content").notNull().default(""),
@@ -420,6 +431,12 @@ export const deliverables = pgTable("deliverables", {
     chainPosition?: number;
     // Deliverable <-> task link (the "missing link"), back-reference to the task this doc fulfills.
     taskId?: string;
+    // Business-in-a-Box (BIAB-0). Pack-seeded document scaffolds carry their lifecycle stage +
+    // provenance so the docs organize by stage (DOC-03) and we can tell a scaffold from AI-generated
+    // work. isScaffold=true means "cheap smart template, not yet AI-generated" (OPS-01 cost model).
+    stage?: "prerequisites" | "build" | "launch" | "grow";
+    fromBlueprint?: string;
+    isScaffold?: boolean;
   }>().default({}),
   // Phase 36 (FBK-01) — accept/dismiss timestamps + impression/edit counters
   userAcceptedAt: timestamp("user_accepted_at"),

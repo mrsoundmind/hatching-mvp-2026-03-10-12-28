@@ -92,9 +92,12 @@
 | PROC-07 | BIAB-1 | | OPS-02 | BIAB-2 | | OPS-03 | BIAB-2 |
 | OPS-04 | BIAB-2 | | | | | | |
 
-## Blocking decisions
-- **D-1 (flagship pack)** blocks BIAB-1 planning.
-- **D-2 (tier/monetization, OPS-03)** feeds BIAB-2.
+## Decisions (resolved 2026-08-10)
+- **D-1 (flagship pack): BOTH SaaS Startup AND Restaurant Launch.** BIAB-1 proves two flagships (digital + local/physical), not one. Restaurant is a new pack (new "Local & Services" category card, mockup-first for the card; blueprint data authored in BIAB-0).
+- **D-2 (tier/monetization, OPS-03): deep packs for EVERYONE now**, add the Pro gate later. OPS-03 tier switch stays in BIAB-2; default until then is all-users.
+
+## Status
+- **BIAB-0 IN PROGRESS (started 2026-08-10).** Increment 1 = the pack-blueprint system + "packs come alive" (staged tasks + prefilled direction + document scaffolds + task↔doc links), proven server-side on the SaaS pack; Restaurant blueprint data authored alongside. PACK-01 client-refactor + Restaurant picker card deferred to the mockup-first gate.
 
 ## Next step
-`/gsd-discuss-phase` or `/gsd-plan-phase` for **BIAB-0** once D-1 is chosen — but note this is a scoped/additive milestone; promote to top-level GSD tracking when v2.1 closes.
+Build BIAB-0 increment 1 (server-safe, above), verify live on an own-server, commit scoped. Then present Restaurant card + pack-picker depth + task→doc UI as mockups (mockup-first) before any `client/src` edits. Promote to top-level GSD tracking when v2.1 closes.

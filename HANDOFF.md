@@ -2,11 +2,35 @@
 
 > **Read this first if you're an AI (Claude Code, Cursor, Windsurf, Copilot, etc.) or a human picking up on Hatchin.** This file tells you what happened, where we are, and what to do next. Session-continuity log — updated at session boundaries.
 
-**Last refreshed:** 2026-08-03
-**Current branch:** `feat/v2.2-intelligence-fixes` (three workstreams share this branch: v2.2 intelligence fixes + the v2.1-UX UI milestone + the Pre-Launch Hardening pass; a sibling session also landed a Slack adapter `00005a2`)
+**Last refreshed:** 2026-08-10
+**Current branch:** `feat/v2.2-intelligence-fixes` (workstreams share this branch: v2.2 intelligence fixes + v2.1-UX UI + Pre-Launch Hardening + chat attachments + the new Business-in-a-Box packs milestone; a sibling session also landed a Slack adapter `00005a2`)
 **Latest commit:** `2662002 docs(audit): step-by-step migration-safety baseline runbook (Tier 0.4)` (the Pre-Launch Hardening pass, below)
+**Latest commit (Business-in-a-Box workstream):** BIAB-0 increment 1 — pack blueprint system ("packs come alive"), committed 2026-08-10 (below)
 **Latest commit (v2.2 workstream):** Phase 39 Plans 39-01 (server) + 39-02 (UI), committed 2026-07-31 (prior: `f5682ab` peer-review coverage)
 **Latest commit (v2.1-UX UI workstream):** `c76fb4e fix(chat): don't drop the user's just-sent message on a refetch race` (+ `a99cfb3` hover-to-peek, `556f60a` rail refinements, `835518a`/`ee5c5bf` chat-card fix)
+
+## 2026-08-10: Business-in-a-Box — new packs milestone kicked off; BIAB-0 increment 1 shipped server-side (packs workstream)
+
+Goal from the user: turn every starter pack from "3 generic agents + one welcome line" into a complete guided operating system (the right team, a prefilled direction, a staged task list, pre-scaffolded documents). The GSD milestone (Requirements + Roadmap) was authored last session under `.planning/milestones/business-in-a-box/`. This session resolved the two open decisions and built + proved the foundation.
+
+**Decisions (user, 2026-08-10):** **D-1 = BOTH SaaS Startup + Restaurant Launch** as flagships (a digital pack and a local/physical pack, to validate the 4-layer template across two very different shapes). **D-2 = deep packs for EVERYONE now**, add the Pro gate later once proven. "Let's build and test it first."
+
+**What landed (BIAB-0 increment 1 — "packs come alive"; server-side only, so no UI gate; my files only, nothing merged, additive + fail-safe):**
+- **`shared/packBlueprints.ts`** (NEW) — a `PackBlueprint` data model + two deep flagship blueprints. Each carries the right cast (real roleRegistry roles → correct character names), a prefilled project direction, a per-role focus brief for THAT business (TEAM-03), and staged (`prerequisites → build → launch → grow`) tasks + document scaffolds, with tasks referencing the doc they produce. SaaS = 7 agents / 15 tasks / 9 docs; Restaurant = 6 agents / 15 tasks / 8 docs. **The new roles Finance/Juhi + Legal/Ira finally appear in packs (were in ZERO before).** No invented stats — blueprints are structural; the sourced field playbook (PLAY-*) is a later BIAB-1 layer.
+- **`server/starterPacks/seedBlueprint.ts`** (NEW) — `seedPackBlueprint(store, projectId, blueprint)` works through the IStorage interface (createTeam/createAgent/createTask/createDeliverable/updateProject/updateDeliverable), so it behaves identically in MemStorage + DatabaseStorage with zero duplicated logic. Idempotent (won't double-seed). Documents seed as **cheap zero-LLM scaffolds** (OPS-01 cost model). Wires the bidirectional task↔deliverable link (PROC-06) as it goes.
+- **`server/storage.ts`** — both `initializeStarterPackProject` paths now delegate to the seeder when a pack has a blueprint, else fall through to the legacy team-only seeding. The project-creation route (`projects.ts:145`) already calls this, so no route change was needed.
+- **Type-only schema edits (no migration, same pattern as `69d4e54`):** `deliverables.type` union += `business-plan | financial-model | legal-checklist | brand-guide | sop`; `tasks.metadata` += `stage | order | fromBlueprint | producesDocType`; `deliverables.metadata` += `stage | fromBlueprint | isScaffold`. New deliverable-type specs added to `shared/deliverableTypes.ts`.
+
+**Verified live (verify-in-runtime):**
+- `scripts/test-pack-blueprint-seed.ts` **44/44** — storage-level, both flagships: direction prefilled, team cast + named + briefed, 15 staged/assigned tasks spanning all 4 stages, doc scaffolds with section headers, bidirectional task↔doc link, idempotency, and a legacy (no-blueprint) pack still seeds team-only.
+- **Full HTTP path on my own memory-mode `:5020` server** (sibling `:5001` + my prior `:5019` untouched, killed `:5020` after): dev-login → `POST /api/projects {starterPackId:"saas-startup"}` → readback showed direction filled, 7 agents (Alex, Jordan, Cleo, Kai, Wren, **Juhi**, **Ira**), 15 tasks `{prereq 4, build 4, launch 4, grow 3}` with 9 linked to docs, 9 document scaffolds all back-linked. Proves the server boots with the new module graph and the real route wires it end to end.
+- `tsc --noEmit` clean.
+
+**Next (mockup-first gate — ZERO UI code until approved):** the Restaurant pack CARD in the picker (new "Local & Services" category — the blueprint data is ready, the card is client UI), deeper pack-picker preview (UX-01/02), and the task→document "View document" link (UX-03). These get a visual mockup/prototype first.
+
+**Constellation:** the milestone's own `.planning/milestones/business-in-a-box/{REQUIREMENTS,ROADMAP,README}.md` updated (decisions + BIAB-0 status); CLAUDE.md footer + this HANDOFF updated. Top-level STATE/ROADMAP/REQUIREMENTS + COMPLETE-GUIDE intentionally NOT touched (they carry a sibling session's uncommitted v2.1-UX/Slack work per `feedback_parallel_work_safety`; BIAB is a scoped/additive milestone). Nothing merged.
+
+---
 
 ## 2026-08-07: Chat Attachments — composer UI shipped + proven end-to-end (knowledge workstream)
 
