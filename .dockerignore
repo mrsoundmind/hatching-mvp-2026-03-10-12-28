@@ -14,7 +14,13 @@ docs
 !package.json
 baseline
 eval
-scripts
+# scripts/ is excluded from the image EXCEPT the build-time compressor,
+# which `npm run build` invokes. Excluding the whole directory broke the
+# deploy with: Cannot find module '/app/scripts/precompress.mjs'.
+# Written as scripts/* rather than scripts so the negation below reliably
+# re-includes a file from inside it.
+scripts/*
+!scripts/precompress.mjs
 test-results
 playwright-report
 *.png
