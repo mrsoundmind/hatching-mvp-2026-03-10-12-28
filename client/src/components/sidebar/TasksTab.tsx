@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ChevronDown, ChevronRight, Trash2, Play, Lock } from 'lucide-react';
 import { TaskPipelineView } from './TaskPipelineView';
 import { WorkOutputSection } from './WorkOutputSection';
+import { JourneyView } from './JourneyView';
 import { useSidebarEvent } from '@/hooks/useSidebarEvent';
 import { AUTONOMY_EVENTS } from '@/lib/autonomyEvents';
 import { useToast } from '@/hooks/use-toast';
@@ -93,6 +94,18 @@ export function TasksTab({ projectId, executionRules }: TasksTabProps) {
   }, [tasks]);
 
   const totalBoardTasks = taskSections.reduce((sum, s) => sum + s.tasks.length, 0);
+
+  // Business-in-a-Box (PROC-03) — when a project was seeded from a pack blueprint,
+  // its tasks carry a lifecycle `stage`. Those projects get the guided Journey view
+  // (staged path + first moves + live working state) instead of the flat board.
+  // Projects whose tasks came from chat have no stage → they keep the board.
+  const hasStagedTasks = useMemo(
+    () => (tasks ?? []).some(t => {
+      const s = (t.metadata as { stage?: string } | null)?.stage;
+      return s === 'prerequisites' || s === 'build' || s === 'launch' || s === 'grow';
+    }),
+    [tasks]
+  );
 
   // Phase 1.2 — delegation entrance gating. The server executes tasks whose
   // status is 'todo', and gates on Pro tier + executionRules.autonomyEnabled;
@@ -239,6 +252,18 @@ export function TasksTab({ projectId, executionRules }: TasksTabProps) {
             </div>
           )}
         </div>
+      ) : hasStagedTasks ? (
+        /* Business-in-a-Box guided Journey view (staged, pack-seeded projects) */
+        <JourneyView
+          projectId={projectId!}
+          tasks={tasks ?? []}
+          isPro={isPro}
+          autonomyEnabled={autonomyEnabled}
+          onToggle={toggleTaskStatus}
+          onDelete={deleteTask}
+          onDelegate={handleDelegate}
+          openBrainSettings={openBrainSettings}
+        />
       ) : (
         <>
           {/* 1. Task Pipeline visual */}
