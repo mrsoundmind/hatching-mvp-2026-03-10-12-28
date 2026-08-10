@@ -66,9 +66,20 @@ export interface BlueprintTask {
   producesDocKey?: string;
 }
 
+export type PackTier = "free" | "pro";
+
 export interface PackBlueprint {
   packId: string;
   packTitle: string;
+  /**
+   * Monetization tier (Business-in-a-Box freemium model, 2026-08-10).
+   * "free" = fully usable by anyone. "pro" = preview free, upgrade to launch.
+   * PRODUCT DECISION — the exact free/Pro split is just this field per pack, trivially
+   * changed. Current split is a proposal (SaaS free taste, Restaurant Pro showcase); the
+   * defensible Pro value is the cited field playbook + docs-to-spec layer (see HANDOFF moat note),
+   * NOT the roster, so deep packs can carry the playbook behind Pro even when structure is free.
+   */
+  tier: PackTier;
   /** Roles to seed as the team (overrides pack.members). Real roleRegistry roles. */
   team: string[];
   /** Prefilled project direction (INTAKE-02) — a starting point the founder edits. */
@@ -93,6 +104,7 @@ const STAGES: BlueprintStage[] = [
 const SAAS_STARTUP: PackBlueprint = {
   packId: "saas-startup",
   packTitle: "SaaS Startup",
+  tier: "free", // free deep-pack taste (proposal; flip to "pro" to gate)
   team: [
     "Product Manager",
     "Technical Lead",
@@ -161,6 +173,7 @@ const SAAS_STARTUP: PackBlueprint = {
 const RESTAURANT_LAUNCH: PackBlueprint = {
   packId: "restaurant-launch",
   packTitle: "Restaurant Launch",
+  tier: "pro", // Pro showcase (proposal; flip to "free" to open)
   team: [
     "Business Strategist",
     "Operations Manager",
@@ -236,4 +249,37 @@ export function getPackBlueprint(packId: string): PackBlueprint | undefined {
 /** True when a pack has a deep blueprint (vs. the legacy team-only seeding). */
 export function hasPackBlueprint(packId: string): boolean {
   return packId in PACK_BLUEPRINTS;
+}
+
+export interface PackSummary {
+  packId: string;
+  title: string;
+  tier: PackTier;
+  teamCount: number;
+  taskCount: number;
+  docCount: number;
+  direction: BlueprintDirection;
+}
+
+/** Compact, client-safe summary of one blueprint (for the picker cards + router response). */
+export function summarizeBlueprint(bp: PackBlueprint): PackSummary {
+  return {
+    packId: bp.packId,
+    title: bp.packTitle,
+    tier: bp.tier,
+    teamCount: bp.team.length,
+    taskCount: bp.tasks.length,
+    docCount: bp.documents.length,
+    direction: bp.direction,
+  };
+}
+
+/** All deep packs as summaries — powers the pack catalog endpoint + the picker cards. */
+export function packCatalog(): PackSummary[] {
+  return Object.values(PACK_BLUEPRINTS).map(summarizeBlueprint);
+}
+
+/** Tier for a pack id; deep packs carry their own tier, unknown/legacy packs default to free. */
+export function getPackTier(packId: string): PackTier {
+  return PACK_BLUEPRINTS[packId]?.tier ?? "free";
 }

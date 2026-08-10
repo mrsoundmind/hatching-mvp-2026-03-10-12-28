@@ -3,6 +3,7 @@ import { starterPacksByCategory, allHatchTemplates } from "@shared/templates";
 import { ROLE_DEFINITIONS } from "@shared/roleRegistry";
 import { getPackBlueprint } from "@shared/packBlueprints";
 import { seedPackBlueprint } from "./starterPacks/seedBlueprint";
+import { assembleBlueprint } from "./starterPacks/packRouter";
 
 // #153: starter-pack templates use role-as-name (name === role), so pack agents showed the role
 // twice ("Product Manager" / "Product Manager"). Resolve the character name (Alex, Coda…) from the
@@ -148,6 +149,9 @@ export interface IStorage {
 
   // Special initialization for starter pack projects
   initializeStarterPackProject(projectId: string, starterPackId: string): Promise<void>;
+  // Business-in-a-Box — the generative fallback: seed a project from a team + plan
+  // assembled for a freeform idea (no matching pack). Reuses the same blueprint seeder.
+  initializeAssembledProject(projectId: string, idea: string): Promise<void>;
 
   // D1.3: Conversation archiving and management
   archiveConversation(conversationId: string): Promise<boolean>;
@@ -1005,6 +1009,11 @@ export class MemStorage implements IStorage {
       };
       this.projects.set(projectId, updatedProject);
     }
+  }
+
+  async initializeAssembledProject(projectId: string, idea: string): Promise<void> {
+    if (!this.projects.get(projectId)) return;
+    await seedPackBlueprint(this, projectId, assembleBlueprint(idea));
   }
 
   // Chat methods implementation
@@ -2180,6 +2189,12 @@ export class DatabaseStorage implements IStorage {
       }
       await db.insert(schema.agents).values({ userId: project.userId, name: packAgentName((tpl as any).role, (tpl as any).name), role: (tpl as any).role, color: (tpl as any).color, teamId: teamMap[tKey], projectId, isSpecialAgent: false, personality: { traits: (tpl as any).skills?.slice(0, 3) || [], communicationStyle: (tpl as any).description, expertise: (tpl as any).skills || [], welcomeMessage: `Hi! I'm ${packAgentName((tpl as any).role, (tpl as any).name)}, your ${(tpl as any).role}.` } });
     }
+  }
+
+  async initializeAssembledProject(projectId: string, idea: string): Promise<void> {
+    const project = await this.getProject(projectId);
+    if (!project) return;
+    await seedPackBlueprint(this, projectId, assembleBlueprint(idea));
   }
 
   // Conversation archiving
