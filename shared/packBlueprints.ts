@@ -68,6 +68,19 @@ export interface BlueprintTask {
 
 export type PackTier = "free" | "pro";
 
+/**
+ * The pack's field playbook — the moat (2026-08-10). Names the field and the proven
+ * frameworks the team runs on for THAT business, so the pack's agents are field-specialists,
+ * not generalists. Framework NAMES only (no baked-in statistics): specifics are grounded in
+ * the RAG-retrieved cited sources at answer time, per cite-or-admit. This is the layer a free
+ * user cannot recreate by just adding a team.
+ */
+export interface PackPlaybook {
+  field: string;
+  primer: string;
+  frameworks: string[];
+}
+
 export interface PackBlueprint {
   packId: string;
   packTitle: string;
@@ -89,6 +102,8 @@ export interface PackBlueprint {
   stages: BlueprintStage[];
   documents: BlueprintDocument[];
   tasks: BlueprintTask[];
+  /** The field playbook injected into this pack's agents (the Pro depth). Optional. */
+  playbook?: PackPlaybook;
 }
 
 const STAGES: BlueprintStage[] = [
@@ -165,6 +180,24 @@ const SAAS_STARTUP: PackBlueprint = {
     { title: "Design the onboarding and activation flow", description: "Get more new users to their first win. Remove steps, add guidance, and measure the drop-off points.", role: "Product Designer", stage: "grow", priority: "medium" },
     { title: "Set up a weekly retention and churn review", description: "Review who is sticking, who is leaving, and why, every week. Feed what you learn back into the product.", role: "Finance Analyst", stage: "grow", priority: "low" },
   ],
+  playbook: {
+    field: "SaaS and subscription software",
+    primer: "Software sold as a subscription. It wins when a small set of users cannot live without it, then widens. The activation moment and the unit economics matter as much as the product itself.",
+    frameworks: [
+      "RICE prioritization",
+      "the Kano model",
+      "Jobs-to-Be-Done",
+      "the activation metric and aha moment",
+      "growth loops",
+      "the North Star Metric",
+      "the Sean Ellis product-market-fit test",
+      "cohort retention curves",
+      "value-based pricing",
+      "Van Westendorp price sensitivity",
+      "LTV to CAC ratio and payback period",
+      "the Rule of 40",
+    ],
+  },
 };
 
 // -----------------------------------------------------------------------------
@@ -231,6 +264,20 @@ const RESTAURANT_LAUNCH: PackBlueprint = {
     { title: "Launch a local loyalty and reviews push", description: "Turn first diners into regulars: a simple loyalty offer and an easy nudge to leave an honest review.", role: "Social Media Manager", stage: "grow", priority: "medium" },
     { title: "Review food cost and labor against the model monthly", description: "Compare actual food cost and labor to the model every month and adjust the menu or staffing before small gaps become big ones.", role: "Finance Analyst", stage: "grow", priority: "low" },
   ],
+  playbook: {
+    field: "restaurants and food service",
+    primer: "A restaurant succeeds on fundamentals: a concept people want, food and labor costs that leave a margin, and an operation that holds up on a busy night.",
+    frameworks: [
+      "food cost percentage",
+      "prime cost (food plus labor)",
+      "covers and table turns",
+      "RevPASH, revenue per available seat hour",
+      "break-even covers",
+      "menu engineering (stars, plowhorses, puzzles, dogs)",
+      "the Kasavana-Smith menu matrix",
+      "par-level inventory",
+    ],
+  },
 };
 
 // -----------------------------------------------------------------------------
@@ -258,6 +305,8 @@ export interface PackSummary {
   teamCount: number;
   taskCount: number;
   docCount: number;
+  frameworkCount: number;
+  field: string | null;
   direction: BlueprintDirection;
 }
 
@@ -270,6 +319,8 @@ export function summarizeBlueprint(bp: PackBlueprint): PackSummary {
     teamCount: bp.team.length,
     taskCount: bp.tasks.length,
     docCount: bp.documents.length,
+    frameworkCount: bp.playbook?.frameworks.length ?? 0,
+    field: bp.playbook?.field ?? null,
     direction: bp.direction,
   };
 }

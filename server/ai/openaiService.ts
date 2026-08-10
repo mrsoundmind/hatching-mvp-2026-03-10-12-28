@@ -16,6 +16,7 @@ import type { LLMResponseMetadata } from '../llm/providerTypes.js';
 import { loadRoleBrain, renderRoleBrainContext } from '../knowledge/roleBrains/loader.js';
 import { retrieveKnowledgeBlockForChat } from '../knowledge/rag/retriever.js';
 import { retrieveConversationDocsBlockForChat } from '../knowledge/rag/conversationDocs.js';
+import { getProjectPackId, renderPackPlaybookBlock, boostQueryForPack } from '../starterPacks/packPlaybook.js';
 import { getCharacterProfile } from './characterProfiles.js';
 import { getRoleIntelligence } from '@shared/roleIntelligence';
 import { loadRoleSkillsWithUpdates } from '../knowledge/skillUpdates/skillUpdateStore.js';
@@ -206,7 +207,11 @@ export async function* generateStreamingResponse(
     // for this question (not just the responding role), rewriting the query with conversation context,
     // hybrid (vector+keyword) + rerank, injected as a role-attributed, injection-safe, cite-or-admit
     // block. Gated + fail-safe (returns '' on any error, so a chat turn never breaks).
-    const retrievedKnowledgeSection = await retrieveKnowledgeBlockForChat(userMessage, context.conversationHistory);
+    // Business-in-a-Box — resolve the pack this project came from and inject its FIELD PLAYBOOK
+    // (the Pro depth), plus bias retrieval toward the pack's field. Fail-safe: null pack => unchanged.
+    const packId = context.projectId ? await getProjectPackId(context.projectId) : null;
+    const packPlaybookSection = renderPackPlaybookBlock(packId);
+    const retrievedKnowledgeSection = await retrieveKnowledgeBlockForChat(boostQueryForPack(packId, userMessage), context.conversationHistory);
 
     // Chat Attachments — RAG-retrieve chunks from files the user attached to THIS conversation (or the
     // project brain) and inject them grounded + injection-safe. Gated + fail-safe: no attachments => ''.
@@ -471,6 +476,7 @@ ${personalityPrompt}
 --- ROLE BRAIN ---
 ${roleBrainContext}
 --- END ROLE BRAIN ---
+${packPlaybookSection}
 ${retrievedKnowledgeSection}
 ${conversationDocsSection}
 
@@ -666,8 +672,11 @@ export async function generateIntelligentResponse(
     const roleProfile = roleProfiles[agentRole] || roleProfiles['Product Manager'];
     const roleBrain = await loadRoleBrain(agentRole);
     const roleBrainContext = renderRoleBrainContext(roleBrain);
+    // Business-in-a-Box — pack field playbook + field-boosted retrieval (same as the streaming path).
+    const packIdNs = context.projectId ? await getProjectPackId(context.projectId) : null;
+    const packPlaybookSectionNs = renderPackPlaybookBlock(packIdNs);
     // v2.3 THE MATRIX (non-streaming path) — same cross-role router as the streaming path.
-    const retrievedKnowledgeSectionNs = await retrieveKnowledgeBlockForChat(userMessage, context.conversationHistory);
+    const retrievedKnowledgeSectionNs = await retrieveKnowledgeBlockForChat(boostQueryForPack(packIdNs, userMessage), context.conversationHistory);
     const conversationDocsSectionNs = await retrieveConversationDocsBlockForChat(context.conversationId, context.projectId, userMessage);
 
     // Create context-aware prompt using our template system
@@ -694,7 +703,7 @@ export async function generateIntelligentResponse(
       messages: [
         {
           role: 'system',
-          content: `${enhancedPrompt}\n\n--- ROLE BRAIN ---\n${roleBrainContext}\n--- END ROLE BRAIN ---${retrievedKnowledgeSectionNs}${conversationDocsSectionNs}\n\nNEVER attach a URL or cite a source from memory; only cite sources explicitly provided to you above. With no provided source, state the point plainly and attach no link.\n\n${AGENT_CAPABILITY_ENVELOPE}${context.autonomyLevel === 'autonomous' ? AUTONOMOUS_DIRECTIVE_BLOCK : ''}${context.autonomyLevel === 'autonomous' && context.agentIsSpecial ? `\n\n${MAYA_AUTONOMOUS_OVERRIDE}` : ''}`
+          content: `${enhancedPrompt}\n\n--- ROLE BRAIN ---\n${roleBrainContext}\n--- END ROLE BRAIN ---${packPlaybookSectionNs}${retrievedKnowledgeSectionNs}${conversationDocsSectionNs}\n\nNEVER attach a URL or cite a source from memory; only cite sources explicitly provided to you above. With no provided source, state the point plainly and attach no link.\n\n${AGENT_CAPABILITY_ENVELOPE}${context.autonomyLevel === 'autonomous' ? AUTONOMOUS_DIRECTIVE_BLOCK : ''}${context.autonomyLevel === 'autonomous' && context.agentIsSpecial ? `\n\n${MAYA_AUTONOMOUS_OVERRIDE}` : ''}`
         },
         {
           role: 'user',

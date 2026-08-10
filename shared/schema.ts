@@ -77,6 +77,10 @@ export const projects = pgTable("projects", {
     inactivityTriggerMinutes?: number;
     rules?: string;
     taskGraph?: unknown;
+    // Business-in-a-Box — which pack this project was created from (or 'assembled' for the
+    // generative fallback). Lets the chat path inject the pack's field playbook. Stored in the
+    // existing JSONB, no migration.
+    packId?: string;
   }>().default({}),
   teamCulture: text("team_culture"),
   lastSeenAt: timestamp("last_seen_at"),

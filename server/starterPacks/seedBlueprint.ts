@@ -138,12 +138,15 @@ export async function seedPackBlueprint(
     return { ...empty, reason: "already_initialized" };
   }
 
-  // 1) Prefilled project direction (INTAKE-02) — only when still empty, never clobber.
+  // 1) Prefilled project direction (INTAKE-02) — only when still empty, never clobber —
+  //    plus stamp the pack id on the project so the chat path can inject its field playbook.
   const dir = project.coreDirection || {};
   const directionEmpty = !dir.whatBuilding && !dir.whyMatters && !dir.whoFor;
-  if (directionEmpty) {
-    await store.updateProject(projectId, { coreDirection: blueprint.direction });
-  }
+  const updates: Partial<Project> = {
+    executionRules: { ...(project.executionRules || {}), packId: blueprint.packId },
+  };
+  if (directionEmpty) updates.coreDirection = blueprint.direction;
+  await store.updateProject(projectId, updates);
 
   // 2) Teams + agents (the right cast, correctly named, with a per-business brief — TEAM-01/03).
   const teamByKey = new Map<string, Team>();
