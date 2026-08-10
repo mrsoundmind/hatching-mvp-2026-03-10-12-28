@@ -79,8 +79,13 @@ export default function LandingPageV4() {
              CTA already carries that, and two identical buttons split one
              click two ways, which is the thing v3's hero was fixed for. */
           navCta={{ label: "Sign in", href: "/login" }}
-          /* the video that shipped with the component */
-          videoSrc="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260405_170732_8a9ccda6-5cff-4628-b164-059c500a2b41.mp4"
+          /* Self-hosted, re-encoded. The original shipped from a CloudFront
+             bucket we do not own, at 1924x1076 / 12.8 Mbps / 15.35 MB, which
+             was 96% of the whole page weight. Re-encoded at CRF 30 with no
+             audio track it is 0.66 MB and frame-for-frame indistinguishable
+             (it is a darkened background loop behind a scrim). */
+          videoSrc="/media/hero.mp4"
+          videoPoster="/media/hero-poster.jpg"
           ctaBg="var(--lv3-blue)"
           ctaFg="#ffffff"
           overlay={

@@ -70,17 +70,16 @@ export default function LoginPage() {
   return (
     <div className="lv3 relative min-h-screen w-full overflow-hidden bg-[#0A0C13]">
       {/* the hero's own footage, so signing in feels like the same place */}
+      {/* Self-hosted, re-encoded: 13.49 MB -> 1.09 MB. See LandingPageV4. */}
       <video
         autoPlay
         loop
         muted
         playsInline
+        poster="/media/login-poster.jpg"
         className="absolute inset-0 z-0 h-full w-full object-cover"
       >
-        <source
-          src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260314_131748_f2ca2a28-fed7-44c8-b9a9-bd9acdd5ec31.mp4"
-          type="video/mp4"
-        />
+        <source src="/media/login.mp4" type="video/mp4" />
       </video>
       <div
         aria-hidden

@@ -124,6 +124,10 @@ export interface PrismaHeroProps {
    *  Keeps the returning-user action separate from the centre wayfinding. */
   navCta?: { label: string; href: string };
   videoSrc: string;
+  /** First frame, painted immediately so the hero is never a black rectangle
+   *  while the video is still arriving. Without it the scrim and the type sit
+   *  on empty background for the length of one video round trip. */
+  videoPoster?: string;
   /** Type + nav colour. Defaults to the page's off-white. */
   ink?: string;
   /** Fill for the CTA pill. Defaults to `ink`; pass a brand colour to override. */
@@ -144,6 +148,7 @@ export const PrismaHero = ({
   navItems = [],
   navCta,
   videoSrc,
+  videoPoster,
   ink = "#E9EAF5",
   ctaBg,
   ctaFg,
@@ -165,6 +170,7 @@ export const PrismaHero = ({
           transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
           className="absolute inset-0 h-full w-full object-cover"
           src={videoSrc}
+          poster={videoPoster}
         />
 
         <div

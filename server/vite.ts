@@ -144,6 +144,18 @@ export function serveStatic(app: Express) {
     }),
   );
 
+  // Hero footage. Not content-hashed (referenced by stable path from JSX), so
+  // it cannot be `immutable`; a week with revalidation means a returning
+  // visitor re-downloads nothing while a replaced file still propagates within
+  // days. Rename the file if you ever need it picked up immediately.
+  app.use(
+    "/media",
+    express.static(path.join(distPath, "media"), {
+      maxAge: "7d",
+      fallthrough: true,
+    }),
+  );
+
   // index.html must NEVER be cached: it is what points at the current hashes.
   // A stale copy sends browsers looking for chunks that no longer exist.
   app.use(

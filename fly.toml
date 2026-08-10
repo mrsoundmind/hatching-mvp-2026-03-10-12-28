@@ -1,5 +1,11 @@
 app = "hatchin-mvp"
-primary_region = "bom"
+# sin, not bom, since 2026-08-10. Supabase lives in aws-1-ap-southeast-1
+# (Singapore) and the session store is Postgres, so an app in Mumbai paid a
+# measured ~290ms cross-region round trip on EVERY authenticated request before
+# doing any real work (/health 0.84s vs / 0.55s). Co-locating with the database
+# removes that hop. It does not change ingress latency: Fly's shared IPv4 is
+# announced in London, so requests from India enter there regardless of region.
+primary_region = "sin"
 
 [build]
 
