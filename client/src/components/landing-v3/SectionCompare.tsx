@@ -83,7 +83,7 @@ export function SectionCompare() {
   const q = QUESTIONS[i];
 
   return (
-    <section ref={ref} id="knowledge" className="lv3-bg-paper py-24 sm:py-28">
+    <section ref={ref} id="knowledge" className="lv3-bg-candle py-24 sm:py-28">
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
         <Reveal className="max-w-2xl">
           <span className="lv3-label lv3-t-blue">You're the CEO now</span>

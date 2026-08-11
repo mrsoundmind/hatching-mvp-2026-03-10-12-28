@@ -385,7 +385,7 @@ export function SectionPresets() {
         {/* close */}
         <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="lv3-t-soft max-w-xl text-[13.5px] leading-relaxed">
-            Every pack is a real team, plan, and documents.{" "}
+            A real team, plan, and documents.{" "}
             <span className="lv3-t-soft-55">Not a template you fill in.</span>
           </p>
           <CTA href="/login" variant="primary" className="shrink-0">

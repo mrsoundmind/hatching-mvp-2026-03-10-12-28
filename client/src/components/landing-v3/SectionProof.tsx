@@ -108,7 +108,7 @@ function Relay({ reduce }: { reduce: boolean | null }) {
 export function SectionProof() {
   const reduce = useReducedMotion();
   return (
-    <section id="proof" className="lv3-bg-candle px-5 py-24 sm:px-8 sm:py-28">
+    <section id="proof" className="lv3-bg-paper px-5 py-24 sm:px-8 sm:py-28">
       <div className="mx-auto max-w-6xl">
         <Reveal className="mb-9 max-w-2xl">
           <span className="lv3-label lv3-t-blue">How the work gets made</span>
@@ -176,8 +176,8 @@ export function SectionProof() {
 
         <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="lv3-t-soft max-w-xl text-[14px] leading-relaxed">
-            A chatbot gives you a confident first draft.{" "}
-            <span className="lv3-t-navy font-medium">Your team gives you the version after they caught the problems.</span>
+            A chatbot gives you a first draft.{" "}
+            <span className="lv3-t-navy font-medium">You get the fixed one.</span>
           </p>
           <CTA href="/login" variant="primary" className="shrink-0">
             Start free

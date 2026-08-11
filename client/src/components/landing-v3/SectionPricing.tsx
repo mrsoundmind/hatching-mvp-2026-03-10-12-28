@@ -115,7 +115,7 @@ export function SectionPricing() {
   const inView = useInView(ref, { margin: "-15% 0px -15% 0px" });
 
   return (
-    <section ref={ref} id="start" className="lv3-bg-paper py-24 sm:py-28">
+    <section ref={ref} id="start" className="lv3-bg-candle py-24 sm:py-28">
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
         <Reveal className="mx-auto max-w-3xl text-center">
           <span className="lv3-label lv3-t-blue">Pricing</span>

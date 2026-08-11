@@ -54,7 +54,7 @@ function DriftingRoster() {
 
 export function ClosingBand() {
   return (
-    <section id="close" className="lv3-bg-candle relative isolate overflow-hidden border-t">
+    <section id="close" className="lv3-bg-paper relative isolate overflow-hidden border-t">
       <div className="mx-auto max-w-4xl px-5 py-28 text-center sm:px-8 sm:py-32">
         <DriftingRoster />
         <span className="lv3-label lv3-t-blue">Start building</span>
