@@ -93,7 +93,7 @@ function JobCard({ job, lit, onTake, onRelease }: { job: Job; lit: boolean; onTa
 
 const DWELL_MS = 2500;
 
-export function SectionJobs() {
+export function SectionJobs({ showRoster = true }: { showRoster?: boolean } = {}) {
   const reduce = useReducedMotion();
   const gridRef = useRef<HTMLDivElement>(null);
   const inView = useInView(gridRef, { margin: "-20% 0px -20% 0px" });
@@ -140,17 +140,20 @@ export function SectionJobs() {
           ))}
         </div>
 
-        {/* the roster keeps its place: the whole team, on call */}
-        <motion.div
-          className="mt-3 border p-8 sm:p-10"
-          style={{ borderColor: "var(--lv3-border)" }}
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={VIEWPORT}
-          transition={{ duration: 0.6, ease: EASE }}
-        >
-          <RosterGrid />
-        </motion.div>
+        {/* the whole team, on call — shown on v3, dropped on v4 where the team
+            already appears in the Problem card and the closing band */}
+        {showRoster && (
+          <motion.div
+            className="mt-3 border p-8 sm:p-10"
+            style={{ borderColor: "var(--lv3-border)" }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={VIEWPORT}
+            transition={{ duration: 0.6, ease: EASE }}
+          >
+            <RosterGrid />
+          </motion.div>
+        )}
 
         <p className="lv3-t-soft mt-6 text-[13.5px]">
           Every draft is read by a second teammate before it reaches you.{" "}

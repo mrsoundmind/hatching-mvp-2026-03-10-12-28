@@ -108,7 +108,7 @@ function Relay({ reduce }: { reduce: boolean | null }) {
 export function SectionProof() {
   const reduce = useReducedMotion();
   return (
-    <section id="proof" className="lv3-bg-paper px-5 py-24 sm:px-8 sm:py-28">
+    <section id="proof" className="lv3-bg-candle px-5 py-24 sm:px-8 sm:py-28">
       <div className="mx-auto max-w-6xl">
         <Reveal className="mb-9 max-w-2xl">
           <span className="lv3-label lv3-t-blue">How the work gets made</span>

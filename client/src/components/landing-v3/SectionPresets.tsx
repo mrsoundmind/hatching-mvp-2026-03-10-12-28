@@ -323,7 +323,7 @@ export function SectionPresets() {
   const pack = PACKS.find((p) => p.id === sel && p.status === "ready") ?? PACKS[0];
 
   return (
-    <section id="packs" className="lv3-bg-candle px-5 py-24 sm:px-8 sm:py-28">
+    <section id="packs" className="lv3-bg-paper px-5 py-24 sm:px-8 sm:py-28">
       <div className="mx-auto max-w-6xl">
         <Reveal className="mb-8 max-w-2xl">
           <span className="lv3-label lv3-t-blue">Start from a pack</span>

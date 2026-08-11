@@ -11,8 +11,11 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
-// Order + labels mirror the actual scroll order in LandingPageV4's <main>.
-const ITEMS = [
+type RailItem = { id: string; n: string; label: string };
+
+// Default order mirrors v3's scroll order. v4 passes its own list (Overnight is
+// merged into Control there, so it has one fewer stop).
+const ITEMS: RailItem[] = [
   { id: "problem", n: "01", label: "The problem" },
   { id: "overview", n: "02", label: "How it works" },
   { id: "knowledge", n: "03", label: "vs a chatbot" },
@@ -24,7 +27,7 @@ const ITEMS = [
   { id: "start", n: "09", label: "Pricing" },
 ];
 
-export function SectionRail() {
+export function SectionRail({ items = ITEMS }: { items?: RailItem[] } = {}) {
   const [active, setActive] = useState(0);
   const [shown, setShown] = useState(false);
 
@@ -32,7 +35,7 @@ export function SectionRail() {
     const onScroll = () => {
       const line = window.innerHeight * 0.4;
       let current = 0;
-      ITEMS.forEach((it, i) => {
+      items.forEach((it, i) => {
         const el = document.getElementById(it.id);
         if (el && el.getBoundingClientRect().top <= line) current = i;
       });
@@ -52,7 +55,7 @@ export function SectionRail() {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
     };
-  }, []);
+  }, [items]);
 
   return (
     <nav
@@ -74,12 +77,12 @@ export function SectionRail() {
           aria-hidden
           className="absolute left-[11px] top-3 w-px transition-all duration-500 ease-out"
           style={{
-            height: `${(active / (ITEMS.length - 1)) * 100}%`,
+            height: `${(active / (items.length - 1)) * 100}%`,
             background: "linear-gradient(to bottom, var(--lv3-blue), var(--lv3-purple))",
           }}
         />
 
-        {ITEMS.map((it, i) => {
+        {items.map((it, i) => {
           const isActive = i === active;
           const passed = i <= active;
           return (

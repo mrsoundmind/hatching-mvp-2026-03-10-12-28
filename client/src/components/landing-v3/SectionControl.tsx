@@ -1,23 +1,111 @@
-// Landing v3 · You're always in control.
+// Landing v3 · While you're away, and always in control.
 //
-// The page sells autonomous teammates; this is the section that answers the fear
-// that comes with that, "what if they go do something dumb?" It is the trust
-// pillar the page was missing. Three concrete controls, drawn:
-//   1. an autonomy dial you can move (Observe → Propose → Confirm → Autonomous),
-//      each level explained in one line;
-//   2. an approval card, the moment a risky action waits for your yes;
-//   3. a pause, and the standing rule that anything that spends money or ships
-//      outward waits for you, even overnight.
-//
-// It pairs with the Overnight section right before it: they keep going, but you
-// set how far, and nothing that costs money happens without you.
+// Merged section: the old "While you were away" night timeline and the old
+// "You're in control" dial/approvals now live together, because they are two
+// halves of one promise. Left: a night runs on its own while the tab is closed,
+// work handed off and reviewed, one decision left waiting because it needed you.
+// Right: the controls that make that safe, an autonomy dial you can move, an
+// approval waiting for your yes, and a pause. The footer is the standing rule:
+// nothing that spends money happens without you, even overnight.
 
-import { useEffect, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Check, Pause, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useInView, useReducedMotion } from "framer-motion";
+import { Check, Moon, Pause, Sunrise, X } from "lucide-react";
 
 import AgentAvatar from "@/components/avatars/AgentAvatar";
 import { Reveal, EASE } from "./primitives";
+
+/* ─────────────────────────── While you were away ─────────────────────────── */
+
+type NightKind = "you" | "work" | "handoff" | "review" | "waiting" | "done";
+type Moment = { time: string; who: string | null; role?: string; label: string; kind: NightKind };
+
+const NIGHT: Moment[] = [
+  { time: "17:47", who: null, label: "“Go ahead, fix the onboarding drop.” Tab closed.", kind: "you" },
+  { time: "18:10", who: "Alex", role: "Product Manager", label: "Scoped it, wrote success criteria.", kind: "work" },
+  { time: "19:30", who: "Alex", role: "Product Manager", label: "Handed to Lumi for the new flow.", kind: "handoff" },
+  { time: "21:40", who: "Sam", role: "QA Lead", label: "Read it cold, sent it back.", kind: "review" },
+  { time: "06:20", who: "Kai", role: "Growth Marketer", label: "Wants $500. Waiting on you.", kind: "waiting" },
+  { time: "09:02", who: null, label: "One document ready. One decision waiting.", kind: "done" },
+];
+
+const TONE: Record<NightKind, string> = {
+  you: "var(--lv3-navy)",
+  work: "var(--lv3-blue)",
+  handoff: "var(--lv3-purple)",
+  review: "var(--lv3-amber)",
+  waiting: "var(--lv3-amber)",
+  done: "var(--lv3-blue)",
+};
+
+function NightTimeline({ reduce }: { reduce: boolean | null }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { margin: "-20% 0px -20% 0px" });
+  const [at, setAt] = useState(reduce ? NIGHT.length - 1 : 0);
+
+  useEffect(() => {
+    if (reduce || !inView) return;
+    const id = setInterval(() => setAt((a) => (a >= NIGHT.length - 1 ? 0 : a + 1)), 1500);
+    return () => clearInterval(id);
+  }, [inView, reduce]);
+
+  const now = NIGHT[at];
+  const asleep = at > 0 && at < NIGHT.length - 1;
+
+  return (
+    <div ref={ref} className="flex h-full flex-col border bg-white p-5" style={{ borderColor: "var(--lv3-border)" }}>
+      <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "var(--lv3-border)" }}>
+        <span className="lv3-label lv3-t-soft-55 flex items-center gap-2">
+          {asleep ? <Moon className="size-3.5" /> : <Sunrise className="size-3.5" />}
+          {asleep ? "you're asleep" : at === 0 ? "you sign off" : "you're back"}
+        </span>
+        <span className="lv3-num lv3-t-navy text-[22px] leading-none tabular-nums" aria-live="polite">
+          {now.time}
+        </span>
+      </div>
+
+      <ol className="mt-3 flex flex-col gap-1.5">
+        {NIGHT.map((m, i) => {
+          const on = i <= at;
+          const isNow = i === at;
+          return (
+            <li key={m.time}>
+              <motion.div
+                className="flex items-start gap-2.5 border p-2"
+                animate={{
+                  opacity: on ? 1 : 0.35,
+                  borderColor: isNow ? TONE[m.kind] : "var(--lv3-border)",
+                  backgroundColor: isNow ? "#fbfbff" : "#fff",
+                }}
+                transition={{ duration: 0.3 }}
+              >
+                <span
+                  className="lv3-label w-[42px] shrink-0 pt-0.5 tabular-nums"
+                  style={{ color: on ? "var(--lv3-navy)" : "var(--lv3-soft-55)" }}
+                >
+                  {m.time}
+                </span>
+                {m.who ? (
+                  <AgentAvatar characterName={m.who} role={m.role} size={22} state={isNow ? "working" : "idle"} className="mt-0.5 shrink-0" />
+                ) : (
+                  <span
+                    className="mt-0.5 flex size-[22px] shrink-0 items-center justify-center rounded-full text-[9px] text-white"
+                    style={{ background: "var(--lv3-navy)", fontFamily: "'JetBrains Mono', monospace" }}
+                  >
+                    Y
+                  </span>
+                )}
+                <span className="lv3-t-soft min-w-0 flex-1 text-[12px] leading-snug">{m.label}</span>
+              </motion.div>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
+/* ─────────────────────────────── You set how far ─────────────────────────── */
 
 const LEVELS = [
   { name: "Observe", desc: "They watch and suggest. They never act on their own." },
@@ -30,7 +118,6 @@ function AutonomyDial({ reduce }: { reduce: boolean | null }) {
   const [level, setLevel] = useState(2); // default "Confirm"
   const [held, setHeld] = useState(false);
 
-  // slowly walk the dial so the spectrum is legible, until the visitor grabs it
   useEffect(() => {
     if (reduce || held) return;
     const id = setInterval(() => setLevel((l) => (l + 1) % LEVELS.length), 2200);
@@ -41,7 +128,6 @@ function AutonomyDial({ reduce }: { reduce: boolean | null }) {
     <div className="flex h-full flex-col">
       <span className="lv3-label lv3-t-soft-55 mb-3">How much they can do on their own</span>
 
-      {/* the dial: four stops, the active one filled, a thumb that slides */}
       <div className="relative flex rounded-full border p-1" style={{ borderColor: "var(--lv3-border)", background: "#fbfbfe" }}>
         <motion.div
           className="absolute bottom-1 top-1 rounded-full"
@@ -63,7 +149,6 @@ function AutonomyDial({ reduce }: { reduce: boolean | null }) {
         ))}
       </div>
 
-      {/* the meaning of the current level */}
       <div className="mt-4 flex min-h-[52px] items-start gap-2.5 border p-3" style={{ borderColor: "var(--lv3-border)", background: "#fff" }}>
         <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: "var(--lv3-blue)" }}>
           {level + 1}
@@ -83,14 +168,13 @@ function AutonomyDial({ reduce }: { reduce: boolean | null }) {
       </div>
 
       <span className="lv3-t-soft-55 mt-3 text-[12px] leading-snug">
-        Move it any time. Dial it up when you trust them, down when the stakes are high.
+        Move it any time. Up when you trust them, down when the stakes are high.
       </span>
     </div>
   );
 }
 
 function ApprovalCard({ reduce }: { reduce: boolean | null }) {
-  // 0 waiting · 1 approved, on a gentle loop so the moment reads as live
   const [state, setState] = useState(0);
   useEffect(() => {
     if (reduce) return;
@@ -156,33 +240,31 @@ function ApprovalCard({ reduce }: { reduce: boolean | null }) {
 export function SectionControl() {
   const reduce = useReducedMotion();
   return (
-    <section id="control" className="lv3-bg-paper px-5 py-24 sm:px-8 sm:py-28">
+    <section id="control" className="lv3-bg-candle px-5 py-24 sm:px-8 sm:py-28">
       <div className="mx-auto max-w-6xl">
         <Reveal className="mb-10 max-w-2xl">
-          <span className="lv3-label lv3-t-blue">You're always in control</span>
+          <span className="lv3-label lv3-t-blue">While you're away</span>
           <h2 className="lv3-display lv3-t-navy mt-4 text-balance">
-            They move fast.{" "}
+            They work while away.{" "}
             <span className="lv3-serif-em">You set how far.</span>
           </h2>
           <p className="lv3-t-soft mt-4 text-lg leading-relaxed">
-            You choose how far they go. Nothing gets spent without your yes.
+            They keep working. Nothing risky happens without you.
           </p>
         </Reveal>
 
-        <div className="grid gap-3 lg:grid-cols-[1.35fr_1fr]">
-          {/* the dial */}
+        <div className="grid gap-3 lg:grid-cols-2">
+          {/* while you were away */}
           <motion.div
-            className="border bg-white p-6"
-            style={{ borderColor: "var(--lv3-border)" }}
             initial={{ opacity: 0, y: 22 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
             transition={{ duration: 0.55, ease: EASE }}
           >
-            <AutonomyDial reduce={reduce} />
+            <NightTimeline reduce={reduce} />
           </motion.div>
 
-          {/* approvals + pause */}
+          {/* you set how far */}
           <motion.div
             className="flex flex-col gap-3"
             initial={{ opacity: 0, y: 22 }}
@@ -190,6 +272,9 @@ export function SectionControl() {
             viewport={{ once: true, margin: "-60px" }}
             transition={{ duration: 0.55, ease: EASE, delay: 0.08 }}
           >
+            <div className="border bg-white p-6" style={{ borderColor: "var(--lv3-border)" }}>
+              <AutonomyDial reduce={reduce} />
+            </div>
             <ApprovalCard reduce={reduce} />
             <div className="flex items-center gap-3 border bg-white p-4" style={{ borderColor: "var(--lv3-border)" }}>
               <span className="flex size-9 shrink-0 items-center justify-center rounded-md" style={{ background: "rgba(20,24,47,0.05)" }}>

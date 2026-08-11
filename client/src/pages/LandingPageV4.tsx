@@ -20,7 +20,6 @@ import SectionCompare from "@/components/landing-v3/SectionCompare";
 import SectionControl from "@/components/landing-v3/SectionControl";
 import SectionJobs from "@/components/landing-v3/SectionJobs";
 import SectionOverview from "@/components/landing-v3/SectionOverview";
-import SectionOvernight from "@/components/landing-v3/SectionOvernight";
 import SectionPresets from "@/components/landing-v3/SectionPresets";
 import SectionPricing from "@/components/landing-v3/SectionPricing";
 import SectionProblem from "@/components/landing-v3/SectionProblem";
@@ -35,6 +34,19 @@ const NAV = [
   { label: "How it works", href: "#overview" },
   { label: "Real jobs", href: "#jobs" },
   { label: "Pricing", href: "#start" },
+];
+
+// v4's own rail: Overnight is merged into Control here, so one fewer stop and the
+// Control stop is relabelled to what it now covers.
+const RAIL_ITEMS = [
+  { id: "problem", n: "01", label: "The problem" },
+  { id: "overview", n: "02", label: "How it works" },
+  { id: "knowledge", n: "03", label: "vs a chatbot" },
+  { id: "jobs", n: "04", label: "Real jobs" },
+  { id: "control", n: "05", label: "While you're away" },
+  { id: "packs", n: "06", label: "Start from a pack" },
+  { id: "proof", n: "07", label: "The work" },
+  { id: "start", n: "08", label: "Pricing" },
 ];
 
 export default function LandingPageV4() {
@@ -105,15 +117,14 @@ export default function LandingPageV4() {
         />
       </div>
 
-      {mounted && <SectionRail />}
+      {mounted && <SectionRail items={RAIL_ITEMS} />}
 
       {/* the same sections v3 ships, imported not copied */}
       <main className="lv3-editorial relative z-10 bg-white shadow-[0_-24px_60px_rgba(10,12,19,0.45)]">
         <SectionProblem />
         <SectionOverview />
         <SectionCompare />
-        <SectionJobs />
-        <SectionOvernight />
+        <SectionJobs showRoster={false} />
         <SectionControl />
         <SectionPresets />
         <SectionProof />
