@@ -1,65 +1,58 @@
-// Landing v3 · 04 — Ask a generic assistant. Then ask yours.
+// Landing v3 · vs a chatbot — one bot, or the team you hired.
 //
-// Replaces the retrieval animation, which was pretty and explained plumbing:
-// embeddings, a corpus grid, "sourced passages". Nobody buys a vector store.
+// The old cut ("gives you an answer, not options") was a weak USP: a chatbot
+// gives answers too. The real difference, and the feeling we want, is that you
+// are the CEO and you have HIRED PEOPLE. So the same question you'd ask a chatbot
+// gets one hedged voice on the left, and on the right a ROOM of named specialists
+// who each answer from their own field, in turn, and don't always agree. The 1
+// bubble vs 3 experts contrast is the point: you're not chatting, you're running
+// a team.
 //
-// A side by side does the job with no jargon at all. Same question, two
-// answers. You realise the difference in the time it takes to read them, which
-// is the whole point of the section.
-//
-// FAIRNESS NOTE, and it matters: the left-hand answers are deliberately NOT
-// strawmen. They are reasonable, the kind of correct-but-unowned reply a good
-// general assistant gives. The difference on the right is not intelligence, it
-// is a named specialist who commits to a position, names the framework, and
-// asks the question the generic answer skipped. The section says on the page
-// that the left column is illustrative.
+// FAIRNESS NOTE: the left answer is deliberately NOT a strawman. It's the
+// reasonable, correct-but-unowned reply a good general assistant gives. The
+// difference on the right is not intelligence, it's specialists who commit,
+// name their lens, and argue. The page says the left column is illustrative.
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useInView, useReducedMotion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 
 import AgentAvatar from "@/components/avatars/AgentAvatar";
-import { Reveal } from "./primitives";
+import { Reveal, EASE } from "./primitives";
 
-type Pair = {
-  q: string;
-  generic: string;
-  who: string;
-  role: string;
-  answer: string;
-  named: string;
-};
+type Voice = { who: string; role: string; line: string };
+type Q = { q: string; generic: string; team: Voice[] };
 
-const PAIRS: Pair[] = [
+const QUESTIONS: Q[] = [
   {
     q: "How should we price this?",
     generic:
-      "Pricing depends on your market. Common approaches include value-based, competitor-based and cost-plus. Survey customers and test a few tiers.",
-    who: "Juhi",
-    role: "Finance Analyst",
-    answer:
-      "What is your net revenue retention? Under 100% and pricing is not the problem, retention is. Over 110%, raise on new signups only.",
-    named: "Net revenue retention",
+      "Pricing depends on your market. Common approaches are value-based, competitor-based and cost-plus. Survey customers and test a few tiers.",
+    team: [
+      { who: "Juhi", role: "Finance Analyst", line: "What's your net revenue retention? Under 100% and pricing isn't the problem, retention is." },
+      { who: "Blake", role: "Business Strategist", line: "Price on the value they get, not your costs. What's a saved hour worth to them?" },
+      { who: "Alex", role: "Product Manager", line: "Then it's a packaging call. What do we gate behind Pro, and what stays free?" },
+    ],
   },
   {
     q: "Why are people churning?",
     generic:
-      "Churn can stem from onboarding friction, missing features, pricing or support. Survey churned users and analyse usage patterns.",
-    who: "Tess",
-    role: "Customer Success Manager",
-    answer:
-      "Did they get the outcome they paid for, or were they just happy? Pull every account that never hit its first milestone.",
-    named: "Success milestones",
+      "Churn can come from onboarding friction, missing features, pricing or support. Survey churned users and analyse usage patterns.",
+    team: [
+      { who: "Rio", role: "Data Analyst", line: "Segment by cohort first. 'Churn' is three different problems hiding in one number." },
+      { who: "Lumi", role: "UX Designer", line: "I'd watch five onboarding sessions before we theorise. Usually one screen asks for something they don't have yet." },
+      { who: "Tess", role: "Customer Success", line: "Did they get the outcome they paid for, or just enjoy it? Pull every account that never hit its first milestone." },
+    ],
   },
   {
     q: "Should we build this feature?",
     generic:
-      "Evaluate it against user demand, business impact and engineering effort. A prioritisation framework helps you compare roadmap items.",
-    who: "Alex",
-    role: "Product Manager",
-    answer:
-      "Score it with RICE, honestly. Most teams write 100% confidence where they mean 'we hope'. And what does it displace?",
-    named: "RICE prioritisation",
+      "Weigh it against user demand, business impact and engineering effort. A prioritisation framework helps you compare roadmap items.",
+    team: [
+      { who: "Alex", role: "Product Manager", line: "Score it with RICE, honestly. Most teams write 100% confidence where they mean 'we hope'." },
+      { who: "Jordan", role: "Technical Lead", line: "It saves two days now and costs two weeks in three months. And what does it displace?" },
+      { who: "Cleo", role: "Product Designer", line: "What job is the user hiring it for? If we can't name it, we're guessing." },
+    ],
   },
 ];
 
@@ -69,44 +62,46 @@ export function SectionCompare() {
   const reduce = useReducedMotion();
   const [i, setI] = useState(0);
   const [held, setHeld] = useState(false);
-  const [revealed, setRevealed] = useState(reduce);
+  const [revealed, setRevealed] = useState<boolean>(!!reduce);
 
-  // it rotates through the questions on its own so the section is never still;
-  // hovering the panel holds whichever one you are reading
+  // rotate through the questions so the room is never still; hover holds one
   useEffect(() => {
     if (reduce || !inView || held) return;
-    const id = setInterval(() => setI((v) => (v + 1) % PAIRS.length), 5200);
+    const id = setInterval(() => setI((v) => (v + 1) % QUESTIONS.length), 7000);
     return () => clearInterval(id);
   }, [inView, reduce, held]);
 
-  // the right-hand answer lands a beat after the left, so the contrast reads
+  // the team answers land a beat after the chatbot, so the contrast reads
   useEffect(() => {
-    if (reduce) {
-      setRevealed(true);
-      return;
-    }
+    if (reduce) { setRevealed(true); return; }
     if (!inView) return;
     setRevealed(false);
-    const t = setTimeout(() => setRevealed(true), 900);
+    const t = setTimeout(() => setRevealed(true), 850);
     return () => clearTimeout(t);
   }, [i, inView, reduce]);
 
-  const p = PAIRS[i];
+  const q = QUESTIONS[i];
 
   return (
     <section ref={ref} id="knowledge" className="lv3-bg-paper py-24 sm:py-28">
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
         <Reveal className="max-w-2xl">
-          <span className="lv3-label lv3-t-blue">The same question, asked twice</span>
-          <h2 className="lv3-display lv3-t-navy mt-4">
-            Most AI gives you options.{" "}
-            <span className="lv3-serif-em">Yours gives you an answer.</span>
+          <span className="lv3-label lv3-t-blue">You're the CEO now</span>
+          <h2 className="lv3-display lv3-t-navy mt-4 text-balance">
+            One bot answers.{" "}
+            <span className="lv3-serif-em">Your team weighs in.</span>
           </h2>
+          <p className="lv3-t-soft mt-4 text-lg leading-relaxed">
+            Ask a chatbot and one voice tries to be your finance lead, your designer, and your PM at
+            once. Ask your team and the actual experts answer, each from their field, and they don't
+            always agree.
+          </p>
         </Reveal>
 
-        {/* pick the question */}
-        <div className="mt-8 flex flex-wrap gap-2">
-          {PAIRS.map((x, idx) => {
+        {/* the CEO picks a question to put to the room */}
+        <div className="mt-8 flex flex-wrap items-center gap-2">
+          <span className="lv3-label lv3-t-soft-55 mr-1">You ask:</span>
+          {QUESTIONS.map((x, idx) => {
             const on = idx === i;
             return (
               <button
@@ -130,77 +125,78 @@ export function SectionCompare() {
         </div>
 
         <div
-          className="mt-3 grid overflow-hidden border md:grid-cols-2"
+          className="mt-3 grid overflow-hidden border md:grid-cols-[0.85fr_1.15fr]"
           onMouseEnter={() => setHeld(true)}
           onMouseLeave={() => setHeld(false)}
         >
-          {/* ── the generic answer ───────────────────────────────── */}
+          {/* ── one bot ──────────────────────────────────────────── */}
           <div className="flex flex-col border-b p-7 sm:p-9 md:border-b-0 md:border-r" style={{ background: "#fbfbfe" }}>
             <div className="flex items-center gap-2.5">
-              <span
-                className="flex size-[30px] shrink-0 items-center justify-center rounded-full border"
-                style={{ color: "var(--lv3-soft-55)" }}
-              >
+              <span className="flex size-[30px] shrink-0 items-center justify-center rounded-full border" style={{ color: "var(--lv3-soft-55)" }}>
                 <Sparkles className="size-3.5" />
               </span>
-              <span className="lv3-label lv3-t-soft-55">A generic assistant</span>
+              <span className="lv3-label lv3-t-soft-55">A chatbot</span>
             </div>
             <AnimatePresence mode="wait">
               <motion.p
-                key={p.q}
+                key={q.q}
                 initial={reduce ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
                 className="lv3-t-soft mt-5 text-[15px] leading-relaxed"
               >
-                {p.generic}
+                {q.generic}
               </motion.p>
             </AnimatePresence>
-            <p className="lv3-label lv3-t-soft-55 mt-auto pt-6">
-              correct, and nobody owns it
-            </p>
+            <p className="lv3-label lv3-t-soft-55 mt-auto pt-6">one voice, wearing every hat</p>
           </div>
 
-          {/* ── the teammate ─────────────────────────────────────── */}
-          <motion.div
-            className="flex flex-col p-7 sm:p-9"
-            animate={{ opacity: revealed ? 1 : 0.2 }}
-            transition={{ duration: 0.5 }}
-          >
+          {/* ── the team you hired ───────────────────────────────── */}
+          <div className="flex flex-col p-7 sm:p-9">
             <div className="flex items-center gap-2.5">
-              <AgentAvatar characterName={p.who} role={p.role} size={30} className="shrink-0" />
-              <span className="lv3-t-navy text-[13px] font-semibold">
-                {p.who}
-                <span className="lv3-t-soft-55 font-normal"> · {p.role}</span>
+              <span className="flex -space-x-1.5">
+                {q.team.map((v) => (
+                  <span key={v.who} className="rounded-full ring-2 ring-white">
+                    <AgentAvatar characterName={v.who} role={v.role} size={22} />
+                  </span>
+                ))}
               </span>
+              <span className="lv3-label lv3-t-blue">Your team</span>
             </div>
-            <AnimatePresence mode="wait">
-              <motion.p
-                key={p.q}
-                initial={reduce ? false : { opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.35 }}
-                className="lv3-t-ink mt-5 text-[15px] leading-relaxed"
-              >
-                {p.answer}
-              </motion.p>
-            </AnimatePresence>
-            <div className="mt-auto flex flex-wrap items-center gap-2 pt-6">
-              <span
-                className="lv3-label border px-2 py-1"
-                style={{ borderColor: "rgba(84,104,240,0.35)", color: "var(--lv3-blue)", background: "rgba(84,104,240,0.06)" }}
-              >
-                {p.named}
-              </span>
-              <span className="lv3-label lv3-t-soft-55">from their own reading, not the model's memory</span>
-            </div>
-          </motion.div>
+
+            <motion.div
+              key={i}
+              className="mt-5 flex flex-col gap-3"
+              variants={{ hidden: {}, show: { transition: { staggerChildren: 0.55 } } }}
+              initial={reduce ? false : "hidden"}
+              animate={revealed ? "show" : "hidden"}
+            >
+              {q.team.map((v) => (
+                <motion.div
+                  key={v.who}
+                  className="flex items-start gap-2.5"
+                  variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
+                  transition={{ duration: 0.4, ease: EASE }}
+                >
+                  <AgentAvatar characterName={v.who} role={v.role} size={26} className="mt-0.5 shrink-0" />
+                  <span className="min-w-0">
+                    <span className="lv3-t-navy text-[12.5px] font-semibold">
+                      {v.who}
+                      <span className="lv3-t-soft-55 font-normal"> · {v.role}</span>
+                    </span>
+                    <p className="lv3-t-ink mt-0.5 text-[14px] leading-snug">{v.line}</p>
+                  </span>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            <p className="lv3-label lv3-t-soft-55 mt-auto pt-6">each an expert, and they don't always agree</p>
+          </div>
         </div>
 
         <p className="lv3-label lv3-t-soft-55 mt-4">
-          Left column illustrative · right is how the role answers
+          Left column illustrative · right is how these roles actually answer
         </p>
       </div>
     </section>

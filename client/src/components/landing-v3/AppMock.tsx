@@ -10,8 +10,8 @@
 // language so nothing needs decoding. Only one stage is mounted at a time, so
 // the continuous loops inside each scene never stack up.
 
-import { useEffect, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useInView, useReducedMotion } from "framer-motion";
 import { ArrowRight, Check, FileText, Lightbulb, ShieldCheck } from "lucide-react";
 
 import AgentAvatar from "@/components/avatars/AgentAvatar";
@@ -141,11 +141,14 @@ function LiveDot({ color }: { color: string }) {
 }
 
 // ── stage 1 · your idea ─────────────────────────────────────────────────────
-function IdeaScene({ reduce }: { reduce: boolean | null }) {
+// The typewriter only runs once the mock is actually on screen (inView), never
+// on page load while the hero is still up. Off screen it holds an empty field.
+function IdeaScene({ reduce, inView }: { reduce: boolean | null; inView: boolean }) {
   const IDEA = "A SaaS startup";
   const [typed, setTyped] = useState(reduce ? IDEA : "");
   useEffect(() => {
-    if (reduce) return;
+    if (reduce) { setTyped(IDEA); return; }
+    if (!inView) { setTyped(""); return; }
     let i = 0;
     const id = setInterval(() => {
       i += 1;
@@ -153,7 +156,7 @@ function IdeaScene({ reduce }: { reduce: boolean | null }) {
       if (i >= IDEA.length) clearInterval(id);
     }, 85);
     return () => clearInterval(id);
-  }, [reduce]);
+  }, [reduce, inView]);
 
   return (
     <motion.div
@@ -671,9 +674,14 @@ export function AppMock({ stage: external }: { stage?: number } = {}) {
   const reduce = useReducedMotion();
   const stage = external != null ? Math.max(0, Math.min(OVERVIEW_STAGES - 1, external)) : OVERVIEW_STAGES - 1;
   const meta = STAGES[stage];
+  const rootRef = useRef<HTMLDivElement>(null);
+  // gates on-view-only animations (the idea typewriter) so nothing fires while
+  // the hero is still on screen at page load.
+  const inView = useInView(rootRef, { margin: "-15% 0px -15% 0px" });
 
   return (
     <div
+      ref={rootRef}
       className="relative flex flex-col overflow-hidden rounded-xl border bg-white shadow-[0_24px_70px_rgba(20,24,47,0.10)]"
       style={{ height: 512 }}
       aria-label="How a Hatchin project goes from a one-line idea to finished, reviewed work"
@@ -708,7 +716,7 @@ export function AppMock({ stage: external }: { stage?: number } = {}) {
       {/* the scene for this stage — crossfade (no wait) so it tracks the scroll */}
       <div className="relative flex-1 overflow-hidden">
         <AnimatePresence>
-          {stage === 0 && <IdeaScene key="idea" reduce={reduce} />}
+          {stage === 0 && <IdeaScene key="idea" reduce={reduce} inView={inView} />}
           {stage === 1 && <AssembleScene key="assemble" reduce={reduce} />}
           {stage === 2 && <PlanScene key="plan" reduce={reduce} />}
           {stage === 3 && <ThinkScene key="think" reduce={reduce} />}

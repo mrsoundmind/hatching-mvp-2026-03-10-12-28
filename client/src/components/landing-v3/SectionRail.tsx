@@ -13,13 +13,14 @@ import { cn } from "@/lib/utils";
 
 // Order + labels mirror the actual scroll order in LandingPageV4's <main>.
 const ITEMS = [
-  { id: "overview", n: "01", label: "How it works" },
-  { id: "knowledge", n: "02", label: "vs a chatbot" },
-  { id: "jobs", n: "03", label: "Real jobs" },
-  { id: "how-it-works", n: "04", label: "Overnight" },
-  { id: "control", n: "05", label: "In your control" },
-  { id: "packs", n: "06", label: "Start from a pack" },
-  { id: "start", n: "07", label: "Pricing" },
+  { id: "problem", n: "01", label: "The problem" },
+  { id: "overview", n: "02", label: "How it works" },
+  { id: "knowledge", n: "03", label: "vs a chatbot" },
+  { id: "jobs", n: "04", label: "Real jobs" },
+  { id: "how-it-works", n: "05", label: "Overnight" },
+  { id: "control", n: "06", label: "In your control" },
+  { id: "packs", n: "07", label: "Start from a pack" },
+  { id: "start", n: "08", label: "Pricing" },
 ];
 
 export function SectionRail() {
@@ -36,8 +37,8 @@ export function SectionRail() {
       });
       setActive(current);
 
-      const overview = document.getElementById("overview");
-      const heroGone = !!overview && overview.getBoundingClientRect().top <= window.innerHeight * 0.35;
+      const first = document.getElementById("problem");
+      const heroGone = !!first && first.getBoundingClientRect().top <= window.innerHeight * 0.35;
       const closing = document.getElementById("close");
       const closingReached =
         !!closing && closing.getBoundingClientRect().top <= window.innerHeight * 0.9;

@@ -23,6 +23,7 @@ import SectionOverview from "@/components/landing-v3/SectionOverview";
 import SectionOvernight from "@/components/landing-v3/SectionOvernight";
 import SectionPresets from "@/components/landing-v3/SectionPresets";
 import SectionPricing from "@/components/landing-v3/SectionPricing";
+import SectionProblem from "@/components/landing-v3/SectionProblem";
 import SectionRail from "@/components/landing-v3/SectionRail";
 import SiteFooter from "@/components/landing-v3/SiteFooter";
 import { Sparkles } from "@/components/ui/sparkles";
@@ -107,6 +108,7 @@ export default function LandingPageV4() {
 
       {/* the same sections v3 ships, imported not copied */}
       <main className="lv3-editorial relative z-10 bg-white shadow-[0_-24px_60px_rgba(10,12,19,0.45)]">
+        <SectionProblem />
         <SectionOverview />
         <SectionCompare />
         <SectionJobs />
