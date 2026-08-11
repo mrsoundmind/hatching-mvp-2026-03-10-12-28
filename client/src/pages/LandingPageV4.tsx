@@ -24,6 +24,7 @@ import SectionOvernight from "@/components/landing-v3/SectionOvernight";
 import SectionPresets from "@/components/landing-v3/SectionPresets";
 import SectionPricing from "@/components/landing-v3/SectionPricing";
 import SectionProblem from "@/components/landing-v3/SectionProblem";
+import SectionProof from "@/components/landing-v3/SectionProof";
 import SectionRail from "@/components/landing-v3/SectionRail";
 import SiteFooter from "@/components/landing-v3/SiteFooter";
 import { Sparkles } from "@/components/ui/sparkles";
@@ -115,6 +116,7 @@ export default function LandingPageV4() {
         <SectionOvernight />
         <SectionControl />
         <SectionPresets />
+        <SectionProof />
         <SectionPricing />
         <ClosingBand />
       </main>

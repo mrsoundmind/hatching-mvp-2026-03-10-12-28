@@ -20,7 +20,8 @@ const ITEMS = [
   { id: "how-it-works", n: "05", label: "Overnight" },
   { id: "control", n: "06", label: "In your control" },
   { id: "packs", n: "07", label: "Start from a pack" },
-  { id: "start", n: "08", label: "Pricing" },
+  { id: "proof", n: "08", label: "The work" },
+  { id: "start", n: "09", label: "Pricing" },
 ];
 
 export function SectionRail() {
