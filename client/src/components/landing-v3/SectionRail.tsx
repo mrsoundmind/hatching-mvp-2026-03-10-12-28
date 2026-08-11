@@ -11,12 +11,13 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
+// Order + labels mirror the actual scroll order in LandingPageV4's <main>.
 const ITEMS = [
-  { id: "overview", n: "01", label: "Overview" },
-  { id: "jobs", n: "02", label: "Real jobs" },
-  { id: "how-it-works", n: "03", label: "How it works" },
-  { id: "knowledge", n: "04", label: "Two answers" },
-  { id: "inside", n: "05", label: "Inside a project" },
+  { id: "overview", n: "01", label: "How it works" },
+  { id: "knowledge", n: "02", label: "vs a chatbot" },
+  { id: "jobs", n: "03", label: "Real jobs" },
+  { id: "how-it-works", n: "04", label: "Overnight" },
+  { id: "control", n: "05", label: "In your control" },
   { id: "packs", n: "06", label: "Start from a pack" },
   { id: "start", n: "07", label: "Pricing" },
 ];

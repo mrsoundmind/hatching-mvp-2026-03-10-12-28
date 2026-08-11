@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 
 import ClosingBand from "@/components/landing-v3/ClosingBand";
 import SectionCompare from "@/components/landing-v3/SectionCompare";
-import SectionInside from "@/components/landing-v3/SectionInside";
+import SectionControl from "@/components/landing-v3/SectionControl";
 import SectionJobs from "@/components/landing-v3/SectionJobs";
 import SectionOverview from "@/components/landing-v3/SectionOverview";
 import SectionOvernight from "@/components/landing-v3/SectionOvernight";
@@ -30,7 +30,7 @@ import { PrismaHero } from "@/components/ui/prisma-hero";
 import "@/components/landing-v3/landing-v3.css";
 
 const NAV = [
-  { label: "How it works", href: "#how-it-works" },
+  { label: "How it works", href: "#overview" },
   { label: "Real jobs", href: "#jobs" },
   { label: "Pricing", href: "#start" },
 ];
@@ -108,10 +108,10 @@ export default function LandingPageV4() {
       {/* the same sections v3 ships, imported not copied */}
       <main className="lv3-editorial relative z-10 bg-white shadow-[0_-24px_60px_rgba(10,12,19,0.45)]">
         <SectionOverview />
+        <SectionCompare />
         <SectionJobs />
         <SectionOvernight />
-        <SectionCompare />
-        <SectionInside />
+        <SectionControl />
         <SectionPresets />
         <SectionPricing />
         <ClosingBand />
