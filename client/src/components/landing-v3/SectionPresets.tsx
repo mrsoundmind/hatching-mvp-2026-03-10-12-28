@@ -212,7 +212,7 @@ function ReadyDetail({ pack, tick, reduce }: { pack: Pack; tick: number; reduce:
       <div className="grid gap-6 lg:grid-cols-2">
         {/* THE TEAM — grouped by discipline, names + roles clear */}
         <div>
-          <SectionLabel icon={Users}>The team, by discipline</SectionLabel>
+          <SectionLabel icon={Users}>The team</SectionLabel>
           <div className="flex flex-col gap-3">
             {pack.team?.map((g) => (
               <div key={g.group}>
@@ -301,8 +301,7 @@ function ReadyDetail({ pack, tick, reduce }: { pack: Pack; tick: number; reduce:
             })}
           </div>
           <p className="lv3-t-soft-55 mt-2.5 text-[11px] leading-snug">
-            The pack doesn't hand over generic templates. Your team adapts these frameworks to your
-            specific project as they work.
+            Not generic templates. Your team adapts these to your project as they work.
           </p>
         </div>
       </div>
@@ -333,8 +332,7 @@ export function SectionPresets() {
             <span className="lv3-serif-em">there's a pack for it.</span>
           </h2>
           <p className="lv3-t-soft mt-4 text-lg leading-relaxed">
-            Pick one and the whole operating system opens up: the team, the staged plan, the documents,
-            and the field playbook. And if yours isn't here yet, it's on the way.
+            Pick one to see everything inside. If yours isn't here yet, it's on the way.
           </p>
         </Reveal>
 
@@ -370,7 +368,7 @@ export function SectionPresets() {
           })}
         </div>
         <p className="lv3-t-soft-55 mb-4 text-[12px]">
-          <span className="lv3-t-soft font-medium">Two packs are built and ready today.</span> The rest are on the way, click the ones that glow.
+          <span className="lv3-t-soft font-medium">Two packs are ready today.</span> Click either to look inside. The rest are on the way.
         </p>
 
         {/* the opened pack */}
@@ -387,8 +385,8 @@ export function SectionPresets() {
         {/* close */}
         <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="lv3-t-soft max-w-xl text-[13.5px] leading-relaxed">
-            Every pack is a real team, plan, and set of documents.{" "}
-            <span className="lv3-t-soft-55">Not a template, an operation you step into.</span>
+            Every pack is a real team, plan, and documents.{" "}
+            <span className="lv3-t-soft-55">Not a template you fill in.</span>
           </p>
           <CTA href="/login" variant="primary" className="shrink-0">
             Start free

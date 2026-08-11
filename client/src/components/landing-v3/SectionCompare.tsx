@@ -92,9 +92,7 @@ export function SectionCompare() {
             <span className="lv3-serif-em">Your team weighs in.</span>
           </h2>
           <p className="lv3-t-soft mt-4 text-lg leading-relaxed">
-            Ask a chatbot and one voice tries to be your finance lead, your designer, and your PM at
-            once. Ask your team and the actual experts answer, each from their field, and they don't
-            always agree.
+            One voice pretends to be every expert. A team gives you the real ones.
           </p>
         </Reveal>
 

@@ -84,7 +84,7 @@ export function RosterGrid() {
   return (
     <div ref={ref}>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <p className="lv3-t-navy text-lg font-semibold">Every discipline you would hire for.</p>
+        <p className="lv3-t-navy text-lg font-semibold">The whole team, on call.</p>
         <span className="lv3-label lv3-t-soft-70 inline-flex items-center gap-2">
           <span className="relative flex size-2">
             {!reduce && (

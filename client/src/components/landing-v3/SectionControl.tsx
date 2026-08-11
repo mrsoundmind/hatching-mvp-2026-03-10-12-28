@@ -165,9 +165,7 @@ export function SectionControl() {
             <span className="lv3-serif-em">You set how far.</span>
           </h2>
           <p className="lv3-t-soft mt-4 text-lg leading-relaxed">
-            Autonomy with a brake pedal. Choose how much they can do on their own, approve anything
-            risky, and stop the whole team in one click. Nothing that spends money or ships outward
-            happens without your yes.
+            You choose how far they go. Nothing gets spent without your yes.
           </p>
         </Reveal>
 
@@ -206,7 +204,7 @@ export function SectionControl() {
         </div>
 
         <p className="lv3-t-soft mt-6 text-[13.5px] leading-relaxed">
-          Even overnight, anything that spends money or leaves the project waits for you.{" "}
+          Even overnight, anything that spends money waits for you.{" "}
           <span className="lv3-t-soft-55">You come back to a decision, never a surprise.</span>
         </p>
       </div>

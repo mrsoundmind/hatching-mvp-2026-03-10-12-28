@@ -27,7 +27,7 @@ function EveryHat({ reduce }: { reduce: boolean | null }) {
 
   return (
     <div className="border bg-white p-6 sm:p-7" style={{ borderColor: "var(--lv3-border)" }}>
-      <span className="lv3-label lv3-t-soft-55">Today, you are</span>
+      <span className="lv3-label lv3-t-soft-55">The team you need</span>
       <motion.div
         className="mt-4 flex flex-wrap gap-2"
         variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}
@@ -52,8 +52,8 @@ function EveryHat({ reduce }: { reduce: boolean | null }) {
         ))}
       </motion.div>
       <div className="mt-5 flex items-baseline gap-2 border-t pt-4" style={{ borderColor: "var(--lv3-border)" }}>
-        <span className="lv3-t-navy text-[22px] font-bold">{HATS.length} hats.</span>
-        <span className="lv3-t-soft text-[15px]">One head. All at once.</span>
+        <span className="lv3-t-navy text-[22px] font-bold">{HATS.length} specialists.</span>
+        <span className="lv3-t-soft text-[15px]">Assembling them is the hard part.</span>
       </div>
     </div>
   );
@@ -65,18 +65,16 @@ export function SectionProblem() {
     <section id="problem" className="lv3-bg-candle px-5 py-24 sm:px-8 sm:py-28">
       <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[1fr_0.92fr]">
         <Reveal>
-          <span className="lv3-label lv3-t-blue">If this is you</span>
+          <span className="lv3-label lv3-t-blue">The hard part</span>
           <h2 className="lv3-display lv3-t-navy mt-4 text-balance">
-            You're the founder.{" "}
-            <span className="lv3-serif-em">And the whole team.</span>
+            The idea is easy.{" "}
+            <span className="lv3-serif-em">The team is the hard part.</span>
           </h2>
           <p className="lv3-t-soft mt-4 text-lg leading-relaxed">
-            Product, design, finance, legal, marketing, all you, at the same time. A chatbot hands you
-            generic answers. Hiring a specialist for each costs more than you have. So the good ideas
-            sit and wait.
+            Hiring a whole team is slow and expensive.
           </p>
-          <p className="lv3-t-navy mt-6 text-[16px] font-medium leading-snug">
-            Hatchin is for founders and small teams who need a whole department, and are a team of one.
+          <p className="lv3-t-navy mt-5 text-[16px] font-medium leading-snug">
+            Whether you're one person, or a company missing a whole department.
           </p>
         </Reveal>
 

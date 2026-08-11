@@ -23,37 +23,37 @@ const HEADS: Head[] = [
     eyebrow: "Step 1 · Your idea",
     lead: "It starts with",
     em: "one line.",
-    sub: "Tell them what you want to build. Here, a SaaS startup. That is the whole ask, no setup, no blank page.",
+    sub: "Tell them what you want to build. That is the whole ask.",
   },
   {
     eyebrow: "Step 2 · Your team",
     lead: "A whole team",
     em: "assembles.",
-    sub: "The pack brings an expert for every part of the work, product, engineering, finance, legal, growth, not one bot wearing many hats.",
+    sub: "An expert shows up for every part of the work, not one bot in many hats.",
   },
   {
     eyebrow: "Step 3 · The plan",
     lead: "They lay out",
     em: "the plan.",
-    sub: "Every step from setup to growth, staged and handed to the right specialist, with the documents each one will build.",
+    sub: "Every step from setup to growth, handed to the right person.",
   },
   {
     eyebrow: "Step 4 · They work as a team",
     lead: "They talk, hand off,",
     em: "supervise, push back.",
-    sub: "They pass work to the right specialist, watch each other's output, and push back, on each other and on you. The coordination a single chatbot can't do.",
+    sub: "They pass work along, check each other, and push back when something is off.",
   },
   {
     eyebrow: "Step 5 · Reviewed",
     lead: "They build, and",
     em: "check each other.",
-    sub: "Every draft is read by a second teammate before it ever reaches you, so what lands is already vetted.",
+    sub: "A second teammate reads every draft before it reaches you.",
   },
   {
     eyebrow: "Step 6 · Done",
     lead: "You come back to",
     em: "a finished project.",
-    sub: "Real documents, written and reviewed, and a business that moved while you were away.",
+    sub: "Real documents, written and checked, while you were away.",
   },
 ];
 
