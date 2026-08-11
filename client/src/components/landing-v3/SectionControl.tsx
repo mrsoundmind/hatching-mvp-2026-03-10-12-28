@@ -55,7 +55,7 @@ function AutonomyDial({ reduce }: { reduce: boolean | null }) {
             type="button"
             onClick={() => { setLevel(i); setHeld(true); }}
             aria-pressed={i === level}
-            className="relative z-10 flex-1 rounded-full py-2 text-[12.5px] font-semibold transition-colors focus-visible:outline-none"
+            className="relative z-10 flex-1 rounded-full px-1 py-2 text-[10px] font-semibold leading-tight transition-colors focus-visible:outline-none sm:text-[12.5px]"
             style={{ color: i === level ? "#fff" : "var(--lv3-soft)" }}
           >
             {l.name}
