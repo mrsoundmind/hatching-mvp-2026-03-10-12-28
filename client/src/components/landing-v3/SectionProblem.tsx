@@ -155,8 +155,8 @@ function TeamUnit({ reduce }: { reduce: boolean | null }) {
       </motion.div>
 
       <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--lv3-border)" }}>
-        <span className="lv3-t-navy text-[17px] font-bold">Any role a project needs.</span>{" "}
-        <span className="lv3-t-soft text-[15px]">Assembling them is the hard part.</span>
+        <span className="lv3-t-navy text-[17px] font-bold">Any role your project needs.</span>{" "}
+        <span className="lv3-t-soft text-[15px]">You get the whole team.</span>
       </div>
     </div>
   );
