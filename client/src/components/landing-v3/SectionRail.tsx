@@ -17,7 +17,8 @@ const ITEMS = [
   { id: "how-it-works", n: "03", label: "How it works" },
   { id: "knowledge", n: "04", label: "Two answers" },
   { id: "inside", n: "05", label: "Inside a project" },
-  { id: "start", n: "06", label: "Pricing" },
+  { id: "packs", n: "06", label: "Start from a pack" },
+  { id: "start", n: "07", label: "Pricing" },
 ];
 
 export function SectionRail() {

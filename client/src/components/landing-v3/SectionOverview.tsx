@@ -1,51 +1,151 @@
-// Landing v3 · 01 — Overview.
+// Landing v3 · 01 — Overview, as the whole process.
 //
-// FIMI's ProjectOverview beat (plain-language "what this is"), rebuilt to lead
-// with the product rather than a paragraph. The product is DRAWN, not
-// screenshotted: AppMock runs the three-pane layout as a live loop. Real
-// screenshots were tried here and rejected as unreadable dark boxes on a light
-// page. The long paragraph this section used to carry is gone; the picture
-// It carries the whole product on its own. A feature grid was tried under it
-// and removed: a list of thirteen capabilities is the exact noise the rest of
-// the page spent so long cutting. Everything the product does is shown in the
-// mock's loop instead.
+// The one section that has to make a stranger understand what Hatchin IS, end to
+// end. It is a pinned storyboard: the mock (AppMock) stays fixed on screen while
+// six full-height "step" blocks scroll past behind it, and the heading + mock
+// advance one stage per step — a one-line idea, a team assembling, the plan, the
+// coordination, the review, the finished work.
 //
-// It also carries the seam: the hero above ends on #0A0C13, so this section
-// opens with a gradient band that lands on white before the copy starts.
+// Each step is a scroll-snap stop with `scroll-snap-stop: always`, so even a hard
+// flick lands on the next step instead of skipping past it. Snapping is set to
+// `proximity` and only these six blocks carry snap-align, so the rest of the page
+// scrolls freely — it never traps the reader elsewhere.
 
-import { motion, useReducedMotion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { useReducedMotion } from "framer-motion";
 
-import AppMock from "./AppMock";
-import { Reveal, EASE, VIEWPORT } from "./primitives";
+import AppMock, { OVERVIEW_STAGES } from "./AppMock";
+import { Reveal } from "./primitives";
+
+interface Head { eyebrow: string; lead: string; em: string; sub: string }
+const HEADS: Head[] = [
+  {
+    eyebrow: "Step 1 · Your idea",
+    lead: "It starts with",
+    em: "one line.",
+    sub: "Tell them what you want to build. Here, a SaaS startup. That is the whole ask, no setup, no blank page.",
+  },
+  {
+    eyebrow: "Step 2 · Your team",
+    lead: "A whole team",
+    em: "assembles.",
+    sub: "The pack brings an expert for every part of the work, product, engineering, finance, legal, growth, not one bot wearing many hats.",
+  },
+  {
+    eyebrow: "Step 3 · The plan",
+    lead: "They lay out",
+    em: "the plan.",
+    sub: "Every step from setup to growth, staged and handed to the right specialist, with the documents each one will build.",
+  },
+  {
+    eyebrow: "Step 4 · They work as a team",
+    lead: "They talk, hand off,",
+    em: "supervise, push back.",
+    sub: "They pass work to the right specialist, watch each other's output, and push back, on each other and on you. The coordination a single chatbot can't do.",
+  },
+  {
+    eyebrow: "Step 5 · Reviewed",
+    lead: "They build, and",
+    em: "check each other.",
+    sub: "Every draft is read by a second teammate before it ever reaches you, so what lands is already vetted.",
+  },
+  {
+    eyebrow: "Step 6 · Done",
+    lead: "You come back to",
+    em: "a finished project.",
+    sub: "Real documents, written and reviewed, and a business that moved while you were away.",
+  },
+];
 
 export function SectionOverview() {
   const reduce = useReducedMotion();
+  const sectionRef = useRef<HTMLElement>(null);
+  const [stage, setStage] = useState(0);
+
+  // drive the stage from scroll position: each step block is one viewport tall,
+  // so the stage is simply how many viewport-heights we are into the section.
+  useEffect(() => {
+    if (reduce) return;
+    let raf = 0;
+    const compute = () => {
+      raf = 0;
+      const el = sectionRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const s = Math.max(0, Math.min(OVERVIEW_STAGES - 1, Math.floor(-rect.top / window.innerHeight)));
+      setStage(s);
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(compute); };
+    compute();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [reduce]);
+
+  // turn on proximity snapping for the page while this section is mounted; only
+  // the six step blocks below carry snap-align, so nothing else on the page snaps.
+  useEffect(() => {
+    if (reduce) return;
+    const root = document.documentElement;
+    const prev = root.style.scrollSnapType;
+    root.style.scrollSnapType = "y proximity";
+    return () => { root.style.scrollSnapType = prev; };
+  }, [reduce]);
+
+  const headings = (active: number) => (
+    <div className="relative max-w-3xl" style={{ minHeight: 224 }}>
+      {HEADS.map((h, i) => (
+        <div
+          key={i}
+          className="absolute inset-0 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+          style={{
+            opacity: i === active ? 1 : 0,
+            transform: i === active ? "translateY(0)" : "translateY(12px)",
+          }}
+          aria-hidden={i !== active}
+        >
+          <span className="lv3-label lv3-t-blue">{h.eyebrow}</span>
+          <h2 className="lv3-display lv3-t-navy mt-4">
+            {h.lead} <span className="lv3-serif-em">{h.em}</span>
+          </h2>
+          <p className="lv3-t-soft mt-4 text-lg leading-relaxed">{h.sub}</p>
+        </div>
+      ))}
+    </div>
+  );
+
+  // Reduced motion: no scrubbing — the finished state + the heading that names it.
+  if (reduce) {
+    return (
+      <section id="overview" className="lv3-bg-paper relative">
+        <div className="mx-auto max-w-6xl px-5 pb-24 pt-24 sm:px-8 sm:pb-28 sm:pt-28">
+          <Reveal>{headings(OVERVIEW_STAGES - 1)}</Reveal>
+          <div className="mt-10"><AppMock stage={OVERVIEW_STAGES - 1} /></div>
+        </div>
+      </section>
+    );
+  }
 
   return (
-    // No seam gradient: the hero already fades to #0A0C13 behind the sparkles,
-    // so white starts on a clean edge. Gradients were pulled from the page.
-    <section id="overview" className="lv3-bg-paper relative">
-      <div className="mx-auto max-w-6xl px-5 pb-24 pt-24 sm:px-8 sm:pb-28 sm:pt-28">
-        <Reveal className="max-w-3xl">
-          <span className="lv3-label lv3-t-blue">What you get</span>
-          <h2 className="lv3-display lv3-t-navy mt-4">
-            Here is the whole thing.
-          </h2>
-          <p className="lv3-t-soft mt-4 text-lg leading-relaxed">
-            Your team on the left. The work in the middle.
-          </p>
-        </Reveal>
+    <section id="overview" ref={sectionRef} className="lv3-bg-paper relative">
+      {/* the pinned visual: heading + mock, fixed on screen for the whole section */}
+      <div className="sticky top-0 z-10 flex h-screen items-center overflow-hidden">
+        <div className="mx-auto w-full max-w-6xl px-5 sm:px-8">
+          {headings(stage)}
+          <div className="mt-8"><AppMock stage={stage} /></div>
+        </div>
+      </div>
 
-        <motion.div
-          className="mt-10"
-          initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={VIEWPORT}
-          transition={{ duration: 0.7, ease: EASE }}
-        >
-          <AppMock />
-        </motion.div>
-
+      {/* six full-height snap steps that scroll behind the pinned visual and
+          advance the stage. scroll-snap-stop:always makes each one un-skippable. */}
+      <div className="relative -mt-[100vh]" aria-hidden>
+        {HEADS.map((_, i) => (
+          <div key={i} className="h-screen" style={{ scrollSnapAlign: "start", scrollSnapStop: "always" }} />
+        ))}
       </div>
     </section>
   );

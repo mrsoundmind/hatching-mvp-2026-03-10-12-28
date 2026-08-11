@@ -21,6 +21,7 @@ import SectionInside from "@/components/landing-v3/SectionInside";
 import SectionJobs from "@/components/landing-v3/SectionJobs";
 import SectionOverview from "@/components/landing-v3/SectionOverview";
 import SectionOvernight from "@/components/landing-v3/SectionOvernight";
+import SectionPresets from "@/components/landing-v3/SectionPresets";
 import SectionPricing from "@/components/landing-v3/SectionPricing";
 import SectionRail from "@/components/landing-v3/SectionRail";
 import SiteFooter from "@/components/landing-v3/SiteFooter";
@@ -111,6 +112,7 @@ export default function LandingPageV4() {
         <SectionOvernight />
         <SectionCompare />
         <SectionInside />
+        <SectionPresets />
         <SectionPricing />
         <ClosingBand />
       </main>
