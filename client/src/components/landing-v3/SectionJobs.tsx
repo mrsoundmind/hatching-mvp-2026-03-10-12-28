@@ -1,19 +1,19 @@
 // Landing v3 · Real jobs — one team, every kind of job.
 //
-// Repointed to BREADTH: the range of things you can hand this one team, and the
-// finished work you get back. Six asks across very different domains, each
-// landing a real deliverable led by the right specialist, plus the full roster.
-//
-// Six equal cards read as chaos, so the grid walks a spotlight: one card is lit
-// at a time (the rest dimmed and still) on a slow cycle, and hovering any card
-// holds it. Same calm, guided feel the rest of the page uses.
+// The range of things you can hand this one team. Presented as an auto-scrolling
+// carousel: richer ask -> deliverable cards drift past continuously, several in
+// view at once, so the breadth reads as a living feed of work rather than a
+// static grid. Each card shows the ask, the real deliverable (type, title, and a
+// couple of concrete lines), and the specialist who made it, reviewed. Hovering
+// pauses the drift so a card can be read; the edges fade so cards enter and leave
+// cleanly. Reduced-motion gets a plain horizontal scroll instead.
 //
 // The jobs are representative of how work moves through the product, not
 // transcripts of one session, and the section says so at the bottom.
 
-import { useEffect, useRef, useState } from "react";
-import { ArrowRight, FileText, ShieldCheck } from "lucide-react";
-import { motion, useInView, useReducedMotion } from "framer-motion";
+import { useRef } from "react";
+import { ArrowRight, Check, FileText, ShieldCheck } from "lucide-react";
+import { motion, useAnimationFrame, useMotionValue, useReducedMotion } from "framer-motion";
 
 import AgentAvatar from "@/components/avatars/AgentAvatar";
 import RosterGrid from "./RosterGrid";
@@ -23,44 +23,33 @@ type Job = {
   ask: string;
   kind: string;
   title: string;
+  details: string[];
   by: string;
   role: string;
 };
 
 const JOBS: Job[] = [
-  { ask: "60% of signups quit before they finish setup.", kind: "Product requirements", title: "Move the calendar ask after first value", by: "Alex", role: "Product Manager" },
-  { ask: "We need a landing page for the new pricing, by Friday.", kind: "Landing page copy", title: "Positioned, written, cut to the bone", by: "Wren", role: "Copywriter" },
-  { ask: "The client sent their contract. Can we sign it?", kind: "Review summary", title: "Three clauses to change before signing", by: "Ira", role: "Legal Counsel" },
-  { ask: "The monthly investor update is due and I haven't started.", kind: "Investor update", title: "Numbers first, every claim checked", by: "Juhi", role: "Finance Analyst" },
-  { ask: "How should we price the new tier?", kind: "Pricing model", title: "Value-based, with the math behind it", by: "Blake", role: "Business Strategist" },
-  { ask: "We need a brand people actually remember.", kind: "Brand guide", title: "A position, not a mood", by: "Cass", role: "Brand Strategist" },
+  { ask: "60% of signups quit before they finish setup.", kind: "Product requirements", title: "Move the calendar ask after first value", details: ["They drop at calendar-connect", "Setup +15pp, value in under 3 min"], by: "Alex", role: "Product Manager" },
+  { ask: "We need a landing page for the new pricing, by Friday.", kind: "Landing page copy", title: "Positioned, written, cut to the bone", details: ["One promise, three proofs", "Every line earns its place"], by: "Wren", role: "Copywriter" },
+  { ask: "The client sent their contract. Can we sign it?", kind: "Review summary", title: "Three clauses to change first", details: ["IP assignment reversed to us", "Liability capped, 30-day exit added"], by: "Ira", role: "Legal Counsel" },
+  { ask: "The investor update is due and I haven't started.", kind: "Investor update", title: "Numbers first, every claim checked", details: ["MRR, burn and runway up top", "One honest risk called out"], by: "Juhi", role: "Finance Analyst" },
+  { ask: "How should we price the new tier?", kind: "Pricing model", title: "Value-based, with the math behind it", details: ["Priced on the hours it saves", "Rule of 40 sanity check"], by: "Blake", role: "Business Strategist" },
+  { ask: "We need a brand people actually remember.", kind: "Brand guide", title: "A position, not a mood", details: ["One idea we can own", "The rival we define against"], by: "Cass", role: "Brand Strategist" },
 ];
 
-function JobCard({ job, lit, onTake, onRelease }: { job: Job; lit: boolean; onTake: () => void; onRelease: () => void }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const seen = useInView(ref, { once: true, margin: "-60px" });
+const CARD_W = 340;
+const GAP = 16;
+const LOOP = (CARD_W + GAP) * JOBS.length; // exact width of one set → seamless wrap
+const SPEED = 46; // px per second
 
+function JobCard({ job }: { job: Job }) {
   return (
-    <motion.div
-      ref={ref}
-      onMouseEnter={onTake}
-      onMouseLeave={onRelease}
-      className="flex cursor-default flex-col border bg-white p-5"
-      initial={{ opacity: 0, y: 22 }}
-      animate={
-        seen
-          ? {
-              opacity: lit ? 1 : 0.5,
-              y: 0,
-              borderColor: lit ? "rgba(84,104,240,0.45)" : "var(--lv3-border)",
-              boxShadow: lit ? "0 16px 42px rgba(20,24,47,0.12)" : "0 1px 0 rgba(20,24,47,0.03)",
-            }
-          : { opacity: 0, y: 22 }
-      }
-      transition={{ duration: 0.5, ease: EASE }}
+    <div
+      className="group flex shrink-0 flex-col border bg-white p-5 transition-shadow"
+      style={{ width: CARD_W, borderColor: "var(--lv3-border)" }}
     >
       <span className="lv3-label lv3-t-soft-55">You ask</span>
-      <p className="lv3-t-navy mt-2 border p-3 text-[14px] leading-snug" style={{ background: "#f1f2f8" }}>
+      <p className="lv3-t-navy mt-2 border p-3 text-[14px] leading-snug" style={{ background: "#f1f2f8", borderColor: "var(--lv3-border)" }}>
         &ldquo;{job.ask}&rdquo;
       </p>
 
@@ -76,43 +65,61 @@ function JobCard({ job, lit, onTake, onRelease }: { job: Job; lit: boolean; onTa
         <span className="lv3-label lv3-t-blue flex items-center gap-1.5">
           <FileText className="size-3.5" /> {job.kind}
         </span>
-        <p className="lv3-t-navy mt-2 flex-1 text-[14px] font-semibold leading-snug">{job.title}</p>
+        <p className="lv3-t-navy mt-2 text-[14px] font-semibold leading-snug">{job.title}</p>
+        <ul className="mt-2.5 flex flex-1 flex-col gap-1.5">
+          {job.details.map((d) => (
+            <li key={d} className="lv3-t-soft flex items-start gap-1.5 text-[12px] leading-snug">
+              <Check className="lv3-t-blue mt-0.5 size-3 shrink-0" /> {d}
+            </li>
+          ))}
+        </ul>
         <div className="mt-3 flex items-center gap-2 border-t pt-3" style={{ borderColor: "var(--lv3-border)" }}>
-          <AgentAvatar characterName={job.by} role={job.role} size={22} state={lit ? "working" : "idle"} className="shrink-0" />
-          <span className="lv3-t-soft-55 min-w-0 truncate text-[11px]">
-            {job.by} · {job.role}
+          <AgentAvatar characterName={job.by} role={job.role} size={34} className="shrink-0 transition-transform group-hover:scale-110" />
+          <span className="lv3-t-navy min-w-0 truncate text-[12px] font-semibold">
+            {job.by}
+            <span className="lv3-t-soft-55 font-normal"> · {job.role}</span>
           </span>
           <span className="lv3-label lv3-t-soft-55 ml-auto flex shrink-0 items-center gap-1">
             <ShieldCheck className="size-3" /> reviewed
           </span>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
-const DWELL_MS = 2500;
+function JobsCarousel() {
+  const x = useMotionValue(0);
+  const paused = useRef(false);
+
+  useAnimationFrame((_, delta) => {
+    if (paused.current) return;
+    let next = x.get() - (SPEED * delta) / 1000;
+    if (next <= -LOOP) next += LOOP; // wrap by exactly one set
+    x.set(next);
+  });
+
+  return (
+    <div
+      className="relative overflow-hidden"
+      style={{
+        maskImage: "linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent)",
+        WebkitMaskImage: "linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent)",
+      }}
+      onMouseEnter={() => { paused.current = true; }}
+      onMouseLeave={() => { paused.current = false; }}
+    >
+      <motion.div className="flex" style={{ x, gap: GAP }}>
+        {[...JOBS, ...JOBS].map((j, i) => (
+          <JobCard key={`${j.title}-${i}`} job={j} />
+        ))}
+      </motion.div>
+    </div>
+  );
+}
 
 export function SectionJobs({ showRoster = true }: { showRoster?: boolean } = {}) {
   const reduce = useReducedMotion();
-  const gridRef = useRef<HTMLDivElement>(null);
-  const inView = useInView(gridRef, { margin: "-20% 0px -20% 0px" });
-  const [i, setI] = useState(0);
-  const [held, setHeld] = useState<number | null>(null);
-
-  // rewind to the first card each time the grid is entered
-  useEffect(() => {
-    if (inView) setI(0);
-  }, [inView]);
-
-  // walk the spotlight while on screen and nothing is hovered
-  useEffect(() => {
-    if (reduce || !inView || held !== null) return;
-    const id = setInterval(() => setI((v) => (v + 1) % JOBS.length), DWELL_MS);
-    return () => clearInterval(id);
-  }, [inView, reduce, held]);
-
-  const lit = held ?? i;
 
   return (
     <section id="jobs" className="lv3-bg-paper px-5 py-24 sm:px-8 sm:py-28">
@@ -128,17 +135,15 @@ export function SectionJobs({ showRoster = true }: { showRoster?: boolean } = {}
           </p>
         </Reveal>
 
-        <div ref={gridRef} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {JOBS.map((j, idx) => (
-            <JobCard
-              key={j.title}
-              job={j}
-              lit={reduce ? true : idx === lit}
-              onTake={() => setHeld(idx)}
-              onRelease={() => setHeld(null)}
-            />
-          ))}
-        </div>
+        {reduce ? (
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {JOBS.map((j) => (
+              <JobCard key={j.title} job={j} />
+            ))}
+          </div>
+        ) : (
+          <JobsCarousel />
+        )}
 
         {/* the whole team, on call — shown on v3, dropped on v4 where the team
             already appears in the Problem card and the closing band */}

@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { Plus } from "lucide-react";
 
 import AgentAvatar from "@/components/avatars/AgentAvatar";
 import { Reveal, EASE } from "./primitives";
@@ -26,10 +27,11 @@ const TEAM = [
 ];
 
 function TeamUnit({ reduce }: { reduce: boolean | null }) {
+  const ADD = TEAM.length; // sentinel index for the "any role" tile
   const [lit, setLit] = useState(0);
-
-  // rotate the featured teammate so the unit feels alive, until a face is hovered
   const [held, setHeld] = useState<number | null>(null);
+
+  // rotate the featured teammate through the real roster, until a tile is hovered
   useEffect(() => {
     if (reduce || held !== null) return;
     const id = setInterval(() => setLit((l) => (l + 1) % TEAM.length), 1600);
@@ -37,7 +39,9 @@ function TeamUnit({ reduce }: { reduce: boolean | null }) {
   }, [reduce, held]);
 
   const active = held ?? lit;
-  const featured = TEAM[active];
+  const isAdd = active === ADD;
+  const featured = isAdd ? null : TEAM[active];
+  const featKey = isAdd ? "add" : featured!.name;
 
   return (
     <div className="border bg-white p-6 sm:p-7" style={{ borderColor: "var(--lv3-border)" }}>
@@ -47,32 +51,45 @@ function TeamUnit({ reduce }: { reduce: boolean | null }) {
       <div className="mt-4 flex items-center gap-4">
         <AnimatePresence mode="wait">
           <motion.span
-            key={`face-${featured.name}`}
+            key={`face-${featKey}`}
             className="inline-flex shrink-0"
             initial={reduce ? false : { opacity: 0, scale: 0.88 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.35, ease: EASE }}
           >
-            <AgentAvatar characterName={featured.name} role={featured.role} size={72} state="working" />
+            {isAdd ? (
+              <span
+                className="flex size-[72px] items-center justify-center rounded-full border-2 border-dashed"
+                style={{ borderColor: "var(--lv3-blue)", background: "rgba(66,87,232,0.06)" }}
+              >
+                <Plus className="lv3-t-blue size-7" />
+              </span>
+            ) : (
+              <AgentAvatar characterName={featured!.name} role={featured!.role} size={72} state="working" />
+            )}
           </motion.span>
         </AnimatePresence>
         <AnimatePresence mode="wait">
           <motion.span
-            key={`name-${featured.name}`}
+            key={`name-${featKey}`}
             className="min-w-0"
             initial={reduce ? false : { opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.28, ease: EASE }}
           >
-            <span className="lv3-t-navy block text-[18px] font-semibold leading-tight">{featured.name}</span>
-            <span className="lv3-t-soft block text-[13px] leading-tight">{featured.role}</span>
+            <span className="lv3-t-navy block text-[18px] font-semibold leading-tight">
+              {isAdd ? "Any role" : featured!.name}
+            </span>
+            <span className="lv3-t-soft block text-[13px] leading-tight">
+              {isAdd ? "whatever your project needs" : featured!.role}
+            </span>
           </motion.span>
         </AnimatePresence>
       </div>
 
-      {/* the whole unit — every face assembles in, the featured one lifts */}
+      {/* the unit assembles in; the dashed "+" says any role can be added */}
       <motion.div
         className="mt-5 flex flex-wrap gap-2"
         variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}
@@ -109,10 +126,36 @@ function TeamUnit({ reduce }: { reduce: boolean | null }) {
             </motion.span>
           </motion.button>
         ))}
+
+        {/* add-any-role tile — the team is open-ended, not a fixed set */}
+        <motion.button
+          type="button"
+          onMouseEnter={() => setHeld(ADD)}
+          onMouseLeave={() => setHeld(null)}
+          onFocus={() => setHeld(ADD)}
+          onBlur={() => setHeld(null)}
+          aria-label="Add any role your project needs"
+          className="rounded-full focus-visible:outline-none"
+          variants={{ hidden: { opacity: 0, y: 10, scale: 0.8 }, show: { opacity: 1, y: 0, scale: 1 } }}
+          transition={{ duration: 0.35, ease: EASE }}
+        >
+          <motion.span
+            className="flex size-[34px] items-center justify-center rounded-full border border-dashed"
+            animate={reduce ? {} : { y: isAdd ? -3 : 0 }}
+            transition={{ duration: 0.25, ease: EASE }}
+            style={{
+              borderColor: isAdd ? "var(--lv3-blue)" : "var(--lv3-soft-55)",
+              background: isAdd ? "rgba(66,87,232,0.06)" : "#fff",
+              boxShadow: isAdd ? "0 0 0 2px var(--lv3-amber-fill)" : "none",
+            }}
+          >
+            <Plus className="size-4" style={{ color: isAdd ? "var(--lv3-blue)" : "var(--lv3-soft-55)" }} />
+          </motion.span>
+        </motion.button>
       </motion.div>
 
-      <div className="mt-5 flex items-baseline gap-2 border-t pt-4" style={{ borderColor: "var(--lv3-border)" }}>
-        <span className="lv3-t-navy text-[22px] font-bold">{TEAM.length} specialists.</span>
+      <div className="mt-5 border-t pt-4" style={{ borderColor: "var(--lv3-border)" }}>
+        <span className="lv3-t-navy text-[17px] font-bold">Any role a project needs.</span>{" "}
         <span className="lv3-t-soft text-[15px]">Assembling them is the hard part.</span>
       </div>
     </div>
