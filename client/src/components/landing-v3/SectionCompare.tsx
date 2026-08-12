@@ -87,22 +87,25 @@ export function SectionCompare() {
 
         <div className="mt-9 overflow-hidden border bg-white" style={{ borderColor: "var(--lv3-border)" }}>
           {/* header: one faceless AI vs your real faces */}
-          <div className="grid grid-cols-1 sm:grid-cols-2">
-            <div className="flex items-center gap-3 border-b border-r p-5 sm:px-7" style={{ borderColor: "var(--lv3-border)", background: "#f5f6fb" }}>
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full border" style={{ borderColor: "var(--lv3-border)", color: "var(--lv3-soft-55)", background: "#e9ebf4" }}>
-                <Sparkles className="size-4" />
+          <div className="grid grid-cols-2">
+            <div className="flex items-center gap-2 border-b border-r p-3 sm:gap-3 sm:px-7 sm:py-5" style={{ borderColor: "var(--lv3-border)", background: "#f5f6fb" }}>
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full border sm:size-8" style={{ borderColor: "var(--lv3-border)", color: "var(--lv3-soft-55)", background: "#e9ebf4" }}>
+                <Sparkles className="size-3.5 sm:size-4" />
               </span>
               <span className="lv3-label lv3-t-soft-55">A chatbot</span>
             </div>
-            <div className="flex items-center gap-3 border-b p-5 sm:px-7" style={{ borderColor: "var(--lv3-border)" }}>
-              <span className="flex -space-x-2">
+            <div className="flex items-center gap-2 border-b p-3 sm:gap-3 sm:px-7 sm:py-5" style={{ borderColor: "var(--lv3-border)" }}>
+              <span className="flex shrink-0 -space-x-2">
                 {CLUSTER.map((m) => (
                   <span key={m.name} className="rounded-full ring-2 ring-white">
-                    <AgentAvatar characterName={m.name} role={m.role} size={26} />
+                    <AgentAvatar characterName={m.name} role={m.role} size={20} />
                   </span>
                 ))}
               </span>
-              <span className="lv3-label lv3-t-blue">Your Hatchin team</span>
+              <span className="lv3-label lv3-t-blue">
+                <span className="sm:hidden">Your team</span>
+                <span className="hidden sm:inline">Your Hatchin team</span>
+              </span>
             </div>
           </div>
 
@@ -113,7 +116,7 @@ export function SectionCompare() {
             return (
               <div
                 key={i}
-                className="grid grid-cols-1 sm:grid-cols-2"
+                className="grid grid-cols-2"
                 style={{
                   opacity: reduce ? 1 : !seen ? 0 : dim ? 0.5 : 1,
                   transform: !seen && !reduce ? "translateY(8px)" : "none",
@@ -123,16 +126,16 @@ export function SectionCompare() {
                 onMouseEnter={() => setHeld(i)}
                 onMouseLeave={() => setHeld(null)}
               >
-                <div className="flex items-start gap-3 border-r border-t px-5 py-4 sm:px-7" style={{ borderColor: "var(--lv3-border)", background: "#f5f6fb" }}>
-                  <Minus className="mt-0.5 size-4 shrink-0" style={{ color: "#b3b7c7" }} />
-                  <span className="lv3-t-soft text-[15px] leading-snug">{r.bot}</span>
+                <div className="flex items-start gap-2 border-r border-t px-3 py-3 sm:gap-3 sm:px-7 sm:py-4" style={{ borderColor: "var(--lv3-border)", background: "#f5f6fb" }}>
+                  <Minus className="mt-0.5 size-3.5 shrink-0 sm:size-4" style={{ color: "#b3b7c7" }} />
+                  <span className="lv3-t-soft text-[12.5px] leading-snug sm:text-[15px]">{r.bot}</span>
                 </div>
                 <div
-                  className="flex items-start gap-3 border-t px-5 py-4 sm:px-7"
+                  className="flex items-start gap-2 border-t px-3 py-3 sm:gap-3 sm:px-7 sm:py-4"
                   style={{ borderColor: "var(--lv3-border)", background: on ? "rgba(15,157,118,0.08)" : "transparent", transition: "background 0.3s ease" }}
                 >
                   <Check
-                    className={"lv3cmp-check mt-0.5 size-4 shrink-0" + (seen || reduce ? " drawn" : "")}
+                    className={"lv3cmp-check mt-0.5 size-3.5 shrink-0 sm:size-4" + (seen || reduce ? " drawn" : "")}
                     style={{
                       color: "#0F9D76",
                       transform: on ? "scale(1.35)" : "scale(1)",
@@ -140,7 +143,7 @@ export function SectionCompare() {
                       transition: "transform 0.3s cubic-bezier(0.16,1,0.3,1)",
                     }}
                   />
-                  <span className="lv3-t-navy text-[15px] font-medium leading-snug">{r.team}</span>
+                  <span className="lv3-t-navy text-[12.5px] font-medium leading-snug sm:text-[15px]">{r.team}</span>
                 </div>
               </div>
             );
