@@ -100,9 +100,14 @@ export function CenterPanel({
     taskId: string;
     agentName: string;
     taskTitle: string;
+    taskDescription?: string | null;
     riskReasons: string[];
+    draftPreview?: string | null;
+    raisedAt: number;
     projectId: string;
   }>>([]);
+  // Daily cost-cap: one project-level notice (not per-task). Keyed by project so switching clears it.
+  const [dailyLimitProjectId, setDailyLimitProjectId] = useState<string | null>(null);
   const lastSendRef = useRef<{ conversationId: string; content: string; at: number } | null>(null);
 
   // Deliberation state
@@ -1005,7 +1010,10 @@ export function CenterPanel({
           taskId: message.taskId ?? '',
           agentName: message.agentName ?? '',
           taskTitle: message.taskTitle ?? '',
+          taskDescription: message.taskDescription ?? null,
           riskReasons: message.riskReasons ?? [],
+          draftPreview: message.draftPreview ?? null,
+          raisedAt: Date.now(),
           projectId: currentProjectId,
         },
       ]);
@@ -1017,6 +1025,15 @@ export function CenterPanel({
         riskScore: message.riskScore ?? 0,
         projectId: activeProject?.id ?? '',
       });
+    }
+    else if (message.type === 'autonomy_daily_limit_reached') {
+      // One project-level notice. However many blocked tasks fire this, we keep a single flag per
+      // project, so N events collapse to one card. Refresh tasks so the queued/blocked count is current.
+      const pid = message.projectId ?? activeProject?.id;
+      if (pid) {
+        setDailyLimitProjectId(pid);
+        queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      }
     }
     else if (message.type === 'task_approval_rejected') {
       setApprovalRequests((prev) => prev.filter((r) => r.taskId !== message.taskId));
@@ -1179,8 +1196,11 @@ export function CenterPanel({
   useEffect(() => {
     if (activeProject?.id) {
       setApprovalRequests((prev) => prev.filter((r) => r.projectId === activeProject.id));
+      // Drop the daily-limit notice when it belongs to a different project than the one in view.
+      setDailyLimitProjectId((prev) => (prev && prev !== activeProject.id ? null : prev));
     } else {
       setApprovalRequests([]);
+      setDailyLimitProjectId(null);
     }
   }, [activeProject?.id]);
 
@@ -2078,6 +2098,8 @@ export function CenterPanel({
             onApprove={(id) => approveMutation.mutate(id)}
             onReject={(id) => rejectMutation.mutate(id)}
             approvalLoading={approveMutation.isPending || rejectMutation.isPending}
+            dailyLimitNotice={dailyLimitProjectId && dailyLimitProjectId === activeProject?.id ? { queuedCount: null } : null}
+            onDismissDailyLimit={() => setDailyLimitProjectId(null)}
             suggestedTasks={suggestedTasks}
             taskSuggestionContext={taskSuggestionContext}
             isApprovingTasks={isApprovingTasks}

@@ -59,3 +59,19 @@ export function humanizeRiskReasons(reasons: unknown): string[] {
   }
   return [...new Set(out)];
 }
+
+// Codes that mean the action destroys or resets data, i.e. hard-to-undo. Approval cards use this to
+// style the destructive path as the *careful* choice (safe option leads, confirm is de-emphasized) so
+// nobody nukes data on a reflex click. Kept beside the humanizer so the two stay consistent.
+const DESTRUCTIVE_EXACT = new Set(['destructive_verb_critical', 'destructive_verb_reset']);
+const DESTRUCTIVE_PREFIX = ['high_impact_action:'];
+
+/** True when the reason set describes a destructive / irreversible action. */
+export function isDestructiveRisk(reasons: unknown): boolean {
+  if (!Array.isArray(reasons)) return false;
+  return reasons.some(
+    (r) =>
+      typeof r === 'string' &&
+      (DESTRUCTIVE_EXACT.has(r) || DESTRUCTIVE_PREFIX.some((p) => r.startsWith(p))),
+  );
+}

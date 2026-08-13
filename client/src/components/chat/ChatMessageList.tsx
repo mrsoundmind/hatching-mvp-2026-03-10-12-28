@@ -8,8 +8,10 @@ import { MessageBubble } from '../MessageBubble';
 import { HandoffCard } from './HandoffCard';
 import { DeliberationCard } from './DeliberationCard';
 import { AutonomousApprovalCard } from '../AutonomousApprovalCard';
+import { DailyLimitNotice } from '../approval/DailyLimitNotice';
 import AgentAvatar from '@/components/avatars/AgentAvatar';
 import { resolveAgentName } from '@/lib/agentDisplay';
+import { relativeTime } from '@/lib/relativeTime';
 
 /**
  * A finished piece of autonomous work, sourced from the task_execution_completed
@@ -77,12 +79,18 @@ interface ChatMessageListProps {
     taskId: string;
     agentName: string;
     taskTitle: string;
+    taskDescription?: string | null;
     riskReasons: string[];
+    draftPreview?: string | null;
+    raisedAt?: number;
     projectId: string;
   }>;
   onApprove: (taskId: string) => void;
   onReject: (taskId: string) => void;
   approvalLoading: boolean;
+  // Daily cost-cap notice (one project-level card, not per-task). Null when the cap isn't hit.
+  dailyLimitNotice?: { queuedCount?: number | null } | null;
+  onDismissDailyLimit?: () => void;
   // Task suggestions
   suggestedTasks: any[];
   taskSuggestionContext: { conversationId: string; projectId: string } | null;
@@ -127,6 +135,8 @@ export function ChatMessageList({
   onApprove,
   onReject,
   approvalLoading,
+  dailyLimitNotice,
+  onDismissDailyLimit,
   suggestedTasks,
   taskSuggestionContext,
   isApprovingTasks,
@@ -377,7 +387,7 @@ export function ChatMessageList({
           )}
         </AnimatePresence>
 
-        {/* UX-01: Inline approval cards */}
+        {/* UX-01: Inline approval cards + the one-time daily-limit notice */}
         <AnimatePresence>
           {approvalRequests
             .filter((r) => r.projectId === activeProjectId)
@@ -387,12 +397,22 @@ export function ChatMessageList({
                 taskId={req.taskId}
                 agentName={req.agentName}
                 taskTitle={req.taskTitle}
+                taskDescription={req.taskDescription}
                 riskReasons={req.riskReasons}
+                draftPreview={req.draftPreview}
+                raisedAtLabel={req.raisedAt ? relativeTime(req.raisedAt) : 'just now'}
                 onApprove={onApprove}
                 onReject={onReject}
                 isLoading={approvalLoading}
               />
             ))}
+          {dailyLimitNotice && (
+            <DailyLimitNotice
+              key="daily-limit"
+              queuedCount={dailyLimitNotice.queuedCount}
+              onDismiss={() => onDismissDailyLimit?.()}
+            />
+          )}
         </AnimatePresence>
 
         {/* Auto-scroll helper */}

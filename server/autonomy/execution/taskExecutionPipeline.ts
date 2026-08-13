@@ -11,11 +11,22 @@ import { updateTrustMeta } from '../trustScoring/trustScorer.js';
 import { getAdjustedThresholds } from '../trustScoring/trustAdapter.js';
 import { getRoleIntelligence } from '@shared/roleIntelligence';
 import type { IStorage } from '../../storage.js';
-import { recordUsage } from '../../billing/usageTracker.js';
+import { recordUsage, recordEstimatedUsage } from '../../billing/usageTracker.js';
 // Phase 37 — autonomy run tree writer (non-fatal step + run writes)
 import { ensureRunForTrace, startStep, completeStep, failStep, completeRun, summarizeOutput } from '../runs/runTreeWriter.js';
 // Phase 38 — autonomous-mode directive block (appended to system prompt when level === 'autonomous')
 import { AUTONOMOUS_DIRECTIVE_BLOCK } from '../../ai/promptTemplate.js';
+
+/**
+ * Short preview of the work an agent produced, sent alongside an approval request so the
+ * redesigned card can offer a "see what they prepared" expand. Trimmed to keep the WS frame small;
+ * the full draft still lives in the task's `draftOutput` metadata.
+ */
+function approvalDraftPreview(output: string | null | undefined): string | null {
+  const t = (output ?? '').trim();
+  if (!t) return null;
+  return t.length > 360 ? `${t.slice(0, 360).trimEnd()}…` : t;
+}
 
 /**
  * Role-aware risk adjustment: some roles should escalate at lower thresholds
@@ -385,7 +396,10 @@ async function executeTaskWithOutput(
         taskId: input.task.id,
         agentName: input.agent.name,
         taskTitle: input.task.title,
+        taskDescription: input.task.description ?? null,
         riskReasons: safety.reasons,
+        riskScore: Math.max(adjustedExecutionRisk, adjustedScopeRisk, adjustedHallucinationRisk),
+        draftPreview: approvalDraftPreview(output),
       });
       await logApprovalRequired(input, safety.reasons, Math.max(adjustedExecutionRisk, adjustedScopeRisk, adjustedHallucinationRisk));
       // Phase 37 — HOOK B (pending_approval path): mark step complete (work surfaced; no LLM error)
@@ -452,7 +466,10 @@ async function executeTaskWithOutput(
             taskId: input.task.id,
             agentName: input.agent.name,
             taskTitle: input.task.title,
+            taskDescription: input.task.description ?? null,
             riskReasons: peerResult.reason,
+            riskScore: maxRisk,
+            draftPreview: approvalDraftPreview(output),
           });
           await logApprovalRequired(input, peerResult.reason, null);
           // Phase 37 — HOOK B (pending_approval after peer review): mark step complete
@@ -577,6 +594,11 @@ export async function executeTask(
     const output = await input.generateText(
       `Task: ${input.task.title}`,
       systemWithDirective,
+      // Audit R0-1: without an explicit budget this fell to generateText's 120-token default,
+      // which truncated autonomous output to a fragment (e.g. "Let's") that then shipped as a
+      // completed task. Give it real room; a substantive output also re-arms the review coverage
+      // gate that was skipping the trivial fragment. The provider stops naturally when done.
+      2000,
     );
 
     // Guard against empty LLM output — don't store blank messages
@@ -618,7 +640,10 @@ export async function executeTask(
         taskId: input.task.id,
         agentName: input.agent.name,
         taskTitle: input.task.title,
+        taskDescription: input.task.description ?? null,
         riskReasons: safety.reasons,
+        riskScore: Math.max(adjustedExecutionRisk, adjustedScopeRisk, adjustedHallucinationRisk),
+        draftPreview: approvalDraftPreview(output),
       });
       await logApprovalRequired(input, safety.reasons, Math.max(adjustedExecutionRisk, adjustedScopeRisk, adjustedHallucinationRisk));
       // Phase 37 — HOOK B (pending_approval path): mark step complete (work surfaced, awaiting human)
@@ -686,7 +711,10 @@ export async function executeTask(
           taskId: input.task.id,
           agentName: input.agent.name,
           taskTitle: input.task.title,
+          taskDescription: input.task.description ?? null,
           riskReasons: peerResult.reason,
+          riskScore: maxRisk,
+          draftPreview: approvalDraftPreview(output),
         });
         await logApprovalRequired(input, peerResult.reason, null);
         // Phase 37 — HOOK B (pending_approval after peer review): mark step complete
@@ -917,15 +945,15 @@ export async function handleTaskJob(
       status: 'blocked',
       metadata: { costCapReached: true, dailyLimit: tierLimit } as any,
     });
+    // The daily cost cap is a single project-level condition, NOT a per-task approval. Previously each
+    // blocked task fired its own `task_requires_approval` card with a dead Approve button (the task
+    // isn't awaitingApproval, so approving 400s). We now emit one informational notice; the client
+    // collapses however many fire (one per blocked task) into a single "work limit" card that resumes
+    // tomorrow. Real approvals are unaffected.
     const conversationId = `project:${job.data.projectId}`;
     deps.broadcastToConversation(conversationId, {
-      type: 'task_requires_approval',
-      taskId: job.data.taskId,
-      agentName: 'System',
-      // A code (not a raw sentence) so the shared humanizer renders it — a plain sentence would be
-      // dropped by humanizeRiskReasons and the card would show blank. The card guards the 'System'
-      // actor so it reads as a decision, not a fake teammate.
-      riskReasons: ['daily_cost_cap_reached'],
+      type: 'autonomy_daily_limit_reached',
+      projectId: job.data.projectId,
     });
     return;
   }
@@ -1038,6 +1066,18 @@ export async function handleTaskJob(
     // Fetch the output stored by executeTask as context for the next agent
     const recentMessages = await deps.storage.getMessagesByConversation(conversationId, { limit: 1 });
     const completedOutput = recentMessages[0]?.content ?? '';
+
+    // Audit re-audit Finding 2 (cost-safety): the recordUsage call above records the execution
+    // COUNT but $0 cost (tokenUsage is undefined), so the per-user + global daily $ caps in
+    // costGuard.ts never saw autonomy spend and autonomy was bounded only by the 50/day count.
+    // Interim fix (same pattern as the chat BUG-3 estimator): record a conservative estimated
+    // cost from the real output at the premium DeepSeek-Pro rate so the $ caps approximately see
+    // it. Only in the completed branch: budget-blocked tasks return before generating, so no
+    // phantom cost. Proper fix (thread real TokenUsage out of the generation path) rides ARCH-1.
+    if (project.userId && completedOutput.trim()) {
+      recordEstimatedUsage(deps.storage, project.userId, 'deepseek', 'deepseek-v4-pro', 1, completedOutput)
+        .catch(() => {});
+    }
 
     const handoffMeta = (task.metadata as any) ?? {};
     const handoffChain: string[] = handoffMeta.handoffChain ?? [];

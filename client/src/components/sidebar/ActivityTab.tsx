@@ -138,9 +138,11 @@ export function ActivityTab({ projectId, agents }: ActivityTabProps) {
       {/* Pending Approvals — pinned directly above the feed when any exist */}
       {pendingApprovals.length > 0 && (
         <div id="activity-pending-approvals" className="px-1 py-2 border-b border-[var(--hatchin-border-subtle)]">
+          {/* Neutral heading — the old amber tint was part of the "yellow" the cards dropped;
+              the per-card red/blue accent now carries the stakes, so the header stays quiet. */}
           <div className="flex items-center gap-1.5 mb-2 px-1">
-            <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-            <p className="text-xs font-semibold text-amber-400">
+            <ShieldAlert className="w-3.5 h-3.5 text-[var(--hatchin-text-muted)]" />
+            <p className="text-xs font-semibold text-[var(--hatchin-text-bright)]">
               Needs your approval ({pendingApprovals.length})
             </p>
           </div>

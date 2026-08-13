@@ -183,7 +183,19 @@ const requiredServerSchemas = z.union([
     // show it. Without this key the strict object would strip it (Zod drops unknowns).
     taskTitle: z.string().optional(),
     riskReasons: z.array(z.string()).optional(),
+    // Fuller decision detail for the redesigned card (default-strip drops anything not listed here):
+    // a plain-language description of what will happen, the numeric risk, and a short preview of the
+    // work the agent produced so the user can review before approving.
+    taskDescription: z.string().nullable().optional(),
+    riskScore: z.number().optional(),
+    draftPreview: z.string().nullable().optional(),
   }),
+  // Daily cost cap reached. Project-level and informational — NOT a per-task approval. The client
+  // collapses however many of these fire (one per blocked task) into a single "work limit" notice.
+  z.object({
+    type: z.literal('autonomy_daily_limit_reached'),
+    projectId: z.string(),
+  }).passthrough(),
   z.object({
     type: z.literal('task_execution_completed'),
     taskId: z.string(),

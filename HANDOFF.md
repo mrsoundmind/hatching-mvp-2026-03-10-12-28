@@ -2,12 +2,23 @@
 
 > **Read this first if you're an AI (Claude Code, Cursor, Windsurf, Copilot, etc.) or a human picking up on Hatchin.** This file tells you what happened, where we are, and what to do next. Session-continuity log — updated at session boundaries.
 
-**Last refreshed:** 2026-08-10
+**Last refreshed:** 2026-08-13
 **Current branch:** `feat/v2.2-intelligence-fixes` (workstreams share this branch: v2.2 intelligence fixes + v2.1-UX UI + Pre-Launch Hardening + chat attachments + the new Business-in-a-Box packs milestone; a sibling session also landed a Slack adapter `00005a2`)
+**Latest commit (approvals/UX workstream):** approval-card redesign + daily-limit one-notice bug-fix, committed 2026-08-13 (below)
 **Latest commit:** `2662002 docs(audit): step-by-step migration-safety baseline runbook (Tier 0.4)` (the Pre-Launch Hardening pass, below)
 **Latest commit (Business-in-a-Box workstream):** BIAB-0 increment 1 — pack blueprint system ("packs come alive"), committed 2026-08-10 (below)
 **Latest commit (v2.2 workstream):** Phase 39 Plans 39-01 (server) + 39-02 (UI), committed 2026-07-31 (prior: `f5682ab` peer-review coverage)
 **Latest commit (v2.1-UX UI workstream):** `c76fb4e fix(chat): don't drop the user's just-sent message on a refetch race` (+ `a99cfb3` hover-to-peek, `556f60a` rail refinements, `835518a`/`ee5c5bf` chat-card fix)
+
+## 2026-08-13: Approval-card redesign + daily-limit one-notice bug-fix (UX workstream)
+
+**User-flagged bug (screenshot):** the same "A decision is waiting on you" card stacked 5+ times in chat, generic text, oversized buttons. **Root cause:** the daily cost cap fired a per-task `task_requires_approval` card for EVERY blocked task, and its Approve button was DEAD (the task is `status:'blocked'`+`costCapReached`, never `awaitingApproval`, so `resolveTaskApproval('approve')` returns 400). Fixed both root cause and the design.
+
+**Server (no gate):** `server/autonomy/execution/taskExecutionPipeline.ts` — the cost cap now emits ONE project-level `autonomy_daily_limit_reached` notice (client collapses N→1, no fake buttons); the 4 real approval fire-sites also send `taskDescription`+`riskScore`+`draftPreview` (new `approvalDraftPreview()`). `shared/dto/wsSchemas.ts` — extended the `task_requires_approval` object (default-strip drops unlisted keys) + added the `autonomy_daily_limit_reached` union member (the `z.union` drops unknown `type`s → message lost). `shared/riskReasons.ts` — new `isDestructiveRisk()`.
+
+**Client (mockup-first gate honored — 2 clickable artifacts, ~7 iterations as the user pivoted: drop the yellow left rail per `feedback_no_left_accent_rail`, ONE shared box not two, Claude-simple but keep FULL detail, then add COLOR=stakes because the Activity sidebar is component-dense):** new shared `client/src/components/approval/ApprovalCard.tsx` used by BOTH chat (`AutonomousApprovalCard` → thin adapter) and sidebar (`ApprovalItem` rewritten) — no left rail, accent border+icon+label tinted red (destructive) / blue (normal), full description + humanized "Why this is paused" panel + "See what X prepared" expand, risk-aware buttons (destructive → safe "Not now" leads + cautious red-outline confirm; normal → blue primary leads). New `client/src/components/approval/DailyLimitNotice.tsx` (neutral, dismissible, "Got it" only) in `ChatMessageList`. `CenterPanel` stores enriched fields + a single `dailyLimitProjectId`. `sidebar/ActivityTab.tsx` amber heading neutralized. New `client/src/lib/relativeTime.ts`.
+
+**Verified:** tsc 0 errors; test-risk-reason-humanizer 8/8; test-chat-card-guards 28/28; `isDestructiveRisk` 6/6; WS schema round-trips both new frames; LIVE real-browser render on own :5077 memory server (sibling :5001 untouched, killed after) — 4 cards, correct red/blue `data-risk`, humanized reasons, risk-aware buttons, neutral notice, 0 page errors, via a temp `?approvalPreview=1` seam in CenterPanel since reverted. **NOTE: the SERVER half needs a full :5001 restart to take effect (dev is plain `tsx`, no watch); the client half hot-reloads.** On-branch, nothing merged; scoped commit of only the 11 approval files + CLAUDE.md/HANDOFF (STATE/ROADMAP/REQUIREMENTS/COMPLETE-GUIDE not touched — a UX+bug-fix pass on an existing feature ships no new requirement, per the 2026-07-23 + Phase 4 precedent; also sibling-active).
 
 ## 2026-08-10: Business-in-a-Box — new packs milestone kicked off; BIAB-0 increment 1 shipped server-side (packs workstream)
 
