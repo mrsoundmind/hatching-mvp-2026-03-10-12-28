@@ -37,10 +37,10 @@ Batches run thinnest-first, ~4 roles per batch, one seed file per role (`batch-<
 | 3 | Data Scientist | 48 | ✓ DONE 2026-08-14 → 161 (85% A, 24 new sources) |
 | 3 | Marketing Specialist | 49 | ✓ DONE 2026-08-14 → 171 (49% A, 25 new sources; A-tier top-up candidate) |
 | 3 | Email Specialist | 50 | ✓ DONE 2026-08-14 → 165 (79% A, 23 new sources) |
-| 4 | Growth Marketer | 51 | pending |
-| 4 | Instructional Designer | 51 | pending |
-| 4 | Technical Lead | 54 | pending |
-| 4 | Backend Developer | 57 | pending |
+| 4 | Growth Marketer | 51 | ✓ DONE 2026-08-14 → 153 (69% A, 22 new sources) |
+| 4 | Instructional Designer | 51 | ✓ DONE 2026-08-14 → 164 (57% A, 23 new sources; A-tier top-up candidate) |
+| 4 | Technical Lead | 54 | ✓ DONE 2026-08-14 → 151 (85% A, 27 new sources) |
+| 4 | Backend Developer | 57 | ✓ DONE 2026-08-14 → 167 (95% A, 24 new sources) |
 | 5 | Software Engineer | 58 | pending |
 | 5 | Product Designer | 60 | pending |
 | 5 | Sales Lead | 60 | pending |
