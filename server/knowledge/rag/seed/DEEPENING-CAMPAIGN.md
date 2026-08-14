@@ -25,10 +25,10 @@ Batches run thinnest-first, ~4 roles per batch, one seed file per role (`batch-<
 
 | Batch | Role | Now | Status |
 |---|---|---|---|
-| 1 | Content Writer | 35 | queued |
-| 1 | Operations Manager | 35 | queued |
-| 1 | DevOps Engineer | 39 | queued |
-| 1 | QA Lead | 41 | queued |
+| 1 | Content Writer | 35 | ✓ DONE 2026-08-14 → 130 (81% A, 23 new sources) |
+| 1 | Operations Manager | 35 | ✓ DONE 2026-08-14 → 132 (77% A, 26 new sources) |
+| 1 | DevOps Engineer | 39 | ✓ DONE 2026-08-14 → 137 (98% A, 24 new sources) |
+| 1 | QA Lead | 41 | ✓ DONE 2026-08-14 → 153 (84% A, 24 new sources) |
 | 2 | Social Media Manager | 41 | pending |
 | 2 | AI Developer | 44 | pending |
 | 2 | Product Manager | 45 | pending |
