@@ -30,6 +30,9 @@
 // =============================================================================
 
 import { ROLE_DEFINITIONS } from "./roleRegistry";
+// Batch 2 packs (Web3, AgTech, Logistics, Telehealth) live in a separate file with a type-only
+// import back, so this is a plain value import with no runtime circular dependency.
+import { BATCH2_PACKS } from "./packBlueprintsBatch2";
 
 export type LifecycleStage = "prerequisites" | "build" | "launch" | "grow";
 
@@ -3530,6 +3533,8 @@ export const PACK_BLUEPRINTS: Record<string, PackBlueprint> = {
   [CLIMATE_PACK.packId]: CLIMATE_PACK,
   [ACCOUNTING_PACK.packId]: ACCOUNTING_PACK,
   [PROPERTY_MGMT_PACK.packId]: PROPERTY_MGMT_PACK,
+  // Batch 2 (2026-08-14): Web3, AgTech, Logistics, Telehealth.
+  ...Object.fromEntries(BATCH2_PACKS.map((p) => [p.packId, p])),
 };
 
 /** Returns the deep blueprint for a pack id, or undefined for packs not yet upgraded. */

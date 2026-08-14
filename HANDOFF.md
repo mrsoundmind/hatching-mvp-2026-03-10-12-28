@@ -2,13 +2,26 @@
 
 > **Read this first if you're an AI (Claude Code, Cursor, Windsurf, Copilot, etc.) or a human picking up on Hatchin.** This file tells you what happened, where we are, and what to do next. Session-continuity log — updated at session boundaries.
 
-**Last refreshed:** 2026-08-13
-**Current branch:** `feat/v2.2-intelligence-fixes` (workstreams share this branch: v2.2 intelligence fixes + v2.1-UX UI + Pre-Launch Hardening + chat attachments + the new Business-in-a-Box packs milestone; a sibling session also landed a Slack adapter `00005a2`)
+**Last refreshed:** 2026-08-14
+**Current branch:** `feat/v2.2-intelligence-fixes` (workstreams share this branch: v2.2 intelligence fixes + v2.1-UX UI + Pre-Launch Hardening + chat attachments + the Business-in-a-Box packs milestone; a sibling session also landed a Slack adapter `00005a2`)
+**Latest commit (BIAB packs workstream):** Batch 2 packs (Web3/AgTech/Logistics/Telehealth), committed 2026-08-14 (below)
 **Latest commit (approvals/UX workstream):** approval-card redesign + daily-limit one-notice bug-fix, committed 2026-08-13 (below)
 **Latest commit:** `2662002 docs(audit): step-by-step migration-safety baseline runbook (Tier 0.4)` (the Pre-Launch Hardening pass, below)
 **Latest commit (Business-in-a-Box workstream):** BIAB-0 increment 1 — pack blueprint system ("packs come alive"), committed 2026-08-10 (below)
 **Latest commit (v2.2 workstream):** Phase 39 Plans 39-01 (server) + 39-02 (UI), committed 2026-07-31 (prior: `f5682ab` peer-review coverage)
 **Latest commit (v2.1-UX UI workstream):** `c76fb4e fix(chat): don't drop the user's just-sent message on a refetch race` (+ `a99cfb3` hover-to-peek, `556f60a` rail refinements, `835518a`/`ee5c5bf` chat-card fix)
+
+## 2026-08-14: BIAB Batch 2 packs (Web3, AgTech, Logistics, Telehealth) + RAG deepening campaign kicked off
+
+**Context:** the user committed the intermingled 3-session working tree as `f521ebf` to give a clean base, which unblocked the pack-code work (the deep 3,727-line `packBlueprints.ts` is now committed).
+
+**4 new packs shipped (on-branch, nothing merged):** Web3 `web3-startup` 🔗, AgTech `agtech-startup` 🌾, Logistics `logistics-startup` 🚚, Telehealth `telehealth-startup` 💻. Authored from 4 researched sourced specs (scratchpad `pack-spec-*.md`, real named frameworks + citations, no invented numbers). **Guardrails baked in:** Web3 token-is-utility-never-investment + security-first + securities/tax verify-counsel; AgTech proof-first-no-guaranteed-yield + food-safety-verify-authority; Logistics DOT/FMCSA verify-locally; Telehealth BUSINESS-OF-CLINIC-ONLY (clinical scope/licensure owned by the founder's medical director, HIPAA/billing verify-with-counsel, not legal or medical advice). Telehealth is deliberately DISTINCT from the existing physical `healthcare-clinic` pack and uses 💻 not 🩺.
+
+**Collision-safe structure:** new `shared/packBlueprintsBatch2.ts` (type-only import of `PackBlueprint`/`BlueprintStage` so NO runtime circular dep; exports `BATCH2_PACKS`); `packBlueprints.ts` took only a 2-line edit (import + `...Object.fromEntries(BATCH2_PACKS.map(...))` into `PACK_BLUEPRINTS`).
+
+**Verified:** tsc 0 errors; `packCatalog()` 40 to 44; validation confirmed every `producesDocKey` links to a real doc and every doc/task role is on-team; the real seeder via MemStorage created agents + staged-tasks + doc-scaffolds + bidirectional-links for all 4 (web3 9a/16t/12d/12l, agtech 8/16/12/12, logistics 8/16/12/12, telehealth 8/15/12/12). **NOT done:** client category-map in `StarterPacksModal` doesn't know the 4 new packIds (may land in a default picker bucket, small UI edit pending mockup-first); live browser picker check.
+
+**RAG deepening campaign (started, PAUSED, resumable):** user directive to make all 34 role knowledge bases even + top-1% (today: UX 2447 chunks, most others 35 to 103, uneven). Added `server/knowledge/rag/seed/DEEPENING-CAMPAIGN.md` (the bar: mastery-map coverage, >=20 sources, >=60% A-tier, anti-patterns; ~180-320 chunk floor; additive ingest via `ingest-add-seed.ts`, never wipe) and extended `GATHERING-HANDOFF.md` to all 34 roles + a new-agent SOP. Batch 1 (Content Writer, Operations Manager, DevOps Engineer, QA Lead) gathered partially (all A-tier) then the platform hit a widespread connection outage that killed the gather agents repeatedly; incremental saves preserved everything (`batch-<role>-deepen2.json`), agents are resumable via SendMessage from their transcripts. When resumed: finish Batch 1 to the bar, additive-ingest with `RAG_EMBED_PROVIDER=openai`, verify with `rag-corpus-health.ts`, then Batches 2-9 thinnest-first.
 
 ## 2026-08-13: Approval-card redesign + daily-limit one-notice bug-fix (UX workstream)
 
