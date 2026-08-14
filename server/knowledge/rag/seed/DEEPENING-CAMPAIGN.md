@@ -29,10 +29,10 @@ Batches run thinnest-first, ~4 roles per batch, one seed file per role (`batch-<
 | 1 | Operations Manager | 35 | ✓ DONE 2026-08-14 → 132 (77% A, 26 new sources) |
 | 1 | DevOps Engineer | 39 | ✓ DONE 2026-08-14 → 137 (98% A, 24 new sources) |
 | 1 | QA Lead | 41 | ✓ DONE 2026-08-14 → 153 (84% A, 24 new sources) |
-| 2 | Social Media Manager | 41 | pending |
-| 2 | AI Developer | 44 | pending |
-| 2 | Product Manager | 45 | pending |
-| 2 | Business Analyst | 46 | pending |
+| 2 | Social Media Manager | 41 | ✓ DONE 2026-08-14 → 144 (78% A, 23 new sources) |
+| 2 | AI Developer | 44 | ✓ DONE 2026-08-14 → 163 (96% A, 23 new sources) |
+| 2 | Product Manager | 45 | ✓ DONE 2026-08-14 → 140 (82% A, 24 new sources) |
+| 2 | Business Analyst | 46 | ✓ DONE 2026-08-14 → 166 (57% A, 30 new sources; A-tier top-up candidate) |
 | 3 | HR Specialist | 46 | pending |
 | 3 | Data Scientist | 48 | pending |
 | 3 | Marketing Specialist | 49 | pending |
