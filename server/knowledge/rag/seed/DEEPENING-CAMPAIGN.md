@@ -41,10 +41,10 @@ Batches run thinnest-first, ~4 roles per batch, one seed file per role (`batch-<
 | 4 | Instructional Designer | 51 | ✓ DONE 2026-08-14 → 164 (57% A, 23 new sources; A-tier top-up candidate) |
 | 4 | Technical Lead | 54 | ✓ DONE 2026-08-14 → 151 (85% A, 27 new sources) |
 | 4 | Backend Developer | 57 | ✓ DONE 2026-08-14 → 167 (95% A, 24 new sources) |
-| 5 | Software Engineer | 58 | pending |
-| 5 | Product Designer | 60 | pending |
-| 5 | Sales Lead | 60 | pending |
-| 5 | Audio Editor | 61 | pending |
+| 5 | Software Engineer | 58 | ✓ DONE 2026-08-14 → 146 (83% A, 27 new sources) |
+| 5 | Product Designer | 60 | ✓ DONE 2026-08-14 → 182 (88% A, 25 new sources) |
+| 5 | Sales Lead | 60 | ✓ DONE 2026-08-14 → 155 (65% A, 24 new sources) |
+| 5 | Audio Editor | 61 | ✓ DONE 2026-08-14 → 168 (77% A, 23 new sources) |
 | 6 | Data Analyst | 62 | pending |
 | 6 | SEO Specialist | 63 | pending |
 | 6 | Designer | 64 | pending |
