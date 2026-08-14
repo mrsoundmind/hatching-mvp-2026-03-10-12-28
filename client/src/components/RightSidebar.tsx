@@ -97,6 +97,25 @@ export function RightSidebar({ activeProject, activeTeam, activeAgent, initialTa
     return () => window.removeEventListener('hatchin:open-activity', handler);
   }, [setActiveTab, clearUnread]);
 
+  // Business-in-a-Box: land a project ON its Journey when the plan is fresh. The first
+  // time a project with a staged plan becomes active this session, open the Tasks tab so
+  // a new pack/idea project shows its plan instead of the empty Activity feed. Guarded to
+  // a plan that is still untouched (every staged task is 'todo'), so a project the user has
+  // already worked in keeps whatever tab they last chose. Self-contained (no home.tsx
+  // dependency), fires at most once per project id.
+  const journeyShownFor = React.useRef<Set<string>>(new Set());
+  React.useEffect(() => {
+    const pid = activeProject?.id;
+    if (!pid || journeyShownFor.current.has(pid)) return;
+    const staged = (allTasks ?? []).filter(
+      (t) => (t.metadata as { stage?: string } | null)?.stage,
+    );
+    if (staged.length === 0) return; // no plan yet (still loading, or a chat-only project)
+    journeyShownFor.current.add(pid);
+    const untouched = staged.every((t) => !t.status || t.status === 'todo');
+    if (untouched) setActiveTab('tasks');
+  }, [activeProject?.id, allTasks, setActiveTab]);
+
   const [isPanelScrolling, setIsPanelScrolling] = React.useState(false);
   const panelScrollHideTimeoutRef = React.useRef<number | null>(null);
 

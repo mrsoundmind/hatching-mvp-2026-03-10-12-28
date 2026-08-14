@@ -116,7 +116,7 @@ export function AutonomySettingsPanel({ projectId, executionRules }: AutonomySet
   const levelIndex = DIAL_POSITIONS.indexOf(autonomyLevel);
 
   return (
-    <div ref={panelRef} className="premium-card p-4 space-y-4">
+    <div ref={panelRef} data-tour="autonomy" className="premium-card p-4 space-y-4">
       {/* Contextual Description — the outer "Autonomy" SectionDivider in BrainDocsTab
           is the header now; the old inner "Autonomy Settings" title was a redundant
           second header for one control (P1-B). */}

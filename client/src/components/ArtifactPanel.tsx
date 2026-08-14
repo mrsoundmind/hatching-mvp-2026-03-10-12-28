@@ -358,8 +358,12 @@ export function ArtifactPanel({ deliverableId, pendingVersionNumber, onClose }: 
         <div className="flex items-center gap-2 shrink-0">
           {(() => {
             const currentVersionRow = versions.find((v) => v.versionNumber === currentVersion);
-            const total = currentVersionRow?.rubricScore?.total;
-            if (typeof total !== 'number') return null;
+            const rs = currentVersionRow?.rubricScore;
+            const total = rs?.total;
+            // Only surface a REAL score. Hide for pre-Phase-36 docs (no rubricScore) and
+            // for types with no rubric (skipped — e.g. the pack scaffold doc types), so a
+            // starter draft never reads as a genuine 0.0.
+            if (typeof total !== 'number' || rs?.skipped) return null;
             const tone: 'good' | 'ok' | 'low' =
               total >= 7 ? 'good' : total >= 5 ? 'ok' : 'low';
             const toneStyles: Record<typeof tone, { bg: string; color: string }> = {
@@ -666,51 +670,24 @@ export function DeliverableList({ projectId, onSelect }: DeliverableListProps) {
   }
 
   return (
-    <div className="space-y-2 p-2">
+    <div className="space-y-1 p-1">
       {deliverables.map((d) => {
         const typeColor = TYPE_COLORS[d.type] || TYPE_COLORS.custom;
-        const statusInfo = STATUS_LABELS[d.status] || STATUS_LABELS.draft;
         return (
           <div key={d.id} className="relative group">
-            {/* pr-12 reserves the gutter the delete control sits in, so the title,
-                status badge and "by <agent>" row are never covered on hover. */}
-            <motion.button
+            {/* Compact row (2026-08-12): a dense one-line entry (type dot + title + type)
+                so a pack's 9 to 14 scaffolded deliverables read as a tidy list rather
+                than a tall stack of cards. pr-10 reserves the delete-control gutter. */}
+            <button
               onClick={() => onSelect(d.id)}
-              className="premium-card p-3 pr-12 w-full text-left flex items-start gap-3 hover:border-[var(--hatchin-blue)]/30 transition-colors"
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
+              className="w-full text-left flex items-center gap-2.5 rounded-lg px-2.5 py-2 pr-10 hover:bg-[var(--hatchin-surface)] transition-colors"
             >
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 mt-0.5"
-                style={{ backgroundColor: typeColor.bg, color: typeColor.text }}
-              >
-                {(d.agentName || 'A')[0]}
-              </div>
-              <div className="min-w-0 flex-1">
-                {/* min-w-0 on the inner row too — without it nested flex refuses to
-                    shrink and a long title pushes the badge out instead of ellipsizing. */}
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-sm font-medium truncate hatchin-text">{d.title}</span>
-                  <span
-                    className="text-xs font-semibold uppercase px-1.5 py-0.5 rounded-full shrink-0"
-                    style={{ color: statusInfo.color, border: `1px solid ${statusInfo.color}` }}
-                  >
-                    {statusInfo.label}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span
-                    className="text-xs font-bold uppercase px-1.5 py-0.5 rounded-full"
-                    style={{ backgroundColor: typeColor.bg, color: typeColor.text }}
-                  >
-                    {d.type.replace(/-/g, ' ')}
-                  </span>
-                  <span className="text-xs hatchin-text-muted">
-                    by {d.agentName || 'Agent'}
-                  </span>
-                </div>
-              </div>
-            </motion.button>
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: typeColor.text }} />
+              <span className="text-xs font-medium truncate hatchin-text flex-1 min-w-0">{d.title}</span>
+              <span className="text-micro font-semibold uppercase tracking-wide shrink-0 hatchin-text-muted">
+                {d.type.replace(/-/g, ' ')}
+              </span>
+            </button>
             {/* Was a literal "del" in 10px red text, floated over the card content with
                 a ~18px hit area and hover-only visibility — so it read as debug
                 scaffolding, covered the badges, and was unreachable on touch (no hover).

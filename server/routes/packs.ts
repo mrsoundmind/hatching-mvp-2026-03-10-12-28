@@ -4,12 +4,20 @@
 import type { Express, Request, Response } from 'express';
 import { z } from 'zod';
 import { routeIdea } from '../starterPacks/packRouter.js';
-import { packCatalog } from '@shared/packBlueprints';
+import { packCatalog, packDetail } from '@shared/packBlueprints';
 
 export function registerPackRoutes(app: Express) {
   // GET /api/packs/catalog — deep packs with tier + counts (picker cards + peek).
   app.get('/api/packs/catalog', (_req: Request, res: Response) => {
     res.json({ packs: packCatalog() });
+  });
+
+  // GET /api/packs/:packId — full "inside a pack" detail (team by department,
+  // frameworks, documents, plan by stage). 404 for legacy/unknown packs.
+  app.get('/api/packs/:packId', (req: Request, res: Response) => {
+    const detail = packDetail(req.params.packId);
+    if (!detail) return res.status(404).json({ error: 'no deep pack for that id' });
+    res.json({ pack: detail });
   });
 
   // POST /api/packs/route — { idea } → recommend a curated pack, assemble a custom

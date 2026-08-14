@@ -1,0 +1,10 @@
+import pg from 'pg';
+const { Pool } = pg;
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const t = await pool.query("SELECT id, title, status, metadata FROM tasks WHERE id='c55f3bde-cbe4-41ce-87dc-bd47dcc4c0c8'");
+console.log('HIGHRISK_TASK:', JSON.stringify(t.rows.map(r=>({title:r.title.slice(0,50), status:r.status, awaitingApproval:r.metadata?.awaitingApproval, hasDraft: !!r.metadata?.draftOutput}))));
+const jobs = await pool.query("SELECT state, count(*)::int n FROM pgboss.job WHERE name='autonomous_task_execution' GROUP BY state");
+console.log('JOB_STATES:', JSON.stringify(jobs.rows));
+const safety = await pool.query("SELECT event_type, risk_score, (payload->>'agentName') an FROM autonomy_events WHERE project_id='554d6e3a-1c18-40e5-ad4b-d8499270b769' AND event_type='safety_triggered' ORDER BY timestamp DESC LIMIT 2");
+console.log('SAFETY_EVENTS:', JSON.stringify(safety.rows));
+await pool.end();

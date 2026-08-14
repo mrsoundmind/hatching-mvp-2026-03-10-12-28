@@ -339,6 +339,46 @@ export async function readAutonomyEventsByProject(
     .slice(-limit);
 }
 
+/**
+ * Read the most recent events of a SINGLE type for a project. Unlike readAutonomyEventsByProject,
+ * the type filter is applied in the query (using the (project_id, event_type, timestamp) composite
+ * index), so a busy project's chat/task/handoff volume can no longer starve out the review events a
+ * caller actually wants (the review-count / growth-loop "silent zero" bug). File fallback filters by
+ * type too, over a much larger scan window.
+ */
+export async function readAutonomyEventsByProjectAndType(
+  projectId: string,
+  eventType: string,
+  limit = 40,
+): Promise<AutonomyEvent[]> {
+  const pool = await getDbPool();
+  if (pool) {
+    try {
+      const result = await pool.query(
+        `
+        select
+          trace_id, turn_id, request_id, "timestamp",
+          user_id, project_id, team_id, conversation_id,
+          hatch_id, provider, mode, latency_ms,
+          confidence, risk_score, event_type, payload
+        from autonomy_events
+        where project_id = $1 and event_type = $2
+        order by "timestamp" desc
+        limit $3
+        `,
+        [projectId, eventType, Math.max(1, limit)],
+      );
+      return result.rows.map(mapDbRowToEvent).reverse();
+    } catch {
+      // Fall through to in-memory filtering
+    }
+  }
+  const allEvents = await readAutonomyEvents(Math.max(limit * 20, 1000));
+  return allEvents
+    .filter(e => e.projectId === projectId && e.eventType === eventType)
+    .slice(-limit);
+}
+
 export async function summarizeLatency(events: AutonomyEvent[]): Promise<{
   count: number;
   p50: number;

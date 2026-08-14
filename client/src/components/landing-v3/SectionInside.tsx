@@ -158,37 +158,61 @@ function DeliverablesViz({ active }: { active: boolean }) {
       return;
     }
     setV(0);
-    const id = setInterval(() => setV((x) => (x + 1) % VERSIONS.length), 1100);
+    const id = setInterval(() => setV((x) => (x + 1) % VERSIONS.length), 1400);
     return () => clearInterval(id);
   }, [active, reduce]);
 
   return (
-    <div className="flex h-full flex-col justify-center gap-2.5">
-      <div className="relative flex-1">
-        {VERSIONS.map((label, i) => (
-          <motion.div
-            key={label}
-            className="absolute inset-x-0 flex items-center gap-2 border bg-white p-2.5"
-            style={{ zIndex: i, borderColor: i === v ? "var(--lv3-blue)" : "var(--lv3-border)" }}
-            animate={{
-              top: i * 14,
-              scale: 1 - (VERSIONS.length - 1 - i) * 0.03,
-              opacity: i <= v ? 1 : 0.25,
-            }}
-            transition={{ duration: 0.4, ease: EASE }}
-          >
-            <FileText className="size-3.5 shrink-0" style={{ color: i === v ? "var(--lv3-blue)" : "var(--lv3-soft-55)" }} />
+    <div className="flex h-full flex-col justify-center gap-4">
+      {/* one document, a soft stack of past versions behind it */}
+      <div className="relative">
+        <div aria-hidden className="absolute left-2 right-2 -top-2 h-24 border" style={{ background: "#fff", opacity: 0.45 }} />
+        <div aria-hidden className="absolute left-1 right-1 -top-1 h-24 border" style={{ background: "#fff", opacity: 0.75 }} />
+        <motion.div
+          className="relative flex flex-col gap-2 border bg-white p-3"
+          style={{ borderColor: "var(--lv3-blue)" }}
+          animate={{ boxShadow: active ? "0 8px 24px rgba(66,87,232,0.12)" : "0 0 0 rgba(0,0,0,0)" }}
+          transition={{ duration: 0.4, ease: EASE }}
+        >
+          <div className="flex items-center gap-2">
+            <FileText className="lv3-t-blue size-3.5 shrink-0" />
             <span className="lv3-t-navy text-[12px] font-medium">Product requirements</span>
-            <span
-              className="lv3-label ml-auto"
-              style={{ color: i === v ? "var(--lv3-blue)" : "var(--lv3-soft-55)" }}
-            >
-              {label}
-            </span>
-          </motion.div>
-        ))}
+            <AnimatePresence mode="popLayout">
+              <motion.span
+                key={v}
+                className="lv3-label lv3-t-blue ml-auto"
+                initial={reduce ? false : { y: -8, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 8, opacity: 0 }}
+                transition={{ duration: 0.3, ease: EASE }}
+              >
+                {VERSIONS[v]}
+              </motion.span>
+            </AnimatePresence>
+          </div>
+          <div className="h-1.5" style={{ background: "var(--lv3-border)", width: "92%" }} />
+          <div className="h-1.5" style={{ background: "var(--lv3-border)", width: "68%" }} />
+        </motion.div>
       </div>
-      <span className="lv3-label lv3-t-soft-55">every version kept</span>
+
+      {/* every version restorable */}
+      <div className="flex items-center gap-1.5">
+        {VERSIONS.map((label, i) => (
+          <motion.span
+            key={label}
+            className="lv3-label border px-2 py-1"
+            animate={{
+              borderColor: i === v ? "var(--lv3-blue)" : "var(--lv3-border)",
+              color: i === v ? "var(--lv3-blue)" : "var(--lv3-soft-55)",
+              backgroundColor: i === v ? "rgba(108,130,255,0.08)" : "rgba(255,255,255,0)",
+            }}
+            transition={{ duration: 0.3 }}
+          >
+            {label}
+          </motion.span>
+        ))}
+        <span className="lv3-label lv3-t-soft-55 ml-auto">restore any</span>
+      </div>
     </div>
   );
 }
@@ -519,10 +543,10 @@ function Tile({
         animate={
           seen
             ? {
-                opacity: lit ? 1 : 0.42,
+                opacity: lit ? 1 : 0.72,
                 y: 0,
                 borderColor: lit ? "rgba(84,104,240,0.45)" : "var(--lv3-border)",
-                boxShadow: lit ? "0 10px 34px rgba(20,24,47,0.09)" : "0 0 0 rgba(0,0,0,0)",
+                boxShadow: lit ? "0 14px 40px rgba(20,24,47,0.10)" : "0 1px 0 rgba(20,24,47,0.03)",
               }
             : { opacity: 0, y: 30 }
         }
@@ -576,10 +600,11 @@ export function SectionInside() {
         <Reveal className="max-w-2xl">
           <span className="lv3-label lv3-t-blue">Inside a project</span>
           <h2 className="lv3-display lv3-t-navy mt-4">
-            Nothing gets lost.
+            The whole project, in one place.
           </h2>
           <p className="lv3-t-soft mt-4 text-lg">
-            Six places the work lives. Hover to hold one.
+            Your team, your tasks, your files, your decisions, and the review on
+            all of it. Six surfaces, nothing lost in a thread.
           </p>
         </Reveal>
 

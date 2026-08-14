@@ -135,6 +135,10 @@ export interface PrismaHeroProps {
   ctaFg?: string;
   /** Rendered over the video, under the content. Used for the v3 sparkle field. */
   overlay?: ReactNode;
+  /** Height of the hero shell. Defaults to a full viewport; the landing passes a
+   *  shorter mobile height so the hero is not a full screen on a phone, where a
+   *  bottom-anchored headline over a full screen leaves a large empty video band. */
+  heightClass?: string;
   className?: string;
 }
 
@@ -153,12 +157,13 @@ export const PrismaHero = ({
   ctaBg,
   ctaFg,
   overlay,
+  heightClass = "h-screen",
   className = "",
 }: PrismaHeroProps) => {
   const pillBg = ctaBg ?? ink;
   const pillFg = ctaFg ?? "#000000";
   return (
-    <section className={`h-screen w-full ${className}`}>
+    <section className={`${heightClass} w-full ${className}`}>
       <div className="relative h-full w-full overflow-hidden">
         <motion.video
           autoPlay

@@ -13,6 +13,13 @@ interface OnboardingManagerProps {
   // brand-new accounts only — a returning user must never see the teach flow.
   projectsSettled?: boolean;
   hasExistingProjects?: boolean;
+  // Start creating the demo project the moment the Welcome screen appears, so it
+  // is ready by the time the user clicks through — no "creating…" gap.
+  onPreseedDemo?: () => void;
+  // Reveal the guided tour on the (already-seeded) demo project.
+  onStartTour?: () => void;
+  // Tear down a pre-seeded demo if the user dismisses onboarding without touring.
+  onAbortOnboarding?: () => void;
 }
 
 // Flow: pending -> welcome -> teach -> pick a path (idea / starter pack).
@@ -25,11 +32,13 @@ interface OnboardingManagerProps {
 //
 // The 'teach' step is a guided coachmark tour that runs on a REAL, temporary
 // demo project so a brand-new user learns what the team is *before* they have to
-// choose. It is driven by home.tsx: entering 'teach' fires
-// 'hatchin:onboarding-seed-demo' (home.tsx seeds the demo project + runs the
-// tour); when the tour ends home.tsx fires 'hatchin:onboarding-teach-done',
-// which advances us to the path choice. We do NOT complete onboarding until the
-// user actually starts their own project.
+// choose. To avoid a "creating…" gap, home.tsx starts seeding the demo the
+// instant the Welcome screen shows (onPreseedDemo), while the user reads it.
+// Clicking through only reveals the tour on the already-ready demo (onStartTour).
+// When the tour ends home.tsx fires 'hatchin:onboarding-teach-done', which
+// advances us to the path choice. We do NOT complete onboarding until the user
+// actually starts their own project; dismissing early tears the demo down
+// (onAbortOnboarding).
 type OnboardingStep = 'pending' | 'welcome' | 'teach' | 'path-selection' | 'starter-packs' | 'completed';
 
 export function OnboardingManager({
@@ -37,6 +46,9 @@ export function OnboardingManager({
   onStartWithIdeaPromptName,
   projectsSettled = false,
   hasExistingProjects = false,
+  onPreseedDemo,
+  onStartTour,
+  onAbortOnboarding,
 }: OnboardingManagerProps) {
   const { completeOnboarding } = useAuth();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('pending');
@@ -67,9 +79,12 @@ export function OnboardingManager({
       // there's no double-tour within a session, and once they create a real
       // project the gate above closes and this never runs again.
       try { localStorage.removeItem(TOUR_DONE_KEY); } catch { /* ignore */ }
+      // Kick off demo-project creation now, while the Welcome screen is being
+      // read, so the tour can appear instantly when they click through.
+      onPreseedDemo?.();
       setCurrentStep('welcome');
     }
-  }, [currentStep, projectsSettled, hasExistingProjects]);
+  }, [currentStep, projectsSettled, hasExistingProjects, onPreseedDemo]);
 
   // When the guided demo tour finishes (or is skipped), move on to letting the
   // user start their own project.
@@ -80,10 +95,11 @@ export function OnboardingManager({
   }, []);
 
   const handleGetStarted = () => {
-    // Enter the teach step and ask home.tsx to seed a real demo project + run the
-    // tour on it. Onboarding is NOT completed yet — the path choice comes after.
+    // Enter the teach step and reveal the tour on the demo project that has been
+    // seeding since the Welcome screen appeared. Onboarding is NOT completed yet
+    // — the path choice comes after the tour.
     setCurrentStep('teach');
-    window.dispatchEvent(new CustomEvent('hatchin:onboarding-seed-demo'));
+    onStartTour?.();
   };
 
   const handleStartWithIdea = () => {
@@ -114,6 +130,9 @@ export function OnboardingManager({
   };
 
   const handleClose = () => {
+    // If a demo was pre-seeded but the user bails without touring, clean it up so
+    // no throwaway project is left behind. No-op once the tour already cleaned it.
+    onAbortOnboarding?.();
     completeOnboarding();
     setCurrentStep('completed');
   };

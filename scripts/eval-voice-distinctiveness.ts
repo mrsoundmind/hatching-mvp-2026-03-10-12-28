@@ -7,16 +7,20 @@ import { generateWithPreferredProvider } from '../server/llm/providerResolver.js
 
 const RULES = 'Reply in 2-3 sentences, in your own voice and in the first person. No lists, no headers, no preamble.';
 
+// Provider is env-configurable (default 'groq' preserves original behavior). Set EVAL_PROVIDER=ollama-test
+// to run fully on the FREE local Ollama (no Groq quota, no cost). Any registry id is accepted.
+const EVAL_PROVIDER = (process.env.EVAL_PROVIDER || 'groq') as any;
+
 async function gen(system: string, user: string): Promise<string> {
   const c = await generateWithPreferredProvider(
     { messages: [{ role: 'system', content: system }, { role: 'user', content: user }], temperature: 0.6, maxTokens: 220 },
-    'groq',
+    EVAL_PROVIDER,
   );
   return (c.content || '').trim();
 }
 
 async function main() {
-  if (!process.env.GROQ_API_KEY) { console.log('SKIP: no GROQ_API_KEY'); process.exit(0); }
+  if (EVAL_PROVIDER === 'groq' && !process.env.GROQ_API_KEY) { console.log('SKIP: no GROQ_API_KEY'); process.exit(0); }
 
   // v2.2 T4: broadened from 5 to 10 diverse roles spanning product, engineering, design, marketing,
   // data, QA, ops and creative. More options makes the blind attribution strictly harder — a stronger

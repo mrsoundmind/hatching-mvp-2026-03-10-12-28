@@ -1,10 +1,10 @@
 import { devLog } from '@/lib/devLog';
 import { useState, useEffect, useRef, useCallback } from "react";
+import { motion } from "framer-motion";
 import { ProjectTree } from "@/components/ProjectTree";
-import { ChevronDown, Search, LogOut, X, CreditCard, Folder, Plus, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ChevronDown, Search, LogOut, X, CreditCard, Plus, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAgentWorkingState } from "@/hooks/useAgentWorkingState";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useIsFetching } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import type { Project, Team, Agent } from "@shared/schema";
@@ -143,28 +143,22 @@ export function LeftSidebar({
   const persistCollapsed = (next: boolean) => {
     try { localStorage.setItem('hatchin_sidebar_collapsed', String(next)); } catch { /* private mode */ }
   };
-  // Auto-collapse into focus mode when the active project's team starts working.
-  // Fires at most once per session; any manual toggle disarms it so we never fight
-  // the user's explicit choice ("never trap them"). See the effect below.
-  const autoCollapseArmedRef = useRef(true);
-  const prevActiveWorkingRef = useRef(0);
-  const prevProjectRef = useRef<string | null>(activeProjectId);
-  const autoCollapseInitRef = useRef(false);
-  const disarmAutoCollapse = () => { autoCollapseArmedRef.current = false; };
-  const expandSidebar = useCallback(() => { disarmAutoCollapse(); setCollapsed(false); persistCollapsed(false); }, []);
-  const collapseSidebar = useCallback(() => { disarmAutoCollapse(); setCollapsed(true); persistCollapsed(true); }, []);
+  // Manual collapse only. The sidebar NEVER auto-collapses (the old team-start auto-focus
+  // was removed 2026-08-12 per user: "always at uncollapse state"). It only auto-EXPANDS
+  // when a new project/pack is added (see the effect below), so an addition is always seen.
+  const prevProjectCountRef = useRef<number | null>(null);
+  const expandSidebar = useCallback(() => { setCollapsed(false); persistCollapsed(false); }, []);
+  const collapseSidebar = useCallback(() => { setCollapsed(true); persistCollapsed(true); }, []);
   const toggleCollapsed = useCallback(() => {
-    disarmAutoCollapse();
     setCollapsed(prev => { const next = !prev; persistCollapsed(next); return next; });
   }, []);
-  // Hover-to-peek: while collapsed on desktop, hovering the rail expands the full list so
-  // browsing projects is easy; moving the mouse away drops back to the rail. The sidebar stays
-  // in flow (grows in place) — an absolute overlay reflowed the layout under the cursor and
-  // caused an enter/leave feedback loop, so in-flow growth is the stable choice.
+  // Hover-to-peek: while collapsed on desktop, hovering the rail expands the sidebar in place.
+  // The layout is a SINGLE structure at a fixed 260px — the aside just animates its width and
+  // clips it. When narrow, only the text hides; every icon (avatar, search, folder) stays exactly
+  // where it is, so opening moves nothing (Aceternity pattern: anchor the icon, fade the label).
   const [peeking, setPeeking] = useState(false);
   const peekTimerRef = useRef<number | null>(null);
-  const railActive = collapsed && isDesktop;   // in the thin-rail zone
-  const isCollapsed = railActive && !peeking;  // rail content vs full; hover peeks it open
+  const railActive = collapsed && isDesktop;   // aside is a thin rail (60px) until hovered/pinned
   const startPeek = () => {
     if (!railActive) return;
     if (peekTimerRef.current) window.clearTimeout(peekTimerRef.current);
@@ -178,17 +172,10 @@ export function LeftSidebar({
   useEffect(() => () => { if (peekTimerRef.current) window.clearTimeout(peekTimerRef.current); }, []);
   // Never leave a stale peek when we exit the rail zone (manual expand, resize to mobile).
   useEffect(() => { if (!railActive) setPeeking(false); }, [railActive]);
-
-  // Reuse the ProjectTree colour mapping so a folder keeps its project's identity colour.
-  const projectIconColorClass = (color?: string) => {
-    switch (color) {
-      case 'green': return 'text-hatchin-green';
-      case 'purple': return 'text-hatchin-purple';
-      case 'amber': return 'text-[#FFB547]';
-      case 'red': return 'text-[#FF4E6A]';
-      default: return 'text-hatchin-blue';
-    }
-  };
+  // Wide when pinned open, hover-peeking, or on mobile. `labelsShown` drives every text fade and
+  // the tree's compact mode; the width animates between 60 and 260 off the same signal.
+  const railOpen = !railActive || peeking;
+  const labelsShown = !isDesktop || railOpen;
 
   // Add Project flow modals
   const [showQuickStart, setShowQuickStart] = useState(false);
@@ -220,7 +207,7 @@ export function LeftSidebar({
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
         // Search input only exists when expanded — open the rail first.
-        if (isCollapsed) {
+        if (railActive) {
           expandSidebar();
           requestAnimationFrame(() => searchInputRef.current?.focus());
         } else {
@@ -239,35 +226,20 @@ export function LeftSidebar({
 
     document.addEventListener('keydown', handleKeydown);
     return () => document.removeEventListener('keydown', handleKeydown);
-  }, [searchQuery, isCollapsed, expandSidebar, toggleCollapsed]);
+  }, [searchQuery, railActive, expandSidebar, toggleCollapsed]);
 
-  // Auto-collapse into focus mode when the ACTIVE project's team goes idle → working.
-  // Only fires on a genuine in-session transition (skips initial load and project
-  // switches), only on desktop, only while expanded, and only once per session
-  // (disarmed after firing or on any manual toggle). Deliberately does NOT persist —
-  // this is transient focus, so the remembered preference reflects manual choices only.
+  // Auto-EXPAND when a new project (or pack) is added, so the addition is always visible
+  // even if the user had collapsed the sidebar to the rail. Baselines on first run so it
+  // never fires on initial load; only reacts to a genuine increase in the project count.
   useEffect(() => {
-    const activeWorking = activeProjectId
-      ? agents.filter(a => a.projectId === activeProjectId && workingAgents.has(a.id)).length
-      : 0;
-    const sameProject = prevProjectRef.current === activeProjectId;
-    const prev = prevActiveWorkingRef.current;
-    prevProjectRef.current = activeProjectId;
-    prevActiveWorkingRef.current = activeWorking;
-    // Establish a baseline on first run so we never auto-collapse on page load.
-    if (!autoCollapseInitRef.current) { autoCollapseInitRef.current = true; return; }
-    if (
-      isDesktop &&
-      sameProject &&
-      prev === 0 &&
-      activeWorking > 0 &&
-      autoCollapseArmedRef.current &&
-      !collapsed
-    ) {
-      autoCollapseArmedRef.current = false;
-      setCollapsed(true); // transient focus mode — no persistCollapsed on purpose
+    const count = projects.length;
+    const prev = prevProjectCountRef.current;
+    prevProjectCountRef.current = count;
+    if (prev !== null && count > prev && collapsed) {
+      setCollapsed(false);
+      persistCollapsed(false);
     }
-  }, [workingAgents, activeProjectId, agents, isDesktop, collapsed]);
+  }, [projects.length, collapsed]);
 
   useEffect(() => {
     return () => {
@@ -374,21 +346,25 @@ export function LeftSidebar({
   const handleProjectNameConfirm = async (name: string, description?: string) => {
     if (!name.trim()) return;
 
+    // Close the modal IMMEDIATELY, then create. Seeding a pack in DB mode (12 agents
+    // + 20 tasks + 14 docs to Supabase) takes several seconds; the old flow closed the
+    // modal only after that await, so it sat stuck on "Creating…" the whole time. The
+    // pack-hatching animation in home.tsx is the real creation feedback. Mirrors
+    // home.tsx's handleProjectNameSubmit. Capture the template first since we clear it.
+    const template = selectedTemplate;
+    setShowProjectName(false);
+    setSelectedTemplate(null);
     setIsCreatingProject(true);
 
     try {
-      if (selectedTemplate && onCreateProjectFromTemplate) {
-        await onCreateProjectFromTemplate(selectedTemplate, name, description);
-      } else if (selectedTemplate === null && onCreateIdeaProject) {
+      if (template && onCreateProjectFromTemplate) {
+        await onCreateProjectFromTemplate(template, name, description);
+      } else if (template === null && onCreateIdeaProject) {
         // This is the "Start with an idea" flow
         await onCreateIdeaProject(name, description);
       } else if (onCreateProject) {
         await onCreateProject(name, description);
       }
-
-      // Close all modals and reset state
-      setShowProjectName(false);
-      setSelectedTemplate(null);
     } catch (error) {
       console.error('Error creating project:', error);
     } finally {
@@ -609,195 +585,150 @@ export function LeftSidebar({
 
 
 
-  return (
-    <aside
-      className={`${isCollapsed ? 'w-[60px] px-2 items-center overflow-visible' : 'w-[260px] p-3 overflow-hidden'} h-[calc(100vh-20px)] min-h-0 premium-column-bg rounded-2xl ml-2.5 my-2.5 relative flex flex-col transition-[width] duration-300 ease-out`}
-      onWheel={handleSidebarWheel}
-      onMouseEnter={startPeek}
-      onMouseLeave={endPeek}
-    >
-      <div className="ambient-glow-top" />
-
-      {/* Account menu — Radix, keyboard-operable. Full "Welcome, X" row when expanded,
-          just the avatar when collapsed into the rail. */}
-      <div className={isCollapsed ? 'mb-2 shrink-0' : 'relative mb-3 pb-3 hatchin-border border-b'}>
-        <DropdownMenu onOpenChange={setIsUserMenuOpen}>
-          <DropdownMenuTrigger asChild>
-            {isCollapsed ? (
-              <button
-                type="button"
-                aria-label="Account menu"
-                title={`Welcome, ${user?.name || 'User'}`}
-                className="hit-target w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hatchin-blue)]"
-              >
-                <span className="text-white font-semibold text-sm">{user?.name?.charAt(0).toUpperCase() || 'U'}</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                aria-label="Account menu"
-                className="w-full flex items-center justify-between cursor-pointer hover:bg-hatchin-border rounded-lg p-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hatchin-blue)] focus-visible:ring-offset-0"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-white font-semibold text-sm">{user?.name?.charAt(0).toUpperCase() || 'U'}</span>
-                  </div>
-                  <span className="text-sm hatchin-text">Welcome, {user?.name || 'User'}</span>
-                </div>
-                <ChevronDown className={`w-3 h-3 hatchin-text-muted transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
-            )}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className={isCollapsed ? 'w-56' : 'w-[var(--radix-dropdown-menu-trigger-width)]'}>
-            <DropdownMenuItem asChild>
-              <a href="/account" className="flex items-center gap-3 cursor-pointer">
-                <CreditCard className="w-4 h-4" />
-                Account &amp; Billing
-              </a>
-            </DropdownMenuItem>
-            <div className="px-1 py-0.5" onClick={(e) => e.stopPropagation()}>
-              <ThemeToggle />
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={signOut} className="flex items-center gap-3 cursor-pointer">
-              <LogOut className="w-4 h-4" />
-              Sign Out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      {isCollapsed ? (
-        /* ----------------------- COLLAPSED RAIL ----------------------- */
-        <>
-          <button
-            type="button"
-            aria-label="Search projects — expands the sidebar"
-            title="Search (⌘K)"
-            onClick={() => { expandSidebar(); requestAnimationFrame(() => searchInputRef.current?.focus()); }}
-            className="hit-target w-10 h-10 rounded-lg flex items-center justify-center hatchin-text-muted hover:bg-hatchin-border hover:hatchin-text transition-colors shrink-0"
-          >
-            <Search className="w-[18px] h-[18px]" />
-          </button>
-          {/* Expand toggle — kept at the TOP, the same spot the Collapse button occupies in the
-              expanded Projects header (right after search), so it never moves out from under the
-              user's cursor on collapse. */}
-          <button
-            type="button"
-            aria-label="Expand sidebar"
-            title="Expand (⌘\\)"
-            onClick={expandSidebar}
-            className="hit-target w-10 h-10 rounded-lg flex items-center justify-center hatchin-text-muted hover:bg-hatchin-border hover:hatchin-text transition-colors shrink-0"
-          >
-            <PanelLeftOpen className="w-[18px] h-[18px]" />
-          </button>
-          <button
-            type="button"
-            aria-label="New project"
-            title="New project"
-            onClick={handleAddProjectClick}
-            className="hit-target w-10 h-10 rounded-lg flex items-center justify-center text-hatchin-blue hover:bg-hatchin-blue/10 transition-colors shrink-0"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-
-          <div className="w-7 h-px bg-[var(--hatchin-border-subtle)] my-1.5 shrink-0" />
-
-          {/* Project folders. Colour only ever means "look here": working = amber + count,
-              active = full colour, everything idle dims back so attention stays on the work. */}
-          <div className="flex-1 min-h-0 w-full flex flex-col items-center gap-1.5 overflow-y-auto overflow-x-visible hide-scrollbar">
-            {projects.map((project) => {
-              const workingCount = agents.filter(a => a.projectId === project.id && workingAgents.has(a.id)).length;
-              const isWorking = workingCount > 0;
-              const isActive = project.id === activeProjectId;
-              return (
-                <div key={project.id} className="relative shrink-0">
-                  {/* Radix Tooltip portals out of the scrollable rail so the folder name
-                      is never clipped — the escape hatch for the name while collapsed. */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label={project.name}
-                        onClick={() => onSelectProject(project.id)}
-                        className={`hit-target w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${isActive ? 'bg-[var(--glass-frosted-strong)]' : 'hover:bg-hatchin-border'}`}
-                      >
-                        <Folder
-                          className={`w-5 h-5 transition-colors ${isWorking ? '' : `${projectIconColorClass(project.color)}${isActive ? '' : ' opacity-40'}`}`}
-                          style={isWorking ? { color: 'var(--hatchin-working-amber)' } : undefined}
-                          fill={isActive ? 'currentColor' : 'none'}
-                        />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      {project.name}{isActive ? ' · active' : isWorking ? ` · ${workingCount} working` : ''}
-                    </TooltipContent>
-                  </Tooltip>
-                  {isWorking && (
-                    <span
-                      className="pointer-events-none absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] px-1 rounded-full text-[9px] font-bold flex items-center justify-center ring-2 ring-[var(--hatchin-panel)]"
-                      style={{ background: 'var(--hatchin-working-amber)', color: '#231702' }}
-                    >
-                      {workingCount}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
+  // Account menu — one persistent row. The avatar is always shown and anchored; the "Welcome, X"
+  // text and chevron fade with `labelsShown`, so nothing about the circle moves when the sidebar
+  // opens or closes. (Aceternity principle: anchor the icon, fade the label.)
+  const renderAccountMenu = () => (
+    <DropdownMenu onOpenChange={setIsUserMenuOpen}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label="Account menu"
+          title={`Welcome, ${user?.name || 'User'}`}
+          className="w-full flex items-center gap-3 cursor-pointer hover:bg-hatchin-border rounded-lg p-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hatchin-blue)]"
+        >
+          <div className="w-8 h-8 shrink-0 bg-blue-500 rounded-full flex items-center justify-center">
+            <span className="text-white font-semibold text-sm">{user?.name?.charAt(0).toUpperCase() || 'U'}</span>
           </div>
-        </>
-      ) : (
-        /* ----------------------- FULL SIDEBAR ----------------------- */
-        <>
-      {/* Search Bar */}
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 hatchin-text-muted" />
-        <input
+          <motion.span
+            className="text-sm hatchin-text whitespace-nowrap overflow-hidden flex-1 text-left"
+            initial={false}
+            animate={{ opacity: labelsShown ? 1 : 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            Welcome, {user?.name || 'User'}
+          </motion.span>
+          <motion.span
+            className="shrink-0"
+            initial={false}
+            animate={{ opacity: labelsShown ? 1 : 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            <ChevronDown className={`w-3 h-3 hatchin-text-muted transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+          </motion.span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-56">
+        <DropdownMenuItem asChild>
+          <a href="/account" className="flex items-center gap-3 cursor-pointer">
+            <CreditCard className="w-4 h-4" />
+            Account &amp; Billing
+          </a>
+        </DropdownMenuItem>
+        <div className="px-1 py-0.5" onClick={(e) => e.stopPropagation()}>
+          <ThemeToggle />
+        </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={signOut} className="flex items-center gap-3 cursor-pointer">
+          <LogOut className="w-4 h-4" />
+          Sign Out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  // The sidebar body below the account row — search + project tree. ONE definition, rendered once.
+  // When narrow, the search field and header labels fade and the tree runs in `compact` mode; every
+  // icon keeps its place so nothing shifts as the width animates.
+  const fullBody = (
+    <>
+      {/* Search — the magnifier is always visible and anchored; the field itself fades in. */}
+      <div className="relative mb-4 shrink-0">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 hatchin-text-muted z-10 pointer-events-none" />
+        <motion.input
           ref={searchInputRef}
           type="text"
           placeholder="Search projects or hatches (⌘K)"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          initial={false}
+          animate={{ opacity: labelsShown ? 1 : 0 }}
+          transition={{ duration: 0.15 }}
+          style={{ pointerEvents: labelsShown ? 'auto' : 'none' }}
+          tabIndex={labelsShown ? 0 : -1}
           className="w-full premium-input rounded-lg py-2.5 text-sm hatchin-text placeholder-hatchin-text-muted focus:outline-none pl-[32px] pr-[32px]"
         />
-        {searchQuery && (
+        {searchQuery && labelsShown && (
           <button
             onClick={() => setSearchQuery("")}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 hatchin-text-muted hover:hatchin-text transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 hatchin-text-muted hover:hatchin-text transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         )}
       </div>
+      {/* Actions — the icon lives in the left column so it stays visible (and put) in the rail;
+          the label fades in when the sidebar opens. Rows, so nothing moves between the two states. */}
+      <div className="shrink-0 mb-2 space-y-0.5">
+        {isDesktop && (
+          <button
+            type="button"
+            onClick={collapsed ? expandSidebar : collapseSidebar}
+            aria-label={collapsed ? 'Keep sidebar open' : 'Collapse sidebar'}
+            title={collapsed ? 'Keep open (⌘\\)' : 'Collapse (⌘\\)'}
+            className="hit-target w-full flex items-center gap-3 p-2 rounded-lg hover:bg-hatchin-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hatchin-blue)]"
+          >
+            <span className="w-8 h-8 flex items-center justify-center shrink-0">
+              {collapsed
+                ? <PanelLeftOpen className="w-[18px] h-[18px] hatchin-text-muted" />
+                : <PanelLeftClose className="w-[18px] h-[18px] hatchin-text-muted" />}
+            </span>
+            <motion.span
+              className="text-sm hatchin-text-muted whitespace-nowrap overflow-hidden"
+              initial={false}
+              animate={{ opacity: labelsShown ? 1 : 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              {collapsed ? 'Keep open' : 'Collapse'}
+            </motion.span>
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={handleAddProjectClick}
+          aria-label="New project"
+          title="New project"
+          className="hit-target w-full flex items-center gap-3 p-2 rounded-lg hover:bg-hatchin-blue/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hatchin-blue)]"
+        >
+          <span className="w-8 h-8 flex items-center justify-center shrink-0">
+            <Plus className="w-[18px] h-[18px] text-hatchin-blue" />
+          </span>
+          <motion.span
+            className="text-sm font-medium text-hatchin-blue whitespace-nowrap overflow-hidden"
+            initial={false}
+            animate={{ opacity: labelsShown ? 1 : 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            New project
+          </motion.span>
+        </button>
+      </div>
       {/* Projects Section */}
       <div className="mb-4 min-h-0 flex-1 flex flex-col">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-medium hatchin-text-muted uppercase tracking-wide text-xs">
+        <div className="flex items-center mb-3 shrink-0 pl-2">
+          <motion.h2
+            className="font-medium hatchin-text-muted uppercase tracking-wide text-xs"
+            initial={false}
+            animate={{ opacity: labelsShown ? 1 : 0 }}
+            transition={{ duration: 0.15 }}
+          >
             Projects
-          </h2>
-          <div className="flex items-center gap-1.5">
-            {isDesktop && (
-              <button
-                type="button"
-                aria-label="Collapse sidebar"
-                title="Collapse (⌘\\)"
-                onClick={collapseSidebar}
-                className="hit-target w-8 h-8 rounded-lg flex items-center justify-center hatchin-text-muted hover:bg-hatchin-border hover:hatchin-text transition-colors"
-              >
-                <PanelLeftClose className="w-[18px] h-[18px]" />
-              </button>
-            )}
-            <button
-              onClick={handleAddProjectClick}
-              className="hit-target px-3 py-1.5 btn-primary-glow rounded-full text-xs font-semibold btn-press"
-            >
-              + New
-            </button>
-          </div>
+          </motion.h2>
         </div>
 
         <div
           ref={projectListRef}
+          data-tour="team"
           onScroll={handleProjectListScroll}
           onWheel={showProjectScrollbarTemporarily}
           onTouchMove={showProjectScrollbarTemporarily}
@@ -826,6 +757,7 @@ export function LeftSidebar({
               onUpdateTeam={onUpdateTeam}
               onUpdateAgent={onUpdateAgent}
               searchQuery={searchQuery}
+              compact={!labelsShown}
             />
           ) : searchQuery ? (
             <div className="text-center py-8">
@@ -853,8 +785,31 @@ export function LeftSidebar({
           )}
         </div>
       </div>
-        </>
-      )}
+    </>
+  );
+
+  return (
+    <motion.aside
+      className="h-[calc(100vh-20px)] min-h-0 premium-column-bg rounded-2xl ml-2.5 my-2.5 relative flex flex-col overflow-hidden z-30"
+      initial={false}
+      animate={{ width: labelsShown ? 260 : 68 }}
+      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      onWheel={handleSidebarWheel}
+      onMouseEnter={startPeek}
+      onMouseLeave={endPeek}
+    >
+      <div className="ambient-glow-top" />
+
+      {/* ONE structure at a fixed 260px, clipped by the animating aside width. When narrow, only the
+          text fades (driven by `labelsShown`) — the avatar, the search magnifier and every folder
+          icon keep their exact positions, so opening the sidebar moves nothing. The chat/right panel
+          shift smoothly because the aside's own width animates in flow. */}
+      <div className="w-[260px] h-full p-3 flex flex-col min-h-0">
+        <div className="relative mb-3 pb-3 hatchin-border border-b shrink-0">
+          {renderAccountMenu()}
+        </div>
+        {fullBody}
+      </div>
 
       {/* Add Project Modals */}
       <QuickStartModal
@@ -939,6 +894,6 @@ export function LeftSidebar({
           </div>
         </div>
       )}
-    </aside>
+    </motion.aside>
   );
 }

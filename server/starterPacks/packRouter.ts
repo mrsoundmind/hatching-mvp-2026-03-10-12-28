@@ -93,6 +93,8 @@ export function assembleBlueprint(rawIdea: string): PackBlueprint {
   return {
     packId: "assembled",
     packTitle: "Your custom team",
+    emoji: "💡",
+    tagline: "A team Maya assembled around your idea, with a plan to start.",
     tier: "free", // the generative fallback is the free-tier safety net
     team: UNIVERSAL_TEAM.map(m => m.role),
     direction: {

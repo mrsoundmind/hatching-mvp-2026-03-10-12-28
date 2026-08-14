@@ -1,21 +1,28 @@
 // Landing v3 · 01 — Overview, as the whole process.
 //
 // The one section that has to make a stranger understand what Hatchin IS, end to
-// end. It is a pinned storyboard: the mock (AppMock) stays fixed on screen while
-// six full-height "step" blocks scroll past behind it, and the heading + mock
-// advance one stage per step — a one-line idea, a team assembling, the plan, the
-// coordination, the review, the finished work.
+// end. On desktop it is a pinned storyboard: the mock (AppMock) stays fixed on
+// screen while six full-height "step" blocks scroll past behind it, and the
+// heading + mock advance one stage per step — a one-line idea, a team assembling,
+// the plan, the coordination, the review, the finished work.
 //
-// Each step is a scroll-snap stop with `scroll-snap-stop: always`, so even a hard
-// flick lands on the next step instead of skipping past it. Snapping is set to
-// `proximity` and only these six blocks carry snap-align, so the rest of the page
-// scrolls freely — it never traps the reader elsewhere.
+// On MOBILE that pinned scroll-jack costs six full screens of forced snap stops,
+// which reads as an endless page. There we swap it for a compact, self-playing
+// storyboard: the same animated mock cycles through all six stages in place, the
+// heading tracks it, and a tappable dot stepper lets the reader move at their own
+// pace (a tap pauses the auto-advance). Same six steps, one screen instead of six.
+//
+// Each desktop step is a scroll-snap stop with `scroll-snap-stop: always`, so even
+// a hard flick lands on the next step instead of skipping past it. Snapping is set
+// to `proximity` and only these six blocks carry snap-align, so the rest of the
+// page scrolls freely — it never traps the reader elsewhere.
 
 import { useEffect, useRef, useState } from "react";
-import { useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useInView, useReducedMotion } from "framer-motion";
 
 import AppMock, { OVERVIEW_STAGES } from "./AppMock";
-import { Reveal } from "./primitives";
+import { Reveal, EASE } from "./primitives";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Head { eyebrow: string; lead: string; em: string; sub: string }
 const HEADS: Head[] = [
@@ -57,15 +64,95 @@ const HEADS: Head[] = [
   },
 ];
 
+// ── mobile · a compact, self-playing storyboard ─────────────────────────────
+// The same animated mock, cycling through the six stages in place, with the
+// heading tracking it and a tappable dot stepper. No scroll-jack, ~one screen.
+function OverviewMobile() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { margin: "-10% 0px -10% 0px" });
+  const [stage, setStage] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  // auto-advance through the six steps while the section is on screen; a tap
+  // hands control to the reader and stops the auto-advance for the session.
+  useEffect(() => {
+    if (!inView || paused) return;
+    const id = setInterval(() => setStage((s) => (s + 1) % OVERVIEW_STAGES), 3200);
+    return () => clearInterval(id);
+  }, [inView, paused]);
+
+  const h = HEADS[stage];
+  return (
+    <section id="overview" ref={ref} className="lv3-bg-paper px-5 py-20">
+      <div className="mx-auto w-full max-w-6xl">
+        {/* the active step's heading, crossfading as the stage changes; a fixed
+            min-height keeps the mock from jumping as headings differ in length */}
+        <div className="relative" style={{ minHeight: 148 }}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={stage}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3, ease: EASE }}
+            >
+              <span className="lv3-label lv3-t-blue">{h.eyebrow}</span>
+              <h2 className="lv3-display lv3-t-navy mt-3">
+                {h.lead} <span className="lv3-serif-em">{h.em}</span>
+              </h2>
+              <p className="lv3-t-soft mt-3 text-[15px] leading-relaxed">{h.sub}</p>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        <div className="mt-5">
+          <AppMock stage={stage} />
+        </div>
+
+        {/* tappable stepper — the reader can jump to any step; a tap pauses the
+            auto-play. The active step is the elongated dot; the words live above. */}
+        <div className="mt-5 flex items-center justify-center gap-1">
+          {HEADS.map((_, i) => {
+            const on = i === stage;
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => { setPaused(true); setStage(i); }}
+                aria-label={`Go to step ${i + 1} of ${OVERVIEW_STAGES}`}
+                aria-current={on}
+                className="flex items-center justify-center"
+                style={{ width: 44, height: 40 }}
+              >
+                <span
+                  className="transition-all duration-300"
+                  style={{
+                    width: on ? 22 : 8,
+                    height: 8,
+                    borderRadius: 999,
+                    background: on ? "var(--lv3-blue)" : "var(--lv3-border)",
+                  }}
+                />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function SectionOverview() {
   const reduce = useReducedMotion();
+  const isMobile = useIsMobile();
   const sectionRef = useRef<HTMLElement>(null);
   const [stage, setStage] = useState(0);
 
   // drive the stage from scroll position: each step block is one viewport tall,
   // so the stage is simply how many viewport-heights we are into the section.
+  // Desktop only — the mobile branch plays itself and never attaches this.
   useEffect(() => {
-    if (reduce) return;
+    if (reduce || isMobile) return;
     let raf = 0;
     const compute = () => {
       raf = 0;
@@ -84,17 +171,18 @@ export function SectionOverview() {
       window.removeEventListener("resize", onScroll);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [reduce]);
+  }, [reduce, isMobile]);
 
   // turn on proximity snapping for the page while this section is mounted; only
   // the six step blocks below carry snap-align, so nothing else on the page snaps.
+  // Desktop only — never snap the mobile page.
   useEffect(() => {
-    if (reduce) return;
+    if (reduce || isMobile) return;
     const root = document.documentElement;
     const prev = root.style.scrollSnapType;
     root.style.scrollSnapType = "y proximity";
     return () => { root.style.scrollSnapType = prev; };
-  }, [reduce]);
+  }, [reduce, isMobile]);
 
   const headings = (active: number) => (
     <div className="relative max-w-3xl" style={{ minHeight: 224 }}>
@@ -128,6 +216,11 @@ export function SectionOverview() {
         </div>
       </section>
     );
+  }
+
+  // Mobile: a compact self-playing storyboard instead of the six-screen pin.
+  if (isMobile) {
+    return <OverviewMobile />;
   }
 
   return (

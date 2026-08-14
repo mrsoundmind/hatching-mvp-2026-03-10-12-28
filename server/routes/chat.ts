@@ -13,6 +13,7 @@ import { parseAction, stripActionBlocks, detectUserPermission } from "../ai/acti
 import { parseImperativeIntent, type ImperativeIntent } from "../ai/imperativeIntentParser.js";
 import { resolveMentionedAgent } from "../ai/mentionParser.js";
 import { applyTeammateToneGuard } from "../ai/responsePostProcessing.js";
+import { enforceCiteOrAdmit, flagUnsupportedClaims } from "../ai/citeGuard.js";
 import { personalityEngine } from "../ai/personalityEvolution.js";
 import { evaluateConductorDecision, buildRoleIdentity } from "../ai/conductor.js";
 import { evaluateSafetyScore, buildClarificationIntervention } from "../ai/safety.js";
@@ -431,8 +432,29 @@ export function registerChatRoutes(
   // Use manual upgrade routing so non-/ws upgrades (for example Vite HMR)
   // can pass through to other listeners instead of being rejected with 400.
   const wss = new WebSocketServer({ noServer: true });
+
+  // Security (Audit R1-8b): only allow WebSocket handshakes from an allowed Origin, so a
+  // cross-site page cannot open an authenticated socket (defense in depth on top of the
+  // SameSite=Lax session cookie). A missing Origin (non-browser clients) is allowed because
+  // the socket is still gated by session-cookie auth downstream.
+  const allowedWsOrigins = (process.env.ALLOWED_ORIGIN || '')
+    .split(',').map((o) => o.trim()).filter(Boolean);
+  const isAllowedWsOrigin = (origin?: string): boolean => {
+    if (!origin) return true;
+    if (allowedWsOrigins.includes(origin)) return true;
+    if (process.env.NODE_ENV !== 'production' && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+      return true;
+    }
+    return false;
+  };
+
   httpServer.on("upgrade", (req, socket, head) => {
     if (!req.url?.startsWith("/ws")) {
+      return;
+    }
+    if (!isAllowedWsOrigin(req.headers.origin)) {
+      socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
+      socket.destroy();
       return;
     }
     wss.handleUpgrade(req, socket, head, (ws) => {
@@ -530,8 +552,25 @@ export function registerChatRoutes(
     return newConversation;
   };
 
+  // Heartbeat sweep (Audit R1-7): ping every client every 30s; terminate any that missed the
+  // previous round (no pong), so dead / half-open sockets do not accumulate and slowly leak
+  // memory on a long-running single instance.
+  const wsHeartbeat = setInterval(() => {
+    wss.clients.forEach((client) => {
+      const c = client as any;
+      if (c.isAlive === false) { client.terminate(); return; }
+      c.isAlive = false;
+      try { client.ping(); } catch { /* socket already closing */ }
+    });
+  }, 30000);
+  wss.on('close', () => clearInterval(wsHeartbeat));
+
   wss.on('connection', async (rawWs: WebSocket, req) => {
     const ws = rawWs as AuthedWebSocket;
+    // Heartbeat (Audit R1-7): mark alive on connect and on every pong so the sweep above
+    // can distinguish live sockets from dead ones.
+    (ws as any).isAlive = true;
+    ws.on('pong', () => { (ws as any).isAlive = true; });
     const pendingMessages: Buffer[] = [];
     const queueMessage = (rawMessage: Buffer) => {
       pendingMessages.push(rawMessage);
@@ -2762,6 +2801,41 @@ export function registerChatRoutes(
                 reasons: toneGuard.reasons,
               },
             });
+          }
+
+          // ITL-0 GRND-01/02: enforce cite-or-admit on the STREAMED reply (the primary chat path, not
+          // just the non-streaming fallback). Strip fabricated citations against the sources actually
+          // retrieved this turn, and flag unsupported hard claims on an ungrounded turn. If the text
+          // changed, re-emit the corrected accumulatedContent (same pattern as the tone guard above), so
+          // the client sees the clean version and the stored message is clean. Gated by CITE_ENFORCE.
+          // Only enforce when we actually CAPTURED this turn's grounding (single-agent path sets
+          // llmMetadata.grounded via onMetadata). The multi-agent path returns a bare string and never
+          // plumbs sources, so llmMetadata stays null there; enforcing with an empty allow-list would
+          // strip every legitimate citation a sub-agent produced. When we have no grounding signal, skip.
+          const ragMeta = llmMetadata as any;
+          const hasGroundingMeta = ragMeta != null && typeof ragMeta.grounded === "boolean";
+          if ((process.env.CITE_ENFORCE ?? "on").toLowerCase() !== "off" && !isSafetyIntervention && hasGroundingMeta) {
+            try {
+              const ragSources: string[] = Array.isArray(ragMeta.ragSources) ? ragMeta.ragSources : [];
+              const grounded: boolean = ragMeta.grounded;
+              const citeGuard = enforceCiteOrAdmit(accumulatedContent || "", ragSources);
+              if (citeGuard.strippedCount > 0) {
+                accumulatedContent = citeGuard.text;
+                ws.send(JSON.stringify({
+                  type: "streaming_chunk",
+                  messageId: responseMessageId,
+                  chunk: "",
+                  accumulatedContent,
+                }));
+                console.warn(`[cite-guard] stripped ${citeGuard.strippedCount} fabricated citation(s) from a streamed reply`);
+              }
+              const claimFlags = flagUnsupportedClaims(accumulatedContent || "", grounded);
+              if (claimFlags.flagged) {
+                console.warn(`[claim-guard] unsupported factual claim on an ungrounded streamed turn (markers: ${claimFlags.markers.join(",")})`);
+              }
+            } catch (err) {
+              console.warn(`[cite-guard] skipped (guard error): ${(err as Error)?.message}`);
+            }
           }
 
           // ─── START PROJECT NAME AUTO-UPDATE DETECTION ──────────────────────────

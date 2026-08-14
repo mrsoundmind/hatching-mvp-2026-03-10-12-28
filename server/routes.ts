@@ -412,7 +412,11 @@ export async function registerRoutes(app: Express, sessionParser?: SessionParser
       }
 
       const updatedProfile = personalityEngine.adaptPersonalityFromFeedback(
-        agentId, userId, feedback, (messageContent as string) || '', (agentResponse as string) || '',
+        // LEARN-02: pass '' as the hint text here. On THIS endpoint `messageContent` is the user's own
+        // message, not a note ABOUT the reply, so it must not steer trait hints (that would misread words
+        // like "make it shorter" as a verbosity correction). The message-reactions caller passes the real
+        // feedback note instead. Empty text -> the safe Phase C baseline-anchored path.
+        agentId, userId, feedback, '', (agentResponse as string) || '',
         feedbackAgent.role ?? null // v2.2 Phase C: resolve correct role baseline for fresh profiles
       );
 

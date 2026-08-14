@@ -981,3 +981,16 @@
 .waitlister-preenter-fade {
   opacity: 0.001;
 }
+
+/* Accessibility: honor the OS reduced-motion setting globally. Makes CSS keyframe
+   animations and transitions effectively instant and non-repeating instead of looping,
+   without hiding any element (avoids the aggressive `animation: none` that breaks states).
+   Framer-motion JS loops are gated separately where present. (Audit R2-9b) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

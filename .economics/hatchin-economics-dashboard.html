@@ -1,0 +1,699 @@
+<meta charset="utf-8">
+<title>Hatchin Economics Dashboard</title>
+<style>
+  :root{
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --canvas:#ECF0F6;--surface:#FFFFFF;--surface-2:#F1F5FB;--side:#0E1A2E;--side-2:#182A44;
+    --ink:#14202E;--ink-2:#48566A;--ink-3:#7C8A9E;--line:#DBE1EC;--line-2:#E7EBF3;
+    --accent:#1E5FD8;--accent-ink:#163F8F;--accent-soft:#E2ECFB;--brass:#4B84D6;--brass-soft:#DCEAF9;
+    --good:#1E5FD8;--good-bg:#E2ECFB;--warn:#5A7286;--warn-bg:#E8ECF2;--bad:#C0392B;--bad-bg:#F7E1DD;
+    --side-ink:#B9C6D8;--side-ink-2:#74839A;--grad:linear-gradient(160deg,#2E6FE8,#1E5FD8 55%,#3B7BD9);--shadow:0 1px 2px rgba(20,40,80,.06),0 6px 18px rgba(20,40,80,.06);
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --canvas:#0B111C;--surface:#131C2A;--surface-2:#182334;--side:#080F1B;--side-2:#12203A;
+    --ink:#E7EDF5;--ink-2:#A4B2C4;--ink-3:#6F7E92;--line:#26313F;--line-2:#1E2836;
+    --accent:#5B9BFF;--accent-ink:#8CBBFF;--accent-soft:#152238;--brass:#4C86D6;--brass-soft:#152238;
+    --good:#5B9BFF;--good-bg:#152238;--warn:#8B9BAE;--warn-bg:#1D2736;--bad:#E27C64;--bad-bg:#2C1712;
+    --side-ink:#A9B8CC;--side-ink-2:#5F6E82;--grad:linear-gradient(160deg,#3E7EEC,#5B9BFF 55%,#4C86D6);--shadow:0 1px 2px rgba(0,0,0,.35),0 8px 22px rgba(0,0,0,.3);
+  }}
+  :root[data-theme="dark"]{
+    --canvas:#0B111C;--surface:#131C2A;--surface-2:#182334;--side:#080F1B;--side-2:#12203A;
+    --ink:#E7EDF5;--ink-2:#A4B2C4;--ink-3:#6F7E92;--line:#26313F;--line-2:#1E2836;
+    --accent:#5B9BFF;--accent-ink:#8CBBFF;--accent-soft:#152238;--brass:#4C86D6;--brass-soft:#152238;
+    --good:#5B9BFF;--good-bg:#152238;--warn:#8B9BAE;--warn-bg:#1D2736;--bad:#E27C64;--bad-bg:#2C1712;
+    --side-ink:#A9B8CC;--side-ink-2:#5F6E82;--grad:linear-gradient(160deg,#3E7EEC,#5B9BFF 55%,#4C86D6);--shadow:0 1px 2px rgba(0,0,0,.35),0 8px 22px rgba(0,0,0,.3);
+  }
+  :root[data-theme="light"]{
+    --canvas:#ECF0F6;--surface:#FFFFFF;--surface-2:#F1F5FB;--side:#0E1A2E;--side-2:#182A44;
+    --ink:#14202E;--ink-2:#48566A;--ink-3:#7C8A9E;--line:#DBE1EC;--line-2:#E7EBF3;
+    --accent:#1E5FD8;--accent-ink:#163F8F;--accent-soft:#E2ECFB;--brass:#4B84D6;--brass-soft:#DCEAF9;
+    --good:#1E5FD8;--good-bg:#E2ECFB;--warn:#5A7286;--warn-bg:#E8ECF2;--bad:#C0392B;--bad-bg:#F7E1DD;
+    --side-ink:#B9C6D8;--side-ink-2:#74839A;--grad:linear-gradient(160deg,#2E6FE8,#1E5FD8 55%,#3B7BD9);--shadow:0 1px 2px rgba(20,40,80,.06),0 6px 18px rgba(20,40,80,.06);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--canvas);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums;}
+  .rupee{color:var(--ink-3);font-family:var(--mono);font-weight:600;font-size:.86em;}
+  h1,h2,h3{margin:0;font-weight:700;letter-spacing:-.01em;}
+  a{color:var(--accent);}
+  .app{display:grid;grid-template-columns:236px minmax(0,1fr);}
+  @media(max-width:860px){.app{grid-template-columns:1fr;}}
+  .side{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;background:var(--side);padding:20px 14px;display:flex;flex-direction:column;gap:3px;}
+  @media(max-width:860px){.side{position:sticky;top:0;height:auto;flex-direction:row;overflow-x:auto;gap:6px;padding:10px 12px;z-index:20;}}
+  .brand{display:flex;align-items:center;gap:9px;padding:4px 10px 16px;}
+  @media(max-width:860px){.brand{padding:4px 8px;flex:0 0 auto;border-right:1px solid var(--side-2);margin-right:4px;}}
+  .brand .logo{width:30px;height:30px;border-radius:8px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:16px;}
+  .brand .bt{color:#fff;font-weight:700;font-size:14px;line-height:1.1;}.brand .bs{color:var(--side-ink-2);font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;}
+  .navlink{color:var(--side-ink);text-decoration:none;font-size:13px;font-weight:500;padding:8px 11px;border-radius:8px;display:flex;align-items:center;gap:9px;white-space:nowrap;}
+  .navlink:hover{background:var(--side-2);color:#fff;}.navlink .dot{width:6px;height:6px;border-radius:50%;background:var(--side-ink-2);flex:0 0 auto;}
+  .navsec{color:var(--side-ink-2);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;padding:14px 11px 5px;}
+  @media(max-width:860px){.navsec{display:none;}.brand .bs{display:none;}}
+  .main{min-width:0;}
+  .topbar{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--canvas) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:13px clamp(16px,3vw,30px);display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  @media(max-width:860px){.topbar{top:52px;}}
+  .topbar h1{font-size:clamp(16px,2.4vw,20px);}.topbar .tsub{font-size:12px;color:var(--ink-3);margin-top:1px;}
+  .chips{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
+  .chip{font-size:11.5px;font-weight:600;color:var(--ink-2);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 11px;}
+  .chip b{color:var(--accent);}.chip.warn{background:var(--warn-bg);border-color:transparent;color:var(--warn);}
+  .btn{font-size:12px;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:8px;padding:7px 13px;cursor:pointer;}
+  .btn.ghost{background:transparent;color:var(--ink-2);border:1px solid var(--line);}
+  .content{padding:clamp(16px,3vw,30px);display:flex;flex-direction:column;gap:clamp(24px,4vw,38px);}
+  section{scroll-margin-top:150px;}
+  .sh{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+  .sh h2{font-size:clamp(17px,2.4vw,22px);}.sh .k{font-size:12.5px;color:var(--ink-3);}
+  .tag{font-size:10px;font-weight:700;color:var(--brass);border:1px solid var(--brass);border-radius:5px;padding:1px 6px;letter-spacing:.03em;}
+  .live{font-size:10px;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:5px;padding:1px 6px;display:inline-flex;align-items:center;gap:5px;}
+  .live::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent);}
+  .note{font-size:13.5px;color:var(--ink-2);margin:0 0 14px;max-width:84ch;}.note b{color:var(--ink);}
+  .take{font-size:13px;color:var(--ink-3);margin:12px 0 0;max-width:90ch;line-height:1.5;}.take b{color:var(--ink-2);}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(184px,1fr));gap:13px;}
+  .kpi{background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:16px 17px;box-shadow:var(--shadow);}
+  .kpi .kl{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-3);}
+  .kpi .kv{font-family:var(--mono);font-size:25px;font-weight:700;line-height:1.1;margin-top:5px;}
+  .kpi .kv.pos{color:var(--good);}.kpi .kv.br{color:var(--brass);}.kpi .kv.neg{color:var(--bad);}
+  .kpi .ki{font-family:var(--mono);font-size:12.5px;color:var(--ink-3);font-weight:600;}
+  .kpi .kd{font-size:12px;color:var(--ink-2);margin-top:6px;line-height:1.35;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+  @media(max-width:760px){.grid2,.grid3{grid-template-columns:1fr;}}
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:15px;padding:20px;box-shadow:var(--shadow);}
+  .panel h3{font-size:15px;margin-bottom:3px;}.panel .ph{font-size:12px;color:var(--ink-3);margin-bottom:13px;}
+  .panel ul{margin:0;padding-left:17px;font-size:13.5px;color:var(--ink-2);}.panel li{margin:6px 0;}.panel li b{color:var(--ink);}
+  .rc{background:var(--surface);border:1px solid var(--line);border-radius:15px;padding:18px;box-shadow:var(--shadow);}
+  .rc .rt{display:flex;justify-content:space-between;align-items:baseline;}.rc .rt h3{font-size:16px;}.rc .rp{font-family:var(--mono);font-weight:700;color:var(--accent);font-size:17px;}
+  .rc .rsub{font-size:11.5px;color:var(--ink-3);margin-top:1px;}
+  .rc .rr{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-top:1px dotted var(--line);color:var(--ink-2);gap:8px;margin-top:10px;}
+  .rc .rr:nth-of-type(1){margin-top:12px;}.rc .rr b{font-family:var(--mono);color:var(--ink);white-space:nowrap;}
+  .pill{display:inline-flex;align-items:center;gap:6px;margin-top:12px;font-weight:700;font-size:12.5px;padding:5px 11px;border-radius:999px;}
+  .pill.good{background:var(--good-bg);color:var(--good);}.pill.warn{background:var(--warn-bg);color:var(--warn);}.pill.bad{background:var(--bad-bg);color:var(--bad);}
+  .tw{overflow-x:auto;border:1px solid var(--line);border-radius:13px;background:var(--surface);box-shadow:var(--shadow);}
+  table{border-collapse:collapse;width:100%;min-width:600px;font-size:13px;}
+  th,td{padding:10px 13px;text-align:right;border-bottom:1px solid var(--line-2);white-space:nowrap;}
+  th:first-child,td:first-child{text-align:left;}
+  thead th{background:var(--surface-2);font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);font-weight:700;}
+  tbody td{font-family:var(--mono);color:var(--ink);}tbody td:first-child{font-family:var(--sans);font-weight:600;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody td .who{display:block;font-family:var(--sans);font-weight:400;font-size:11.5px;color:var(--ink-3);white-space:normal;max-width:26ch;margin-top:1px;}
+  tbody td .rupee{font-size:11px;}tr.hl td{background:var(--accent-soft);}tr.danger td{background:var(--bad-bg);}tr.tot td{font-weight:700;background:var(--surface-2);}
+  .v-good{color:var(--good);font-weight:700;font-family:var(--sans)!important;}.v-bad{color:var(--bad);font-weight:700;font-family:var(--sans)!important;}.v-warn{color:var(--warn);font-weight:700;font-family:var(--sans)!important;}
+  .yn-no{color:var(--good);font-weight:700;}.yn-yes{color:var(--warn);font-weight:700;}
+  .bars{display:flex;flex-direction:column;gap:11px;}
+  .bar{display:grid;grid-template-columns:90px 1fr auto;align-items:center;gap:12px;}
+  .bar .bl{font-size:12.5px;font-weight:600;}.bar .bt{height:24px;background:var(--surface-2);border-radius:6px;overflow:hidden;display:flex;}
+  .bar .seg{height:100%;}.seg.chat{background:var(--accent);}.seg.auto{background:var(--brass);}.seg.rest{background:var(--ink-3);opacity:.5;}
+  .bar .bv{font-family:var(--mono);font-size:12.5px;font-weight:600;min-width:92px;text-align:right;}
+  .legend{display:flex;gap:15px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin-top:11px;}.legend span{display:inline-flex;align-items:center;gap:6px;}.sw{width:11px;height:11px;border-radius:3px;}
+  .dflow{display:flex;flex-direction:column;gap:15px;}
+  .dc .dh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;gap:10px;flex-wrap:wrap;}
+  .dc .dh b{font-size:14px;}.dc .dh .pay{font-family:var(--mono);font-size:12.5px;color:var(--ink-3);}
+  .dt{height:30px;border-radius:7px;overflow:hidden;display:flex;font-size:10.5px;font-weight:700;}
+  .dt div{display:flex;align-items:center;justify-content:center;color:#fff;overflow:hidden;min-width:0;}
+  .dt .tax{background:var(--ink-3);}.dt .cost{background:var(--brass);}.dt .prof{background:var(--good);}
+  .df{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:12px;margin-top:6px;}.df .a{color:var(--ink-3);}.df .b{color:var(--brass);font-weight:600;}.df .c{color:var(--good);font-weight:700;}
+  .chartbox{overflow-x:auto;}.chartbox svg{display:block;min-width:480px;width:100%;height:auto;}
+  .rowline{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dotted var(--line);font-size:13.5px;}.rowline:last-child{border-bottom:none;}.rowline b{font-family:var(--mono);}
+  .su{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:12px 14px;box-shadow:var(--shadow);}
+  .sure{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:11px;margin-bottom:14px;}
+  .su .h{font-weight:700;font-size:12.5px;}.su.fact .h{color:var(--good);}.su.math .h{color:var(--accent);}.su.est .h{color:var(--bad);}
+  .su .x{font-size:12px;color:var(--ink-2);margin-top:2px;line-height:1.4;}
+  .controls{background:var(--surface);border:1px solid var(--line);border-radius:15px;box-shadow:var(--shadow);overflow:hidden;}
+  .controls .chd{display:flex;justify-content:space-between;align-items:center;padding:15px 20px;background:var(--surface-2);border-bottom:1px solid var(--line);}
+  .controls .chd h3{font-size:15px;}.controls .chd .cs{font-size:12px;color:var(--ink-3);}
+  .cbody{padding:18px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px 18px;}
+  .cgrp{grid-column:1/-1;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-top:4px;border-top:1px solid var(--line-2);padding-top:12px;}
+  .cgrp:first-child{border-top:none;margin-top:0;padding-top:0;}
+  .field{display:flex;flex-direction:column;gap:4px;}
+  .field label{font-size:11.5px;color:var(--ink-2);font-weight:600;}.field .u{color:var(--ink-3);font-weight:400;}
+  .field input{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;}
+  .field input:focus{outline:2px solid var(--accent);border-color:var(--accent);}
+  .goal{display:grid;grid-template-columns:26px 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--line-2);}.goal:first-child{border-top:none;}
+  .foot{font-size:12px;color:var(--ink-3);border-top:1px solid var(--line);padding-top:18px;line-height:1.6;}.foot b{color:var(--ink-2);}
+</style>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand"><div class="logo">🐣</div><div><div class="bt">Hatchin</div><div class="bs">Economics</div></div></div>
+    <div class="navsec">Summary</div>
+    <a class="navlink" href="#overview"><span class="dot"></span>Overview</a>
+    <a class="navlink" href="#stack"><span class="dot"></span>AI stack</a>
+    <div class="navsec">Costs</div>
+    <a class="navlink" href="#cost"><span class="dot"></span>Cost per user</a>
+    <a class="navlink" href="#running"><span class="dot"></span>Running costs</a>
+    <a class="navlink" href="#dollar"><span class="dot"></span>Where $ goes</a>
+    <a class="navlink" href="#cap"><span class="dot"></span>Usage cap</a>
+    <div class="navsec">Revenue</div>
+    <a class="navlink" href="#pricing"><span class="dot"></span>Pricing by region</a>
+    <a class="navlink" href="#personas"><span class="dot"></span>5 example users</a>
+    <a class="navlink" href="#companies"><span class="dot"></span>5 company sizes</a>
+    <div class="navsec">The business</div>
+    <a class="navlink" href="#pnl"><span class="dot"></span>P&amp;L calculator</a>
+    <a class="navlink" href="#growth"><span class="dot"></span>Growth plan</a>
+    <a class="navlink" href="#sensitivity"><span class="dot"></span>Worse / better</a>
+    <a class="navlink" href="#runway"><span class="dot"></span>Runway &amp; break-even</a>
+    <a class="navlink" href="#cac"><span class="dot"></span>CAC &amp; LTV</a>
+    <a class="navlink" href="#metrics"><span class="dot"></span>Key metrics</a>
+    <a class="navlink" href="#opex"><span class="dot"></span>Team cost &amp; tax</a>
+    <a class="navlink" href="#market"><span class="dot"></span>Market size</a>
+    <div class="navsec">Strategy</div>
+    <a class="navlink" href="#council"><span class="dot"></span>The pricing debate</a>
+    <a class="navlink" href="#plan"><span class="dot"></span>Current plan</a>
+    <a class="navlink" href="#goals"><span class="dot"></span>Goals</a>
+    <a class="navlink" href="#evidence"><span class="dot"></span>How sure we are</a>
+    <a class="navlink" href="#sources"><span class="dot"></span>Sources &amp; citations</a>
+    <a class="navlink" href="#controls"><span class="dot"></span>Model controls</a>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div><h1>Economics Dashboard</h1><div class="tsub">Interactive and detailed. Edit the model controls at the bottom and every number updates.</div></div>
+      <div class="chips"><span class="chip">FX <b>₹86 = $1</b></span><span class="chip warn">Pre-revenue projection</span></div>
+    </div>
+    <div class="content">
+
+      <section id="overview">
+        <div class="sh"><h2>Overview</h2><span class="live">LIVE</span><span class="k">the numbers that decide everything</span></div>
+        <div class="kpis">
+          <div class="kpi"><div class="kl">Cost to serve a paid user</div><div class="kv" id="k-cost">$3.22</div><div class="ki" id="k-cost-r">₹277 / month</div><div class="kd" id="k-cost-d"></div></div>
+          <div class="kpi"><div class="kl">You keep per US sale</div><div class="kv pos" id="k-margin">83%</div><div class="ki" id="k-margin-r"></div><div class="kd">Per sale, before the shared bill. Net depends on scale (see P&amp;L).</div></div>
+          <div class="kpi"><div class="kl">One company is worth</div><div class="kv br" id="k-company">18&times;</div><div class="ki">a single solo user</div><div class="kd">Companies use more and stay longer.</div></div>
+          <div class="kpi"><div class="kl">To break even you need</div><div class="kv" id="k-be">~11</div><div class="ki" id="k-be-r"></div><div class="kd">to cover the fixed monthly cost.</div></div>
+          <div class="kpi"><div class="kl">Profit at your scenario</div><div class="kv pos" id="k-op">+$616</div><div class="ki" id="k-op-r"></div><div class="kd" id="k-op-d"></div></div>
+          <div class="kpi"><div class="kl">Runway at your salary</div><div class="kv pos" id="k-runway">147 mo</div><div class="ki">on $25k (₹21.5L) cash</div><div class="kd">Land companies, do not save cash.</div></div>
+        </div>
+      </section>
+
+      <section id="stack">
+        <div class="sh"><h2>The AI stack</h2><span class="k">from the code's real COST_TABLE</span></div>
+        <div class="grid2">
+          <div class="panel"><h3>What runs what</h3><div class="ph">verified in server/llm and server/billing</div>
+            <div class="tw" style="box-shadow:none;border:none"><table style="min-width:0"><thead><tr><th>Job</th><th>Model</th><th>Cost /1M</th></tr></thead><tbody>
+              <tr><td>Simple messages</td><td>Llama 3.3-70B <span class="who">open source, Meta</span></td><td class="v-good">free</td></tr>
+              <tr><td>Standard &amp; complex chat</td><td>DeepSeek V4-Flash</td><td>$0.14 / $0.28 <span class="rupee">₹12 / ₹24</span></td></tr>
+              <tr><td>Background work</td><td>DeepSeek V4-Pro</td><td>$0.44 / $0.87 <span class="rupee">₹38 / ₹75</span></td></tr>
+              <tr><td>Fallback</td><td>Gemini 2.5-Flash</td><td>$0.15 / $0.60 <span class="rupee">₹13 / ₹52</span></td></tr>
+            </tbody></table></div>
+          </div>
+          <div class="panel"><h3>Why chatting is nearly free</h3><ul>
+            <li><b>Simple messages</b> run on Meta's open-source <b>Llama 3.3-70B</b>, about nothing per message (self-host or free tier).</li>
+            <li><b>Real conversation</b> runs on <b>DeepSeek Flash</b> with the prompt cached (~98% cheaper), about <b>$0.0004 (₹0.03)</b> a message.</li>
+            <li>1 million tokens ≈ 750,000 words ≈ 300 messages. <b>$1 (₹86) covers ~2,000 messages.</b></li>
+            <li>One risk: DeepSeek is a single provider on promo pricing. Gemini and Llama stay as fallbacks.</li>
+          </ul></div>
+        </div>
+      </section>
+
+      <section id="cost">
+        <div class="sh"><h2>What one user costs you</h2><span class="live">LIVE</span><span class="k">per month, per user, fixed bill included</span></div>
+        <p class="note" style="margin:0 0 14px">Every user costs <b>two things</b>: what they personally use (chat and tasks), plus <b>their share of the one fixed monthly bill</b> (servers and tools) split across everyone. With few users that share is big; as users grow it shrinks toward nothing. The figures below fold both together at your current scale, so nothing is hidden.</p>
+        <div class="grid2">
+          <div class="panel"><h3>Cost to serve, by user type</h3><div class="ph">their own use, plus their share of the bill</div>
+            <div class="bars">
+              <div class="bar"><span class="bl">Free user</span><span class="bt"><span class="seg chat" style="width:30%"></span><span class="seg rest" style="width:70%"></span></span><span class="bv" id="bv-free">$0.10 <span class="rupee">₹9</span></span></div>
+              <div class="bar"><span class="bl">Paid user</span><span class="bt"><span class="seg chat" id="bw-p-chat" style="width:8%"></span><span class="seg auto" id="bw-p-auto" style="width:42%"></span><span class="seg rest" style="width:50%"></span></span><span class="bv" id="bv-pro">$3.22 <span class="rupee">₹277</span></span></div>
+              <div class="bar"><span class="bl">Company seat</span><span class="bt"><span class="seg chat" style="width:8%"></span><span class="seg auto" style="width:46%"></span><span class="seg rest" style="width:46%"></span></span><span class="bv" id="bv-b2b">$5.90 <span class="rupee">₹507</span></span></div>
+            </div>
+            <div class="legend"><span><i class="sw" style="background:var(--accent)"></i>chat</span><span><i class="sw" style="background:var(--brass)"></i>background work</span><span><i class="sw" style="background:var(--ink-3);opacity:.5"></i>fees, servers, support, bill share</span></div>
+          </div>
+          <div class="panel"><h3>The paid-user cost, itemized</h3><div class="ph">what they use, plus their share of the bill</div>
+            <div class="rowline"><span>AI, chatting</span><b id="it-chat">$0.27</b></div>
+            <div class="rowline"><span>AI, background work</span><b id="it-auto">$1.35</b></div>
+            <div class="rowline"><span>Card fee (Stripe)</span><b>$0.85 <span class="rupee">₹73</span></b></div>
+            <div class="rowline"><span>Servers and storage</span><b>$0.10 <span class="rupee">₹9</span></b></div>
+            <div class="rowline"><span>Support time</span><b>$0.50 <span class="rupee">₹43</span></b></div>
+            <div class="rowline"><span>Share of the fixed bill <span style="color:var(--ink-3);font-size:11px" id="it-fixed-note"></span></span><b id="it-fixed">$0.21</b></div>
+            <div class="rowline" style="border-top:2px solid var(--line);font-weight:700;padding-top:9px"><span>Total, fully loaded</span><b id="it-total">$3.28 <span class="rupee">₹282</span></b></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="running">
+        <div class="sh"><h2>Running costs, to keep it live</h2><span class="live">LIVE</span><span class="k">servers, domain, tools, maintenance, and it scales with users</span></div>
+        <p class="note">These keep the whole thing running whether you have 1 user or 1,000, separate from the per-user AI and fees above. The table below is the base bill at launch scale (about 100 to 1,000 users). It is <b>not flat</b>: as users grow, compute, database and email step up. The live figure and scaling table under it show the real curve, and this is what feeds the P&amp;L, runway and break-even.</p>
+        <div class="tw"><table>
+          <thead><tr><th>What it is</th><th>$ / mo</th><th>₹ / mo</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td>Database (Supabase Pro)</td><td>$25</td><td>₹2,150</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-3)">Stores data, logins, files</td></tr>
+            <tr><td>Backend hosting (Fly.io / Render)</td><td>$15</td><td>₹1,290</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-3)">Runs the server behind the app</td></tr>
+            <tr><td>Domain name</td><td>$2</td><td>₹172</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-3)">Your web address, ~$18 a year</td></tr>
+            <tr><td>Transactional email (Resend)</td><td>$8</td><td>₹688</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-3)">Signup, reset, notification emails</td></tr>
+            <tr><td>Marketing email (Loops)</td><td>$30</td><td>₹2,580</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-3)">Newsletters, onboarding sequences</td></tr>
+            <tr><td>Error monitoring (Sentry)</td><td>$26</td><td>₹2,236</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-3)">Catches crashes before users complain</td></tr>
+            <tr><td>Uptime monitoring</td><td>$7</td><td>₹602</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-3)">Alerts you if the site goes down</td></tr>
+            <tr><td>Product analytics (PostHog)</td><td>$0</td><td>₹0</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-3)">Free tier at this size</td></tr>
+            <tr><td>Backups &amp; object storage</td><td>$8</td><td>₹688</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-3)">A safety net for your data</td></tr>
+            <tr><td>AI coding tools (Claude, Cursor)</td><td>$20</td><td>₹1,720</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-3)">Building and maintaining the app</td></tr>
+            <tr><td>LLM dev &amp; testing spend</td><td>$20</td><td>₹1,720</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-3)">Your own AI usage while building</td></tr>
+            <tr><td>Misc (SSL, CDN, security)</td><td>$9</td><td>₹774</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-3)">Certificates, content delivery</td></tr>
+            <tr class="tot"><td>Total to keep it live</td><td>$170</td><td>₹14,620</td><td style="font-family:var(--sans);white-space:normal" class="v-good">base at launch scale (~100 to 1,000 users)</td></tr>
+          </tbody>
+        </table></div>
+        <div class="panel" style="margin-top:16px">
+          <h3 style="font-size:15px">At your current <span id="run-sig" style="color:var(--accent)">1,000</span> signups, infra runs <span id="run-scaled" style="color:var(--accent);font-family:var(--mono)">$210</span> <span class="rupee" id="run-scaled-r">₹18,060</span> a month</h3>
+          <div class="ph">move the "Signups" control at the bottom and this, plus the whole P&amp;L, recalculates</div>
+          <div class="tw" style="box-shadow:none;border:none;margin-top:6px"><table style="min-width:0">
+            <thead><tr><th>Signups</th><th>Infra $/mo</th><th>Infra ₹/mo</th><th>$/signup</th><th>What steps up</th></tr></thead>
+            <tbody id="scaleBody"></tbody>
+          </table></div>
+        </div>
+        <p class="take"><b>Why it is sub-linear:</b> 10x the users from 10k to 100k costs about 5x the infra, not 10x. Compute, database and email climb; domain, uptime and your own dev usage barely move. That is why margin widens toward ~80% at scale. Team salary, when you hire, is a separate layer (see Team cost and tax).</p>
+      </section>
+
+      <section id="dollar">
+        <div class="sh"><h2>Where every dollar goes</h2><span class="live">LIVE</span><span class="k">tax, cost, and the profit you keep</span></div>
+        <div class="panel">
+          <div class="legend" style="margin:0 0 14px"><span><i class="sw" style="background:var(--ink-3)"></i>tax</span><span><i class="sw" style="background:var(--brass)"></i>cost to run</span><span><i class="sw" style="background:var(--good)"></i>your profit</span></div>
+          <div class="dflow" id="dflow"></div>
+        </div>
+      </section>
+
+      <section id="cap">
+        <div class="sh"><h2>The usage cap</h2><span class="live">LIVE</span><span class="k">a token budget that refills, like Claude</span></div>
+        <p class="note">Background work draws from a budget that refills <b>every 5 hours</b>, with a <b>weekly ceiling</b>. Because one task can cost 8&times; another, the cap is a <b>token budget</b>, not a task count, so the worst case holds whatever the task mix. Below is that worst case per plan.</p>
+        <div class="tw"><table>
+          <thead><tr><th>Plan</th><th>~Tasks/day</th><th>Weekly cap</th><th>Most it can cost/mo</th><th>Revenue (after tax)</th><th>Worst margin</th><th>Normal margin</th></tr></thead>
+          <tbody id="captbody"></tbody>
+          <tbody><tr class="danger"><td>India user with NO cap</td><td colspan="2" style="text-align:center" class="v-bad">runs it all day</td><td>$14.89 <span class="rupee">₹1,280</span></td><td id="cap-in-rev">$6.89</td><td class="v-bad">a loss</td><td class="v-bad">catastrophic</td></tr></tbody>
+        </table></div>
+        <div class="grid2" style="margin-top:16px">
+          <div class="panel"><h3>What a token is</h3><ul>
+            <li><b>1 million tokens</b> ≈ 750,000 words ≈ 10 novels ≈ 300 messages.</li>
+            <li><b>$1 (₹86)</b> of AI covers roughly 2,000 chat messages.</li>
+          </ul></div>
+          <div class="panel"><h3>One task: $0.009 is an average</h3>
+            <div class="rowline"><span>Light: a quick answer</span><b>$0.003 <span class="rupee">₹0.24</span></b></div>
+            <div class="rowline"><span>Typical: a plan or short doc</span><b>$0.009 <span class="rupee">₹0.77</span></b></div>
+            <div class="rowline"><span>Heavy: a full document</span><b>$0.023 <span class="rupee">₹1.94</span></b></div>
+          </div>
+        </div>
+        <p class="take">Without a cap, one heavy India user costs $14.89 (₹1,280) against a few hundred rupees of revenue. With the weekly cap the worst is fixed, and every plan stays profitable. Hitting the cap is a natural moment to sell a <b>$5 (₹430) top-up</b> or an upgrade.</p>
+      </section>
+
+      <section id="pricing">
+        <div class="sh"><h2>Pricing and profit, by region</h2><span class="live">LIVE</span><span class="k">same dollar cost, three wallets</span></div>
+        <div class="grid3">
+          <div class="rc"><div class="rt"><h3>United States</h3><span class="rp" id="p-us">$19</span></div><div class="rsub">a month</div>
+            <div class="rr"><span>Revenue after tax</span><b id="p-us-k">$19</b></div>
+            <div class="rr"><span>Your profit</span><b id="p-us-c">$15.78</b></div>
+            <span class="pill good" id="p-us-m">● 83% margin</span></div>
+          <div class="rc"><div class="rt"><h3>United Kingdom</h3><span class="rp" id="p-uk">£15</span></div><div class="rsub">VAT included</div>
+            <div class="rr"><span>Revenue after tax</span><b id="p-uk-k">$15.88</b></div>
+            <div class="rr"><span>Your profit</span><b id="p-uk-c">$12.66</b></div>
+            <span class="pill good" id="p-uk-m">● 80% margin</span></div>
+          <div class="rc"><div class="rt"><h3>India</h3><span class="rp" id="p-in">₹699</span></div><div class="rsub">GST included</div>
+            <div class="rr"><span>Revenue after tax</span><b id="p-in-k">$6.89</b></div>
+            <div class="rr"><span>Your profit</span><b id="p-in-c">$3.67</b></div>
+            <span class="pill warn" id="p-in-m">● 53% margin</span></div>
+        </div>
+        <div class="panel" style="margin-top:16px"><h3>The India cliff</h3><div class="ph" id="cliff-ph">below about ₹325 a month you lose money on every subscriber</div>
+          <div class="chartbox"><svg id="cliff" viewBox="0 0 600 268" role="img" aria-label="India margin versus price"></svg></div>
+        </div>
+      </section>
+
+      <section id="personas">
+        <div class="sh"><h2>Five example users, run through the cap</h2><span class="live">LIVE</span><span class="k">illustrative, you have no paid customers yet</span></div>
+        <p class="note">These are <b>made-up example users, not real customers.</b> Hatchin is pre-revenue, so this shows how different people <b>would</b> behave once they sign up. Change the controls and every row updates.</p>
+        <div class="tw"><table><thead><tr><th>Example user</th><th>Plan</th><th>Tasks/day</th><th>Hits cap?</th><th>Would cost</th><th>Would profit</th><th>Margin</th></tr></thead><tbody id="ptbody"></tbody></table></div>
+      </section>
+
+      <section id="companies">
+        <div class="sh"><h2>Five company sizes</h2><span class="live">LIVE</span><span class="k">selling to whole teams, per seat</span></div>
+        <div class="tw"><table><thead><tr><th>Company</th><th>Seats</th><th>They pay/mo</th><th>Costs you/mo</th><th>You profit/mo</th><th>Margin</th><th>Worth over time</th></tr></thead><tbody id="ctbody"></tbody></table></div>
+        <p class="take">Margin holds around 84% at every size, and lifetime value climbs fast. Companies spend company money, use more, and stay far longer. This is the real revenue engine.</p>
+      </section>
+
+      <section id="pnl">
+        <div class="sh"><h2>P&amp;L calculator</h2><span class="live">LIVE</span><span class="k">driven by signups, conversion and companies in the controls</span></div>
+        <div class="kpis">
+          <div class="kpi"><div class="kl">Paying customers</div><div class="kv" id="pl-paid">30</div><div class="ki" id="pl-free">970 free</div></div>
+          <div class="kpi"><div class="kl">Monthly revenue</div><div class="kv" id="pl-mrr">$1,072</div><div class="ki" id="pl-arr"></div></div>
+          <div class="kpi"><div class="kl">Gross margin</div><div class="kv pos" id="pl-gm">72%</div><div class="ki">kept after cost to serve</div></div>
+          <div class="kpi"><div class="kl">Operating profit</div><div class="kv pos" id="pl-op">+$616</div><div class="ki" id="pl-op-r"></div></div>
+        </div>
+      </section>
+
+      <section id="growth">
+        <div class="sh"><h2>Growth plan</h2><span class="k">one realistic path over 18 months (a plan, not a promise)</span></div>
+        <div class="panel"><h3>Monthly income (MRR) building over 18 months</h3><div class="ph">covers its own running cost by quarter 2</div>
+          <div class="chartbox"><svg viewBox="0 0 600 240" role="img" aria-label="Monthly income grows from 99 to 10,750 over six quarters.">
+            <line x1="48" y1="210" x2="580" y2="210" stroke="var(--line)"></line>
+            <g font-family="var(--mono)" font-size="11" fill="var(--ink-2)" text-anchor="middle" font-weight="600">
+              <rect x="60" y="206" width="54" height="4" rx="2" fill="var(--accent)"></rect><text x="87" y="199">$99</text>
+              <rect x="145" y="200" width="54" height="10" rx="2" fill="var(--accent)"></rect><text x="172" y="193">$587</text>
+              <rect x="230" y="182" width="54" height="28" rx="2" fill="var(--accent)"></rect><text x="257" y="175">$1,612</text>
+              <rect x="315" y="155" width="54" height="55" rx="2" fill="var(--accent)"></rect><text x="342" y="148">$3,225</text>
+              <rect x="400" y="100" width="54" height="110" rx="2" fill="var(--accent)"></rect><text x="427" y="93">$6,450</text>
+              <rect x="485" y="28" width="54" height="182" rx="3" fill="var(--brass)"></rect><text x="512" y="21" fill="var(--brass)">$10,750</text>
+            </g>
+            <g font-family="var(--sans)" font-size="11" fill="var(--ink-3)" text-anchor="middle"><text x="87" y="226">Q1</text><text x="172" y="226">Q2</text><text x="257" y="226">Q3</text><text x="342" y="226">Q4</text><text x="427" y="226">Q5</text><text x="512" y="226">Q6</text></g>
+          </svg></div>
+          <p class="take">By quarter 6 that is a <b>$129,000 (₹1.1 crore) a year</b> run rate, still climbing. It rests on ~<b>550 signups a month</b> (launch, then referrals and partnerships, no paid ads), <b>3 in 100 pay</b>, and about <b>one company a month</b>. These are the plan, the least certain part.</p>
+        </div>
+      </section>
+
+      <section id="sensitivity">
+        <div class="sh"><h2>Worse or better</h2><span class="k">the honest range, at 10,000 signups</span></div>
+        <div class="tw"><table>
+          <thead><tr><th>What changes</th><th style="color:var(--warn)">Worse</th><th>Base plan</th><th style="color:var(--good)">Better</th></tr></thead>
+          <tbody>
+            <tr><td>Free users who pay</td><td style="color:var(--warn)">2 in 100</td><td>3 in 100</td><td style="color:var(--good)">5 in 100</td></tr>
+            <tr><td>AI price vs today</td><td style="color:var(--warn)">2x higher</td><td>same</td><td style="color:var(--good)">30% lower</td></tr>
+            <tr><td>Companies signed</td><td style="color:var(--warn)">12</td><td>20</td><td style="color:var(--good)">30</td></tr>
+            <tr class="hl"><td>Gross profit each month</td><td style="color:var(--warn)">$3,198 <span class="rupee">₹2.75L</span></td><td>$7,586 <span class="rupee">₹6.5L</span></td><td style="color:var(--good)">$13,268 <span class="rupee">₹11.4L</span></td></tr>
+          </tbody>
+        </table></div>
+        <p class="take"><b>Even the worse case still makes money.</b> It is hard to make Hatchin lose money at scale, because the cost of running it is so low.</p>
+      </section>
+
+      <section id="runway">
+        <div class="sh"><h2>Runway and break-even</h2><span class="live">LIVE</span><span class="k">you will not run out of cash</span></div>
+        <div class="grid2">
+          <div class="panel"><h3>Runway</h3><div class="ph" id="rw-ph">burn is $170 (₹14,620) a month at $0 salary</div><ul>
+            <li id="rw-1"></li>
+            <li id="rw-2"></li>
+            <li>The lever is not cutting cost, it is <b>closing companies</b>.</li>
+          </ul></div>
+          <div class="panel"><h3>Break-even</h3><div class="ph">to cover the fixed burn</div><ul>
+            <li id="be-1"></li>
+            <li>Crossed by quarter 2 in the growth plan.</li>
+            <li>Add a founder salary or GPU cost in the controls to see it rise.</li>
+          </ul></div>
+        </div>
+      </section>
+
+      <section id="cac">
+        <div class="sh"><h2>How you win customers</h2><span class="k">cost to acquire vs lifetime value</span></div>
+        <div class="tw"><table>
+          <thead><tr><th>Who, and how</th><th>Worth (LTV)</th><th>Cost to win</th><th>Return</th><th>Verdict</th></tr></thead>
+          <tbody>
+            <tr><td>Company, sales-led (15 seats)</td><td>$13,446 <span class="rupee">₹11.6L</span></td><td>$1,200 <span class="rupee">₹1.03L</span></td><td>11x</td><td class="v-good">Build this</td></tr>
+            <tr><td>Company, self-serve</td><td>$9,628 <span class="rupee">₹8.3L</span></td><td>$600 <span class="rupee">₹51,600</span></td><td>16x</td><td class="v-good">Excellent</td></tr>
+            <tr><td>US solo, organic / partners</td><td>$209 <span class="rupee">₹17,974</span></td><td>$50 <span class="rupee">₹4,300</span></td><td>4.2x</td><td class="v-good">Healthy</td></tr>
+            <tr><td>India solo, organic</td><td>$41 <span class="rupee">₹3,526</span></td><td>$25 <span class="rupee">₹2,150</span></td><td>1.6x</td><td class="v-warn">Thin, volume</td></tr>
+            <tr><td>US solo, paid ads</td><td>$209 <span class="rupee">₹17,974</span></td><td>$200 <span class="rupee">₹17,200</span></td><td>1.0x</td><td class="v-bad">Avoid</td></tr>
+            <tr><td>India solo, paid ads</td><td>$41 <span class="rupee">₹3,526</span></td><td>$150 <span class="rupee">₹12,900</span></td><td>0.3x</td><td class="v-bad">Never</td></tr>
+          </tbody>
+        </table></div>
+        <p class="take"><b>Companies and organic/partnership channels win; paid ads lose</b>, especially in India. Partnerships bring a customer for ~$40 (₹3,440) vs $150 to $400 for ads. Start with referral and affiliate loops.</p>
+      </section>
+
+      <section id="metrics">
+        <div class="sh"><h2>Key metrics</h2><span class="k">the good, and the honest weakness</span></div>
+        <div class="kpis">
+          <div class="kpi"><div class="kl">Gross margin</div><div class="kv pos">~80%</div><div class="kd">Strong for software.</div></div>
+          <div class="kpi"><div class="kl">Best LTV to CAC</div><div class="kv br">16&times;</div><div class="kd">On self-serve companies.</div></div>
+          <div class="kpi"><div class="kl">CAC payback</div><div class="kv pos">~3 mo</div><div class="kd">Cost of a customer earned back fast.</div></div>
+          <div class="kpi"><div class="kl">Solo yearly retention</div><div class="kv" style="color:var(--warn)">~48%</div><div class="kd">The weak spot. Companies keep ~90%.</div></div>
+        </div>
+        <p class="take"><b>The honest weakness:</b> individuals churn fast, only about half stay a year. Normal for a self-serve tool, but it is why companies matter, and why lifting solo retention (annual plans, onboarding) is the top priority.</p>
+      </section>
+
+      <section id="opex">
+        <div class="sh"><h2>Team cost and tax</h2><span class="k">the real future cost, at 10,000 signups</span></div>
+        <div class="tw"><table>
+          <thead><tr><th>Line</th><th>Lean (solo)</th><th>Small team</th><th>Growth team</th></tr></thead>
+          <tbody>
+            <tr><td>Team + fixed cost / mo</td><td>$850 <span class="rupee">₹73,100</span></td><td>$6,850 <span class="rupee">₹5.9L</span></td><td>$22,850 <span class="rupee">₹19.7L</span></td></tr>
+            <tr><td>Operating profit / mo</td><td>$11,163</td><td>$5,163</td><td class="v-bad">&minus;$10,837</td></tr>
+            <tr><td>Corporate tax (25%)</td><td>$2,791</td><td>$1,291</td><td>$0</td></tr>
+            <tr class="tot"><td>Net profit / mo</td><td class="v-good">$8,372 <span class="rupee">₹7.2L</span></td><td class="v-good">$3,872 <span class="rupee">₹3.3L</span></td><td class="v-bad">&minus;$10,837 <span class="rupee">&minus;₹9.3L</span></td></tr>
+          </tbody>
+        </table></div>
+        <p class="take">At 10,000 signups the infrastructure alone is about $850 (₹73,100), the scaled figure, not the $170 launch bill. Run lean at no salary and it is still very profitable and pays tax. Hire a full team to grow faster and you run a planned loss, an investment, not a failure. Both are normal.</p>
+      </section>
+
+      <section id="market">
+        <div class="sh"><h2>Market size</h2><span class="k">rough, clearly labelled</span></div>
+        <div class="kpis">
+          <div class="kpi"><div class="kl">Reachable customers</div><div class="kv">~10M</div><div class="kd">US, UK, India and similar, who pay for tools.</div></div>
+          <div class="kpi"><div class="kl">That is a market of</div><div class="kv">$2B</div><div class="ki">~₹17,000 cr/yr</div><div class="kd">At $200 (₹17,200) a year each.</div></div>
+          <div class="kpi"><div class="kl">Capture 0.5%</div><div class="kv pos">$10M</div><div class="ki">~₹86 cr/yr</div><div class="kd">50,000 customers. Venture scale.</div></div>
+          <div class="kpi"><div class="kl">Long term</div><div class="kv br">$10B+</div><div class="ki">~₹8.6 lakh cr</div><div class="kd">All small business and freelancers, globally.</div></div>
+        </div>
+        <p class="take">You need well under 1% of the reachable market to build a strong company. Size is not the constraint; execution is.</p>
+      </section>
+
+      <section id="council">
+        <div class="sh"><h2>The pricing debate</h2><span class="tag">ADVISORS</span><span class="k">stay at $19, or charge more?</span></div>
+        <p class="note">A simulated panel of famous marketers argued $19 itself may be the trap: it puts you next to ChatGPT in people's minds, which caps what you can charge. Four of five wanted you to reframe and charge more. One argued the opposite.</p>
+        <div class="grid2">
+          <div class="panel"><h3>Charge more, and reframe</h3><div class="ph">Hormozi, Dunford, Sutherland, Halbert</div><ul>
+            <li>Call it "<b>your first 30 hires</b>," not an "AI chat tool," so people compare it to a salary.</li>
+            <li>Test a higher price, <b>$39 to $99 (₹3,354 to ₹8,514)</b>, with a results guarantee.</li>
+            <li>Sell to the people who already pay for AI in dollars. They exist in India too.</li>
+          </ul></div>
+          <div class="panel"><h3>Do not chase everyone</h3><div class="ph">Godin, the dissenter</div><ul>
+            <li>Serving India, the US and companies at once is <b>too much for one founder</b>.</li>
+            <li>Pick the <b>smallest group you can delight</b>, maybe 1,000 founders who would pay $50 to $100 (₹4,300 to ₹8,600).</li>
+            <li><b>Be strict with the free plan.</b> Giving everything to non-payers burns your dollars.</li>
+          </ul></div>
+        </div>
+        <p class="take">Simulated: built from published frameworks, not real opinions about Hatchin. Worth an A/B test before committing.</p>
+      </section>
+
+      <section id="plan">
+        <div class="sh"><h2>The current plan</h2><span class="k">what Hatchin charges today</span></div>
+        <div class="grid2">
+          <div class="rc"><div class="rt"><h3>Hatcher</h3><span class="rp">Free</span></div><div class="rsub">₹0</div>
+            <div class="rr"><span>Projects</span><b>3</b></div>
+            <div class="rr"><span>Chat with all 30 agents</span><b>yes</b></div>
+            <div class="rr"><span>Background work (autonomy)</span><b>off</b></div>
+          </div>
+          <div class="rc"><div class="rt"><h3>Pro</h3><span class="rp">$19 / mo</span></div><div class="rsub">₹1,634 / mo, or $190 (₹16,340) a year</div>
+            <div class="rr"><span>Projects</span><b>Unlimited</b></div>
+            <div class="rr"><span>Background work</span><b>full, 50 runs / day</b></div>
+            <div class="rr"><span>All 30 agents</span><b>yes</b></div>
+          </div>
+        </div>
+        <p class="take">This is the live product today: a free tier and one paid tier at <b>$19 / mo (₹1,634)</b> or <b>$190 / yr (₹16,340)</b>. A local India price, a higher tier, and a paid trial are ideas still open, not shipped, so I left them out. Tell me what you have actually decided and I will show only that.</p>
+      </section>
+
+      <section id="goals">
+        <div class="sh"><h2>Goals and milestones</h2><span class="k">to be set with you</span></div>
+        <div class="panel"><p class="note" style="margin:0">I took out the milestones I had guessed, because they were not your actual goals. <b>Tell me the real goals you are working toward</b> (for example: a user or revenue target by a date, a product milestone to ship, or reaching profitability) and I will put them here, clearly marked and tracked against this model.</p></div>
+      </section>
+
+      <section id="evidence">
+        <div class="sh"><h2>How sure are we</h2><span class="tag">HONESTY</span><span class="k">so nobody mistakes a guess for a fact</span></div>
+        <div class="sure">
+          <div class="su fact"><div class="h">FACT</div><div class="x">AI prices (from the code), tax rates, exchange rate.</div></div>
+          <div class="su math"><div class="h">MATH</div><div class="x">Cost, margins, break-even, runway. Arithmetic on the facts.</div></div>
+          <div class="su est"><div class="h">ESTIMATE</div><div class="x">Conversion, churn, CAC, usage. Replace these first, in the controls.</div></div>
+          <div class="su"><div class="h">PLAN</div><div class="x">The growth path. One reasonable route, not a guarantee.</div></div>
+        </div>
+      </section>
+
+      <section id="sources">
+        <div class="sh"><h2>Sources &amp; citations</h2><span class="k">where each number comes from</span></div>
+        <p class="note">The facts (prices, taxes, exchange rate) are checkable at the links below. The estimates (conversion, churn, CAC, usage) are industry starting points; replace them with your own data in the controls.</p>
+        <div class="tw"><table><thead><tr><th>Number</th><th>Source</th></tr></thead><tbody>
+          <tr><td>AI token prices</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-2)">Hatchin's code cost table (<span class="num">server/billing/usageTracker.ts</span>), cross-checked against <a href="https://api-docs.deepseek.com/quick_start/pricing" target="_blank" rel="noopener">DeepSeek pricing</a> and <a href="https://ai.google.dev/gemini-api/docs/pricing" target="_blank" rel="noopener">Gemini pricing</a></td></tr>
+          <tr><td>Payment fees</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-2)"><a href="https://stripe.com/pricing" target="_blank" rel="noopener">Stripe pricing</a> and <a href="https://razorpay.com/pricing/" target="_blank" rel="noopener">Razorpay pricing</a></td></tr>
+          <tr><td>Taxes</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-2)">India GST 18% (<a href="https://www.cbic.gov.in/" target="_blank" rel="noopener">CBIC</a>), UK VAT 20% (<a href="https://www.gov.uk/vat-rates" target="_blank" rel="noopener">HMRC</a>)</td></tr>
+          <tr><td>Exchange rate (₹86 / $1)</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-2)">Market rate, check today's on <a href="https://www.xe.com/currencyconverter/convert/?From=USD&amp;To=INR" target="_blank" rel="noopener">XE</a></td></tr>
+          <tr><td>Server, domain, tool costs</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-2)">Published plans: <a href="https://supabase.com/pricing" target="_blank" rel="noopener">Supabase</a>, <a href="https://fly.io/docs/about/pricing/" target="_blank" rel="noopener">Fly.io</a>, <a href="https://sentry.io/pricing/" target="_blank" rel="noopener">Sentry</a>, <a href="https://resend.com/pricing" target="_blank" rel="noopener">Resend</a></td></tr>
+          <tr><td>Conversion (3%)</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-2)">Conservative vs SaaS medians (~4.5%); see <a href="https://openviewpartners.com/" target="_blank" rel="noopener">OpenView</a> and <a href="https://chartmogul.com/reports/" target="_blank" rel="noopener">ChartMogul</a> benchmarks. Replace with your funnel.</td></tr>
+          <tr><td>Churn (6 to 8% / mo)</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-2)">Prosumer self-serve SaaS benchmark, higher in India due to card renewals. Replace with your own.</td></tr>
+          <tr><td>CAC ranges</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-2)">AI and SaaS acquisition benchmarks; confirm with a small paid test.</td></tr>
+          <tr><td>Market size</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-2)">Directional estimate; validate against <a href="https://www.statista.com/" target="_blank" rel="noopener">Statista</a> and small-business census data.</td></tr>
+        </tbody></table></div>
+      </section>
+
+      <section id="controls">
+        <div class="sh"><h2>Model controls</h2><span class="live">LIVE</span><span class="k">change these to put in your real numbers, everything above updates</span></div>
+        <div class="controls">
+          <div class="chd"><h3>Assumptions</h3><span class="cs"><button class="btn ghost" id="reset">Reset to defaults</button></span></div>
+          <div class="cbody">
+            <div class="cgrp">Pricing</div>
+            <div class="field"><label>US price <span class="u">$/mo</span></label><input type="number" data-k="usPrice" value="19" step="1"></div>
+            <div class="field"><label>UK price <span class="u">£/mo</span></label><input type="number" data-k="ukGBP" value="15" step="1"></div>
+            <div class="field"><label>India price <span class="u">₹/mo</span></label><input type="number" data-k="inINR" value="699" step="50"></div>
+            <div class="field"><label>Company seat <span class="u">$/mo</span></label><input type="number" data-k="b2bSeat" value="29" step="1"></div>
+            <div class="cgrp">Growth (put your real numbers here)</div>
+            <div class="field"><label>Signups (scenario)</label><input type="number" data-k="signups" value="1000" step="100"></div>
+            <div class="field"><label>Free to paid <span class="u">%</span></label><input type="number" data-k="convPct" value="3" step="0.5"></div>
+            <div class="field"><label>Company accounts</label><input type="number" data-k="accounts" value="2" step="1"></div>
+            <div class="field"><label>B2C churn <span class="u">%/mo</span></label><input type="number" data-k="churnPct" value="6" step="1"></div>
+            <div class="cgrp">AI &amp; usage</div>
+            <div class="field"><label>AI cost vs today <span class="u">x</span></label><input type="number" data-k="aiMult" value="1" step="0.1"></div>
+            <div class="field"><label>Pro tasks/day</label><input type="number" data-k="proRunsDay" value="5" step="1"></div>
+            <div class="field"><label>India autonomy cap <span class="u">runs/wk</span></label><input type="number" data-k="capINWk" value="120" step="10"></div>
+            <div class="cgrp">Costs</div>
+            <div class="field"><label>Infra base <span class="u">$/mo · scales w/ users</span></label><input type="number" data-k="fixedBase" value="170" step="10"></div>
+            <div class="field"><label>Self-host GPU <span class="u">$/mo</span></label><input type="number" data-k="gpuCost" value="0" step="50"></div>
+            <div class="field"><label>Founder salary <span class="u">$/mo</span></label><input type="number" data-k="salary" value="0" step="500"></div>
+          </div>
+        </div>
+        <p class="foot" style="margin-top:22px"><b>Backing spreadsheet:</b> Hatchin-Unit-Economics.xlsx, 22 tabs, 512 live formulas. Costs use the code's real COST_TABLE (DeepSeek Flash $0.14/$0.28 ₹12/₹24, DeepSeek Pro $0.44/$0.87, Gemini Flash $0.15/$0.60, open-source Llama free). Behaviour numbers are industry averages until your real data replaces them. Rupees at ₹86 to the dollar. Strategy sections are simulated uses of known marketing playbooks. A model and plan for a pre-revenue product, not a record of results.</p>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var DEF={usPrice:19,ukGBP:15,inINR:699,b2bSeat:29,signups:1000,convPct:3,accounts:2,churnPct:6,aiMult:1,proRunsDay:5,capINWk:120,fixedBase:170,gpuCost:0,salary:0};
+  var F=Object.assign({},DEF);
+  var fx=86,fxGBP=1.27,gst=0.18,vat=0.20,churnB2B=0.025;
+  var runCost0=0.009,chatPro0=0.0003,chatFree0=0.0002;
+  var INFRA_ANCHORS=[[100,170],[1000,210],[10000,850],[50000,2250],[100000,4400]];
+  function infraCurve(S){S=Math.max(1,S);
+    if(S<=INFRA_ANCHORS[0][0])return INFRA_ANCHORS[0][1];
+    for(var i=0;i<INFRA_ANCHORS.length-1;i++){var s0=INFRA_ANCHORS[i][0],i0=INFRA_ANCHORS[i][1],s1=INFRA_ANCHORS[i+1][0],i1=INFRA_ANCHORS[i+1][1];
+      if(S<=s1){var f=(Math.log(S)-Math.log(s0))/(Math.log(s1)-Math.log(s0));return i0+f*(i1-i0);}}
+    var a=INFRA_ANCHORS[INFRA_ANCHORS.length-2],b=INFRA_ANCHORS[INFRA_ANCHORS.length-1];
+    var slope=(b[1]-a[1])/(Math.log(b[0])-Math.log(a[0]));return b[1]+slope*(Math.log(S)-Math.log(b[0]));}
+  function fmt(v){var a=Math.abs(v);if(a<100){return '$'+v.toFixed(2).replace(/\.00$/,'');}return '$'+Math.round(v).toLocaleString('en-US');}
+  function rs(v){return '₹'+Math.round(v*fx).toLocaleString('en-IN');}
+  function pair(v){return fmt(v)+' <span class="rupee">'+rs(v)+'</span>';}
+  function pct(v){return Math.round(v*100)+'%';}
+  function set(id,h){var e=document.getElementById(id);if(e)e.innerHTML=h;}
+
+  function compute(){
+    var m=F.aiMult,chatPro=chatPro0*m,chatFree=chatFree0*m,run=runCost0*m;
+    var proRuns=F.proRunsDay*30,b2bRuns=300,freeMsgs=140,proMsgs=900,b2bMsgs=1500;
+    var seatLLM=b2bMsgs*chatPro+b2bRuns*run;
+    var costFree=freeMsgs*chatFree+0.02+0.02;               // what a free user uses (LLM + servers + support); fixed bill added live below
+    var costPro=proMsgs*chatPro+proRuns*run+0.85+0.10+0.50; // what a paid user uses
+    var costB2B=seatLLM+0.90+0.15+1.50;                     // what a seat uses
+    var usRev=F.usPrice,ukRev=F.ukGBP*fxGBP/(1+vat),inRev=(F.inINR/fx)/(1+gst);
+    var usP=usRev-costPro,ukP=ukRev-costPro,inP=inRev-costPro,b2bP=F.b2bSeat-costB2B;
+    var arpu=0.6*usRev+0.25*ukRev+0.15*inRev;
+    var o={run:run,chatPro:chatPro,chatFree:chatFree,seatLLM:seatLLM,costFree:costFree,costPro:costPro,costB2B:costB2B,
+      llmChatPro:proMsgs*chatPro,llmAutoPro:proRuns*run,b2bRuns:b2bRuns,
+      usRev:usRev,ukRev:ukRev,inRev:inRev,usP:usP,ukP:ukP,inP:inP,b2bP:b2bP,
+      usM:usP/usRev,ukM:ukP/ukRev,inM:inP/inRev,b2bM:b2bP/F.b2bSeat,arpu:arpu,
+      usGross:F.usPrice,ukGross:F.ukGBP*fxGBP,inGross:F.inINR/fx};
+    // companies
+    var C=[['Freelance duo',3,34,8],['Small startup',5,32,10],['Growing team',10,29,15],['Scaling SMB',25,28,30],['Larger SMB',50,27,50]];
+    o.companies=C.map(function(c){var seats=c[1],price=c[2],admin=c[3],mrr=seats*price,active=seats*0.7;
+      var cost=active*seatLLM+(mrr*0.029+0.30)+seats*0.15+admin;var profit=mrr-cost;
+      return {name:c[0],seats:seats,mrr:mrr,cost:cost,profit:profit,margin:profit/mrr,ltv:profit/churnB2B};});
+    o.cGP=o.companies[2].profit; o.companyX=o.companies[2].mrr/arpu;
+    // caps
+    var cm=function(wk){return wk*52/12;};
+    o.caps=[
+      {n:'Pro · US and UK ($19)',day:'~29',wk:200,rev:usRev,ai:cm(200)*run,non:1.60},
+      {n:'Pro · India (₹699)',day:'~'+Math.round(F.capINWk/7),wk:F.capINWk,rev:inRev,ai:cm(F.capINWk)*run,non:1.60},
+      {n:'Studio ($39)',day:'~86',wk:600,rev:39,ai:cm(600)*run,non:2.20},
+      {n:'Company seat ($29)',day:'50',wk:350,rev:F.b2bSeat,ai:cm(350)*run,non:costB2B-b2bRuns*run}
+    ];
+    o.caps.forEach(function(c){c.tot=c.ai+c.non;c.worstM=(c.rev-c.tot)/c.rev;
+      c.typM=(c.n[0]==='P'&&c.rev===inRev)?o.inM:(c.n[0]==='P'?o.usM:(c.n[0]==='S'?(39-(2.20+300*run))/39:o.b2bM));});
+    // fixed + break-even (infra now SCALES with signups via the anchor curve; the control is the launch-scale base)
+    o.infraScaled=infraCurve(F.signups)*(F.fixedBase/170);o.fixed=o.infraScaled+F.gpuCost;o.burn=o.fixed+F.salary;
+    o.bePro=o.fixed/usP;o.beCompany=o.fixed/o.cGP;o.defAlive=o.burn/0.80;
+    // p&l
+    var conv=F.convPct/100;o.paid=Math.round(F.signups*conv);o.free=F.signups-o.paid;
+    o.users=Math.max(1,o.paid+o.free);                     // everyone who shares the one fixed monthly bill
+    o.fixedShare=o.infraScaled/o.users;                    // each user's slice of the bill, at THIS scale
+    o.costFreeFull=o.costFree+o.fixedShare;o.costProFull=o.costPro+o.fixedShare;o.costB2BFull=o.costB2B+o.fixedShare;
+    o.b2cMRR=o.paid*arpu;o.b2bMRR=F.accounts*o.companies[2].mrr;o.mrr=o.b2cMRR+o.b2bMRR;
+    o.gp=o.paid*(arpu-costPro)+F.accounts*o.cGP-o.free*costFree;o.op=o.gp-o.burn;o.gm=o.mrr>0?o.gp/o.mrr:0;
+    return o;
+  }
+  function inMarginAt(price,costPro){var g=price/fx,rev=g/(1+gst);return (rev-costPro)/rev;}
+
+  function personas(o){
+    var chatPro=o.chatPro,chatFree=o.chatFree,run=o.run;
+    var nonPro=1.60,nonFree=0.07,nonStudio=2.20,capPro=200*52/12,capIN=F.capINWk*52/12,capStudio=600*52/12,studioRev=39;
+    function row(name,who,tag,plan,chat,rw,cap,non,rev,day){
+      var billed=Math.min(rw,cap),cchat=(plan==='Free')?chatFree:chatPro,cost=chat*cchat+billed*run+non;
+      return {name:name,who:who,plan:tag,day:day,hits:rw>cap,cost:cost,profit:rev-cost,margin:rev>0?(rev-cost)/rev:null,free:rev===0};
+    }
+    return [
+      row('Curious Lurker','Signs up, mostly chats','Free','Free',150,0,0,nonFree,0,'0'),
+      row('Side-Project Sam','Evenings and weekends','Paid US','Pro',450,60,capPro,nonPro,o.usRev,'2'),
+      row('Daily Builder Devi','Full-time (the average)','Paid US','Pro',900,150,capPro,nonPro,o.usRev,'5'),
+      row('Devi, in India','Same usage, ₹699','Paid IN','Pro',900,150,capIN,nonPro,o.inRev,'5'),
+      row('Power User Priya','Wants 40 tasks a day','Paid US','Pro',1800,1200,capPro,nonPro,o.usRev,'40→29'),
+      row('Agency Ace','Production tool','Studio','Studio',2400,900,capStudio,nonStudio,studioRev,'30')
+    ];
+  }
+
+  function render(){
+    var o=compute();
+    set('k-cost',fmt(o.costProFull));set('k-cost-r',rs(o.costProFull)+' / month');
+    set('k-cost-d','What they use '+fmt(o.costPro)+' + their share of the '+fmt(o.infraScaled)+' bill '+fmt(o.fixedShare)+'.');
+    set('k-margin',pct(o.usM));set('k-margin-r','UK '+pct(o.ukM)+' · India '+pct(o.inM));
+    set('k-company','~'+Math.round(o.companyX)+'&times;');
+    set('k-be','~'+Math.round(o.bePro));set('k-be-r','solos, or '+(o.beCompany<1.5?'1':Math.round(o.beCompany))+' company');
+    var ke=document.getElementById('k-op');ke.className='kv '+(o.op>=0?'pos':'neg');
+    set('k-op',(o.op>=0?'+':'')+fmt(o.op));set('k-op-r',rs(o.op)+' / month');set('k-op-d','at '+F.signups.toLocaleString()+' signups, '+F.convPct+'% paying.');
+    set('k-runway',Math.round(25000/o.burn)+' mo');
+    // running-cost scaling
+    set('run-sig',F.signups.toLocaleString());
+    set('run-scaled',fmt(o.infraScaled));set('run-scaled-r','₹'+Math.round(o.infraScaled*fx).toLocaleString('en-IN'));
+    var scAnchors=[[100,'1 small Fly node, Supabase Pro base'],[1000,'bigger node + failover, email tier grows'],[10000,'2 to 3 nodes + Redis, DB compute add-on, PITR'],[50000,'5 to 6 nodes, read replica, larger tiers'],[100000,'10 to 12 nodes, Supabase Team + replica']];
+    var sch='';scAnchors.forEach(function(a){var S=a[0],inf=infraCurve(S)*(F.fixedBase/170),here=Math.abs(Math.log(F.signups)-Math.log(S))<0.12;
+      var cps=inf/S,cpsStr=cps>=0.1?cps.toFixed(2):cps.toFixed(3);
+      sch+='<tr'+(here?' class="hl"':'')+'><td>'+S.toLocaleString()+'</td><td>'+fmt(inf)+'</td><td>₹'+Math.round(inf*fx).toLocaleString('en-IN')+'</td><td>$'+cpsStr+'</td><td style="font-family:var(--sans);white-space:normal;color:var(--ink-3);font-size:11.5px">'+a[1]+'</td></tr>';});
+    set('scaleBody',sch);
+    set('bv-free',pair(o.costFreeFull));set('bv-pro',pair(o.costProFull));set('bv-b2b',pair(o.costB2BFull));
+    document.getElementById('bw-p-chat').style.width=(o.llmChatPro/o.costProFull*100)+'%';
+    document.getElementById('bw-p-auto').style.width=(o.llmAutoPro/o.costProFull*100)+'%';
+    set('it-chat',pair(o.llmChatPro));set('it-auto',pair(o.llmAutoPro));
+    set('it-fixed',pair(o.fixedShare));set('it-fixed-note','('+fmt(o.infraScaled)+' ÷ '+o.users.toLocaleString()+' users)');
+    set('it-total',pair(o.costProFull));
+    // dollar flow
+    var rows=[
+      {n:'United States, $'+F.usPrice,pay:'they pay $'+F.usPrice+' · '+rs(F.usPrice),gross:o.usGross,tax:0,tl:'Tax $0',cost:o.costPro,prof:o.usP,m:o.usM},
+      {n:'United Kingdom, £'+F.ukGBP,pay:'they pay £'+F.ukGBP,gross:o.ukGross,tax:o.ukGross-o.ukRev,tl:'VAT '+fmt(o.ukGross-o.ukRev),cost:o.costPro,prof:o.ukP,m:o.ukM},
+      {n:'India, ₹'+F.inINR,pay:'they pay ₹'+F.inINR,gross:o.inGross,tax:o.inGross-o.inRev,tl:'GST '+fmt(o.inGross-o.inRev),cost:o.costPro,prof:o.inP,m:o.inM},
+      {n:'Company seat, $'+F.b2bSeat,pay:'they pay $'+F.b2bSeat+' · '+rs(F.b2bSeat),gross:F.b2bSeat,tax:0,tl:'Tax $0',cost:o.costB2B,prof:o.b2bP,m:o.b2bM}
+    ];
+    var dh='';rows.forEach(function(r){var g=r.gross,tw=Math.max(0,r.tax/g*100),cw=r.cost/g*100,pw=Math.max(0,r.prof/g*100);
+      dh+='<div class="dc"><div class="dh"><b>'+r.n+'</b><span class="pay">'+r.pay+'</span></div><div class="dt">'+(r.tax>0.01?'<span class="tax" style="width:'+tw+'%">tax</span>':'')+'<span class="cost" style="width:'+cw+'%">'+fmt(r.cost)+'</span><span class="prof" style="width:'+pw+'%">'+(pw>18?'profit '+fmt(r.prof):'')+'</span></div><div class="df"><span class="a">'+r.tl+'</span><span class="b">Cost '+pair(r.cost)+'</span><span class="c">Keep '+pair(r.prof)+', '+pct(r.m)+'</span></div></div>';});
+    set('dflow',dh);
+    set('p-us','$'+F.usPrice);set('p-us-k',pair(o.usRev));set('p-us-c',pair(o.usP));set('p-us-m','● '+pct(o.usM)+' margin');
+    set('p-uk','£'+F.ukGBP);set('p-uk-k',pair(o.ukRev));set('p-uk-c',pair(o.ukP));set('p-uk-m','● '+pct(o.ukM)+' margin');
+    set('p-in','₹'+F.inINR);set('p-in-k',pair(o.inRev));set('p-in-c',pair(o.inP));set('p-in-m','● '+pct(o.inM)+' margin');
+    document.getElementById('p-in-m').className='pill '+(o.inM<0?'bad':(o.inM<0.55?'warn':'good'));
+    set('cap-in-rev',pair(o.inRev));
+    // caps table
+    var ch='';o.caps.forEach(function(c,i){ch+='<tr'+(i===1?' class="hl"':'')+'><td>'+c.n+'</td><td>'+c.day+'</td><td>'+c.wk+'</td><td>'+pair(c.ai)+'</td><td>'+pair(c.rev)+'</td><td class="'+(c.worstM<0.2?'v-warn':'')+'">'+pct(c.worstM)+'</td><td>'+pct(c.typM)+'</td></tr>';});
+    set('captbody',ch);
+    drawCliff(o);
+    // personas
+    var ps=personas(o),pt='';ps.forEach(function(p,i){var mc=p.margin===null?'':(p.margin<0?'v-bad':(p.margin<0.55?'v-warn':'v-good'));
+      pt+='<tr'+(i===2?' class="hl"':'')+'><td>'+p.name+'<span class="who">'+p.who+'</span></td><td>'+p.plan+'</td><td>'+p.day+'</td><td class="'+(p.hits?'yn-yes':'yn-no')+'">'+(p.hits?'Yes':'No')+'</td><td>'+pair(p.cost)+'</td><td>'+(p.free?'<span class="v-warn">pays nothing</span>':pair(p.profit))+'</td><td class="'+mc+'">'+(p.margin===null?'marketing cost':pct(p.margin))+'</td></tr>';});
+    set('ptbody',pt);
+    // companies table
+    var comp='';o.companies.forEach(function(c,i){comp+='<tr'+(i===2?' class="hl"':'')+'><td>'+c.name+'</td><td>'+c.seats+'</td><td>'+pair(c.mrr)+'</td><td>'+pair(c.cost)+'</td><td>'+pair(c.profit)+'</td><td class="v-good">'+pct(c.margin)+'</td><td>'+pair(c.ltv)+'</td></tr>';});
+    set('ctbody',comp);
+    // p&l
+    set('pl-paid',o.paid.toLocaleString());set('pl-free',o.free.toLocaleString()+' free');
+    set('pl-mrr',fmt(o.mrr));set('pl-arr',rs(o.mrr)+' / mo · '+fmt(o.mrr*12)+' a year');set('pl-gm',pct(o.gm));
+    var pe=document.getElementById('pl-op');pe.className='kv '+(o.op>=0?'pos':'neg');
+    set('pl-op',(o.op>=0?'+':'')+fmt(o.op));set('pl-op-r',rs(o.op)+' / month');
+    // runway
+    set('rw-ph','burn is '+pair(o.burn)+' a month'+(F.salary>0?' at a $'+F.salary.toLocaleString()+' ('+rs(F.salary)+') salary':' at $0 salary'));
+    set('rw-1','<b>'+Math.round(50000/o.burn)+' months</b> on $50k (₹43L) cash, <b>'+Math.round(25000/o.burn)+'</b> on $25k (₹21.5L), <b>'+Math.round(10000/o.burn)+'</b> on $10k (₹8.6L).');
+    set('rw-2','To be default alive you need about <b>'+pair(o.defAlive)+' MRR</b>, roughly '+(o.beCompany<1.5?'1 company':Math.round(o.beCompany)+' companies')+'.');
+    set('be-1','About <b>'+(o.beCompany<1.5?'1 company':Math.round(o.beCompany)+' companies')+'</b>, or <b>'+Math.round(o.bePro)+' US solo users</b>.');
+  }
+  function drawCliff(o){
+    var svg=document.getElementById('cliff');if(!svg)return;
+    function yF(m){return 230-(m+0.20)/0.90*200;}function xF(p){return 48+(p-299)/600*532;}
+    var zy=yF(0),s='';
+    s+='<rect x="48" y="'+zy.toFixed(1)+'" width="532" height="'+(230-zy).toFixed(1)+'" fill="var(--bad-bg)"></rect>';
+    s+='<text x="574" y="'+(zy+22).toFixed(0)+'" text-anchor="end" font-size="10.5" font-weight="700" fill="var(--bad)" font-family="var(--sans)">YOU LOSE MONEY</text>';
+    [[0.60,'60%'],[0.40,'40%'],[0.20,'20%'],[0,'0%'],[-0.20,'-20%']].forEach(function(g){var y=yF(g[0]);
+      s+='<line x1="48" y1="'+y.toFixed(1)+'" x2="580" y2="'+y.toFixed(1)+'" stroke="'+(g[0]===0?'var(--bad)':'var(--line)')+'"'+(g[0]===0?' stroke-dasharray="5 4" stroke-width="1.5"':'')+'></line>';
+      s+='<text x="42" y="'+(y+3).toFixed(1)+'" text-anchor="end" font-family="var(--mono)" font-size="10" fill="'+(g[0]===0?'var(--bad)':'var(--ink-3)')+'" font-weight="'+(g[0]===0?'700':'400')+'">'+g[1]+'</text>';});
+    [[299,'₹299'],[499,'₹499'],[699,'₹699'],[899,'₹899']].forEach(function(t){s+='<text x="'+xF(t[0]).toFixed(0)+'" y="258" text-anchor="middle" font-family="var(--mono)" font-size="10" fill="var(--ink-3)">'+t[1]+'</text>';});
+    var pts='';for(var p=299;p<=899;p+=50){pts+=xF(p).toFixed(1)+','+yF(inMarginAt(p,o.costPro)).toFixed(1)+' ';}
+    s+='<polyline points="'+pts.trim()+'" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"></polyline>';
+    if(F.inINR>=299&&F.inINR<=899){var cx=xF(F.inINR),cy=yF(o.inM);
+      s+='<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="5.5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"></circle>';
+      s+='<text x="'+cx.toFixed(1)+'" y="'+(cy-11).toFixed(1)+'" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent-ink)" font-family="var(--sans)">₹'+F.inINR+' · '+pct(o.inM)+'</text>';}
+    svg.innerHTML=s;
+    var be=299;for(var q=250;q<=1000;q+=5){if(inMarginAt(q,o.costPro)>=0){be=q;break;}}
+    set('cliff-ph','below about ₹'+be+' a month you lose money on every subscriber');
+  }
+  document.querySelectorAll('input[data-k]').forEach(function(el){el.addEventListener('input',function(){F[el.dataset.k]=parseFloat(el.value);if(isNaN(F[el.dataset.k]))F[el.dataset.k]=0;render();});});
+  document.getElementById('reset').addEventListener('click',function(){F=Object.assign({},DEF);document.querySelectorAll('input[data-k]').forEach(function(el){el.value=DEF[el.dataset.k];});render();});
+  render();
+})();
+</script>

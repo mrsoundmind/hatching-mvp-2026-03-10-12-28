@@ -127,6 +127,14 @@ export class TrainingSystem {
   }
 
   // Generate comprehensive enhanced prompt based on all training methods
+  // ITL-3 / LEARN-03 (resolution): in PRODUCTION this is a no-op passthrough. It returns `basePrompt`
+  // unchanged unless in-memory training data / a custom role profile exists, and nothing populates
+  // those in prod (the only writer, MessageFeedback.tsx, is unmounted; `devTrainingTools` are dev-only,
+  // and storage is in-memory so it resets every restart). The real outcome-based forward-feed is now
+  // LEARN-01 (`server/ai/qualityLessons.ts`, peer-review must-fix lessons injected into the next prompt).
+  // Kept, not removed: `devTrainingTools` is a legitimate local experimentation surface, and removing
+  // this would be a multi-file refactor for zero prod benefit. If you ever want live user-training,
+  // persist this class + mount MessageFeedback.tsx; otherwise it stays an inert dev tool.
   generateEnhancedPrompt(agentRole: string, userMessage: string, basePrompt: string): string {
     const trainingData = this.getTrainingData(agentRole);
     const customProfile = this.getCustomRoleProfile(agentRole);

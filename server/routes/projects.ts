@@ -7,6 +7,9 @@ import { checkProjectLimit } from '../middleware/tierGate.js';
 import multer from 'multer';
 import path from 'path';
 import { extractDocumentText } from '../lib/extractDocumentText.js';
+import { ingestConversationDocument } from '../knowledge/rag/conversationDocs.js';
+import { generateJourneyBlueprint } from '../starterPacks/planGenerator.js';
+import { seedPackBlueprint } from '../starterPacks/seedBlueprint.js';
 
 /**
  * Derive a scannable brain-document title (P1-C). Uses the supplied title when it's
@@ -136,8 +139,25 @@ export function registerProjectRoutes(app: Express, deps: RegisterProjectDeps): 
 
       // Unless this is a starter pack project, automatically set up Maya agent and brain
       // This ensures no new projects start with 0 agents (which breaks the orchestrator)
+      let ideaJourneySeeded = false;
       if (!starterPackId || projectType === 'idea') {
         await storage.initializeIdeaProject(project.id);
+
+        // Universal Journey (BIAB, 2026-08-11): every idea project opens onto a
+        // tailored staged plan, not a blank board. The blueprint structure is
+        // deterministic (always a valid, seedable team + 4-stage plan + doc
+        // scaffolds); an LLM only refines the direction text to the idea when it
+        // can. Fully fail-safe — a journey failure must never fail project creation.
+        try {
+          const blueprint = await generateJourneyBlueprint({
+            name: project.name,
+            description: (project as any).description,
+          });
+          const result = await seedPackBlueprint(storage, project.id, blueprint);
+          ideaJourneySeeded = result.seeded;
+        } catch (err) {
+          devLog('[ProjectBootstrap] Universal journey seed failed (non-fatal):', err);
+        }
       }
 
       // If this is a starter pack project, set up teams and agents
@@ -150,9 +170,12 @@ export function registerProjectRoutes(app: Express, deps: RegisterProjectDeps): 
         const agents = await storage.getAgentsByProject(project.id);
         const maya = agents.find(a => a.isSpecialAgent && a.name === 'Maya');
         if (maya) {
+          const ideaWelcome = ideaJourneySeeded
+            ? `Hey! I'm Maya, your idea partner. I've put together a starting team and a staged plan for ${project.name}, you'll see it in the Tasks tab as your Journey. Tell me more about the idea and we'll tailor it together, or just say "go ahead" and the team will start.`
+            : `Hey! I'm Maya, your idea partner. Tell me about ${project.name}, what's the idea? Even a rough sentence works. I'll help you shape it into a plan, build your team, and figure out next steps.`;
           const welcomeContent = starterPackId
-            ? `Hey! I'm Maya, your idea partner for ${project.name}. I've set up your starter team — you can see them in the sidebar. Tell me what you're building and I'll help shape the direction, or just dive into chatting with your team.`
-            : `Hey! I'm Maya, your idea partner. Tell me about ${project.name} — what's the idea? Even a rough sentence works. I'll help you shape it into a plan, build your team, and figure out next steps.`;
+            ? `Hey! I'm Maya, your idea partner for ${project.name}. I've set up your starter team, you can see them in the sidebar. Tell me what you're building and I'll help shape the direction, or just dive into chatting with your team.`
+            : ideaWelcome;
 
           await storage.createMessage({
             conversationId,
@@ -421,6 +444,24 @@ export function registerProjectRoutes(app: Express, deps: RegisterProjectDeps): 
       };
 
       const updatedProject = await storage.updateProject(project.id, { brain: updatedBrain });
+
+      // ITL-1 / KNOW-05: also embed the brain doc for REAL RAG, not just the legacy truncation dump.
+      // The PROJECT KNOWLEDGE BASE block only injects the first ~2000 chars, so deep content in a long
+      // doc (page 180) was never retrievable. This ingests the full doc into the brain-scoped RAG store
+      // (the same, already-proven machinery chat attachments use), so retrieveConversationDocsBlockForChat
+      // surfaces the relevant passage. Fire-and-forget: the upload succeeds regardless, and the
+      // truncation dump remains as a fallback for short docs / legacy uploads.
+      ingestConversationDocument({
+        projectId: project.id,
+        conversationId: null,
+        filename: req.file.originalname,
+        mime: req.file.mimetype ?? null,
+        sizeBytes: req.file.size ?? null,
+        text: content,
+        uploadedByUserId: getSessionUserId(req) ?? null,
+        scope: 'brain',
+      }).catch((err) => console.warn('[KNOW-05] brain-doc RAG ingest failed (non-fatal):', (err as Error).message));
+
       res.status(201).json(updatedProject);
     } catch (error) {
       console.error('Failed to upload brain document:', error);

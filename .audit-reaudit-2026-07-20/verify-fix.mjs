@@ -1,0 +1,13 @@
+import pg from 'pg';
+const { Pool } = pg;
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const stuck = await pool.query("SELECT id, state, created_on, started_on, completed_on FROM pgboss.job WHERE id='6756a413-f5bf-4939-ba3f-c778cc5521b4'");
+console.log('OLD_STUCK_JOB:', JSON.stringify(stuck.rows));
+const states = await pool.query("SELECT state, count(*)::int n FROM pgboss.job WHERE name='autonomous_task_execution' GROUP BY state");
+console.log('JOB_STATE_COUNTS:', JSON.stringify(states.rows));
+const recent = await pool.query("SELECT id, state, created_on, completed_on FROM pgboss.job WHERE name='autonomous_task_execution' ORDER BY created_on DESC LIMIT 5");
+console.log('RECENT_JOBS:', JSON.stringify(recent.rows));
+const runs = await pool.query("SELECT root_goal, status, created_at FROM autonomy_runs ORDER BY created_at DESC LIMIT 4");
+console.log('RECENT_RUNS:', JSON.stringify(runs.rows));
+console.log('DB_NOW:', (await pool.query('SELECT now() n')).rows[0].n);
+await pool.end();

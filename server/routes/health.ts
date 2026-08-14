@@ -7,6 +7,7 @@ import {
 } from '../llm/providerResolver.js';
 import { BUDGETS, FEATURE_FLAGS, resolveRuntimeModeFromEnv } from '../autonomy/config/policies.js';
 import { getStorageModeInfo, type IStorage } from '../storage.js';
+import { totalCount, rolesWithCorpus } from '../knowledge/rag/store.js';
 import {
   forceOutageMode,
   forceRecoveryBroadcast,
@@ -25,6 +26,71 @@ interface RegisterHealthDeps {
     connections: number;
   };
   storage: IStorage;
+}
+
+// ITL-0 / KNOW-01 — the RAG knowledge base must never be SILENTLY empty in production. The deep
+// audit found retrieval fails open to the raw model with no signal, and CLAUDE.md notes RAG was
+// "not yet wired into the prod deploy", so a deploy shipping without the corpus (or without the
+// embedding key) would degrade every answer while looking identical to a working system. This
+// surfaces the corpus state in /health AND warns loudly on boot. Read-only, best-effort, and it
+// NEVER affects the top-level health status or the 503 gate (an empty corpus does not stop the
+// instance serving). Gated by RAG_HEALTHCHECK (default on).
+type KnowledgeHealth = {
+  status: 'ok' | 'empty' | 'no_embed_key' | 'disabled' | 'error' | 'skipped';
+  chunks?: number;
+  roles?: number;
+  embedProvider?: string;
+  embedKeyPresent?: boolean;
+};
+
+function resolveEmbedKey(): { provider: string; present: boolean } {
+  const provider = (process.env.RAG_EMBED_PROVIDER || 'gemini').toLowerCase();
+  const present =
+    provider === 'ollama'
+      // Local embedder: no API key, but a DEPLOYED server cannot reach 127.0.0.1:11434, so in
+      // production ollama embeddings silently return nothing (the exact silent-empty this guards).
+      // Treat prod-ollama as unverifiable (present=false) so it warns rather than reporting healthy.
+      ? process.env.NODE_ENV !== 'production'
+      : provider === 'openai'
+        ? !!process.env.OPENAI_API_KEY
+        : !!process.env.GEMINI_API_KEY;
+  return { provider, present };
+}
+
+// Short TTL cache so an authenticated /health hit does not run a fresh count(*) every time (and, on a
+// DB-down instance, does not pay the ~2s timeout every call). 30s staleness is fine for a health surface.
+let khCache: { at: number; value: KnowledgeHealth } | null = null;
+
+export async function checkKnowledgeHealth(): Promise<KnowledgeHealth> {
+  if ((process.env.RAG_HEALTHCHECK ?? 'on').toLowerCase() === 'off') return { status: 'skipped' };
+  if ((process.env.RAG_ENABLED ?? 'on').toLowerCase() === 'off') return { status: 'disabled' };
+  const ttlMs = Number(process.env.RAG_HEALTHCHECK_TTL_MS ?? 30000);
+  if (khCache && Date.now() - khCache.at < ttlMs) return khCache.value;
+  const { provider, present } = resolveEmbedKey();
+  // A short timeout so a half-open DB socket (the documented intermittent Supavisor bug) makes this
+  // return 'error' fast instead of hanging the /health handler ahead of the liveness ping.
+  const timeoutMs = Number(process.env.RAG_HEALTHCHECK_TIMEOUT_MS ?? 2000);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const [chunks, roles] = await Promise.race([
+      Promise.all([totalCount(), rolesWithCorpus()]),
+      new Promise<never>((_, rej) => {
+        timer = setTimeout(() => rej(new Error('knowledge_health_timeout')), timeoutMs);
+      }),
+    ]);
+    let status: KnowledgeHealth['status'] = 'ok';
+    if (chunks === 0) status = 'empty';
+    else if (!present) status = 'no_embed_key';
+    const value: KnowledgeHealth = { status, chunks, roles: roles.size, embedProvider: provider, embedKeyPresent: present };
+    khCache = { at: Date.now(), value };
+    return value;
+  } catch {
+    const value: KnowledgeHealth = { status: 'error', embedProvider: provider, embedKeyPresent: present };
+    khCache = { at: Date.now(), value };
+    return value;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 export function registerHealthRoute(app: Express, deps: RegisterHealthDeps): void {
@@ -68,6 +134,11 @@ export function registerHealthRoute(app: Express, deps: RegisterHealthDeps): voi
         return res.status(httpCode).json({ status, time: new Date().toISOString() });
       }
 
+      // Compute the corpus health ONLY for the authenticated body (Fly probes are unauth and would
+      // otherwise pay for an uncached count query on the hottest endpoint and discard it). Runs after
+      // the liveness ping above so it never precedes the fast-503 path.
+      const knowledge = await checkKnowledgeHealth();
+
       res.status(httpCode).json({
         status,
         database: { status: dbReachable ? 'ok' : 'down' },
@@ -99,6 +170,7 @@ export function registerHealthRoute(app: Express, deps: RegisterHealthDeps): voi
           modelAvailable,
           model: process.env.TEST_OLLAMA_MODEL || 'llama3.1:8b',
         },
+        knowledge,
         features: FEATURE_FLAGS,
         budgets: BUDGETS,
       });
@@ -112,6 +184,25 @@ export function registerHealthRoute(app: Express, deps: RegisterHealthDeps): voi
 
   app.get('/health', healthHandler);
   app.get('/api/health', healthHandler);
+
+  // ITL-0 / KNOW-01 — one-time boot assertion: warn LOUDLY if the knowledge corpus is missing or
+  // misconfigured, so a deploy without RAG is caught at startup instead of being discovered later
+  // through quietly degraded answers. Best-effort, non-fatal, never blocks boot.
+  void checkKnowledgeHealth().then((k) => {
+    if (k.status === 'ok' || k.status === 'skipped' || k.status === 'disabled') {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[knowledge] RAG corpus health: ${k.status}` +
+          (k.chunks != null ? ` (${k.chunks} chunks / ${k.roles} roles, embed=${k.embedProvider})` : ''),
+      );
+    } else {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[knowledge] ⚠️  RAG corpus health: ${k.status}, agents may answer WITHOUT the knowledge base. ` +
+          `embed=${k.embedProvider} keyPresent=${k.embedKeyPresent}. Ingest the corpus / set the embedding key before serving.`,
+      );
+    }
+  }).catch(() => { /* checkKnowledgeHealth never rejects today; future-proof against an unhandled rejection */ });
 
   // ---------------------------------------------------------------------------
   // 35-05: DEV-only admin endpoints for Playwright spec to drive deterministic

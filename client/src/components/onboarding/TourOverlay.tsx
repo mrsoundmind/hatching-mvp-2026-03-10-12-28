@@ -36,8 +36,8 @@ const BEATS: Beat[] = [
   {
     key: "chat",
     selector: '[data-tour="chat"]',
-    title: "They tell you the truth",
-    body: "This is where you work with them. Talk like colleagues and they answer in character, with real opinions. They push back when you're wrong, not a yes-machine.",
+    title: "They get to work for you",
+    body: "Give them a goal and the team runs with it, each in their own voice. Here they scope the MVP, push back on what won't work, and draft the copy, real output, not just chat.",
     side: "right",
   },
   {
@@ -49,10 +49,24 @@ const BEATS: Beat[] = [
     preAction: () => window.dispatchEvent(new CustomEvent("hatchin:open-brain")),
   },
   {
+    key: "autonomy",
+    selector: '[data-tour="autonomy"]',
+    title: "Turn on autonomy",
+    body: "This dial sets how much they do on their own, from just watching to running the whole task. Turn it up and they work in the background without you, handing off between specialists and reviewing each other.",
+    side: "left",
+    preAction: () => {
+      window.dispatchEvent(new CustomEvent("hatchin:open-brain"));
+      // Bring the autonomy dial into view within the scrollable Brain panel.
+      setTimeout(() => {
+        document.querySelector('[data-tour="autonomy"]')?.scrollIntoView({ block: "center", behavior: "smooth" });
+      }, 60);
+    },
+  },
+  {
     key: "activity",
     selector: "#sidebar-tabpanel-activity",
     title: "They work while you sleep",
-    body: "Hand off a task and they run it in the background, passing work between specialists. Close the laptop and come back to it done. It shows up here, live.",
+    body: "Once they're running, their progress shows up here, live. Close the laptop and come back to it done, work handed between specialists while you were away.",
     side: "left",
     preAction: () => window.dispatchEvent(new CustomEvent("hatchin:open-activity")),
   },

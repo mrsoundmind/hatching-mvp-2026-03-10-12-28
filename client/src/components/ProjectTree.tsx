@@ -44,6 +44,10 @@ interface ProjectTreeProps {
   onUpdateTeam?: (teamId: string, updates: Partial<Team>) => Promise<void>;
   onUpdateAgent?: (agentId: string, updates: Partial<Agent>) => Promise<void>;
   searchQuery?: string;
+  /** Rail mode: keep every folder icon exactly where it is, but fade the names and drop the
+   *  chevrons / row actions / nested rows. Lets the collapsed sidebar reuse this same tree so
+   *  folders never shift when it opens — only the text appears. */
+  compact?: boolean;
 }
 
 export function ProjectTree({
@@ -67,6 +71,7 @@ export function ProjectTree({
   onUpdateTeam,
   onUpdateAgent,
   searchQuery = "",
+  compact = false,
 }: ProjectTreeProps) {
   const workingAgents = useAgentWorkingState();
 
@@ -360,7 +365,7 @@ export function ProjectTree({
             <div className="space-y-0.5">
               {/* Project Level */}
               <div
-                className={`flex items-start justify-between px-3 py-2 rounded-xl cursor-pointer transition-[background-color,box-shadow] duration-200 group hover:bg-[var(--glass-hover-bg)] hover:shadow-sm relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hatchin-blue)] ${isProjectActive && !activeTeamId && !activeAgentId
+                className={`flex items-start justify-between px-3 py-2 rounded-xl cursor-pointer transition-[background-color,box-shadow] duration-200 group relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hatchin-blue)] ${compact ? '' : 'hover:bg-[var(--glass-hover-bg)] hover:shadow-sm'} ${!compact && isProjectActive && !activeTeamId && !activeAgentId
                   ? 'bg-[var(--glass-frosted-strong)] elevation-1'
                   : ''
                 }`}
@@ -377,29 +382,37 @@ export function ProjectTree({
                 }}
               >
                 <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                  <div
-                    className="flex-shrink-0 w-4 flex justify-center pt-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (projectTeams.length > 0) {
-                        onToggleProjectExpanded(project.id);
-                      }
-                    }}
-                  >
-                    {projectTeams.length > 0 && (
-                      isProjectExpanded ? (
-                        <ChevronDown className="w-3.5 h-3.5 hatchin-text-muted hover:hatchin-text cursor-pointer" />
+                  {/* Disclosure caret — absolutely placed in the row's left padding so it never
+                      pushes the folder right. The folder therefore keeps the SAME x whether the
+                      sidebar is open or a collapsed rail, so it never moves when the rail expands. */}
+                  {!compact && projectTeams.length > 0 && (
+                    <button
+                      type="button"
+                      aria-label={isProjectExpanded ? 'Collapse teams' : 'Expand teams'}
+                      onClick={(e) => { e.stopPropagation(); onToggleProjectExpanded(project.id); }}
+                      className="absolute -left-2.5 top-2.5 w-3.5 h-3.5 flex items-center justify-center hatchin-text-muted hover:hatchin-text z-10"
+                    >
+                      {isProjectExpanded ? (
+                        <ChevronDown className="w-3.5 h-3.5" />
                       ) : (
-                        <ChevronRight className="w-3.5 h-3.5 hatchin-text-muted hover:hatchin-text cursor-pointer" />
-                      )
-                    )}
-                  </div>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  )}
                   {/* Neutral folder keeps the sidebar calm and says "project"; it only
                       lights amber (with a pulsing dot) while this project's team is working,
                       so attention goes to the chat, not to a wall of color. */}
                   <div className="relative flex-shrink-0 mt-0.5">
+                    {/* Rail mode: a contained rounded highlight sits behind the folder (active or on
+                        hover) instead of the full-width row bg, which the 60px rail would slice off.
+                        Absolute + centred on the icon, so it never shifts the folder's position. */}
+                    {compact && (
+                      <span
+                        className={`absolute -inset-[7px] rounded-lg transition-colors ${isProjectActive && !activeTeamId && !activeAgentId ? 'bg-[var(--glass-frosted-strong)]' : 'group-hover:bg-[var(--glass-hover-bg)]'}`}
+                      />
+                    )}
                     <Folder
-                      className={`w-[18px] h-[18px] transition-colors duration-300 ${isWorking ? '' : getProjectIconColor(project.color)}`}
+                      className={`relative z-10 w-[18px] h-[18px] transition-colors duration-300 ${isWorking ? '' : getProjectIconColor(project.color)}`}
                       style={isWorking ? { color: 'var(--hatchin-working-amber)' } : undefined}
                       fill={isProjectActive ? 'currentColor' : 'none'}
                     />
@@ -419,7 +432,7 @@ export function ProjectTree({
                       style={{ width: `${Math.max(editValue.length * 8, 60)}px` }}
                     />
                   ) : (
-                    <div className="min-w-0 flex-1">
+                    <div className={`min-w-0 flex-1 transition-opacity duration-150 ${compact ? 'opacity-0' : 'opacity-100'}`}>
                       <span
                         className={`block font-medium line-clamp-2 text-sm leading-tight cursor-pointer ${isProjectActive && !activeTeamId && !activeAgentId ? 'hatchin-text' : 'hatchin-text-muted'}`}
                         onDoubleClick={() => handleDoubleClick('project', project.id, project.name)}
@@ -439,6 +452,7 @@ export function ProjectTree({
                     </div>
                   )}
                 </div>
+                {!compact && (
                 <div className="relative flex-shrink-0">
                   <button
                     className="hit-target opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(pointer:coarse)]:opacity-100 hatchin-text-muted hover:hatchin-text transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hatchin-blue)] rounded"
@@ -519,10 +533,11 @@ export function ProjectTree({
                     </div>
                   )}
                 </div>
+                )}
               </div>
               {/* Teams and Individual Agents */}
               <AnimatePresence initial={false}>
-              {isProjectExpanded && (
+              {!compact && isProjectExpanded && (
                 <motion.div
                   key={`project-children-${project.id}`}
                   initial={{ height: 0, opacity: 0 }}

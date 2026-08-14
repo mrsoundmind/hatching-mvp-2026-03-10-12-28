@@ -1,4 +1,3 @@
-import { devLog } from '@/lib/devLog';
 import { getAgentColors } from '@/lib/agentColors';
 import { getRoleDefinition } from '@shared/roleRegistry';
 import AgentAvatar from '@/components/avatars/AgentAvatar';
@@ -408,22 +407,14 @@ export function MessageBubble({
                 {formatRelativeTime(message.timestamp)}
               </div>
 
-              {/* B1.4: Enhanced error handling UI */}
+              {/* Failed-response indicator. The old inline "Retry" button was a no-op
+                  stub (it only logged), so it read as a broken control; removed and
+                  replaced with a plain-language nudge. A real re-send is a future wiring
+                  that needs the originating user message. */}
               {message.status === 'failed' && (
                 <div className="flex items-center space-x-2 text-red-400 text-xs mt-1">
                   <AlertCircle className="w-3 h-3" />
-                  <span>Failed to generate response</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-4 px-1 text-xs hover:text-red-600"
-                    onClick={() => {
-                      // Retry logic would go here
-                      devLog('Retry streaming for message:', message.id);
-                    }}
-                  >
-                    Retry
-                  </Button>
+                  <span>Failed to generate response. Try sending your message again.</span>
                 </div>
               )}
 

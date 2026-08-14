@@ -1,7 +1,0 @@
-- generic [ref=e3]:
-  - img [ref=e5]
-  - heading "Something went wrong" [level=2] [ref=e7]
-  - paragraph [ref=e8]: Cannot read properties of null (reading 'useState')
-  - generic [ref=e9]:
-    - button "Try again" [ref=e10] [cursor=pointer]
-    - button "Reload page" [ref=e11] [cursor=pointer]

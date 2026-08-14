@@ -1988,7 +1988,7 @@ export class DatabaseStorage implements IStorage {
     //   autonomy_events/deliberation_traces → typing_indicators → message_reactions →
     //   messages → conversation_memory → tasks → conversations →
     //   deliverable_versions → deliverables → deliverable_packages → agents → teams → project
-    return db.transaction(async (tx) => {
+    const purged = await db.transaction(async (tx) => {
       const convIds = tx.select({ id: schema.conversations.id })
         .from(schema.conversations)
         .where(eq(schema.conversations.projectId, id));
@@ -2007,6 +2007,18 @@ export class DatabaseStorage implements IStorage {
       await tx.delete(schema.conversationMemory).where(inArray(schema.conversationMemory.conversationId, convIds));
       await tx.delete(schema.tasks).where(eq(schema.tasks.projectId, id));
       await tx.delete(schema.conversations).where(eq(schema.conversations.projectId, id));
+      // Audit R0-4 (purge FK fix, found live + reviewer follow-up): autonomy_run_steps has plain
+      // FKs (no ON DELETE CASCADE) to agents (agent_id), deliverables (deliverable_id) AND
+      // deliverable_versions (deliverable_version_id, the Phase 37 W-4 "open exact version" link),
+      // and autonomy_runs.root_agent_id FKs agents. So the run tree MUST be cleared before
+      // deliverable_versions, deliverables, and agents below, or the purge throws a FK violation
+      // and the project can never be hard-deleted. Steps before runs.
+      const runIds = tx.select({ id: schema.autonomyRuns.id })
+        .from(schema.autonomyRuns)
+        .where(eq(schema.autonomyRuns.projectId, id));
+      await tx.delete(schema.autonomyRunSteps).where(inArray(schema.autonomyRunSteps.runId, runIds));
+      await tx.delete(schema.autonomyRuns).where(eq(schema.autonomyRuns.projectId, id));
+      await tx.delete(schema.autonomyDailyCounters).where(eq(schema.autonomyDailyCounters.projectId, id));
       // v2.0: deliverable_versions FK→deliverables, deliverables/deliverable_packages FK→projects.
       // Must clear before agents (deliverables.agentId references agents.id).
       await tx.delete(schema.deliverableVersions).where(inArray(schema.deliverableVersions.deliverableId, deliverableIds));
@@ -2017,6 +2029,19 @@ export class DatabaseStorage implements IStorage {
       const result = await tx.delete(schema.projects).where(eq(schema.projects.id, id)).returning();
       return result.length > 0;
     });
+
+    // Audit R0-4: the raw-SQL RAG doc tables (conversation_documents + conversation_doc_chunks)
+    // live outside Drizzle, so the ORM cascade above misses them and a user's uploaded-document
+    // text + embeddings would orphan forever. Best-effort delete OUTSIDE the transaction so a DB
+    // that was never provisioned with these script-created tables cannot abort the core purge.
+    // The chunks table cascades automatically via its ON DELETE CASCADE foreign key.
+    try {
+      await db.execute(sql`DELETE FROM conversation_documents WHERE project_id = ${id}`);
+    } catch (err) {
+      console.warn('[purgeProject] conversation_documents cleanup skipped:', (err as Error).message);
+    }
+
+    return purged;
   }
 
   // Teams

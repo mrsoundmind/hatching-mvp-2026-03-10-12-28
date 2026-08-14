@@ -6,7 +6,7 @@
  */
 
 import { storage } from '../storage.js';
-import { getSectionsForType, getTypeLabel, isReaderFacingDocType } from '@shared/deliverableTypes';
+import { getSectionsForType, getTypeLabel, isReaderFacingDocType, professionalDisclaimerFor } from '@shared/deliverableTypes';
 import { generateChatWithRuntimeFallback } from '../llm/providerResolver.js';
 import type { Deliverable } from '@shared/schema';
 import { scoreIteration, type RubricScoreResult } from './rubricScorer.js';
@@ -100,6 +100,18 @@ Output ONLY the document content in markdown. No meta-commentary.`;
 /**
  * Generate a deliverable using the LLM and store it.
  */
+/**
+ * Deterministically append a "not professional advice" disclaimer to money/legal/compliance
+ * documents, so it is guaranteed present in the content itself (and therefore in the PDF, the
+ * markdown export, and the copy), rather than depending on the model to include it. (Audit R0-3)
+ */
+function withProfessionalDisclaimer(type: string, content: string): string {
+  const disclaimer = professionalDisclaimerFor(type);
+  if (!disclaimer) return content;
+  if (content.includes(disclaimer)) return content;
+  return `${content.trimEnd()}\n\n---\n\n> ${disclaimer}\n`;
+}
+
 export async function generateDeliverable(input: GenerateDeliverableInput): Promise<GenerateResult> {
   const startTime = Date.now();
   const sections = getSectionsForType(input.type);
@@ -120,6 +132,8 @@ export async function generateDeliverable(input: GenerateDeliverableInput): Prom
     // Fallback: generate a template
     content = sections.map(s => `## ${s}\n\n*Content generation in progress. This section will be populated by ${input.agentName}.*\n`).join('\n');
   }
+
+  content = withProfessionalDisclaimer(input.type, content);
 
   const generationTimeMs = Date.now() - startTime;
 
@@ -290,6 +304,8 @@ export async function iterateDeliverable(
     // Generation failed — no candidate to score, no version row to write.
     return { deliverable: existing, reverted: false };
   }
+
+  candidate = withProfessionalDisclaimer(existing.type, candidate);
 
   // Score OLD vs NEW. scoreIteration is fail-open: a flaky judge returns
   // recommendation='keep_new' rather than blocking iteration.

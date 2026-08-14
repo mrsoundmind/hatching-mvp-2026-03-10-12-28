@@ -22,6 +22,7 @@ import { runAutonomousKnowledgeLoop } from '../knowledge/akl/runner.js';
 import { mapEventTypeToCategory, describeAutonomyEvent } from '@shared/activityLabels';
 import { getCurrentRuntimeConfig } from '../llm/providerResolver.js';
 import { logAutonomyEvent, readAutonomyEvents, readAutonomyEventsByProject, summarizeLatency } from '../autonomy/events/eventLogger.js';
+import { getQualityMetrics } from '../ai/qualityMetrics.js';
 import { z } from 'zod';
 import {
   createDeliberationTrace,
@@ -776,6 +777,27 @@ export function registerAutonomyRoutes(app: Express): void {
     } catch (error) {
       console.error('Autonomy stats read error:', error);
       res.status(500).json({ error: 'Failed to read autonomy stats' });
+    }
+  });
+
+  // GET /api/autonomy/quality — ITL-2 MEAS-03/08: the operator quality surface. Aggregates corpus
+  // health (KNOW-01), retrieval hit/miss (KNOW-02), and the peer-review verdict mix into ONE read-only
+  // snapshot. ALWAYS project-scoped: an owned projectId is REQUIRED so this endpoint can never leak a
+  // cross-tenant platform-wide aggregate to an ordinary authenticated user. Read-only, never writes.
+  app.get('/api/autonomy/quality', async (req, res) => {
+    try {
+      const userId = getSessionUserId(req);
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+      if (typeof req.query.projectId !== 'string' || !req.query.projectId) {
+        return res.status(400).json({ error: 'projectId is required' });
+      }
+      const project = await requireOwnedProject(req.query.projectId, userId);
+      if (!project) return res.status(404).json({ error: 'Project not found' });
+      const metrics = await getQualityMetrics(req.query.projectId);
+      res.json(metrics);
+    } catch (error) {
+      console.error('Autonomy quality read error:', error);
+      res.status(500).json({ error: 'Failed to read quality metrics' });
     }
   });
 

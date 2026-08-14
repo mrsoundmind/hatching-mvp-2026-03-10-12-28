@@ -1,0 +1,11 @@
+import pg from 'pg';
+const { Pool } = pg;
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const A='e5c7c45a-5505-4c21-8485-2acf87f45782', B='42bdc908-0ef1-4b23-91d9-4e60269887e2';
+const tasks = await pool.query("SELECT id, left(title,35) title, status, metadata->>'previousAgentName' prevAgent FROM tasks WHERE id IN ($1,$2)",[A,B]);
+console.log('TASKS:', JSON.stringify(tasks.rows));
+const ho = await pool.query("SELECT event_type, hatch_id, payload->'fromAgent'->>'name' fromName, payload->'toAgent'->>'name' toName, payload->>'fromAgentName' fromFlat, payload->>'toAgentName' toFlat, timestamp FROM autonomy_events WHERE event_type='handoff_initiated' ORDER BY timestamp DESC LIMIT 3");
+console.log('HANDOFF_EVENTS:', JSON.stringify(ho.rows));
+const jobs = await pool.query("SELECT state, count(*)::int n FROM pgboss.job WHERE name='autonomous_task_execution' GROUP BY state");
+console.log('JOBS:', JSON.stringify(jobs.rows));
+await pool.end();

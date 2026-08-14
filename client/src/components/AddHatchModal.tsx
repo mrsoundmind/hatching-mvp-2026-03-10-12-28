@@ -1,10 +1,11 @@
 import { devLog } from '@/lib/devLog';
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import FocusTrap from 'focus-trap-react';
-import { X, Search, Users, User, Sparkles, ArrowLeft } from 'lucide-react';
+import { X, Search, Users, User, Sparkles, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { Project, Agent, Team } from '@shared/schema';
+import type { Project, Agent } from '@shared/schema';
 import AgentAvatar from '@/components/avatars/AgentAvatar';
+import './starter-pack/biab.css';
 
 interface TeamTemplate {
   id: string;
@@ -599,259 +600,129 @@ export function AddHatchModal({ isOpen, onClose, onAddAgent, activeProject, acti
   return (
     <AnimatePresence>
       {isOpen && (
-        <FocusTrap active={isOpen}>
+        <FocusTrap active={isOpen} focusTrapOptions={{ fallbackFocus: '#biab-hatch-modal', escapeDeactivates: false, clickOutsideDeactivates: false }}>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 flex items-center justify-center z-50 p-4"
+            style={{ background: 'rgba(0,0,0,.5)' }}
           >
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              id="biab-hatch-modal"
+              tabIndex={-1}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
+              exit={{ opacity: 0, y: 16 }}
               transition={{ duration: 0.15 }}
-              className="bg-hatchin-card rounded-2xl border border-hatchin-border-subtle shadow-2xl flex flex-col" role="dialog" aria-modal="true" aria-labelledby="modal-title"
-              style={{ width: '1200px', height: '700px' }}
+              className="biab"
+              role="dialog" aria-modal="true" aria-label="Add a teammate"
+              style={{ position: 'relative', width: 1160, maxWidth: '100%', height: 680, maxHeight: '90vh', background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 22, overflow: 'hidden', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', outline: 'none' }}
             >
               {/* Header */}
-              <div className="p-6 border-b border-hatchin-border-subtle flex items-center justify-between">
+              <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                 <div>
-                  <h2 className="text-xl font-semibold text-hatchin-text-bright mb-1" id="modal-title">
-                    Add Hatch
-                  </h2>
-                  <p className="text-muted-foreground text-sm">
-                    Add AI teammates to {activeProject?.name || 'your project'}
-                  </p>
+                  <div className="biab-jh2" style={{ fontSize: 18 }}>Add a teammate</div>
+                  <div className="biab-jsub">Add AI teammates to {activeProject?.name || 'your project'}</div>
                 </div>
-                <button
-                  onClick={onClose}
-                  className="text-muted-foreground hover:text-hatchin-text-bright transition-colors"
-                >
+                <button onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'transparent', color: 'var(--ink-3)', cursor: 'pointer', padding: 6, display: 'grid', placeItems: 'center' }}>
                   <X size={20} />
                 </button>
               </div>
 
-              {/* Content Area with Sidebar Layout */}
-              <div className="flex flex-1 overflow-hidden">
-                {/* Category Sidebar */}
-                <div className="w-64 border-r border-hatchin-border-subtle bg-hatchin-panel">
-                  <div className="p-4">
-                    <div className="space-y-1">
-                      <button
-                        onClick={() => { setActiveTab('teams'); setPackMessage(null); }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 ${activeTab === 'teams'
-                          ? 'bg-hatchin-blue text-white'
-                          : 'text-muted-foreground hover:text-hatchin-text-bright hover:bg-hatchin-surface-elevated'
-                          }`}
-                      >
-                        <Users size={20} />
-                        <div className="flex-1">
-                          <div className="text-[14px] font-bold">Teams Template</div>
-                          <div className="text-xs opacity-75">Pre-built teams</div>
-                        </div>
-                        <div className="text-xs bg-black/20 px-2 py-1 rounded-full">
-                          {TEAM_TEMPLATES.length}
-                        </div>
-                      </button>
-
-                      <button
-                        onClick={() => { setActiveTab('individual'); setPackMessage(null); }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 mt-[13px] mb-[13px] ${activeTab === 'individual'
-                          ? 'bg-hatchin-blue text-white'
-                          : 'text-muted-foreground hover:text-hatchin-text-bright hover:bg-hatchin-surface-elevated'
-                          }`}
-                      >
-                        <User size={20} />
-                        <div className="flex-1">
-                          <div className="font-medium text-[14px]">Individual Hatch</div>
-                          <div className="text-xs opacity-75">Single specialists</div>
-                        </div>
-                        <div className="text-xs bg-black/20 px-2 py-1 rounded-full">
-                          {INDIVIDUAL_AGENTS.length}
-                        </div>
-                      </button>
-                    </div>
-                  </div>
+              {/* Body: categories + main */}
+              <div className="biab-lib">
+                <div className="biab-cats">
+                  <h4>Add</h4>
+                  <button className={`biab-cat${activeTab === 'teams' ? ' on' : ''}`} onClick={() => { setActiveTab('teams'); setPackMessage(null); }}>
+                    <Users size={16} /> <span style={{ flex: 1 }}>Teams</span> <span className="c">{TEAM_TEMPLATES.length}</span>
+                  </button>
+                  <button className={`biab-cat${activeTab === 'individual' ? ' on' : ''}`} onClick={() => { setActiveTab('individual'); setPackMessage(null); }}>
+                    <User size={16} /> <span style={{ flex: 1 }}>Individual</span> <span className="c">{INDIVIDUAL_AGENTS.length}</span>
+                  </button>
                 </div>
 
-                {/* Main Content */}
-                <div className="flex-1 flex flex-col">
-                  {/* Search Bar */}
-                  <div className="p-6 border-b border-hatchin-border-subtle">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
-                      <input
-                        type="text"
-                        placeholder={activeTab === 'teams' ? 'Search team templates...' : 'Search teammates...'}
-                        value={searchQuery}
-                        onChange={(e) => { setSearchQuery(e.target.value); setPackMessage(null); }}
-                        className="w-full pl-10 pr-4 py-3 bg-hatchin-surface border border-hatchin-border-subtle rounded-xl text-hatchin-text-bright placeholder-muted-foreground focus:border-hatchin-blue focus:outline-none focus:ring-1 focus:ring-hatchin-blue transition-colors"
-                      />
-                    </div>
+                <div className="biab-libmain">
+                  {/* Search */}
+                  <div style={{ position: 'relative', marginBottom: 18 }}>
+                    <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-3)' }} />
+                    <input
+                      type="text"
+                      placeholder={activeTab === 'teams' ? 'Search team templates…' : 'Search teammates…'}
+                      value={searchQuery}
+                      onChange={(e) => { setSearchQuery(e.target.value); setPackMessage(null); }}
+                      style={{ width: '100%', padding: '10px 14px 10px 34px', background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 10, color: 'var(--ink)', fontSize: 13, outline: 'none' }}
+                    />
                   </div>
 
-                  {/* Content Grid */}
-                  <div className="flex-1 p-6 overflow-y-auto">
-                    {activeTab === 'teams' ? (
-                      <>
-                        {packMessage && (
-                          <div
-                            role="status"
-                            className="mb-4 flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
-                          >
-                            <span aria-hidden="true">⚠️</span>
-                            <span>{packMessage}</span>
-                          </div>
-                        )}
+                  {packMessage && (
+                    <div role="status" style={{ marginBottom: 14, display: 'flex', gap: 8, alignItems: 'flex-start', borderRadius: 10, border: '1px solid var(--amber-line)', background: 'var(--amber-tint)', padding: '10px 13px', fontSize: 12.5, color: 'var(--amber)' }}>
+                      <span>{packMessage}</span>
+                    </div>
+                  )}
+
+                  {activeTab === 'teams' ? (
+                    <div className="biab-grid">
+                      {filteredTeamTemplates.map((template) => (
                         <div
-                          className="grid gap-4 grid-cols-3"
-                          style={{
-                            gridTemplateColumns: 'repeat(3, 1fr)'
-                          }}
+                          key={template.id}
+                          className="biab-pcard live"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handleUseTemplate(template)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleUseTemplate(template); } }}
                         >
-                        {filteredTeamTemplates.map((template) => (
-                          <motion.div
-                            key={template.id}
-                            className="relative bg-gradient-to-br from-hatchin-surface-elevated to-hatchin-panel rounded-xl p-4 border border-hatchin-border-subtle transition-all duration-300 cursor-pointer flex flex-col hover:border-hatchin-blue/50 hover:shadow-[0_8px_30px_rgba(108,130,255,0.15)] group overflow-hidden"
-                            onClick={() => handleUseTemplate(template)}
-                            whileHover={{
-                              y: -4,
-                              scale: 1.02,
-                              rotateY: 3,
-                              rotateX: 2
-                            }}
-                            whileTap={{ scale: 0.97 }}
-                            style={{ minHeight: '200px', transformStyle: 'preserve-3d' }}
-                          >
-                            {/* Glossy Overlay */}
-                            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.04] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-                            {/* Pack Header */}
-                            <div className="relative z-10 flex items-start justify-between mb-3">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-hatchin-blue/20 to-hatchin-purple/20 border border-hatchin-blue/30 flex items-center justify-center text-xl shadow-[0_0_15px_rgba(108,130,255,0.15)] group-hover:shadow-[0_0_25px_rgba(108,130,255,0.25)] transition-shadow">
-                                  {template.icon}
-                                </div>
-                                <div className="flex-1">
-                                  <h3 className="text-hatchin-text-bright text-sm mb-1 flex items-center gap-2">
-                                    {template.name}
-                                    {template.suggested && (
-                                      <motion.div
-                                        initial={{ scale: 0 }}
-                                        animate={{ scale: 1 }}
-                                        className="text-hatchin-blue"
-                                      >
-                                        <Sparkles size={10} />
-                                      </motion.div>
-                                    )}
-                                  </h3>
-                                  <p className="text-muted-foreground text-xs leading-tight">
-                                    {template.description}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="ml-1 text-muted-foreground flex items-center gap-1">
-                                <Users size={10} />
-                                <span className="text-xs">{template.agents.length}</span>
-                              </div>
-                            </div>
-
-                            {/* Team Preview - Compact */}
-                            <div className="mt-2 mb-2">
-                              <div className="flex flex-wrap gap-1">
-                                {template.agents.map((agent, agentIndex) => (
-                                  <div key={agentIndex} className="flex items-center gap-1 bg-hatchin-card rounded px-2 py-1">
-                                    <User className="w-3 h-3 text-hatchin-blue" />
-                                    <span className="text-xs text-hatchin-text-bright">{agent.role}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* CTA Button - Fixed at bottom */}
-                            <div className="mt-auto pt-2">
-                              <button className="w-full px-3 py-2 rounded-lg transition-all duration-200 text-xs font-medium bg-hatchin-border-subtle hover:bg-hatchin-blue text-hatchin-text-bright hover:text-white">
-                                Use Pack
-                              </button>
-                            </div>
-                          </motion.div>
-                        ))}
+                          <div className="ptop">
+                            <span className="biab-etile" style={{ width: 40, height: 40, background: 'rgba(108,130,255,.14)', fontSize: 20 }} aria-hidden>{template.icon}</span>
+                            <span className="biab-chip" style={{ background: 'var(--panel-3)', color: 'var(--ink-3)', border: '1px solid var(--line)' }}><Users size={11} /> {template.agents.length}</span>
+                          </div>
+                          <h3 style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {template.name}
+                            {template.suggested && <Sparkles size={12} style={{ color: 'var(--blue)' }} />}
+                          </h3>
+                          <p className="one">{template.description}</p>
+                          <div style={{ display: 'flex', gap: 5, marginTop: 12, flexWrap: 'wrap' }}>
+                            {template.agents.map((agent, i) => (
+                              <AgentAvatar key={i} characterName={agent.name} role={agent.role} size={24} />
+                            ))}
+                          </div>
+                          <span className="cta">Use this team <ChevronRight size={13} /></span>
                         </div>
-                      </>
-                    ) : (
-                      <div
-                        className="grid gap-4 grid-cols-3"
-                        style={{
-                          gridTemplateColumns: 'repeat(3, 1fr)'
-                        }}
-                      >
-                        {filteredIndividualAgents.map((agent, index) => (
-                          <motion.div
-                            key={index}
-                            className="relative bg-gradient-to-br from-hatchin-surface-elevated to-hatchin-panel rounded-xl p-4 border border-hatchin-border-subtle transition-all duration-300 cursor-pointer flex flex-col hover:border-hatchin-blue/50 hover:shadow-[0_8px_30px_rgba(108,130,255,0.15)] group overflow-hidden"
-                            onClick={() => handleAddIndividualAgent(agent)}
-                            whileHover={{
-                              y: -4,
-                              scale: 1.02,
-                              rotateY: 3,
-                              rotateX: 2
-                            }}
-                            whileTap={{ scale: 0.97 }}
-                            style={{ minHeight: '200px', transformStyle: 'preserve-3d' }}
-                          >
-                            {/* Glossy Overlay */}
-                            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.04] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="biab-grid">
+                      {filteredIndividualAgents.map((agent, index) => (
+                        <div
+                          key={index}
+                          className="biab-pcard live"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handleAddIndividualAgent(agent)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleAddIndividualAgent(agent); } }}
+                          data-testid={`button-add-individual-agent-${agent.role.toLowerCase().replace(/\s+/g, '-')}`}
+                        >
+                          <div className="ptop">
+                            <AgentAvatar agentName={agent.name} role={agent.role} size={40} />
+                          </div>
+                          <h3>{agent.name}</h3>
+                          <div style={{ fontSize: 11.5, color: 'var(--blue)', fontWeight: 600, marginTop: 2 }}>{agent.role}</div>
+                          <p className="one">{agent.description}</p>
+                          <span className="cta">Add teammate <ChevronRight size={13} /></span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-                            {/* Pack Header */}
-                            <div className="relative z-10 flex items-start justify-between mb-3">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl overflow-hidden shadow-[0_0_15px_rgba(108,130,255,0.1)] group-hover:shadow-[0_0_25px_rgba(108,130,255,0.25)] transition-shadow flex items-center justify-center bg-[var(--hatchin-surface)]">
-                                  <AgentAvatar agentName={agent.name} role={agent.role} size={40} />
-                                </div>
-                                <div className="flex-1">
-                                  <h3 className="text-hatchin-text-bright text-sm mb-1">{agent.name}</h3>
-                                  <p className="text-muted-foreground text-xs leading-tight">{agent.role}</p>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Description */}
-                            <div className="mt-2 mb-2">
-                              <p className="text-muted-foreground text-xs leading-tight">
-                                {agent.description}
-                              </p>
-                            </div>
-
-                            {/* CTA Button - Fixed at bottom */}
-                            <div className="mt-auto pt-2">
-                              <button
-                                className="w-full px-3 py-2 rounded-lg transition-all duration-200 text-xs font-medium bg-hatchin-border-subtle hover:bg-hatchin-blue text-hatchin-text-bright hover:text-white"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleAddIndividualAgent(agent);
-                                }}
-                                data-testid={`button-add-individual-agent-${agent.role.toLowerCase().replace(/\s+/g, '-')}`}
-                              >
-                                Add Teammate
-                              </button>
-                            </div>
-                          </motion.div>
-                        ))}
+                  {((activeTab === 'teams' && filteredTeamTemplates.length === 0) ||
+                    (activeTab === 'individual' && filteredIndividualAgents.length === 0)) && (
+                      <div style={{ textAlign: 'center', padding: '48px 0' }}>
+                        <div style={{ color: 'var(--ink)', fontSize: 16, marginBottom: 6, fontWeight: 600 }}>No results found</div>
+                        <p style={{ color: 'var(--ink-2)', fontSize: 13 }}>
+                          Try a different search, or browse all {activeTab === 'teams' ? 'teams' : 'teammates'}.
+                        </p>
                       </div>
                     )}
-
-                    {/* No results */}
-                    {((activeTab === 'teams' && filteredTeamTemplates.length === 0) ||
-                      (activeTab === 'individual' && filteredIndividualAgents.length === 0)) && (
-                        <div className="text-center py-12">
-                          <div className="text-hatchin-text-bright text-lg mb-2">No results found</div>
-                          <p className="text-muted-foreground text-sm">
-                            Try adjusting your search terms or browse all {activeTab === 'teams' ? 'templates' : 'agents'}
-                          </p>
-                        </div>
-                      )}
-                  </div>
                 </div>
               </div>
             </motion.div>

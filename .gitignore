@@ -27,3 +27,4 @@ eval/drift/
 .env*.local
 .claude/worktrees/
 .playwright-mcp/
+cookies.txt

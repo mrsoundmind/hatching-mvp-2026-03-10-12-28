@@ -99,9 +99,9 @@ export default function PrivacyContent() {
           .
         </li>
         <li>
-          <strong>Neon (Database hosting)</strong> — provides our PostgreSQL
-          database, hosted in the United States. All of your account data,
-          messages, and project content live here.
+          <strong>Supabase (Database hosting)</strong> — provides our PostgreSQL
+          database, hosted in Singapore (ap-southeast-1). All of your account
+          data, messages, and project content live here.
         </li>
         <li>
           <strong>Stripe (Billing)</strong> — handles paid-plan billing if you
@@ -128,6 +128,19 @@ export default function PrivacyContent() {
           conversation compaction), Hatchin routes through Groq's hosted
           Llama 3.3-70B service to reduce cost. Groq is hosted in the United
           States.
+        </li>
+        <li>
+          <strong>OpenAI (Embeddings)</strong> — when you upload a document to a
+          chat or to a project's knowledge base, its text and your related search
+          queries are sent to OpenAI's embedding service (United States) so your
+          team can retrieve and reason over the document. OpenAI's API default is
+          not to train on data sent through the API.
+        </li>
+        <li>
+          <strong>LangSmith, by LangChain (Diagnostics, optional)</strong> — when
+          diagnostic tracing is enabled, message content and project-brain context
+          may be sent to LangSmith (United States) to help us debug and improve the
+          AI. This is used for reliability, not advertising.
         </li>
       </ul>
       <p className="mt-4">

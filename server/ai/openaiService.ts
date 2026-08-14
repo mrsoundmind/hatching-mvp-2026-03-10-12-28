@@ -14,7 +14,10 @@ import {
 } from '../llm/providerResolver.js';
 import type { LLMResponseMetadata } from '../llm/providerTypes.js';
 import { loadRoleBrain, renderRoleBrainContext } from '../knowledge/roleBrains/loader.js';
-import { retrieveKnowledgeBlockForChat } from '../knowledge/rag/retriever.js';
+import { retrieveKnowledgeBlockForChat, retrieveKnowledgeBlockForChatWithMeta } from '../knowledge/rag/retriever.js';
+import { enforceCiteOrAdmit, flagUnsupportedClaims } from './citeGuard.js';
+import { getQualityLessons } from './qualityLessons.js';
+import { getWebContextBlock } from './webContext.js';
 import { retrieveConversationDocsBlockForChat } from '../knowledge/rag/conversationDocs.js';
 import { getProjectPackId, renderPackPlaybookBlock, boostQueryForPack } from '../starterPacks/packPlaybook.js';
 import { getCharacterProfile } from './characterProfiles.js';
@@ -211,7 +214,10 @@ export async function* generateStreamingResponse(
     // (the Pro depth), plus bias retrieval toward the pack's field. Fail-safe: null pack => unchanged.
     const packId = context.projectId ? await getProjectPackId(context.projectId) : null;
     const packPlaybookSection = renderPackPlaybookBlock(packId);
-    const retrievedKnowledgeSection = await retrieveKnowledgeBlockForChat(boostQueryForPack(packId, userMessage), context.conversationHistory);
+    // ITL-0: meta variant surfaces grounded + the retrieved source URLs so the caller (chat.ts) can
+    // enforce cite-or-admit + flag unsupported claims on the streamed reply (passed via onMetadata below).
+    const ragMetaStream = await retrieveKnowledgeBlockForChatWithMeta(boostQueryForPack(packId, userMessage), context.conversationHistory);
+    const retrievedKnowledgeSection = ragMetaStream.block;
 
     // Chat Attachments — RAG-retrieve chunks from files the user attached to THIS conversation (or the
     // project brain) and inject them grounded + injection-safe. Gated + fail-safe: no attachments => ''.
@@ -441,6 +447,22 @@ After 5+ exchanges, if you've learned something significant about the project, s
       } catch { /* non-critical — skip on error */ }
     }
 
+    // ITL-3 / LEARN-01: the outcome-based growth loop. Feed the SUBSTANCE of recent peer reviews (the
+    // must-fix items) forward so a revise/reject makes the next task better. Project-scoped, so it also
+    // gives cross-agent learning (LEARN-04). Fail-safe, gated by GROWTH_LOOP (default on).
+    let growthLessonsSection = '';
+    if (context.projectId) {
+      try {
+        const lessons = await getQualityLessons(context.projectId);
+        if (lessons) growthLessonsSection = `\n--- LESSONS FROM RECENT REVIEWS (apply these) ---\n${lessons}\n--- END LESSONS ---`;
+      } catch { /* non-critical */ }
+    }
+
+    // ITL-4: live web results for a recency-sensitive query. Opt-in (WEB_SEARCH_ENABLED, default off),
+    // fail-safe (returns '' on off/timeout/error), so it adds no network hop until enabled.
+    let webContextSection = '';
+    try { webContextSection = await getWebContextBlock(agentRole, userMessage); } catch { /* non-critical */ }
+
     // Hard format rules — placed last so they are fresh when the model generates
     const agentRoleLabel = roleProfile?.characterName || agentRole;
     const hardFormatRules = `\n--- ABSOLUTE FORMAT RULES (read these last, follow them first) ---
@@ -459,6 +481,7 @@ ${characterSection}
 ${professionalDepthSection}
 ${domainIntelligenceSection}
 ${recentFeedbackSection}
+${growthLessonsSection}
 ${emotionalSignatureSection}
 ${skillsSection}
 ${projectContextSection}
@@ -479,6 +502,7 @@ ${roleBrainContext}
 ${packPlaybookSection}
 ${retrievedKnowledgeSection}
 ${conversationDocsSection}
+${webContextSection}
 
 ${opinionSection}
 ${reasoningHintSection}
@@ -517,7 +541,9 @@ Respond as this specific role with appropriate expertise and personality. Keep r
       ? await streamWithPreferredProvider(llmRequest, 'groq')
       : await streamChatWithRuntimeFallback(llmRequest);
 
-    onMetadata?.(streamResult.metadata);
+    // ITL-0: pass the retrieved sources + grounded flag alongside provider metadata so the caller can
+    // enforce cite-or-admit + flag unsupported claims on the streamed reply after accumulation.
+    onMetadata?.({ ...streamResult.metadata, ragSources: ragMetaStream.sources, grounded: ragMetaStream.grounded } as any);
 
     // Stream the response word by word
     let fullResponse = '';
@@ -676,8 +702,22 @@ export async function generateIntelligentResponse(
     const packIdNs = context.projectId ? await getProjectPackId(context.projectId) : null;
     const packPlaybookSectionNs = renderPackPlaybookBlock(packIdNs);
     // v2.3 THE MATRIX (non-streaming path) — same cross-role router as the streaming path.
-    const retrievedKnowledgeSectionNs = await retrieveKnowledgeBlockForChat(boostQueryForPack(packIdNs, userMessage), context.conversationHistory);
+    // ITL-0: use the meta variant so we have the grounded flag + retrieved source URLs for the
+    // cite-or-admit + unsupported-claim guards applied to the response below.
+    const ragMetaNs = await retrieveKnowledgeBlockForChatWithMeta(boostQueryForPack(packIdNs, userMessage), context.conversationHistory);
+    const retrievedKnowledgeSectionNs = ragMetaNs.block;
     const conversationDocsSectionNs = await retrieveConversationDocsBlockForChat(context.conversationId, context.projectId, userMessage);
+    // ITL-3 / LEARN-01 growth loop: recent peer-review must-fix lessons fed forward (see streaming path).
+    let growthLessonsNs = '';
+    if (context.projectId) {
+      try {
+        const lessons = await getQualityLessons(context.projectId);
+        if (lessons) growthLessonsNs = `\n\n--- LESSONS FROM RECENT REVIEWS (apply these) ---\n${lessons}\n--- END LESSONS ---`;
+      } catch { /* non-critical */ }
+    }
+    // ITL-4: live web results (opt-in via WEB_SEARCH_ENABLED, fail-safe).
+    let webContextNs = '';
+    try { webContextNs = await getWebContextBlock(agentRole, userMessage); } catch { /* non-critical */ }
 
     // Create context-aware prompt using our template system
     const basePrompt = createPromptTemplate({
@@ -703,7 +743,7 @@ export async function generateIntelligentResponse(
       messages: [
         {
           role: 'system',
-          content: `${enhancedPrompt}\n\n--- ROLE BRAIN ---\n${roleBrainContext}\n--- END ROLE BRAIN ---${packPlaybookSectionNs}${retrievedKnowledgeSectionNs}${conversationDocsSectionNs}\n\nNEVER attach a URL or cite a source from memory; only cite sources explicitly provided to you above. With no provided source, state the point plainly and attach no link.\n\n${AGENT_CAPABILITY_ENVELOPE}${context.autonomyLevel === 'autonomous' ? AUTONOMOUS_DIRECTIVE_BLOCK : ''}${context.autonomyLevel === 'autonomous' && context.agentIsSpecial ? `\n\n${MAYA_AUTONOMOUS_OVERRIDE}` : ''}`
+          content: `${enhancedPrompt}\n\n--- ROLE BRAIN ---\n${roleBrainContext}\n--- END ROLE BRAIN ---${packPlaybookSectionNs}${retrievedKnowledgeSectionNs}${conversationDocsSectionNs}${growthLessonsNs}${webContextNs}\n\nNEVER attach a URL or cite a source from memory; only cite sources explicitly provided to you above. With no provided source, state the point plainly and attach no link.\n\n${AGENT_CAPABILITY_ENVELOPE}${context.autonomyLevel === 'autonomous' ? AUTONOMOUS_DIRECTIVE_BLOCK : ''}${context.autonomyLevel === 'autonomous' && context.agentIsSpecial ? `\n\n${MAYA_AUTONOMOUS_OVERRIDE}` : ''}`
         },
         {
           role: 'user',
@@ -721,6 +761,29 @@ export async function generateIntelligentResponse(
     // Enhance response with custom logic results if available
     if (logicResult.shouldExecute && logicResult.enhancedResponse) {
       responseContent = `${logicResult.enhancedResponse}\n\n${responseContent}`;
+    }
+
+    // ITL-0 GRND-01/02 — enforce cite-or-admit against the sources actually retrieved this turn, and
+    // flag unsupported hard facts on an ungrounded answer. Gated by CITE_ENFORCE (default on).
+    // Conservative: only fabricated URLs are stripped; claims are flagged (logged), not rewritten.
+    if ((process.env.CITE_ENFORCE ?? 'on').toLowerCase() !== 'off') {
+      try {
+        const sources = Array.isArray(ragMetaNs.sources) ? ragMetaNs.sources : [];
+        const guard = enforceCiteOrAdmit(responseContent, sources);
+        if (guard.strippedCount > 0) {
+          responseContent = guard.text;
+          // eslint-disable-next-line no-console
+          console.warn(`[cite-guard] stripped ${guard.strippedCount} fabricated citation(s) not in retrieved sources`);
+        }
+        const claims = flagUnsupportedClaims(responseContent, ragMetaNs.grounded);
+        if (claims.flagged) {
+          // eslint-disable-next-line no-console
+          console.warn(`[claim-guard] unsupported factual claim on an ungrounded turn (markers: ${claims.markers.join(',')})`);
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn(`[cite-guard] skipped (guard error): ${(err as Error)?.message}`);
+      }
     }
 
     // Calculate confidence based on response quality

@@ -208,10 +208,14 @@ export function TasksTab({ projectId, executionRules }: TasksTabProps) {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-y-auto hide-scrollbar">
-      <div className="mb-3 px-1 shrink-0">
-        <p className="text-xs font-medium hatchin-text mb-0.5">Mission Board</p>
-        <p className="text-xs hatchin-text-muted">Tasks created by Hatches from chat, or added by you.</p>
-      </div>
+      {/* The staged Journey provides its own "Your journey" header; the Mission Board
+          heading is only for the flat board (chat-created tasks). */}
+      {!hasStagedTasks && (
+        <div className="mb-3 px-1 shrink-0">
+          <p className="text-xs font-medium hatchin-text mb-0.5">Mission Board</p>
+          <p className="text-xs hatchin-text-muted">Tasks created by Hatches from chat, or added by you.</p>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex-1 flex items-center justify-center py-8">

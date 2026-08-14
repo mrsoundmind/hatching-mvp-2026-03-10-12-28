@@ -1,0 +1,446 @@
+<title>Hatchin Investor and Leadership Brief</title>
+<style>
+  :root{
+    --serif:"Charter","Palatino Linotype","Palatino",Georgia,"Times New Roman",serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --bg:#F1F4F1; --surface:#FFFFFF; --surface-2:#EAF0EC; --raise:0 1px 2px rgba(20,40,30,.06),0 8px 24px rgba(20,40,30,.05);
+    --ink:#14201A; --ink-2:#465349; --ink-3:#79877E; --line:#DBE3DD;
+    --accent:#0B6E4F; --accent-ink:#075139; --accent-soft:#E4F0EA; --brass:#9C6E27;
+    --good:#1C7A50; --good-bg:#E3F0E9; --warn:#9A6C1E; --warn-bg:#F5ECD6; --bad:#AE4230; --bad-bg:#F6E1DB;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0D130F; --surface:#141B17; --surface-2:#1A231D; --raise:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+      --ink:#E9EFEA; --ink-2:#A7B4AC; --ink-3:#72827A; --line:#26302A;
+      --accent:#43B98C; --accent-ink:#71D3AC; --accent-soft:#16281F; --brass:#D2A45C;
+      --good:#4FBF8B; --good-bg:#152820; --warn:#D3A64C; --warn-bg:#2A2413; --bad:#E27C64; --bad-bg:#2E1915;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0D130F; --surface:#141B17; --surface-2:#1A231D; --raise:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+    --ink:#E9EFEA; --ink-2:#A7B4AC; --ink-3:#72827A; --line:#26302A;
+    --accent:#43B98C; --accent-ink:#71D3AC; --accent-soft:#16281F; --brass:#D2A45C;
+    --good:#4FBF8B; --good-bg:#152820; --warn:#D3A64C; --warn-bg:#2A2413; --bad:#E27C64; --bad-bg:#2E1915;
+  }
+  :root[data-theme="light"]{
+    --bg:#F1F4F1; --surface:#FFFFFF; --surface-2:#EAF0EC; --raise:0 1px 2px rgba(20,40,30,.06),0 8px 24px rgba(20,40,30,.05);
+    --ink:#14201A; --ink-2:#465349; --ink-3:#79877E; --line:#DBE3DD;
+    --accent:#0B6E4F; --accent-ink:#075139; --accent-soft:#E4F0EA; --brass:#9C6E27;
+    --good:#1C7A50; --good-bg:#E3F0E9; --warn:#9A6C1E; --warn-bg:#F5ECD6; --bad:#AE4230; --bad-bg:#F6E1DB;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;
+    -webkit-font-smoothing:antialiased;font-size:16px;}
+  .wrap{max-width:1040px;margin:0 auto;padding:clamp(20px,4vw,52px) clamp(16px,4vw,40px) 80px;}
+  h1,h2,h3{font-family:var(--serif);font-weight:600;text-wrap:balance;margin:0;letter-spacing:-.01em;}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums;}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);}
+  p{margin:0 0 12px;color:var(--ink-2);max-width:72ch;}
+  .rupee{color:var(--ink-3);font-family:var(--mono);font-weight:600;}
+  section{margin-top:clamp(38px,5.5vw,60px);}
+
+  .mast{border-bottom:2px solid var(--accent);padding-bottom:24px;}
+  .mast h1{font-size:clamp(30px,5.5vw,50px);line-height:1.03;}
+  .mast .sub{font-size:clamp(15px,2.2vw,18px);color:var(--ink-2);margin-top:14px;max-width:60ch;}
+  .banner{margin-top:20px;background:var(--warn-bg);border:1px solid var(--warn);border-radius:12px;padding:14px 18px;
+    font-size:13.5px;color:var(--ink);}
+  .banner b{color:var(--warn);}
+
+  .shead{display:flex;align-items:baseline;gap:14px;margin-bottom:6px;flex-wrap:wrap;}
+  .shead h2{font-size:clamp(21px,3.2vw,28px);}
+  .kicker{font-size:13px;color:var(--ink-3);}
+  .snote{font-size:15px;color:var(--ink-2);margin:8px 0 20px;max-width:76ch;}
+  .lead{font-size:18px;color:var(--ink);max-width:70ch;font-family:var(--serif);}
+
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;}
+  .tile{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;box-shadow:var(--raise);
+    display:flex;flex-direction:column;gap:5px;}
+  .tile .k{font-size:12px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-3);}
+  .tile .v{font-family:var(--mono);font-size:26px;font-weight:600;line-height:1.05;color:var(--ink);}
+  .tile .v.pos{color:var(--good);} .tile .v.br{color:var(--brass);}
+  .tile .inr{font-family:var(--mono);font-size:13px;color:var(--ink-3);font-weight:600;}
+  .tile .d{font-size:13px;color:var(--ink-2);line-height:1.4;margin-top:2px;}
+
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  @media(max-width:720px){.cards{grid-template-columns:1fr;}}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:var(--raise);}
+  .card .rgn{display:flex;align-items:baseline;justify-content:space-between;gap:8px;}
+  .card .rgn h3{font-size:18px;} .card .price{font-family:var(--mono);font-size:19px;font-weight:600;color:var(--accent);}
+  .card .sub{font-size:12.5px;color:var(--ink-3);margin-top:2px;}
+  .card .mrow{display:flex;justify-content:space-between;font-size:13.5px;padding:6px 0;border-top:1px dotted var(--line);color:var(--ink-2);gap:10px;}
+  .card .mrow:first-of-type{border-top:none;} .card .mrow b{font-family:var(--mono);color:var(--ink);font-weight:600;white-space:nowrap;}
+  .card .mrow .rupee{font-weight:500;font-size:12px;}
+
+  .callout{background:var(--accent-soft);border:1px solid var(--accent);border-radius:16px;padding:22px;display:grid;
+    grid-template-columns:auto 1fr;gap:22px;align-items:center;}
+  @media(max-width:640px){.callout{grid-template-columns:1fr;}}
+  .callout .big{font-family:var(--mono);font-size:clamp(36px,7vw,54px);font-weight:700;color:var(--accent-ink);line-height:1;}
+  .callout h3{font-size:18px;margin-bottom:6px;} .callout p{margin:0;color:var(--ink-2);}
+
+  .chartbox{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:var(--raise);overflow-x:auto;}
+  .chartbox svg{display:block;min-width:520px;width:100%;height:auto;}
+  .cap{font-size:13.5px;color:var(--ink-3);margin-top:12px;max-width:78ch;line-height:1.55;}
+  .cap b{color:var(--ink-2);}
+
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media(max-width:720px){.split{grid-template-columns:1fr;}}
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:var(--raise);}
+  .panel h3{font-size:17px;margin-bottom:8px;} .panel ul{margin:0;padding-left:18px;color:var(--ink-2);font-size:14px;} .panel li{margin:7px 0;}
+  .panel li b{color:var(--ink);}
+
+  .tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:var(--raise);}
+  table{border-collapse:collapse;width:100%;min-width:560px;font-size:13.5px;}
+  th,td{padding:11px 14px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;}
+  th:first-child,td:first-child{text-align:left;}
+  thead th{background:var(--surface-2);font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);font-weight:700;}
+  tbody td{font-family:var(--mono);color:var(--ink);} tbody td:first-child{font-family:var(--sans);color:var(--ink);font-weight:600;}
+  tbody td .rupee{font-size:11.5px;font-weight:500;}
+  tr.hl td{background:var(--accent-soft);}
+  .col-down{color:var(--warn);} .col-up{color:var(--good);}
+
+  .sure{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;}
+  .sure .s{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px 16px;}
+  .sure .s .h{font-weight:700;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;display:inline-block;padding:3px 9px;border-radius:6px;}
+  .sure .s.fact .h{color:var(--good);background:var(--good-bg);} .sure .s.math .h{color:var(--accent);background:var(--accent-soft);}
+  .sure .s.est .h{color:var(--bad);background:var(--bad-bg);} .sure .s.sim .h{color:var(--ink-3);background:var(--surface-2);}
+  .sure .s .x{font-size:12.5px;color:var(--ink-2);margin-top:8px;line-height:1.45;}
+
+  .fivenums{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--surface);box-shadow:var(--raise);}
+  .fn{display:grid;grid-template-columns:118px 1fr;gap:22px;padding:18px 22px;border-top:1px solid var(--line);align-items:baseline;}
+  .fn:first-child{border-top:none;}
+  .fn-v{font-family:var(--mono);font-size:29px;font-weight:700;line-height:1;color:var(--ink);text-align:right;font-variant-numeric:tabular-nums;}
+  .fn-v.pos{color:var(--good);} .fn-v.br{color:var(--brass);}
+  .fn-t{font-size:15px;color:var(--ink-2);line-height:1.5;} .fn-t b{color:var(--ink);}
+  @media(max-width:560px){.fn{grid-template-columns:1fr;gap:5px;} .fn-v{text-align:left;font-size:25px;}}
+
+  .refs{margin:0;padding-left:20px;color:var(--ink-2);font-size:13.5px;line-height:1.5;}
+  .refs li{margin:9px 0;} .refs li b{color:var(--ink);} .refs .mono{font-family:var(--mono);font-size:12px;color:var(--accent-ink);word-break:break-word;}
+
+  .foot{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-3);}
+  .foot b{color:var(--ink-2);}
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <div class="eyebrow">For our CTO and investors · a plain guide to the money</div>
+    <h1>Hatchin: what it costs, what it earns, and why it works</h1>
+    <p class="sub">Hatchin gives anyone a team of 30 AI colleagues that live inside their project, chat with them, and do real work in the background. This brief explains the business behind it in simple terms, and shows why the numbers are strong.</p>
+    <div class="banner"><b>Please read this first.</b> Hatchin is a pre-revenue product. Everything here is a <b>financial model and a plan,</b> built on stated assumptions. These are projections, not results we have already achieved. Near the end we mark, honestly, which numbers are hard facts and which are estimates.</div>
+  </header>
+
+  <!-- THE CASE -->
+  <section>
+    <div class="shead"><h2>The business in one paragraph</h2></div>
+    <p class="lead">Hatchin is cheap to run, keeps most of every rupee it earns, and gets more valuable the more a customer uses it. It costs about <span class="num">$3.22 (₹277)</span> a month to serve a paying customer, who pays <span class="num">$19 (₹1,634)</span> or more. Selling to a company is worth about <span class="num">23 times</span> a single user. The market is large, the cost to break even is tiny, and even a cautious version of the plan makes money. The main job is not saving cash, it is winning customers, especially companies.</p>
+  </section>
+
+  <!-- FIVE NUMBERS -->
+  <section>
+    <div class="shead"><h2>The case in five numbers</h2><span class="kicker">the quick version, in plain words</span></div>
+    <div class="fivenums">
+      <div class="fn"><div class="fn-v pos">80%</div><div class="fn-t"><b>We keep about 80 cents of every dollar.</b> After the AI, the card fee and tax, roughly four-fifths of each sale is profit. It varies by country: 83% in the US, 80% in the UK, 53% in India.</div></div>
+      <div class="fn"><div class="fn-v br">23&times;</div><div class="fn-t"><b>One company is worth 23 solo users.</b> A single company account is worth up to <b>$45,000 (₹39L)</b> over its life, because teams pay more and stay far longer. This is the engine of the business.</div></div>
+      <div class="fn"><div class="fn-v">1</div><div class="fn-t"><b>Break even takes about one company.</b> Or 12 solo subscribers, to cover the monthly running cost of <b>$170 (₹14,620)</b> at launch, which scales with users to about <b>$850 (₹73,100)</b> at 10,000 signups.</div></div>
+      <div class="fn"><div class="fn-v">$2B</div><div class="fn-t"><b>The market we can reach is $2B a year</b> (about ₹17,000 crore). We need well under 1% of it to build a real company. Size is not the limit here.</div></div>
+      <div class="fn"><div class="fn-v pos">Profit</div><div class="fn-t"><b>Even the worst case still makes money.</b> If conversion, the price of AI, and the number of companies all go against us at once, the business still earns <b>$3,198 (₹2.75L)</b> a month.</div></div>
+    </div>
+  </section>
+
+  <!-- HOW IT MAKES MONEY -->
+  <section>
+    <div class="shead"><h2>How Hatchin makes money</h2><span class="kicker">simple subscriptions</span></div>
+    <p class="snote">Two kinds of customer. <b>Individuals</b> pay a monthly subscription, priced for each country. <b>Companies</b> pay per person on the team. There is a free plan that lets people try it, which becomes the top of the funnel.</p>
+    <div class="cards">
+      <div class="card"><div class="rgn"><h3>Individuals</h3><span class="price">$19</span></div>
+        <div class="sub">a month, priced locally</div>
+        <div style="margin-top:12px">
+          <div class="mrow"><span>United States</span><b>$19 <span class="rupee">₹1,634</span></b></div>
+          <div class="mrow"><span>United Kingdom</span><b>£15 <span class="rupee">₹1,638</span></b></div>
+          <div class="mrow"><span>India</span><b>₹699 <span class="rupee">$8</span></b></div>
+        </div>
+      </div>
+      <div class="card"><div class="rgn"><h3>Companies</h3><span class="price">$29</span></div>
+        <div class="sub">per person, per month</div>
+        <div style="margin-top:12px">
+          <div class="mrow"><span>Per seat</span><b>$29 <span class="rupee">₹2,494</span></b></div>
+          <div class="mrow"><span>A 10 person team</span><b>$290 <span class="rupee">₹24,940</span></b></div>
+          <div class="mrow"><span>A 50 person team</span><b>$1,350 <span class="rupee">₹1.16L</span></b></div>
+        </div>
+      </div>
+      <div class="card"><div class="rgn"><h3>Free plan</h3><span class="price">₹0</span></div>
+        <div class="sub">the way in</div>
+        <div style="margin-top:12px">
+          <div class="mrow"><span>Costs us to run</span><b>$0.12 <span class="rupee">₹10</span></b></div>
+          <div class="mrow"><span>Chatting</span><b>yes</b></div>
+          <div class="mrow"><span>Background work</span><b>off</b></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHY MARGINS STRONG (CTO) -->
+  <section>
+    <div class="shead"><h2>Why the margins are unusually strong</h2><span class="kicker">the part your CTO will care about</span></div>
+    <p class="snote">The reason Hatchin can keep about 80% of every sale comes down to one technical choice. <b>Chatting with the AI is almost free to run. Only the background work costs real money, and we cap it.</b></p>
+    <div class="split">
+      <div class="panel">
+        <h3>Chatting is nearly free</h3>
+        <ul>
+          <li>One chat message costs about <b>$0.0004 (₹0.03).</b> Simple messages run on Meta's <b>open-source Llama</b> (free); the rest on <b>DeepSeek Flash</b>, the cheapest paid API, with the prompt cached (about 98% cheaper).</li>
+          <li>Even 900 messages a month is just <b>$0.45 (₹39).</b> So we can let people chat as much as they like.</li>
+          <li>In plain terms: a million tokens of AI is about <b>750,000 words</b> or <b>300 messages</b>, and <b>$1 (₹86)</b> of AI covers roughly <b>2,000 messages</b>.</li>
+          <li>A single background task costs about <b>$0.009 (₹0.77) on average</b> (a quick answer is less, a full document more), and people run many. This is metered as a token budget, so cost stays capped whatever the task.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>Background work is capped, like Claude</h3>
+        <ul>
+          <li>Each user gets a budget of background tasks that <b>refills every 5 hours,</b> with a weekly ceiling. Same idea as Claude's usage limits.</li>
+          <li>This means <b>no single user can ever run up a surprise bill.</b> The most any user can cost is fixed in advance.</li>
+          <li>It is also the safety net that lets us price low in India and offer a free trial without losing money.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="cap">The one risk here worth naming to your CTO: the cheap AI comes mainly from a single provider on promotional pricing. We keep Google and open-source Llama ready as backups, and the whole model is built so we can switch and re-price quickly if that changes.</p>
+  </section>
+
+  <!-- MARKET -->
+  <section>
+    <div class="shead"><h2>How big is the market</h2><span class="kicker">rough sizing, clearly labelled</span></div>
+    <p class="snote">This is a directional estimate to show the ceiling is high, not a precise claim. The people who could use Hatchin are solo founders, freelancers and small teams who already pay for software.</p>
+    <div class="tiles">
+      <div class="tile"><span class="k">Reachable customers</span><span class="v">10M</span><span class="inr">US, UK, India and similar</span><span class="d">People and small teams who pay for tools like this.</span></div>
+      <div class="tile"><span class="k">That is a market of</span><span class="v">$2B</span><span class="inr">about ₹17,000 crore a year</span><span class="d">At a blended <b>$200 (₹17,200)</b> a year each.</span></div>
+      <div class="tile"><span class="k">Capture just 0.5%</span><span class="v pos">$10M</span><span class="inr">about ₹86 crore a year</span><span class="d">50,000 customers. A real, venture scale business.</span></div>
+      <div class="tile"><span class="k">The wider market</span><span class="v br">$10B+</span><span class="inr">long term</span><span class="d">All small businesses and knowledge freelancers, globally.</span></div>
+    </div>
+    <p class="cap">The takeaway for investors: <b>Hatchin needs well under 1% of its reachable market</b> to be a strong outcome. Size is not the limit here. Execution is.</p>
+  </section>
+
+  <!-- GROWTH -->
+  <section>
+    <div class="shead"><h2>The growth plan</h2><span class="kicker">one realistic path over 18 months</span></div>
+    <p class="snote">This is a plan, not a promise, since Hatchin is pre-revenue. It shows how monthly income could build if the plan works. The good news is that the business covers its own running cost almost immediately, then grows from there.</p>
+    <div class="chartbox">
+      <div class="eyebrow" style="margin-bottom:10px">Monthly income (MRR) building over 18 months</div>
+      <svg viewBox="0 0 600 250" role="img" aria-label="Monthly income grows from 99 dollars in quarter 1 to 10,750 dollars by quarter 6.">
+        <line x1="48" y1="220" x2="580" y2="220" stroke="var(--line)"></line>
+        <g font-family="var(--mono)" font-size="11" fill="var(--ink-2)" text-anchor="middle" font-weight="600">
+          <rect x="60"  y="216" width="56" height="4"  rx="2" fill="var(--accent)"></rect><text x="88"  y="208">$99</text>
+          <rect x="146" y="210" width="56" height="10" rx="2" fill="var(--accent)"></rect><text x="174" y="202">$587</text>
+          <rect x="232" y="191" width="56" height="29" rx="2" fill="var(--accent)"></rect><text x="260" y="183">$1,612</text>
+          <rect x="318" y="163" width="56" height="57" rx="2" fill="var(--accent)"></rect><text x="346" y="155">$3,225</text>
+          <rect x="404" y="106" width="56" height="114" rx="2" fill="var(--accent)"></rect><text x="432" y="98">$6,450</text>
+          <rect x="490" y="30"  width="56" height="190" rx="3" fill="var(--brass)"></rect><text x="518" y="22" fill="var(--brass)">$10,750</text>
+        </g>
+        <g font-family="var(--sans)" font-size="11" fill="var(--ink-3)" text-anchor="middle">
+          <text x="88" y="236">Q1</text><text x="174" y="236">Q2</text><text x="260" y="236">Q3</text>
+          <text x="346" y="236">Q4</text><text x="432" y="236">Q5</text><text x="518" y="236">Q6</text>
+        </g>
+      </svg>
+    </div>
+    <p class="cap">By quarter 6 that is a <b>$129,000 (₹1.1 crore) a year</b> run rate, and it is still climbing. The business covers its basic running cost (about <b>$227, or ₹19,500, a month</b> at that scale) by quarter 2. A few larger companies, instead of the small ones assumed here, would push this up further.</p>
+    <div class="split" style="margin-top:18px">
+      <div class="panel">
+        <h3>Why we believe these numbers</h3>
+        <ul>
+          <li><b>10,000 signups in 18 months</b> is about 550 a month, small at first then growing. The plan is a public launch (Product Hunt, Hacker News, founder communities) for the first few hundred, then referrals, an affiliate program, and partnerships with tools founders already use. We avoid paid ads because they lose money at this price. This is the plan's biggest assumption, and the main thing to prove.</li>
+          <li><b>3 in 100 free users pay.</b> A deliberately cautious figure. The usual for this kind of tool is nearer 4.5 in 100.</li>
+          <li><b>About 20 companies,</b> roughly one a month, landed through startup programs, accelerators, and free users bringing their own teams.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>How confident we are, honestly</h3>
+        <ul>
+          <li>Once the signups and paying customers exist, the income is <b>simple arithmetic</b> (their number times the price). That part is solid.</li>
+          <li>The <b>signup numbers are the estimate,</b> not a certainty. They depend on the plan to reach people actually working.</li>
+          <li>If signups come slower, <b>the shape stays the same, it just arrives later.</b> Nothing about the economics breaks; the timeline stretches.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMPANIES = ENGINE -->
+  <section>
+    <div class="shead"><h2>Companies are the real engine</h2><span class="kicker">and they grow over time</span></div>
+    <div class="callout">
+      <div class="big">23&times;</div>
+      <div>
+        <h3>One company is worth as much as 23 solo users</h3>
+        <p>Companies spend company money, use the product more, and stay far longer. A 10 person team is worth about <b>$9,600 (₹8.3L)</b> over its life, a 50 person team about <b>$45,000 (₹39L).</b> Better still, teams grow: they add seats over time, so the same customer pays more each year without us spending anything to win them again.</p>
+      </div>
+    </div>
+    <p class="cap" style="margin-top:14px">This is the pattern investors look for in software: land a small team, then grow inside it. It means revenue can grow even if we never add a single new company, and it keeps the cost of winning customers low.</p>
+  </section>
+
+  <!-- SENSITIVITY -->
+  <section>
+    <div class="shead"><h2>What if things go worse, or better</h2><span class="kicker">the honest range</span></div>
+    <p class="snote">Good plans survive bad luck. Here is the same size of business (10,000 signups) under three cases: a cautious downside, the base plan, and an optimistic upside. The three things most likely to move are how many free users pay, the price of AI, and how many companies sign.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>What changes</th><th class="col-down">Worse</th><th>Base plan</th><th class="col-up">Better</th></tr></thead>
+        <tbody>
+          <tr><td>Free users who pay</td><td class="col-down">2 in 100</td><td>3 in 100</td><td class="col-up">5 in 100</td></tr>
+          <tr><td>AI price vs today</td><td class="col-down">2x higher</td><td>same</td><td class="col-up">30% lower</td></tr>
+          <tr><td>Companies signed</td><td class="col-down">12</td><td>20</td><td class="col-up">30</td></tr>
+          <tr class="hl"><td>Profit each month</td><td class="col-down">$3,198 <span class="rupee">₹2.75L</span></td><td>$7,586 <span class="rupee">₹6.5L</span></td><td class="col-up">$13,268 <span class="rupee">₹11.4L</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="cap">The important line is the bottom one: <b>even the worse case still makes money.</b> That is the sign of a healthy model. It is very hard to make Hatchin lose money at scale, because the cost of running it is so low.</p>
+  </section>
+
+  <!-- KEY METRICS -->
+  <section>
+    <div class="shead"><h2>The metrics investors look for</h2><span class="kicker">the good, and the one honest weakness</span></div>
+    <p class="snote">The numbers a software investor screens on, stated plainly, including the one that is not strong yet.</p>
+    <div class="tiles">
+      <div class="tile"><span class="k">Gross margin</span><span class="v pos">80%</span><span class="inr">kept per sale</span><span class="d">Strong for a software business.</span></div>
+      <div class="tile"><span class="k">Return on winning a company</span><span class="v br">16&times;</span><span class="inr">over its life</span><span class="d">Every $1 spent to land a company returns about $16.</span></div>
+      <div class="tile"><span class="k">Money earned back in</span><span class="v pos">3 mo</span><span class="inr">payback</span><span class="d">The cost of a customer is recovered in 3 to 4 months.</span></div>
+      <div class="tile"><span class="k">Company revenue kept a year</span><span class="v">90%</span><span class="inr">and rising with seats</span><span class="d">Companies are durable and add seats over time.</span></div>
+    </div>
+    <p class="cap"><b>The honest weakness:</b> individual customers churn fast, only about half stay a year. That is normal for a self serve tool, but it is exactly why companies matter so much, and why the top priority is to lift individual retention with annual plans and better onboarding. An investor will ask about this, so we name it first.</p>
+  </section>
+
+  <!-- FIXED COST TRANSPARENCY -->
+  <section>
+    <div class="shead"><h2>What the fixed monthly bill actually is</h2><span class="kicker">full transparency, every line</span></div>
+    <p class="snote"><b>What it is:</b> the base cost to keep Hatchin running at all, whether one person uses it or a thousand. It is separate from the per-customer AI cost shown earlier. <b>Why it exists:</b> the product needs a database, a server, email, monitoring and backups to stay live, before a single user shows up. These are real, published vendor prices as of July 2026, not a guess. Here is every line at launch scale.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>What it is</th><th>$ / mo</th><th>₹ / mo</th><th>Why we pay it</th></tr></thead>
+        <tbody>
+          <tr><td>Database (Supabase Pro)</td><td>$25</td><td>₹2,150</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">Stores every account, chat and file</td></tr>
+          <tr><td>App and backend hosting (Fly.io)</td><td>$15</td><td>₹1,290</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">Runs the server the app lives on</td></tr>
+          <tr><td>Domain and SSL</td><td>$2</td><td>₹172</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">The web address and its security certificate</td></tr>
+          <tr><td>Transactional email (Resend)</td><td>$8</td><td>₹688</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">Sign up, reset and notification emails</td></tr>
+          <tr><td>Marketing email</td><td>$30</td><td>₹2,580</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">Newsletters and onboarding sequences</td></tr>
+          <tr><td>Error monitoring (Sentry)</td><td>$26</td><td>₹2,236</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">Catches crashes before users notice</td></tr>
+          <tr><td>Uptime monitoring</td><td>$7</td><td>₹602</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">Alerts us the moment the site goes down</td></tr>
+          <tr><td>Product analytics (PostHog)</td><td>$0</td><td>₹0</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">Free tier at this size</td></tr>
+          <tr><td>Backups and object storage</td><td>$8</td><td>₹688</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">A safety net for the data</td></tr>
+          <tr><td>Dev and testing tools</td><td>$40</td><td>₹3,440</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">Building and maintaining the app, plus our own AI test spend</td></tr>
+          <tr><td>Misc (CDN, security, small tools)</td><td>$9</td><td>₹774</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">Content delivery and odds and ends</td></tr>
+          <tr class="hl"><td style="font-weight:700">Total, at launch scale</td><td style="font-weight:700">$170</td><td style="font-weight:700">₹14,620</td><td style="font-family:var(--sans);color:var(--ink);white-space:normal">Covered by about 1 company or 12 solo users</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="cap"><b>Why it is not flat:</b> this $170 is the bill at launch. As users grow, the database, hosting and email tiers step up, to about <b>$850 (₹73,100)</b> at 10,000 signups and <b>$4,400 (₹3.78L)</b> at 100,000. It grows sub-linearly (10 times the users is about 5 times the bill), so it stays well under 10% of revenue. Paying customers cover it; free users do not, which is exactly why the plan needs paid conversions and companies.</p>
+  </section>
+
+  <!-- TEAM COST + PROFITABILITY -->
+  <section>
+    <div class="shead"><h2>Costs as we grow, and the path to profit</h2><span class="kicker">being straight about the future</span></div>
+    <div class="split">
+      <div class="panel">
+        <h3>Costs today, and later</h3>
+        <ul>
+          <li><b>Today, at launch scale:</b> about <b>$170 (₹14,620)</b> a month for servers and tools. The founder takes no salary, so cash lasts a very long time.</li>
+          <li><b>Infrastructure scales with users,</b> not flat: about <b>$850 (₹73,100)</b> a month at 10,000 signups and <b>$4,400 (₹3.78L)</b> at 100,000, as compute, database and email step up. It grows sub-linearly, so it stays well under 10% of revenue.</li>
+          <li><b>Team is the bigger, separate cost:</b> as we hire, monthly cost rises to perhaps <b>$10,000 to $20,000 (₹8.6L to ₹17L)</b> for a small team. Because we keep about 80% of every sale, income still grows faster, roughly 15 to 30 companies cover a small paid team.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>The path to profit</h3>
+        <ul>
+          <li>The business <b>covers its basic costs almost at once</b> (about 1 company, or 12 solo users).</li>
+          <li>It can grow to a <b>$129,000 (₹1.1 crore) run rate in 18 months</b> on the base plan, and keep going.</li>
+          <li>We are <b>not raising money right now.</b> This brief is to align the team and to help investors get to know the business early.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT'S NEXT -->
+  <section>
+    <div class="shead"><h2>What is next, and why it does not break the margin</h2><span class="kicker">a future milestone, not built yet</span></div>
+    <p class="snote">The next wave of features is planned, not live: a <b>coding agent</b> (an engineer Hatch that writes real code, in the spirit of Claude), <b>image generation</b>, <b>audio</b> (voice and narration), and richer <b>PDF and document export</b>. Some of these are genuinely expensive to run. The principle we hold to is simple: <b>cheap features stay in the base plan, expensive ones are metered and capped,</b> so no feature can ever cost a user more than they pay.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Planned feature</th><th>What it actually costs</th><th>Roughly, per use</th><th>How we price it</th></tr></thead>
+        <tbody>
+          <tr><td>PDF and document export</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">Server work, not an AI call. The writing is already counted.</td><td>a fraction of a cent</td><td style="font-family:var(--sans);color:var(--ink);white-space:normal">Free, in the base plan</td></tr>
+          <tr><td>Image generation</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">A per image API call (Flux, SDXL, Imagen)</td><td>$0.02 to $0.08 <span class="rupee">₹2 to ₹7</span></td><td style="font-family:var(--sans);color:var(--ink);white-space:normal">A monthly image allowance, then per image</td></tr>
+          <tr><td>Audio (voice, narration)</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">Per minute of text to speech or transcription</td><td>$0.02 to $0.10 <span class="rupee">₹2 to ₹9</span> a minute</td><td style="font-family:var(--sans);color:var(--ink);white-space:normal">A per minute cap, with a weekly ceiling</td></tr>
+          <tr class="hl"><td>Coding agent</td><td style="font-family:var(--sans);color:var(--ink);white-space:normal">Premium models, long multi step runs, plus a safe sandbox to run code</td><td><b>$0.50 to $5 or more</b> <span class="rupee">₹43 to ₹430+</span> a task</td><td style="font-family:var(--sans);color:var(--ink);white-space:normal">Metered credits or a higher Builder tier, not the flat plan</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="split" style="margin-top:18px">
+      <div class="panel">
+        <h3>How capping keeps the margin</h3>
+        <ul>
+          <li>Every expensive feature draws from a <b>budget that refills weekly,</b> the same idea as today's task cap. The most a user can cost is <b>fixed in advance,</b> so a heavy coding user can never run up a bill that beats their price.</li>
+          <li><b>Cheap features stay unlimited feeling</b> in the base plan (chat, PDF). <b>Expensive ones are add ons or a higher tier</b> (coding, image, audio).</li>
+          <li>Net effect: new features grow revenue and usefulness <b>without touching the 80% margin,</b> because the cost is always capped below the price.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>The one that changes the shape</h3>
+        <ul>
+          <li>The coding agent is the outlier: a single task can cost <b>50 to 500 times</b> a normal background task, because it uses premium models and runs for many steps.</li>
+          <li>It also adds real <b>infrastructure</b> (a sandbox to run code safely), which lifts the fixed monthly bill when it ships.</li>
+          <li>So it is priced as <b>usage, not unlimited</b>. That keeps it a profit centre instead of a leak.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="cap">These are <b>planning estimates for features that are not built yet.</b> The exact caps and prices are set when each one ships, once we can measure real usage. The point of showing them now is that the pricing model already has a clear, safe answer for expensive features: meter them and cap them.</p>
+  </section>
+
+  <!-- GOALS -->
+  <section>
+    <div class="shead"><h2>Goals and milestones</h2><span class="kicker">the plan turned into clear targets</span></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Goal</th><th>Target</th><th>When</th><th>Why it matters</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight:600">Launch and get first users</td><td>100 signups</td><td>Quarter 1</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">Prove demand, seed the funnel</td></tr>
+          <tr><td style="font-weight:600">Become default alive</td><td>1 company or 12 paid</td><td>Q1 to Q2</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">The business pays for itself</td></tr>
+          <tr><td style="font-weight:600">Land first companies</td><td>3 companies</td><td>Q2 to Q3</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">The real revenue engine</td></tr>
+          <tr><td style="font-weight:600">Prove the growth loops</td><td>about $1,600/mo</td><td>Quarter 3</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">Referrals and partnerships work</td></tr>
+          <tr><td style="font-weight:600">Fix the retention leak</td><td>churn under 5%/mo</td><td>ongoing</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">The weak spot, fixed with annual plans</td></tr>
+          <tr><td style="font-weight:600">Reach a real run rate</td><td>$129k/yr (₹1.1 cr)</td><td>Q6</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">Self sustaining and fundable</td></tr>
+          <tr><td style="font-weight:600">Ship premium features</td><td>coding, image, audio</td><td>next milestone</td><td style="font-family:var(--sans);color:var(--ink-3);white-space:normal">New revenue, metered and capped to protect margin</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- HONESTY -->
+  <section>
+    <div class="shead"><h2>How sure are we of these numbers</h2><span class="kicker">so nobody mistakes a guess for a fact</span></div>
+    <p class="snote">Being honest about this builds trust, so here it is plainly. The numbers are not all equally certain. This is what to rely on, and what to treat as an early estimate.</p>
+    <div class="sure">
+      <div class="s fact"><div class="h">FACTS (solid)</div><div class="x">AI prices, payment fees, taxes, the exchange rate. Published and checkable. These underpin the cost numbers.</div></div>
+      <div class="s math"><div class="h">MATHS (solid)</div><div class="x">Cost to serve, margins, break even, runway. Simple arithmetic on the facts above. As reliable as they are.</div></div>
+      <div class="s est"><div class="h">ESTIMATES (watch these)</div><div class="x">How many free users pay, how many leave, market size, growth speed. Educated guesses until real users prove them.</div></div>
+      <div class="s sim"><div class="h">PLAN (a direction)</div><div class="x">The 18-month growth path is one reasonable route, not a forecast we can guarantee.</div></div>
+    </div>
+    <p class="cap">In short: the <b>cost and margin story is solid,</b> because it comes from published prices and arithmetic. The <b>growth and conversion story is a well reasoned plan,</b> which real customers will confirm or correct. A full spreadsheet backs every number, so any assumption can be changed and the whole picture updates.</p>
+  </section>
+
+  <!-- SOURCES -->
+  <section>
+    <div class="shead"><h2>Sources and method</h2><span class="kicker">where the hard numbers come from</span></div>
+    <p class="snote">The cost side rests on published, checkable prices, current as of July 2026. The behaviour side (conversion, churn) uses industry benchmarks until Hatchin's own data replaces them. Every figure traces to one of these.</p>
+    <ol class="refs">
+      <li><b>AI model prices.</b> DeepSeek API pricing, V4-Flash at $0.14 and $0.28 per million tokens in and out (<span class="mono">api-docs.deepseek.com/quick_start/pricing</span>); Google Gemini pricing (<span class="mono">ai.google.dev/gemini-api/docs/pricing</span>). These set the per-message and per-task cost.</li>
+      <li><b>The free tier for simple messages.</b> Groq's hosted Llama 3.3-70B, an open Meta model, run at no per-token charge (<span class="mono">console.groq.com</span>). It is booked at $0 in our cost table, which is what makes chatting close to free.</li>
+      <li><b>Infrastructure.</b> Supabase Pro at $25 a month (<span class="mono">supabase.com/pricing</span>); Fly.io compute (<span class="mono">fly.io/docs/about/pricing</span>); Sentry, PostHog, uptime and email tools at their published list prices.</li>
+      <li><b>Payment fees.</b> Stripe at 2.9% plus $0.30 per charge (<span class="mono">stripe.com/pricing</span>); Razorpay for India (<span class="mono">razorpay.com/pricing</span>).</li>
+      <li><b>Taxes and exchange rate.</b> India GST 18% and corporate tax about 25% (CBIC and the Income Tax Department); UK VAT 20% (<span class="mono">gov.uk/vat-rates</span>); rupees converted at 86 to the dollar, the market rate in July 2026.</li>
+      <li><b>Conversion and churn.</b> We model free-to-paid at 3%, deliberately below the roughly 4 to 5% SaaS median; B2C monthly churn at 6%, higher in India on card-renewal friction. These are industry averages, not Hatchin data yet, and are flagged as estimates above.</li>
+      <li><b>Our own measurements.</b> Token usage per message, the prompt cache-hit rate, and the provider mix are read from Hatchin's own code and logs. The full working, with every formula, is in the 22-tab economics spreadsheet behind this brief.</li>
+    </ol>
+  </section>
+
+  <div class="foot">
+    <p><b>Behind this brief</b> is a detailed spreadsheet (22 tabs, live formulas, no errors) covering cost to serve, pricing by country, five customer types, five company sizes, the usage cap, market size, the growth plan, and a worse case and better case. Every assumption is editable, and the source of every number is listed.</p>
+    <p style="margin-top:10px">Costs are based on Hatchin's real setup (DeepSeek plus open-source Llama on Groq's free tier and Google for AI, Supabase for data, Stripe and Razorpay for payments). Prices are from July 2026 and can change. Behaviour numbers such as conversion and churn are industry averages until real data replaces them. Money is shown in US dollars and Indian rupees at ₹86 to the dollar. The strategy opinions elsewhere in our materials are simulated uses of known marketing playbooks, not real endorsements. This document is a model and plan for a pre-revenue product, not a record of results achieved.</p>
+  </div>
+
+</div>

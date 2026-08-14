@@ -34,6 +34,32 @@ export interface PersonalityAdjustment {
   reason: string;
 }
 
+// ITL-3 / LEARN-02: content-aware personality. The audit found feedback adaptation was content-BLIND
+// (it nudged all 6 trait dials generically and threw away the message content). This maps the SUBSTANCE
+// of the feedback (the user's note, and a signal from the reacted response) to the SPECIFIC trait it
+// points at, so a thumbs-down teaches WHAT to change ("too long" -> less verbose), not just a blanket
+// drift. Pure + unit-testable. Returns only the traits the feedback actually spoke to (often none, in
+// which case the adaptation falls back to the existing Phase C baseline-anchored nudge).
+export function deriveTraitHints(feedbackText: string, agentResponse = ''): Partial<Record<keyof PersonalityTraits, 'up' | 'down'>> {
+  const t = `${feedbackText || ''}`.toLowerCase();
+  const h: Partial<Record<keyof PersonalityTraits, 'up' | 'down'>> = {};
+  // Trailing \b on prefix-risky words so "too short" != "shortsighted", "expand" != "expandable",
+  // "cold" != "cold call". (Known limitation: no negation handling, so "don't expand" can misread as
+  // "expand"; bounded to +-0.05 and clamped to the role baseline band, so the blast radius is tiny.)
+  if (/\b(too long|verbose|wordy|shorter|too much text|rambl|cut it down)\b/.test(t)) h.verbosity = 'down';
+  else if (/\b(too short\b|more detail|elaborate|expand\b|too brief|say more)/.test(t)) h.verbosity = 'up';
+  if (/\b(generic|vague|be specific|more specific|no substance|surface.level|hand.?wav)/.test(t)) h.technicalDepth = 'up';
+  if (/\b(too formal|stiff\b|stuffy|be casual|less formal)/.test(t)) h.formality = 'down';
+  else if (/\b(too casual|unprofessional|more formal|too flippant)/.test(t)) h.formality = 'up';
+  if (/\b(rude|harsh|blunt\b|too direct|softer|abrasive|condescend)/.test(t)) h.directness = 'down';
+  else if (/\b(wishy.?washy|be direct|just tell me|give.*opinion|stop hedging|too diplomatic|take a stance)/.test(t)) h.directness = 'up';
+  if (/\b(cold\b|robotic|no empathy|warmer|more human|dismissive)/.test(t)) h.empathy = 'up';
+  if (/\b(too enthusiastic|too much hype|calm down|over the top|too excited|tone it down)/.test(t)) h.enthusiasm = 'down';
+  // Fallback: a very long reply plus any length complaint in the note points at verbosity.
+  if (!h.verbosity && (agentResponse || '').length > 1200 && /\b(long|too much|shorter|tl;?dr)/.test(t)) h.verbosity = 'down';
+  return h;
+}
+
 export class PersonalityEvolutionEngine {
   private personalityProfiles = new Map<string, PersonalityProfile>();
   
@@ -292,17 +318,31 @@ export class PersonalityEvolutionEngine {
     const BAND = 0.15;            // adaptedTraits may never drift more than this from the role baseline
     const REVERT_STEP = 0.04;     // negative: pull back toward baseline
     const REINFORCE_STEP = 0.02;  // positive: gentle, bounded personalization
+    // LEARN-02: which specific trait(s) did the feedback text actually point at?
+    const hints = deriveTraitHints(messageContent, agentResponse);
+    const TARGET_STEP = 0.05; // a targeted, content-aware nudge is slightly larger than the blanket drift
     const traitKeys = Object.keys(profile.adaptedTraits) as (keyof PersonalityTraits)[];
     for (const trait of traitKeys) {
       const base = profile.baseTraits[trait];
       const current = profile.adaptedTraits[trait];
+      const hint = hints[trait];
       let next: number;
-      if (feedback === 'negative') {
+      let reason: string;
+      if (hint && feedback === 'negative') {
+        // Content-aware: a thumbs-DOWN whose note named this trait ("too long") is a correction, so
+        // move the trait in the named direction. A thumbs-UP is NOT a correction, so its text must not
+        // steer traits (this also stops the /api/personality/feedback caller, which passes the user's
+        // own message, from lowering verbosity off words like "make it shorter" on a positive react).
+        next = current + (hint === 'up' ? TARGET_STEP : -TARGET_STEP);
+        reason = `Content-aware: feedback pointed at ${trait} (${hint})`;
+      } else if (feedback === 'negative') {
         const delta = base - current;
         next = current + Math.sign(delta) * Math.min(REVERT_STEP, Math.abs(delta));
+        reason = 'Reverting toward role baseline (no flattening)';
       } else {
         const drift = current - base;
         next = Math.abs(drift) < 0.01 ? current : current + Math.sign(drift) * REINFORCE_STEP;
+        reason = 'Reinforcing user-specific lean, bounded to role baseline';
       }
       // Clamp within the baseline band, then to [0,1].
       next = Math.max(base - BAND, Math.min(base + BAND, next));
@@ -312,9 +352,7 @@ export class PersonalityEvolutionEngine {
           this.createAdjustment(
             trait, current, next,
             feedback === 'positive' ? 'positive_feedback' : 'negative_feedback',
-            feedback === 'positive'
-              ? 'Reinforcing user-specific lean, bounded to role baseline'
-              : 'Reverting toward role baseline (no flattening)'
+            reason
           )
         );
       }

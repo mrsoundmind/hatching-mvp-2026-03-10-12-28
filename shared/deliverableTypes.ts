@@ -350,3 +350,23 @@ export const READER_FACING_DOC_TYPES: ReadonlySet<string> = new Set([
 export function isReaderFacingDocType(type: string): boolean {
   return READER_FACING_DOC_TYPES.has(type);
 }
+
+/**
+ * Deliverable types that generate money, legal, or compliance content and therefore must carry a
+ * "not professional advice" disclaimer on the produced document, wherever it is shown or exported.
+ * (Audit R0-3: AI-generated financial/legal docs were shipping as branded PDFs with no disclaimer.)
+ */
+export const PROFESSIONAL_DISCLAIMER_TYPES: ReadonlySet<string> = new Set([
+  'business-plan',
+  'financial-model',
+  'legal-checklist',
+]);
+
+/** The disclaimer text, in the product's plain voice (no dashes). */
+export const PROFESSIONAL_DISCLAIMER =
+  'AI-generated draft, not professional advice. This document was produced by an AI teammate and may contain errors or omissions. It is not legal, financial, tax, or investment advice. Verify every figure, claim, and legal point with a licensed professional before you rely on it.';
+
+/** Returns the disclaimer for a type that needs one, else null. Fails closed on unknown types. */
+export function professionalDisclaimerFor(type: string): string | null {
+  return PROFESSIONAL_DISCLAIMER_TYPES.has(type) ? PROFESSIONAL_DISCLAIMER : null;
+}

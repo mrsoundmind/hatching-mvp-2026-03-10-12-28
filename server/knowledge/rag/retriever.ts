@@ -179,11 +179,73 @@ async function rerank(query: string, candidates: RankedRow[], k: number): Promis
   }
 }
 
+export type RetrievalReason =
+  | 'ok'              // chunks retrieved and injected
+  | 'disabled'        // RAG_ENABLED=off
+  | 'empty_query'     // no query text
+  | 'no_corpus'       // role_knowledge empty / unreachable
+  | 'below_threshold' // candidates existed but none cleared the score bar
+  | 'rerank_empty'    // reranker returned nothing
+  | 'error';          // retrieval threw
+
 export interface CrossRoleRetrieval {
   chunks: RetrievedChunk[];
   rewritten: string;
-  /** true when nothing cleared the bar — caller logs this as a knowledge-gap signal. */
+  /** true when nothing cleared the bar — recorded as a knowledge-gap signal (KNOW-02). */
   miss: boolean;
+  /** why (for telemetry + diagnosing a silent-empty corpus). */
+  reason: RetrievalReason;
+  /** best vector score seen (diagnostic for threshold tuning); undefined when no candidates. */
+  topScore?: number;
+}
+
+// ITL-0 / KNOW-02 — retrieval outcome telemetry. The `miss` flag was computed and thrown away, so a
+// retrieval that returned nothing (empty corpus, missing embed key, below threshold) fell back to the
+// raw model with ZERO signal, indistinguishable from a grounded answer. This records every chat
+// retrieval outcome (hit/miss + reason) so a silent-empty prod is visible in data (feeds MEAS-02 and
+// the health story). In-memory aggregate, fire-and-forget, never throws, gated by RAG_MISS_TELEMETRY.
+interface RetrievalStats {
+  total: number;
+  hits: number;
+  misses: number;
+  byReason: Record<string, number>;
+  lastAt: string | null;
+}
+const retrievalStats: RetrievalStats = { total: 0, hits: 0, misses: 0, byReason: {}, lastAt: null };
+
+function recordRetrievalOutcome(r: Pick<CrossRoleRetrieval, 'miss' | 'reason'>): void {
+  if ((process.env.RAG_MISS_TELEMETRY ?? 'on').toLowerCase() === 'off') return;
+  try {
+    retrievalStats.total += 1;
+    if (r.miss) retrievalStats.misses += 1;
+    else retrievalStats.hits += 1;
+    retrievalStats.byReason[r.reason] = (retrievalStats.byReason[r.reason] ?? 0) + 1;
+    retrievalStats.lastAt = new Date().toISOString();
+    if (r.miss) {
+      // eslint-disable-next-line no-console
+      console.warn(`[RAG] retrieval_miss reason=${r.reason}, grounding gap: the agent will answer from the model, not the corpus.`);
+    }
+  } catch {
+    /* telemetry must never break retrieval */
+  }
+}
+
+/** Live retrieval aggregate for the operator surface / matrix (MEAS-02/03). Read-only snapshot. */
+export function getRetrievalStats(): RetrievalStats {
+  return { ...retrievalStats, byReason: { ...retrievalStats.byReason } };
+}
+
+/**
+ * KNOW-03 recency factor: 1.0 for a source dated now, decaying exponentially to ~0 for very old or
+ * undated/unparseable sources (5-year scale, so the boost is gentle). Used only to re-order sources
+ * that already cleared the relevance bar, never to admit an irrelevant one.
+ */
+export function recencyFactor(sourceDate: string | null | undefined, now: number = Date.now()): number {
+  if (!sourceDate) return 0;
+  const t = Date.parse(String(sourceDate));
+  if (Number.isNaN(t)) return 0;
+  const years = Math.max(0, (now - t) / (365.25 * 24 * 3600 * 1000));
+  return Math.exp(-years / 5);
 }
 
 /**
@@ -196,9 +258,9 @@ export async function retrieveKnowledgeAcrossRoles(
 ): Promise<CrossRoleRetrieval> {
   const original = (userMessage || '').trim();
   try {
-    if (!original) return { chunks: [], rewritten: original, miss: true };
+    if (!original) return { chunks: [], rewritten: original, miss: true, reason: 'empty_query' };
     const corpus = await rolesWithCorpus();
-    if (corpus.size === 0) return { chunks: [], rewritten: original, miss: true };
+    if (corpus.size === 0) return { chunks: [], rewritten: original, miss: true, reason: 'no_corpus' };
 
     const rewritten = await rewriteQueryForRetrieval(original, opts.history);
     const k = opts.k ?? Number(process.env.RAG_XROLE_TOP_K ?? 6);
@@ -212,18 +274,37 @@ export async function retrieveKnowledgeAcrossRoles(
       vectorCandidates(emb, poolSize),
       keywordCandidates(rewritten, poolSize),
     ]);
+    const topScore = vec[0]?.score;
     // Vector hits must clear minScore (semantic relevance). Keyword hits are lexical matches on the
     // query's own terms, so they are relevant by construction and kept.
     const vecFiltered = vec.filter((r) => r.score >= minScore);
-    if (vecFiltered.length === 0 && kw.length === 0) return { chunks: [], rewritten, miss: true };
+    // ITL-0 / KNOW-03 recency: within the relevance-cleared set, gently prefer newer sources so a
+    // static corpus does not present old material as freshest. Bounded by RAG_RECENCY_WEIGHT (0
+    // disables); applied AFTER the relevance gate, so it re-orders equally-relevant chunks and never
+    // admits an irrelevant one. This ordering feeds the RRF rank fusion below.
+    const recencyWeight = Number(process.env.RAG_RECENCY_WEIGHT ?? 0.1);
+    if (recencyWeight > 0 && vecFiltered.length > 1) {
+      const now = Date.now();
+      const adj = (r: RankedRow) => r.score * (1 + recencyWeight * recencyFactor(r.sourceDate, now));
+      vecFiltered.sort((a, b) => adj(b) - adj(a));
+    }
+    if (vecFiltered.length === 0 && kw.length === 0) {
+      return { chunks: [], rewritten, miss: true, reason: 'below_threshold', topScore };
+    }
 
     const fused = fuseRRF(vecFiltered, kw);
     const diversified = diversify(fused, rerankPool, perRoleCap);
     const reranked = await rerank(rewritten, diversified, k);
-    return { chunks: reranked, rewritten, miss: reranked.length === 0 };
+    return {
+      chunks: reranked,
+      rewritten,
+      miss: reranked.length === 0,
+      reason: reranked.length === 0 ? 'rerank_empty' : 'ok',
+      topScore,
+    };
   } catch (err) {
     console.error('[RAG] cross-role retrieve failed:', (err as Error).message);
-    return { chunks: [], rewritten: original, miss: true };
+    return { chunks: [], rewritten: original, miss: true, reason: 'error' };
   }
 }
 
@@ -236,11 +317,29 @@ export async function retrieveKnowledgeBlockForChat(
   userMessage: string,
   history?: Array<{ role: string; content: string }>,
 ): Promise<string> {
+  return (await retrieveKnowledgeBlockForChatWithMeta(userMessage, history)).block;
+}
+
+/**
+ * Same as retrieveKnowledgeBlockForChat, but also returns whether the answer will be GROUNDED (real
+ * chunks injected) vs fall back to the model, plus the miss reason. KNOW-02: records the outcome as a
+ * telemetry signal so a silent-empty corpus is visible in data. The `grounded` flag is what POS-02
+ * will use to honestly tell the user "from your knowledge base" vs "from general knowledge". Existing
+ * callers keep using retrieveKnowledgeBlockForChat (string) unchanged.
+ */
+export async function retrieveKnowledgeBlockForChatWithMeta(
+  userMessage: string,
+  history?: Array<{ role: string; content: string }>,
+): Promise<{ block: string; grounded: boolean; reason: RetrievalReason; sources: string[] }> {
   // Kill-switch (read at call time): production safety valve + lets the competence benchmark A/B
   // no-knowledge vs matrix in one process.
-  if ((process.env.RAG_ENABLED ?? 'on') === 'off') return '';
+  if ((process.env.RAG_ENABLED ?? 'on').toLowerCase() === 'off') return { block: '', grounded: false, reason: 'disabled', sources: [] };
   const r = await retrieveKnowledgeAcrossRoles(userMessage, { history });
-  return r.chunks.length ? `\n${renderCrossRoleKnowledgeBlock(r.chunks)}` : '';
+  recordRetrievalOutcome(r);
+  const grounded = r.chunks.length > 0;
+  // Source URLs actually retrieved this turn: the allow-list for GRND-01 cite-or-admit enforcement.
+  const sources = r.chunks.map((c) => c.sourceUrl).filter((u): u is string => !!u);
+  return { block: grounded ? `\n${renderCrossRoleKnowledgeBlock(r.chunks)}` : '', grounded, reason: r.reason, sources };
 }
 
 /** Cross-role prompt block: role-attributed, rich citations, judgment-not-regurgitation + injection-safe. */

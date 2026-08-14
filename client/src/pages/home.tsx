@@ -71,6 +71,11 @@ function HomeInner() {
   // It is removed when the tour ends and they go on to start their own project.
   const DEMO_PROJECT_NAME = "Demo · Meet your team";
   const demoProjectIdRef = useRef<string | null>(null);
+  // Seed the demo at most once per onboarding run, and let the "start tour" click
+  // await the in-flight seed instead of racing it (so the tour appears with no
+  // "creating…" gap).
+  const demoSeedStartedRef = useRef(false);
+  const demoSeedPromiseRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     if (!pendingTour || !activeProjectId) return;
@@ -92,11 +97,13 @@ function HomeInner() {
       }
       return;
     }
-    // Let the sidebar/chat/brain finish rendering the new project first.
+    // Panels are already rendered (the demo was seeded while Welcome was up), so
+    // only a short beat to let the Welcome modal finish closing and restore
+    // pointer events before the tour's own buttons need to be clickable.
     const t = setTimeout(() => {
       setTourActive(true);
       setPendingTour(false);
-    }, 700);
+    }, 250);
     return () => clearTimeout(t);
   }, [pendingTour, activeProjectId, showProjectName, showQuickStart, showStarterPacks]);
   const [upgradeReason, setUpgradeReason] = useState<string>('project_limit');
@@ -673,15 +680,11 @@ function HomeInner() {
   // affect ordinary project creation. On any failure it advances the user to the
   // path choice rather than stranding them on the teach step.
   const seedDemoProject = async () => {
-    // The guided tour is a desktop-only enhancement that runs once. If it won't
-    // run here (mobile / narrow window / already seen), skip the demo entirely
-    // and go straight to the path choice — never seed a throwaway we can't teach
-    // on, and never dead-end onboarding waiting for a tour that won't fire.
+    // The guided tour spotlights real panels that live in drawers on mobile, so
+    // it's a desktop-only enhancement. On a narrow screen we never seed a
+    // throwaway we can't teach on; startTour() handles advancing without a demo.
     const isDesktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches;
-    if (!isDesktop || localStorage.getItem(TOUR_DONE_KEY)) {
-      window.dispatchEvent(new CustomEvent('hatchin:onboarding-teach-done'));
-      return;
-    }
+    if (!isDesktop) return;
     try {
       // Remove any stale demo left over from a previous incomplete run.
       try {
@@ -712,12 +715,44 @@ function HomeInner() {
       const project = await res.json();
       demoProjectIdRef.current = project.id;
 
+      // Pre-install a short, in-character exchange so the chat isn't empty during
+      // the tour — it shows the team actually working for the user (scoping,
+      // pushing back, drafting), not just Maya's greeting. Best-effort: the tour
+      // still works if any of this fails.
+      try {
+        const demoAgents = await fetch(`/api/projects/${project.id}/agents`).then((r) => r.json());
+        const byRole = (role: string) =>
+          Array.isArray(demoAgents) ? demoAgents.find((a: any) => a.role === role && !a.isSpecialAgent) : null;
+        const pm = byRole('Product Manager');
+        const lead = byRole('Technical Lead');
+        const copy = byRole('Copywriter');
+        const convId = `project:${project.id}`;
+        const script = [
+          { messageType: 'user', content: "We're building a budgeting app for freelancers. What should the MVP be?" },
+          pm && { messageType: 'agent', agentId: pm.id, metadata: { agentRole: 'Product Manager' },
+            content: "Three things, nothing more: connect a bank, auto-sort income vs expenses, and one honest 'what's left this month' number. I'd cut invoicing and multi-currency from v1, they'll stall you. Nail the connect-and-categorize flow first." },
+          lead && { messageType: 'agent', agentId: lead.id, metadata: { agentRole: 'Technical Lead' },
+            content: "Agreed on scope, but don't build bank sync yourself. Use Plaid for v1: a day of work instead of a month, and freelancers already trust it. We only revisit if the fees start to bite." },
+          copy && { messageType: 'agent', agentId: copy.id, metadata: { agentRole: 'Copywriter' },
+            content: "For the landing page I'd lead with the pain, not the feature: 'Know what you actually made this month.' I'll draft three homepage headlines and a first-run line so the bank-connect step doesn't scare anyone off." },
+        ].filter(Boolean) as Array<Record<string, unknown>>;
+        // Sequential so the messages keep their order in the thread.
+        for (const msg of script) {
+          await fetch(`/api/conversations/${convId}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(msg),
+          }).catch(() => {});
+        }
+      } catch { /* best-effort — a pre-filled demo chat is a nice-to-have */ }
+
       queryClient.setQueryData(["/api/projects"], (old: any) =>
         Array.isArray(old) ? [...old, project] : [project]);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["/api/projects"] }),
         queryClient.invalidateQueries({ queryKey: ["/api/teams"] }),
         queryClient.invalidateQueries({ queryKey: ["/api/agents"] }),
+        queryClient.invalidateQueries({ queryKey: [`/api/conversations/project:${project.id}/messages`] }),
       ]);
 
       setActiveProjectId(project.id);
@@ -729,17 +764,21 @@ function HomeInner() {
         if (Array.isArray(teams)) setExpandedTeams(new Set(teams.map((t: any) => t.id)));
       } catch { /* ignore */ }
 
-      setPendingTour(true); // fire the guided tour on the real demo project
+      // Demo is ready. The tour is NOT started here — startTour() reveals it on
+      // the user's click, by which time this seed has usually already finished.
     } catch (error) {
       console.error('seedDemoProject failed:', error);
       demoProjectIdRef.current = null;
-      // Don't strand the user on the teach step — send them to the path choice.
-      window.dispatchEvent(new CustomEvent('hatchin:onboarding-teach-done'));
     }
   };
 
-  // Delete the temporary demo project once the tour is over.
+  // Delete the temporary demo project once the tour is over (or if the user
+  // bails during Welcome). Awaits any in-flight seed first so a fast dismiss
+  // can't orphan a demo that was still being created.
   const cleanupDemoProject = async () => {
+    try { await demoSeedPromiseRef.current; } catch { /* ignore */ }
+    demoSeedStartedRef.current = false;
+    demoSeedPromiseRef.current = null;
     const id = demoProjectIdRef.current;
     if (!id) return;
     demoProjectIdRef.current = null;
@@ -752,14 +791,25 @@ function HomeInner() {
     queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
   };
 
-  // OnboardingManager asks us to seed the demo project when the user enters the
-  // teach step.
-  useEffect(() => {
-    const onSeed = () => { void seedDemoProject(); };
-    window.addEventListener('hatchin:onboarding-seed-demo', onSeed);
-    return () => window.removeEventListener('hatchin:onboarding-seed-demo', onSeed);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Start seeding the demo the instant the Welcome screen appears (guarded to
+  // once per run), so it's ready before the user clicks through.
+  const startDemoSeed = () => {
+    if (demoSeedStartedRef.current) return;
+    demoSeedStartedRef.current = true;
+    demoSeedPromiseRef.current = seedDemoProject();
+  };
+
+  // Reveal the tour on the pre-seeded demo. If the seed is still running, wait
+  // for it (no gap in practice); if there's no demo (mobile / seed failed),
+  // skip the tour and advance onboarding to the path choice.
+  const startOnboardingTour = async () => {
+    try { await demoSeedPromiseRef.current; } catch { /* ignore */ }
+    if (demoProjectIdRef.current) {
+      setPendingTour(true);
+    } else {
+      window.dispatchEvent(new CustomEvent('hatchin:onboarding-teach-done'));
+    }
+  };
 
   // Agent creation handler
   const handleCreateAgent = async (agentData: Omit<Agent, 'id'>) => {
@@ -1072,6 +1122,9 @@ function HomeInner() {
       <OnboardingManager
         projectsSettled={projectsSettled}
         hasExistingProjects={hasExistingProjects}
+        onPreseedDemo={startDemoSeed}
+        onStartTour={() => { void startOnboardingTour(); }}
+        onAbortOnboarding={() => { void cleanupDemoProject(); }}
         onComplete={(path, templateData) => {
           if (path === 'idea') {
             // Fallback: show the project name modal instead of auto-creating with generic name

@@ -81,10 +81,13 @@ export default function LoginPage() {
       >
         <source src="/media/login.mp4" type="video/mp4" />
       </video>
+      {/* a lighter scrim so the footage (and the person in it) stays visible; a
+          soft top-and-bottom gradient keeps the white wordmark, Back link, and the
+          card's edge legible without darkening the whole scene. */}
       <div
         aria-hidden
         className="absolute inset-0 z-[1]"
-        style={{ background: "rgba(10,12,19,0.62)" }}
+        style={{ background: "linear-gradient(to bottom, rgba(10,12,19,0.55) 0%, rgba(10,12,19,0.22) 34%, rgba(10,12,19,0.22) 66%, rgba(10,12,19,0.55) 100%)" }}
       />
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-6xl flex-col px-5 py-6 sm:px-8">
@@ -99,7 +102,9 @@ export default function LoginPage() {
           </a>
         </div>
 
-        <div className="flex flex-1 items-center justify-center py-12">
+        {/* card sits in the upper area, not dead-centre, so it no longer covers
+            the person in the footage below it */}
+        <div className="flex flex-1 items-start justify-center pt-8 pb-10 sm:pt-14">
           <div className="lv3-editorial w-full max-w-[420px] rounded-xl border bg-white p-8 shadow-2xl shadow-black/30 sm:p-10">
             <span className="lv3-label lv3-t-blue">Start free</span>
             <h1
@@ -127,14 +132,28 @@ export default function LoginPage() {
               </div>
             )}
 
-            <a
-              href={`/api/auth/google/start?returnTo=${encodeURIComponent(nextPath)}`}
-              className="mt-7 inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-full text-[15px] font-medium text-white transition-transform hover:scale-[1.02]"
-              style={{ background: "var(--lv3-blue)", boxShadow: "0 8px 26px rgba(66,87,232,0.35)" }}
-            >
-              <GoogleIcon className="size-4" />
-              Continue with Google
-            </a>
+            {/* Both entry points. Google OAuth signs in an existing account and
+                creates one for a new user through the same flow, so both buttons
+                point at the same endpoint; showing both matches what people expect
+                and answers "I clicked Sign in but I don't have an account yet." */}
+            <div className="mt-7 flex flex-col gap-3">
+              <a
+                href={`/api/auth/google/start?returnTo=${encodeURIComponent(nextPath)}`}
+                className="inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-full text-[15px] font-medium text-white transition-transform hover:scale-[1.02]"
+                style={{ background: "var(--lv3-blue)", boxShadow: "0 8px 26px rgba(66,87,232,0.35)" }}
+              >
+                <GoogleIcon className="size-4" />
+                Sign in with Google
+              </a>
+              <a
+                href={`/api/auth/google/start?returnTo=${encodeURIComponent(nextPath)}`}
+                className="inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-full border text-[15px] font-medium transition-colors hover:bg-[color:var(--lv3-candle)]"
+                style={{ borderColor: "var(--lv3-border)", color: "var(--lv3-navy)" }}
+              >
+                <GoogleIcon className="size-4" />
+                Create an account with Google
+              </a>
+            </div>
 
             <p className="lv3-label lv3-t-soft-55 mt-4 text-center">
               Free forever plan · no card needed

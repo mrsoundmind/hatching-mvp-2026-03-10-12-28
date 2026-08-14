@@ -42,3 +42,18 @@ Legend: 🟢 PASS live · 🔴 STILL BROKEN · 🟠 PARTIAL/degraded · ⚪ defe
 ### Gated on a fresh server restart (could not complete on the current 19.5h instance)
 - ⏸ **#95/#90 fresh autonomous execution** — see Persona 2. Needs a restart to re-establish a healthy pg-boss worker (current one degraded after a Supabase DNS blip).
 - ⏸ **#160 UpgradeModal on project cap** — needs `FEATURE_BILLING_GATES=true` (currently off) + a Free-tier user at the 3-project cap. Both require restarting the server with a different env, and flipping the test user to Free. Not doable without a restart.
+
+---
+
+## VERIFICATION OF THE FIX (commit 57f2c94, 2026-07-21) — #95 now RESOLVED 🟢
+
+Independently verified (QA only, no code changes):
+
+1. **Commit real & correct** — `57f2c94` "pg-boss worker survives a DB blip". `jobQueue.ts` builds pg-boss from a hardened pool config mirroring db.ts with the load-bearing `query_timeout: 60_000`, plus a `restartWorker`/force-recreate watchdog. HEAD is `f7a7345` (docs).
+2. **Resilience config test** — `scripts/test-jobqueue-resilience.ts` **9/9 PASS** (query_timeout 60000, connectionTimeout, keepAlive, idleTimeout, ssl, application_name hatchin-pgboss, dedicated pool=4, connection string carried).
+3. **Server restarted with the fix** — new PID 94602 (was 78615).
+4. **The 20-hour stuck job drained** — job `6756a413` went `created → completed` (started 08:38:35, done 08:39:24). My original audit's tweet task also completed. Zero jobs left in `created`.
+5. **Fresh end-to-end run (my own, this session)** — created task "draft a short cold-open line…" (todo) → fired trigger phrase → observed the job go `active` (worker consuming, previously impossible) → run `210c74c1` **complete in 34.2s** → task **todo → completed** → browser tab badge "✨ Team working…" → "(1) Work complete" → Maya return briefing in chat → Activity feed shows "Alex · TASK · Finished …" with name+avatar.
+6. **Job states after**: 2 completed, 0 stuck.
+
+**Verdict: #95 autonomous execution is now fully working, root cause fixed (not just restart-masked).** Every BROKEN item from the original audit and this re-audit is now resolved. Remaining open items are the two by-design deferrals: #44 (capability wording) and #104 (KB list, Phase 42).

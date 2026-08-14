@@ -10,7 +10,8 @@
  *
  * Three render states:
  *   1. null rubricScore  → "Score pending" (pre-Phase-36 version, or v1 baseline scoring failed)
- *   2. skipped: true     → "Rubric not available for this type" (legacy custom type)
+ *   2. skipped: true     → plain "this document type isn't scored" (no raw reason code;
+ *                          the score chip is also hidden for skipped types upstream)
  *   3. populated         → per-criterion list
  *
  * Visual contract follows the user-approved wireframe at /tmp/phase-36-wireframe.html:
@@ -65,8 +66,7 @@ export function RubricBreakdown({ rubricScore, rubricVersion }: RubricBreakdownP
         className="p-3 rounded-[10px] bg-[var(--hatchin-surface-elevated)] border border-[var(--hatchin-border-subtle)] text-xs hatchin-text-muted"
         data-testid="rubric-breakdown-skipped"
       >
-        Rubric not available for this type.
-        {rubricScore.reason && <div className="mt-1 opacity-75">({rubricScore.reason})</div>}
+        This document type isn’t scored, so there’s no rubric to show.
       </div>
     );
   }

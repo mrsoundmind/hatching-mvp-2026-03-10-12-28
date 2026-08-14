@@ -30,12 +30,6 @@ import { Sparkles } from "@/components/ui/sparkles";
 import { PrismaHero } from "@/components/ui/prisma-hero";
 import "@/components/landing-v3/landing-v3.css";
 
-const NAV = [
-  { label: "How it works", href: "#overview" },
-  { label: "Real jobs", href: "#jobs" },
-  { label: "Pricing", href: "#start" },
-];
-
 // v4's own rail: Overnight is merged into Control here, so one fewer stop and the
 // Control stop is relabelled to what it now covers.
 const RAIL_ITEMS = [
@@ -74,9 +68,12 @@ export default function LandingPageV4() {
 
   return (
     <div className="lv3 min-h-screen w-full bg-[#0A0C13]">
-      {/* pinned, exactly like v3: the page scrolls up over the hero */}
-      <div className="sticky top-0 z-0 h-screen overflow-hidden">
+      {/* pinned, exactly like v3: the page scrolls up over the hero. On mobile the
+          shell is 80vh (not a full screen) so the headline is not marooned at the
+          bottom under a tall empty video band; desktop stays full height. */}
+      <div className="sticky top-0 z-0 h-[80vh] overflow-hidden md:h-screen">
         <PrismaHero
+          heightClass="h-[80vh] md:h-screen"
           /* v3's line, in v3's two-font treatment. The giant word below is the
              brand; this is the promise. */
           tagline={[
@@ -88,11 +85,9 @@ export default function LandingPageV4() {
           body="Tell them what you need. They push back, then deliver."
           ctaLabel="Start free"
           ctaHref="/login"
-          navItems={NAV}
-          /* Sign in moves out of the centre tab to the top right, like v3.
-             It stays "Sign in" rather than a second "Start free": the bottom
-             CTA already carries that, and two identical buttons split one
-             click two ways, which is the thing v3's hero was fixed for. */
+          /* Nav links removed per design: the hero carries only the promise, the
+             wordmark, and the two CTAs (Start free below, Sign in top-right).
+             The section rail below still provides in-page wayfinding. */
           navCta={{ label: "Sign in", href: "/login" }}
           /* Self-hosted, re-encoded. The original shipped from a CloudFront
              bucket we do not own, at 1924x1076 / 12.8 Mbps / 15.35 MB, which

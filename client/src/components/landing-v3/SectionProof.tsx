@@ -108,9 +108,9 @@ function Relay({ reduce }: { reduce: boolean | null }) {
 export function SectionProof() {
   const reduce = useReducedMotion();
   return (
-    <section id="proof" className="lv3-bg-candle px-5 py-24 sm:px-8 sm:py-28">
+    <section id="proof" className="lv3-bg-candle px-5 py-14 sm:px-8 sm:py-28">
       <div className="mx-auto max-w-6xl">
-        <Reveal className="mb-9 max-w-2xl">
+        <Reveal className="mb-6 max-w-2xl sm:mb-9">
           <span className="lv3-label lv3-t-blue">How the work gets made</span>
           <h2 className="lv3-display lv3-t-navy mt-4 text-balance">
             Written by one.{" "}
@@ -142,7 +142,7 @@ export function SectionProof() {
               <span className="lv3-t-navy truncate text-[13.5px] font-semibold">{DOC.title}</span>
               <span className="lv3-label lv3-t-soft-55 ml-auto shrink-0">final</span>
             </div>
-            <div className="flex flex-col gap-4 p-5 sm:p-6">
+            <div className="flex flex-col gap-3 p-4 sm:gap-4 sm:p-6">
               {DOC.sections.map((s, i) => (
                 <motion.div
                   key={s.h}

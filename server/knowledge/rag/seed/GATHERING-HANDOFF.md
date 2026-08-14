@@ -59,7 +59,7 @@ Valid JSON only (a single array per file). Escape quotes/newlines. No em or en d
 
 ---
 
-## 4. The 31 roles + domain + example authoritative sources
+## 4. The 34 roles + domain + example authoritative sources
 
 Use these EXACT `role` values. Example sources are starting points, find the best per the mastery map.
 
@@ -96,8 +96,11 @@ Use these EXACT `role` values. Example sources are starting points, find the bes
 | Audio Editor | audio/podcast production, loudness | Transom.org, iZotope Learn, EBU R128 / LUFS standards |
 | Idea Partner | mental models, decision-making, ideation | Farnam Street (fs.blog), IDEO design thinking, Charlie Munger's models |
 | Finance Analyst | unit economics, FP&A, SaaS metrics, cash | a16z metrics, David Skok / forEntrepreneurs, Reforge finance, Wall Street Prep, Rule of 40 / NRR / CAC payback |
+| Legal Counsel | startup/company law, contracts, IP, compliance | Cooley GO, Y Combinator legal + SAFE docs, USPTO, GDPR/CCPA official texts, Common Paper, Bloomberg Law basics (framed as "not legal advice") |
+| Sales Lead | B2B sales methodology, pipeline, closing | MEDDIC / MEDDPICC, Challenger Sale, SPIN Selling (Rackham), Winning by Design, Gong/Gap Selling data, JOLT (Dixon) |
+| Customer Success Manager | onboarding, retention, expansion, churn | Gainsight, Lincoln Murphy (Sixteen Ventures), Kellblog (Kellogg), Bessemer, SaaStr, First Round Review |
 
-(Design and Marketing/Growth/SEO/Copywriting already have some material; still welcome deeper sources.)
+(Design and Marketing/Growth/SEO/Copywriting already have some material; still welcome deeper sources. All 34 roles now covered; keep this table in sync when a new role is added, per DEEPENING-CAMPAIGN.md.)
 
 ---
 

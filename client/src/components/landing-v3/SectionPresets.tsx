@@ -21,6 +21,7 @@ import { ArrowRight, BookOpen, Check, FileText, Layers, Lock, Users } from "luci
 
 import AgentAvatar from "@/components/avatars/AgentAvatar";
 import { CTA, Reveal, EASE } from "./primitives";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const GREEN = "#0F9D76";
 
@@ -160,9 +161,126 @@ function SectionLabel({ icon: Icon, children }: { icon: typeof Users; children: 
   );
 }
 
-function ReadyDetail({ pack, tick, reduce }: { pack: Pack; tick: number; reduce: boolean | null }) {
+// ── the four facets of an opened pack, each a self-contained block so the same
+// markup serves the desktop 2x2 grid and the mobile one-at-a-time tabs ────────
+function TeamBlock({ pack, litName, reduce }: { pack: Pack; litName: string; reduce: boolean | null }) {
+  return (
+    <div>
+      <SectionLabel icon={Users}>The team</SectionLabel>
+      <div className="flex flex-col gap-3">
+        {pack.team?.map((g) => (
+          <div key={g.group}>
+            <span className="lv3-label lv3-t-soft-55 mb-1.5 block text-[9px]">{g.group}</span>
+            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+              {g.members.map((m) => {
+                const lit = m.name === litName;
+                return (
+                  <motion.div
+                    key={m.name}
+                    className="flex items-center gap-2 border bg-white p-1.5"
+                    animate={{ borderColor: lit ? "var(--lv3-amber-fill)" : "var(--lv3-border)" }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <motion.span animate={reduce ? {} : { y: lit ? -2 : 0 }} transition={{ duration: 0.3 }} className="shrink-0">
+                      <AgentAvatar characterName={m.name} role={m.role} size={24} state={lit ? "working" : "idle"} />
+                    </motion.span>
+                    <span className="min-w-0">
+                      <span className="lv3-t-navy block truncate text-[11.5px] font-semibold leading-tight">{m.name}</span>
+                      <span className="lv3-t-soft-55 block truncate text-[9.5px] leading-tight">{m.role}</span>
+                    </span>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function JourneyBlock({ pack }: { pack: Pack }) {
+  return (
+    <div>
+      <SectionLabel icon={Layers}>The journey, staged</SectionLabel>
+      <div className="flex flex-col gap-2">
+        {pack.journey?.map((s, i) => (
+          <div key={s.name} className="border p-2.5" style={{ borderColor: "var(--lv3-border)", background: "#fbfbfe" }}>
+            <span className="lv3-label lv3-t-navy mb-1.5 flex items-center gap-1.5 text-[9.5px]">
+              <span className="flex size-4 items-center justify-center rounded-full text-[8px] font-bold text-white" style={{ background: "var(--lv3-blue)" }}>{i + 1}</span>
+              {s.name}
+            </span>
+            <div className="flex flex-wrap gap-1">
+              {s.tasks.map((t) => (
+                <span key={t} className="lv3-t-soft rounded bg-white px-1.5 py-0.5 text-[9.5px]" style={{ border: "1px solid var(--lv3-border)" }}>
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DocsBlock({ pack }: { pack: Pack }) {
+  return (
+    <div>
+      <SectionLabel icon={FileText}>The documents it builds</SectionLabel>
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+        {pack.docs?.map((d) => (
+          <span key={d} className="flex items-center gap-1.5 border bg-white px-2 py-1.5" style={{ borderColor: "var(--lv3-border)" }}>
+            <FileText className="lv3-t-blue size-3 shrink-0" />
+            <span className="lv3-t-navy truncate text-[10.5px] font-medium">{d}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PlaybookBlock({ pack, tick }: { pack: Pack; tick: number }) {
+  return (
+    <div>
+      <SectionLabel icon={BookOpen}>The field playbook</SectionLabel>
+      <div className="flex flex-wrap gap-1.5">
+        {pack.frameworks?.map((f, i) => {
+          const lit = pack.frameworks && i === tick % pack.frameworks.length;
+          return (
+            <motion.span
+              key={f}
+              className="rounded border px-1.5 py-0.5 text-[10px] font-semibold"
+              animate={{
+                borderColor: lit ? "var(--lv3-blue)" : "var(--lv3-border)",
+                color: lit ? "var(--lv3-blue)" : "var(--lv3-navy)",
+                backgroundColor: lit ? "rgba(66,87,232,0.06)" : "#fff",
+              }}
+              transition={{ duration: 0.3 }}
+            >
+              {f}
+            </motion.span>
+          );
+        })}
+      </div>
+      <p className="lv3-t-soft-55 mt-2.5 text-[11px] leading-snug">
+        Not generic templates. Your team adapts these to your project as they work.
+      </p>
+    </div>
+  );
+}
+
+const PACK_TABS = [
+  { key: "team", label: "Team", icon: Users },
+  { key: "journey", label: "Plan", icon: Layers },
+  { key: "docs", label: "Docs", icon: FileText },
+  { key: "playbook", label: "Playbook", icon: BookOpen },
+] as const;
+
+function ReadyDetail({ pack, tick, reduce, isMobile }: { pack: Pack; tick: number; reduce: boolean | null; isMobile: boolean }) {
   const flatTeam = (pack.team ?? []).flatMap((g) => g.members);
   const litName = flatTeam.length ? flatTeam[tick % flatTeam.length].name : "";
+  const [tab, setTab] = useState<(typeof PACK_TABS)[number]["key"]>("team");
 
   return (
     <motion.div
@@ -209,108 +327,55 @@ function ReadyDetail({ pack, tick, reduce }: { pack: Pack; tick: number; reduce:
         )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* THE TEAM — grouped by discipline, names + roles clear */}
+      {isMobile ? (
+        /* mobile: one facet at a time behind a tab bar, so the opened pack is
+           one readable panel instead of four stacked full-height sections */
         <div>
-          <SectionLabel icon={Users}>The team</SectionLabel>
-          <div className="flex flex-col gap-3">
-            {pack.team?.map((g) => (
-              <div key={g.group}>
-                <span className="lv3-label lv3-t-soft-55 mb-1.5 block text-[9px]">{g.group}</span>
-                <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                  {g.members.map((m) => {
-                    const lit = m.name === litName;
-                    return (
-                      <motion.div
-                        key={m.name}
-                        className="flex items-center gap-2 border bg-white p-1.5"
-                        animate={{ borderColor: lit ? "var(--lv3-amber-fill)" : "var(--lv3-border)" }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <motion.span animate={reduce ? {} : { y: lit ? -2 : 0 }} transition={{ duration: 0.3 }} className="shrink-0">
-                          <AgentAvatar characterName={m.name} role={m.role} size={24} state={lit ? "working" : "idle"} />
-                        </motion.span>
-                        <span className="min-w-0">
-                          <span className="lv3-t-navy block truncate text-[11.5px] font-semibold leading-tight">{m.name}</span>
-                          <span className="lv3-t-soft-55 block truncate text-[9.5px] leading-tight">{m.role}</span>
-                        </span>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* THE JOURNEY — stages with their tasks */}
-        <div>
-          <SectionLabel icon={Layers}>The journey, staged</SectionLabel>
-          <div className="flex flex-col gap-2">
-            {pack.journey?.map((s, i) => (
-              <div key={s.name} className="border p-2.5" style={{ borderColor: "var(--lv3-border)", background: "#fbfbfe" }}>
-                <span className="lv3-label lv3-t-navy mb-1.5 flex items-center gap-1.5 text-[9.5px]">
-                  <span className="flex size-4 items-center justify-center rounded-full text-[8px] font-bold text-white" style={{ background: "var(--lv3-blue)" }}>{i + 1}</span>
-                  {s.name}
-                </span>
-                <div className="flex flex-wrap gap-1">
-                  {s.tasks.map((t) => (
-                    <span key={t} className="lv3-t-soft rounded bg-white px-1.5 py-0.5 text-[9.5px]" style={{ border: "1px solid var(--lv3-border)" }}>
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* THE DOCUMENTS — full list */}
-        <div>
-          <SectionLabel icon={FileText}>The documents it builds</SectionLabel>
-          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-            {pack.docs?.map((d) => (
-              <span key={d} className="flex items-center gap-1.5 border bg-white px-2 py-1.5" style={{ borderColor: "var(--lv3-border)" }}>
-                <FileText className="lv3-t-blue size-3 shrink-0" />
-                <span className="lv3-t-navy truncate text-[10.5px] font-medium">{d}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* THE PLAYBOOK — frameworks, adapted not templated */}
-        <div>
-          <SectionLabel icon={BookOpen}>The field playbook</SectionLabel>
-          <div className="flex flex-wrap gap-1.5">
-            {pack.frameworks?.map((f, i) => {
-              const lit = pack.frameworks && i === tick % pack.frameworks.length;
+          <div role="tablist" className="flex gap-1 overflow-x-auto border-b" style={{ borderColor: "var(--lv3-border)" }}>
+            {PACK_TABS.map((t) => {
+              const on = t.key === tab;
               return (
-                <motion.span
-                  key={f}
-                  className="rounded border px-1.5 py-0.5 text-[10px] font-semibold"
-                  animate={{
-                    borderColor: lit ? "var(--lv3-blue)" : "var(--lv3-border)",
-                    color: lit ? "var(--lv3-blue)" : "var(--lv3-navy)",
-                    backgroundColor: lit ? "rgba(66,87,232,0.06)" : "#fff",
+                <button
+                  key={t.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={on}
+                  onClick={() => setTab(t.key)}
+                  className="flex shrink-0 items-center gap-1.5 px-2.5 py-2.5 text-[11.5px] font-semibold transition-colors focus-visible:outline-none"
+                  style={{
+                    color: on ? "var(--lv3-blue)" : "var(--lv3-soft-55)",
+                    borderBottom: on ? "2px solid var(--lv3-blue)" : "2px solid transparent",
+                    marginBottom: -1,
                   }}
-                  transition={{ duration: 0.3 }}
                 >
-                  {f}
-                </motion.span>
+                  <t.icon className="size-3.5" />
+                  {t.label}
+                </button>
               );
             })}
           </div>
-          <p className="lv3-t-soft-55 mt-2.5 text-[11px] leading-snug">
-            Not generic templates. Your team adapts these to your project as they work.
-          </p>
+          <div className="pt-4">
+            {tab === "team" && <TeamBlock pack={pack} litName={litName} reduce={reduce} />}
+            {tab === "journey" && <JourneyBlock pack={pack} />}
+            {tab === "docs" && <DocsBlock pack={pack} />}
+            {tab === "playbook" && <PlaybookBlock pack={pack} tick={tick} />}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <TeamBlock pack={pack} litName={litName} reduce={reduce} />
+          <JourneyBlock pack={pack} />
+          <DocsBlock pack={pack} />
+          <PlaybookBlock pack={pack} tick={tick} />
+        </div>
+      )}
     </motion.div>
   );
 }
 
 export function SectionPresets() {
   const reduce = useReducedMotion();
+  const isMobile = useIsMobile();
   const [sel, setSel] = useState("saas");
   const [tick, setTick] = useState(0);
 
@@ -323,7 +388,7 @@ export function SectionPresets() {
   const pack = PACKS.find((p) => p.id === sel && p.status === "ready") ?? PACKS[0];
 
   return (
-    <section id="packs" className="lv3-bg-paper px-5 py-24 sm:px-8 sm:py-28">
+    <section id="packs" className="lv3-bg-paper px-5 py-16 sm:px-8 sm:py-28">
       <div className="mx-auto max-w-6xl">
         <Reveal className="mb-8 max-w-2xl">
           <span className="lv3-label lv3-t-blue">Start from a pack</span>
@@ -336,8 +401,10 @@ export function SectionPresets() {
           </p>
         </Reveal>
 
-        {/* the pack picker — the built packs are clickable, the rest are on the way */}
-        <div className="mb-3 flex flex-wrap gap-2">
+        {/* the pack picker — the built packs are clickable, the rest are on the way.
+            On mobile it is a single swipeable row so it never stacks into many rows;
+            on desktop it wraps as before. */}
+        <div className="mb-3 flex flex-nowrap gap-2 overflow-x-auto pb-1 lg:flex-wrap lg:overflow-visible lg:pb-0">
           {PACKS.map((p) => {
             const ready = p.status === "ready";
             const on = ready && p.id === sel;
@@ -349,7 +416,7 @@ export function SectionPresets() {
                 onClick={ready ? () => setSel(p.id) : undefined}
                 aria-pressed={on}
                 aria-disabled={!ready}
-                className="flex items-center gap-2 border px-3 py-2 text-[13px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                className="flex shrink-0 items-center gap-2 border px-3 py-2 text-[13px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
                 style={{
                   ["--tw-ring-color" as string]: "var(--lv3-blue)",
                   cursor: ready ? "pointer" : "not-allowed",
@@ -378,7 +445,7 @@ export function SectionPresets() {
           style={{ borderColor: "var(--lv3-border)", background: "#fff", boxShadow: "0 20px 50px -30px rgba(20,24,47,0.25)" }}
         >
           <AnimatePresence mode="wait">
-            <ReadyDetail key={pack.id} pack={pack} tick={tick} reduce={reduce} />
+            <ReadyDetail key={pack.id} pack={pack} tick={tick} reduce={reduce} isMobile={isMobile} />
           </AnimatePresence>
         </motion.div>
 

@@ -240,9 +240,9 @@ function ApprovalCard({ reduce }: { reduce: boolean | null }) {
 export function SectionControl() {
   const reduce = useReducedMotion();
   return (
-    <section id="control" className="lv3-bg-candle px-5 py-24 sm:px-8 sm:py-28">
+    <section id="control" className="lv3-bg-candle px-5 py-14 sm:px-8 sm:py-28">
       <div className="mx-auto max-w-6xl">
-        <Reveal className="mb-10 max-w-2xl">
+        <Reveal className="mb-6 max-w-2xl sm:mb-10">
           <span className="lv3-label lv3-t-blue">While you're away</span>
           <h2 className="lv3-display lv3-t-navy mt-4 text-balance">
             They work while away.{" "}

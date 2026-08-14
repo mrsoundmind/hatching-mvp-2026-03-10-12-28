@@ -115,7 +115,7 @@ export function SectionPricing() {
   const inView = useInView(ref, { margin: "-15% 0px -15% 0px" });
 
   return (
-    <section ref={ref} id="start" className="lv3-bg-paper py-24 sm:py-28">
+    <section ref={ref} id="start" className="lv3-bg-paper py-14 sm:py-28">
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
         <Reveal className="mx-auto max-w-3xl text-center">
           <span className="lv3-label lv3-t-blue">Pricing</span>
@@ -128,13 +128,13 @@ export function SectionPricing() {
           </p>
         </Reveal>
 
-        <div className="mt-12 grid overflow-hidden border md:grid-cols-2">
+        <div className="mt-8 grid overflow-hidden border sm:mt-12 md:grid-cols-2">
           {PLANS.map((p, i) => {
             const isPro = p.name === "Pro";
             return (
               <motion.div
                 key={p.name}
-                className="flex flex-col p-8 sm:p-10"
+                className="flex flex-col p-6 sm:p-10"
                 style={isPro ? { background: "#fbfbff" } : undefined}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -158,17 +158,17 @@ export function SectionPricing() {
                     )}
                   </div>
 
-                  <p className="lv3-num lv3-t-navy mt-3 text-[3rem] leading-none">
+                  <p className="lv3-num lv3-t-navy mt-3 text-[2.5rem] leading-none sm:text-[3rem]">
                     {p.price}
                     <span className="lv3-t-soft ml-2 text-base font-medium">{p.per}</span>
                   </p>
-                  <p className="lv3-t-navy mt-3 text-[15px] font-semibold">{p.line}</p>
+                  <p className="lv3-t-navy mt-2.5 text-[15px] font-semibold sm:mt-3">{p.line}</p>
 
-                  <div className="mt-6 border p-4">
+                  <div className="mt-5 border p-3.5 sm:mt-6 sm:p-4">
                     {isPro ? <WorkingCrew active={inView} /> : <IdleCrew />}
                   </div>
 
-                  <ul className="mt-6 space-y-2.5">
+                  <ul className="mt-5 space-y-2 sm:mt-6 sm:space-y-2.5">
                     {p.has.map((f) => (
                       <li key={f} className="lv3-t-ink flex items-start gap-2.5 text-[14.5px]">
                         <Check className="lv3-t-blue mt-0.5 size-4 shrink-0" />
@@ -183,7 +183,7 @@ export function SectionPricing() {
                     ))}
                   </ul>
 
-                  <div className="mt-8">
+                  <div className="mt-6 sm:mt-8">
                     <CTA href="/login" variant={p.variant}>
                       {p.cta}
                     </CTA>

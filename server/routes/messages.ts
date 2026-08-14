@@ -266,6 +266,11 @@ export function registerMessageRoutes(app: Express): void {
         return res.status(404).json({ error: 'Message not found' });
       }
 
+      // Security (Audit R1-8a): the agent being rated is the one who wrote this message,
+      // which we just ownership-checked. Never trust a client-supplied agentId, which
+      // previously allowed writing personality/reaction rows onto another user's agent by id.
+      const agentId = msg.agentId ?? null;
+
       // Use user ID from session
       const userId = (req.session as any).userId || 'anonymous';
 
@@ -273,23 +278,23 @@ export function registerMessageRoutes(app: Express): void {
         messageId,
         userId,
         reactionType: reactionData.reactionType,
-        agentId: reactionData.agentId,
+        agentId: agentId,
         feedbackData: reactionData.feedbackData || {}
       });
 
       // B4: Integrate reaction with personality evolution
-      if (reactionData.agentId) {
+      if (agentId) {
         const feedback = reactionData.reactionType === 'thumbs_up' ? 'positive' : 'negative';
 
         // Bug 1: seed from DB so learning survives server restart
         let reactingAgentRole: string | null = null;
         try {
-          const agentForSeed = await storage.getAgent(reactionData.agentId);
+          const agentForSeed = await storage.getAgent(agentId);
           reactingAgentRole = agentForSeed?.role ?? null;
           const persisted = (agentForSeed?.personality as any);
           if (persisted?.adaptedTraits?.[userId] && persisted?.adaptationMeta?.[userId]) {
             personalityEngine.seedProfileFromDB(
-              reactionData.agentId, userId,
+              agentId, userId,
               persisted.adaptedTraits[userId],
               persisted.adaptationMeta[userId],
               agentForSeed?.role
@@ -298,21 +303,24 @@ export function registerMessageRoutes(app: Express): void {
         } catch { /* non-critical */ }
 
         personalityEngine.adaptPersonalityFromFeedback(
-          reactionData.agentId,
+          agentId,
           userId,
           feedback,
-          '', // v2.2 Phase C: content-aware adaptation deferred to the outcome-based growth loop
-          '',
+          // ITL-3 / LEARN-02: pass the SUBSTANCE of the feedback (the user's note) + the reacted
+          // response, so the adaptation can target the specific trait the feedback named ("too long"
+          // -> less verbose) instead of a blanket drift. Falls back to the baseline nudge when empty.
+          String((reactionData.feedbackData?.notes ?? reactionData.feedbackData?.note ?? '') || ''),
+          String(msg.content ?? ''),
           reactingAgentRole // v2.2 Phase C: resolve the correct role baseline for fresh profiles
         );
 
         // PRES-05: Persist adapted personality traits to database
         try {
-          const reactingAgent = await storage.getAgent(reactionData.agentId);
-          const updatedProfile = personalityEngine.getPersonalityProfile(reactionData.agentId, userId, reactingAgent?.role);
+          const reactingAgent = await storage.getAgent(agentId);
+          const updatedProfile = personalityEngine.getPersonalityProfile(agentId, userId, reactingAgent?.role);
           if (reactingAgent) {
             const existingPersonality = (reactingAgent.personality as any) || {};
-            await storage.updateAgent(reactionData.agentId, {
+            await storage.updateAgent(agentId, {
               personality: {
                 ...existingPersonality,
                 adaptedTraits: {
@@ -336,13 +344,13 @@ export function registerMessageRoutes(app: Express): void {
 
         // P4/P6: Hook living skills feedback into skill learner
         try {
-          const reactedAgent = await storage.getAgent(reactionData.agentId);
+          const reactedAgent = await storage.getAgent(agentId);
           if (reactedAgent?.role) {
             markSkillUsed(reactedAgent.role, feedback);
           }
         } catch { /* non-critical */ }
 
-        devLog(`B4: Personality feedback integrated: ${feedback} reaction for ${reactionData.agentId}`);
+        devLog(`B4: Personality feedback integrated: ${feedback} reaction for ${agentId}`);
       }
 
       res.json(reaction);

@@ -1,6 +1,17 @@
 import FocusTrap from 'focus-trap-react';
 import { useState, useEffect } from 'react';
-import { X, ArrowLeft } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { X, ArrowLeft, ArrowRight } from 'lucide-react';
+import AgentAvatar from '@/components/avatars/AgentAvatar';
+import type { PackSummary } from '@shared/packBlueprints';
+import './starter-pack/biab.css';
+
+// New-project naming step. Two modes, decided by whether a pack was chosen:
+//  - IDEA mode (no templateName): the Maya idea-intake screen the founder loves —
+//    Maya asks "What are you building?", they describe it in a sentence, and we hand
+//    that straight to the tailored-journey creation flow.
+//  - PACK mode (templateName present): a light name prompt for the chosen pack.
+// Styling comes from ./starter-pack/biab.css (the shared blue-tinted design system).
 
 interface ProjectNameModalProps {
   isOpen: boolean;
@@ -12,147 +23,198 @@ interface ProjectNameModalProps {
   isLoading?: boolean;
 }
 
+const IDEA_EXAMPLES = [
+  'a project-management tool',
+  'a neighborhood cafe',
+  'a wedding photography studio',
+];
+
+// Turn a one-line idea into a tidy project name (drop the leading article, capitalise).
+function deriveName(idea: string): string {
+  const n = idea.trim().replace(/^(a|an|the)\s+/i, '');
+  return (n.charAt(0).toUpperCase() + n.slice(1)).slice(0, 60);
+}
+
 export default function ProjectNameModal({
-  isOpen,
-  onClose,
-  onBack,
-  onConfirm,
-  templateName = '',
-  templateDescription = '',
-  isLoading = false
+  isOpen, onClose, onBack, onConfirm, templateName = '', templateDescription = '', isLoading = false,
 }: ProjectNameModalProps) {
+  const isIdea = !templateName;
+  const [idea, setIdea] = useState('');
   const [projectName, setProjectName] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
-  const [touched, setTouched] = useState(false);
-  const [dirty, setDirty] = useState(false);
-  const nameError = touched && dirty && projectName.trim().length === 0 ? 'Project name is required' :
-    projectName.length > 100 ? 'Name must be 100 characters or fewer' : '';
 
-  // Pre-fill with template data when modal opens
   useEffect(() => {
     if (isOpen) {
-      setTouched(false);
-      setDirty(false);
-      if (templateName) {
-        setProjectName(templateName);
-        setProjectDescription(templateDescription);
-      }
+      setIdea('');
+      setProjectName(templateName || '');
+      setProjectDescription(templateDescription || '');
     }
   }, [isOpen, templateName, templateDescription]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (projectName.trim()) {
-      onConfirm(projectName.trim(), projectDescription.trim() || undefined);
-    }
-  };
-
-  const isValid = projectName.trim().length > 0;
+  // Pack mode shows the chosen pack's identity (icon + counts). Look it up from the
+  // cached catalog by title, so nothing new has to be threaded through the parents.
+  const { data: catalog } = useQuery<{ packs: PackSummary[] }>({
+    queryKey: ['/api/packs/catalog'],
+    queryFn: async () => {
+      const r = await fetch('/api/packs/catalog', { credentials: 'include' });
+      if (!r.ok) throw new Error('catalog failed');
+      return r.json();
+    },
+    enabled: isOpen && !isIdea,
+    staleTime: 5 * 60 * 1000,
+  });
+  const pack = (catalog?.packs ?? []).find((p) => p.title === templateName);
 
   if (!isOpen) return null;
 
-  return (
-    <FocusTrap active={isOpen}>
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-hatchin-card rounded-2xl w-full max-w-md border border-hatchin-border-subtle shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-        {/* Header */}
-        <div className="p-6 border-b border-hatchin-border-subtle flex items-center justify-between">
-          <div className="flex items-center gap-4">
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '12px 14px', background: 'var(--panel-2)', border: '1px solid var(--line)',
+    borderRadius: 12, color: 'var(--ink)', fontSize: 14.5, outline: 'none', resize: 'none',
+    fontFamily: 'inherit',
+  };
+
+  // ── IDEA mode: the Maya intake screen ──────────────────────────────────────
+  if (isIdea) {
+    const submitIdea = (e: React.FormEvent) => {
+      e.preventDefault();
+      const text = idea.trim();
+      if (!text) return;
+      onConfirm(deriveName(text), text);
+    };
+    return (
+      <FocusTrap active={isOpen}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
+          <div className="biab" role="dialog" aria-modal="true" aria-label="Start with your idea"
+            style={{ position: 'relative', width: 560, maxWidth: '100%', background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 22, boxShadow: 'var(--shadow)', padding: '38px clamp(22px,5vw,44px) 40px' }}>
+            <button onClick={onClose} aria-label="Close" style={{ position: 'absolute', top: 16, right: 16, border: 'none', background: 'transparent', color: 'var(--ink-3)', cursor: 'pointer', padding: 6 }}><X size={20} /></button>
             {onBack && (
-              <button
-                onClick={onBack}
-                className="text-muted-foreground hover:text-hatchin-text-bright transition-colors"
-              >
-                <ArrowLeft size={20} />
-              </button>
+              <button onClick={onBack} aria-label="Back" style={{ position: 'absolute', top: 16, left: 16, border: 'none', background: 'transparent', color: 'var(--ink-3)', cursor: 'pointer', padding: 6, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5 }}><ArrowLeft size={16} /></button>
             )}
-            <div>
-              <h2 className="text-xl font-semibold text-hatchin-text-bright mb-1" id="modal-title">
-                Name Your Project
-              </h2>
-              <p className="text-muted-foreground text-sm">
-                Customize your project name and description
+
+            <div style={{ textAlign: 'center' }}>
+              <span style={{ display: 'inline-grid', placeItems: 'center', borderRadius: '50%', boxShadow: '0 0 0 4px var(--blue-wash)', marginBottom: 14 }}>
+                <AgentAvatar characterName="Maya" size={68} />
+              </span>
+              <div style={{ fontSize: 13, fontWeight: 650, color: 'var(--blue)' }}>Maya · your idea partner</div>
+              <h1 style={{ fontSize: 'clamp(23px,3.2vw,29px)', fontWeight: 730, color: 'var(--ink)', margin: '8px 0 10px' }}>What are you building?</h1>
+              <p style={{ color: 'var(--ink-2)', fontSize: 15, maxWidth: 400, margin: '0 auto 22px', lineHeight: 1.5 }}>
+                Describe it in a sentence. I'll put the right team together, and a plan to start.
               </p>
             </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-hatchin-text-bright transition-colors"
-          >
-            <X size={20} />
-          </button>
-        </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Project Name Input */}
-          <div>
-            <label className="block text-hatchin-text-bright text-sm font-medium mb-2">
-              Project Name
-            </label>
+            <form onSubmit={submitIdea}>
+              <textarea
+                value={idea}
+                onChange={(e) => setIdea(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { submitIdea(e); } }}
+                placeholder="a meal-prep service for busy parents…"
+                rows={2}
+                autoFocus
+                disabled={isLoading}
+                style={{ ...inputStyle, textAlign: 'left' }}
+              />
+              <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap', justifyContent: 'center', marginTop: 16 }}>
+                {IDEA_EXAMPLES.map((ex) => (
+                  <button
+                    key={ex}
+                    type="button"
+                    onClick={() => setIdea(ex)}
+                    style={{ border: '1px solid var(--line-2)', background: 'var(--panel-2)', color: 'var(--ink)', borderRadius: 999, padding: '8px 15px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+                  >
+                    {ex}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="submit"
+                disabled={!idea.trim() || isLoading}
+                className="biab-btn pri"
+                style={{ width: '100%', marginTop: 22 }}
+              >
+                {isLoading ? 'Building your team…' : <>Start building <ArrowRight size={16} /></>}
+              </button>
+              <p style={{ textAlign: 'center', marginTop: 14, fontSize: 12, color: 'var(--ink-3)' }}>
+                Maya assembles a team and a staged plan. You can change anything after.
+              </p>
+            </form>
+          </div>
+        </div>
+      </FocusTrap>
+    );
+  }
+
+  // ── PACK mode: a light name prompt for the chosen pack ─────────────────────
+  const submitPack = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (projectName.trim()) onConfirm(projectName.trim(), projectDescription.trim() || undefined);
+  };
+  const valid = projectName.trim().length > 0 && projectName.length <= 100;
+
+  const stats: Array<[number | undefined, string]> = [
+    [pack?.teamCount, 'specialists'],
+    [pack?.taskCount, 'steps'],
+    [pack?.docCount, 'documents'],
+  ];
+
+  return (
+    <FocusTrap active={isOpen}>
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
+        <div className="biab" role="dialog" aria-modal="true" aria-label="Name your project"
+          style={{ position: 'relative', width: 440, maxWidth: '100%', background: 'var(--panel)', border: '1px solid var(--line-2)', borderRadius: 20, boxShadow: 'var(--shadow)', overflow: 'hidden' }}>
+          {/* pack identity hero */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '20px 20px 16px', background: 'linear-gradient(160deg, rgba(108,130,255,.12), transparent 70%)', borderBottom: '1px solid var(--line)' }}>
+            {onBack && (
+              <button onClick={onBack} aria-label="Back" style={{ position: 'absolute', top: 13, left: 13, border: 'none', background: 'transparent', color: 'var(--ink-3)', cursor: 'pointer', padding: 4 }}><ArrowLeft size={18} /></button>
+            )}
+            <span className="biab-etile" style={{ width: 46, height: 46, background: 'var(--blue-wash)', fontSize: 23, marginLeft: onBack ? 22 : 0, flexShrink: 0 }} aria-hidden>{pack?.emoji || '📦'}</span>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 17, fontWeight: 730, color: 'var(--ink)' }}>Let&apos;s name it</div>
+              <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)', flexShrink: 0 }} />
+                <span style={{ minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {templateName}{pack ? ` · ${pack.teamCount} specialists staffed & ready` : ' · staffed & ready'}
+                </span>
+              </div>
+            </div>
+            <button onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'transparent', color: 'var(--ink-3)', cursor: 'pointer', padding: 4, flexShrink: 0 }}><X size={19} /></button>
+          </div>
+
+          <form onSubmit={submitPack} style={{ padding: '18px 20px 20px' }}>
             <input
               type="text"
               value={projectName}
-              onChange={(e) => { setProjectName(e.target.value.slice(0, 100)); setDirty(true); }}
-              onBlur={() => setTouched(true)}
-              placeholder="Enter your project name"
-              className={`w-full px-4 py-3 bg-hatchin-surface border rounded-xl text-hatchin-text-bright placeholder-muted-foreground focus:outline-none focus:ring-1 transition-colors ${
-                nameError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-hatchin-border-subtle focus:border-hatchin-blue focus:ring-hatchin-blue'
-              }`}
+              onChange={(e) => setProjectName(e.target.value.slice(0, 100))}
+              placeholder="Name your project"
               autoFocus
               disabled={isLoading}
-              aria-invalid={!!nameError}
-              aria-describedby={nameError ? 'name-error' : undefined}
               maxLength={100}
+              style={inputStyle}
             />
-            <div className="flex justify-between mt-1">
-              {nameError ? (
-                <p id="name-error" className="text-red-500 text-xs">{nameError}</p>
-              ) : <span />}
-              <span className="text-xs text-muted-foreground">{projectName.length}/100</span>
+            <p style={{ fontSize: 11.5, color: 'var(--ink-3)', margin: '7px 2px 0' }}>You can rename it anytime. Add a description later if you want.</p>
+
+            {pack && (
+              <div style={{ display: 'flex', gap: 8, margin: '16px 0 2px' }}>
+                {stats.map(([n, l]) => (
+                  <div key={l} style={{ flex: 1, background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 10, padding: '9px 6px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>{n}</div>
+                    <div style={{ fontSize: 10.5, color: 'var(--ink-3)' }}>{l}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+              <button type="button" onClick={onBack || onClose} disabled={isLoading}
+                style={{ flex: '0 0 auto', padding: '11px 16px', background: 'var(--panel-2)', color: 'var(--ink)', border: '1px solid var(--line-2)', borderRadius: 11, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
+                Back
+              </button>
+              <button type="submit" disabled={!valid || isLoading} className="biab-btn pri" style={{ flex: 1 }}>
+                {isLoading ? 'Creating…' : <>Create &amp; meet the team <ArrowRight size={15} /></>}
+              </button>
             </div>
-          </div>
-
-          {/* Project Description Input */}
-          <div>
-            <label className="block text-hatchin-text-bright text-sm font-medium mb-2">
-              Description (Optional)
-            </label>
-            <textarea
-              value={projectDescription}
-              onChange={(e) => setProjectDescription(e.target.value)}
-              placeholder="Briefly describe what you're building"
-              rows={3}
-              className="w-full px-4 py-3 bg-hatchin-surface border border-hatchin-border-subtle rounded-xl text-hatchin-text-bright placeholder-muted-foreground focus:border-hatchin-blue focus:outline-none focus:ring-1 focus:ring-hatchin-blue transition-colors resize-none"
-              disabled={isLoading}
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onBack || onClose}
-              className="flex-1 px-4 py-3 bg-hatchin-surface text-hatchin-text-bright rounded-xl hover:bg-hatchin-border-subtle transition-colors"
-              disabled={isLoading}
-            >
-              Go back
-            </button>
-            <button
-              type="submit"
-              disabled={!isValid || isLoading}
-              className={`flex-1 px-4 py-3 rounded-xl transition-colors font-medium ${
-                isValid && !isLoading
-                  ? 'bg-hatchin-blue text-white hover:bg-hatchin-blue/90'
-                  : 'bg-hatchin-border-subtle text-muted-foreground cursor-not-allowed'
-              }`}
-            >
-              {isLoading ? 'Creating...' : 'Create Project'}
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
-    </div>
     </FocusTrap>
   );
 }

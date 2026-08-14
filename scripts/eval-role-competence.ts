@@ -6,6 +6,10 @@
 import { generateIntelligentResponse } from '../server/ai/openaiService.js';
 import { generateWithPreferredProvider } from '../server/llm/providerResolver.js';
 
+// Judge provider, env-configurable. Default preserves the original groq/gemini behavior. Set
+// EVAL_PROVIDER=ollama-test to judge on free local Ollama (generator follows LLM_MODE=test + TEST_LLM_PROVIDER=ollama).
+const EVAL_PROVIDER = (process.env.EVAL_PROVIDER || (process.env.GROQ_API_KEY ? 'groq' : 'gemini')) as any;
+
 interface Q { role: string; q: string; rubric: string; crossRole?: boolean; }
 
 const QUESTIONS: Q[] = [
@@ -46,7 +50,7 @@ async function judge(q: Q, answer: string): Promise<{ score: number; note: strin
   try {
     const c = await generateWithPreferredProvider(
       { messages: [{ role: 'system', content: system }, { role: 'user', content: user }], temperature: 0, maxTokens: 120 } as any,
-      process.env.GROQ_API_KEY ? 'groq' : 'gemini',
+      EVAL_PROVIDER,
     );
     const m = (c.content || '').match(/\{[\s\S]*\}/);
     if (!m) return { score: 0, note: 'unparseable' };

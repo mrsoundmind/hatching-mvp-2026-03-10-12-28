@@ -110,25 +110,29 @@ export function BrainDocsTab({ projectId, project }: BrainDocsTabProps) {
       {hasContext && (
         <>
           <SectionDivider label="Core Direction" />
-          <div className="px-2 space-y-3 mb-2">
-            {coreDirection.whatBuilding && (
-              <div>
-                <span className="text-xs font-semibold text-[var(--hatchin-blue)] uppercase">What we're building</span>
-                <p className="text-xs hatchin-text-muted mt-0.5 leading-relaxed">{coreDirection.whatBuilding}</p>
-              </div>
-            )}
-            {coreDirection.whoFor && (
-              <div>
-                <span className="text-xs font-semibold text-[var(--hatchin-orange)] uppercase">Who it's for</span>
-                <p className="text-xs hatchin-text-muted mt-0.5 leading-relaxed">{coreDirection.whoFor}</p>
-              </div>
-            )}
-            {coreDirection.whyMatters && (
-              <div>
-                <span className="text-xs font-semibold text-[#4ade80] uppercase">Why it matters</span>
-                <p className="text-xs hatchin-text-muted mt-0.5 leading-relaxed">{coreDirection.whyMatters}</p>
-              </div>
-            )}
+          {/* One bordered card holds all three so it reads as a single "this is your
+              direction" unit, with hairline dividers between (2026-08-12). */}
+          <div className="px-1 mb-2">
+            <div className="rounded-xl border border-[var(--hatchin-border-subtle)] bg-[var(--hatchin-surface)]/40 divide-y divide-[var(--hatchin-border-subtle)]">
+              {coreDirection.whatBuilding && (
+                <div className="px-3.5 py-3">
+                  <span className="text-micro font-bold text-[var(--hatchin-blue)] uppercase tracking-wide">What we're building</span>
+                  <p className="text-xs hatchin-text-muted mt-1 leading-relaxed">{coreDirection.whatBuilding}</p>
+                </div>
+              )}
+              {coreDirection.whoFor && (
+                <div className="px-3.5 py-3">
+                  <span className="text-micro font-bold text-[var(--hatchin-orange)] uppercase tracking-wide">Who it's for</span>
+                  <p className="text-xs hatchin-text-muted mt-1 leading-relaxed">{coreDirection.whoFor}</p>
+                </div>
+              )}
+              {coreDirection.whyMatters && (
+                <div className="px-3.5 py-3">
+                  <span className="text-micro font-bold text-[#4ade80] uppercase tracking-wide">Why it matters</span>
+                  <p className="text-xs hatchin-text-muted mt-1 leading-relaxed">{coreDirection.whyMatters}</p>
+                </div>
+              )}
+            </div>
           </div>
         </>
       )}
@@ -181,21 +185,20 @@ export function BrainDocsTab({ projectId, project }: BrainDocsTabProps) {
         />
       </div>
 
-      {/* ——— Packages ——— */}
-      <SectionDivider label="Packages" pill={packages.length} />
-      <div className="px-2 mb-2">
-        <p className="text-xs hatchin-text-muted leading-relaxed">Multi-step work running across the team shows up here.</p>
-      </div>
-      <div className="px-1">
-        {packages.length > 0 ? (
-          <PackageProgress projectId={projectId} />
-        ) : (
-          <div className="text-center py-4 px-2">
-            <p className="text-xs font-medium hatchin-text mb-0.5">No active packages</p>
-            <p className="text-micro hatchin-text-muted leading-relaxed">Launch a package and its progress across the team lands here.</p>
+      {/* ——— Packages ——— (only when a multi-step package is actually running, so a
+          pack project doesn't show a confusing empty "Packages" section next to its
+          Deliverables; 2026-08-12) */}
+      {packages.length > 0 && (
+        <>
+          <SectionDivider label="Packages" pill={packages.length} />
+          <div className="px-2 mb-2">
+            <p className="text-xs hatchin-text-muted leading-relaxed">Multi-step work running across the team shows up here.</p>
           </div>
-        )}
-      </div>
+          <div className="px-1">
+            <PackageProgress projectId={projectId} />
+          </div>
+        </>
+      )}
     </div>
   );
 }
