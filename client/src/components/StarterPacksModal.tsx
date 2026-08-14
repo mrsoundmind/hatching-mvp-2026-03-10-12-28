@@ -23,7 +23,7 @@ interface StarterPack {
 // Curated category taxonomy from the mockup (kept short + plain), widened 2026-08-12
 // across five waves. Added an Agencies & studios cluster (design, dev, ad, digital,
 // photo/video, creative) and a Climate & impact sector. The rail scrolls past ~12 entries.
-const CATS = ['All', 'Digital products', 'Local & services', 'Services', 'Agencies & studios', 'Media', 'Retail', 'Finance', 'Property', 'Health & wellness', 'Healthcare', 'Community & events', 'AI & data', 'Gaming', 'Travel & hospitality', 'Food & beverage', 'Manufacturing & hardware', 'Climate & impact'];
+const CATS = ['All', 'Digital products', 'Local & services', 'Services', 'Agencies & studios', 'Media', 'Retail', 'Finance', 'Property', 'Health & wellness', 'Healthcare', 'Community & events', 'AI & data', 'Gaming', 'Travel & hospitality', 'Food & beverage', 'Agriculture', 'Logistics', 'Manufacturing & hardware', 'Climate & impact'];
 
 // Which category each live (deep) pack belongs to.
 const PACK_CAT: Record<string, string> = {
@@ -67,6 +67,11 @@ const PACK_CAT: Record<string, string> = {
   'food-beverage': 'Food & beverage',
   'hardware-startup': 'Manufacturing & hardware',
   'climate-venture': 'Climate & impact',
+  // Batch 2 packs (2026-08-14)
+  'web3-startup': 'Finance',
+  'agtech-startup': 'Agriculture',
+  'logistics-startup': 'Logistics',
+  'telehealth-startup': 'Healthcare',
 };
 
 // Extra search terms so a loose keyword finds the right pack even when it isn't in the
@@ -101,6 +106,10 @@ const KEYWORDS: Record<string, string> = {
   'accounting-firm': 'accounting bookkeeping tax cpa finance',
   'hardware-startup': 'hardware device electronics manufacturing iot',
   'climate-venture': 'climate sustainability green carbon energy',
+  'web3-startup': 'crypto blockchain token defi nft dao web3 wallet ethereum onchain smart contract',
+  'agtech-startup': 'agriculture farming agtech crops precision farm agronomy growers harvest soil',
+  'logistics-startup': 'logistics freight delivery shipping supply chain last-mile trucking warehouse fleet',
+  'telehealth-startup': 'telehealth virtual care remote medicine patients hipaa clinic providers',
 };
 
 // Coming-soon packs — clearly "in the works", to show where the library keeps growing.
