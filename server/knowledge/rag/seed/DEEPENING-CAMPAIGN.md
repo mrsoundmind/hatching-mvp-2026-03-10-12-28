@@ -45,10 +45,10 @@ Batches run thinnest-first, ~4 roles per batch, one seed file per role (`batch-<
 | 5 | Product Designer | 60 | ✓ DONE 2026-08-14 → 182 (88% A, 25 new sources) |
 | 5 | Sales Lead | 60 | ✓ DONE 2026-08-14 → 155 (65% A, 24 new sources) |
 | 5 | Audio Editor | 61 | ✓ DONE 2026-08-14 → 168 (77% A, 23 new sources) |
-| 6 | Data Analyst | 62 | pending |
-| 6 | SEO Specialist | 63 | pending |
-| 6 | Designer | 64 | pending |
-| 6 | UI Engineer | 71 | pending |
+| 6 | Data Analyst | 62 | ✓ DONE 2026-08-14 → 161 (90% A, 24 new sources) |
+| 6 | SEO Specialist | 63 | ✓ DONE 2026-08-14 → 175 (81% A, 28 new sources) |
+| 6 | Designer | 64 | ✓ DONE 2026-08-14 → 174 (90% A, 25 new sources) |
+| 6 | UI Engineer | 71 | ✓ DONE 2026-08-14 → 166 (100% A, 27 new sources) |
 | 7 | UI Designer | 71 | pending |
 | 7 | Brand Strategist | 74 | pending |
 | 7 | Creative Director | 77 (A-tier 8%, quality pass) | pending |
