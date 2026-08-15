@@ -2,14 +2,29 @@
 
 > **Read this first if you're an AI (Claude Code, Cursor, Windsurf, Copilot, etc.) or a human picking up on Hatchin.** This file tells you what happened, where we are, and what to do next. Session-continuity log — updated at session boundaries.
 
-**Last refreshed:** 2026-08-14
-**Current branch:** `feat/v2.2-intelligence-fixes` (workstreams share this branch: v2.2 intelligence fixes + v2.1-UX UI + Pre-Launch Hardening + chat attachments + the Business-in-a-Box packs milestone; a sibling session also landed a Slack adapter `00005a2`)
+**Last refreshed:** 2026-08-15
+**Current branch:** `feat/v2.2-intelligence-fixes` (workstreams share this branch: v2.2 intelligence fixes + v2.1-UX UI + Pre-Launch Hardening + chat attachments + the Business-in-a-Box packs milestone + the RAG deepening campaign; a sibling session also landed a Slack adapter `00005a2`)
+**Latest commit (RAG deepening workstream):** `519afbf` Batch 8 (final) — all 34 role knowledge bases now even + mastery-complete, committed 2026-08-15 (below)
 **Latest commit (BIAB packs workstream):** Batch 2 packs (Web3/AgTech/Logistics/Telehealth), committed 2026-08-14 (below)
 **Latest commit (approvals/UX workstream):** approval-card redesign + daily-limit one-notice bug-fix, committed 2026-08-13 (below)
 **Latest commit:** `2662002 docs(audit): step-by-step migration-safety baseline runbook (Tier 0.4)` (the Pre-Launch Hardening pass, below)
 **Latest commit (Business-in-a-Box workstream):** BIAB-0 increment 1 — pack blueprint system ("packs come alive"), committed 2026-08-10 (below)
 **Latest commit (v2.2 workstream):** Phase 39 Plans 39-01 (server) + 39-02 (UI), committed 2026-07-31 (prior: `f5682ab` peer-review coverage)
 **Latest commit (v2.1-UX UI workstream):** `c76fb4e fix(chat): don't drop the user's just-sent message on a refetch race` (+ `a99cfb3` hover-to-peek, `556f60a` rail refinements, `835518a`/`ee5c5bf` chat-card fix)
+
+## 2026-08-15: RAG deepening campaign COMPLETE — all 34 role knowledge bases even + mastery-complete
+
+**User directive:** make every agent's knowledge base deep, even, and top-1%, no role neglected, same standard for future agents.
+
+**Done.** Ran the mastery-map deep-gather (`GATHERING-HANDOFF.md`) across all 34 roles in 8 batches of ~4-5 parallel subagents. Each role: 16 to 32 authoritative PRIMARY sources, faithful heading-structured extracts, anti-patterns/debunked myths, tiered A/B/C, zero fabrication, no dashes. Additively ingested via `scripts/ingest-add-seed.ts` (OpenAI embeddings, `replaceRoles:false`, existing chunks preserved), verified per batch with `rag-corpus-health.ts`.
+
+**Result (live-verified):** 33 roles moved from a scattered 35 to 103 chunks into a tight even band of **130 to 209 chunks**; UX Designer stays 2447 (course-fed). Corpus **4,429 → 7,852 chunks**. Report: all roles above threshold, none thin. Per-batch commits: `4f770ab` `7a24d17` `fda4673` `daad8b7` `9c51e7e` `ca11b36` `fbb6235` `519afbf`. Seed files in `server/knowledge/rag/seed/batch-<role>-deepen2.json`; tracker `DEEPENING-CAMPAIGN.md`.
+
+**Resilience:** absorbed a platform connection outage + two account session-limit hits with zero rework, thanks to the every-2-sources incremental-save design (agents resume from transcripts + saved seed files). Creative Director A-tier rose from 8% to 39% (new content 65% A).
+
+**Remaining (optional, one consolidated pass):** REPLACE (not add) old low-tier chunks to lift 6 roles past 60% A-tier: Copywriter 52%, Marketing 49%, Creative Director 39%, Brand Strategist 49%, Business Analyst 57%, Instructional Designer 57%. All are already mastery-covered; the dip is pre-existing lower-tier chunks blending with the new A-tier content. A few roles landed at 16-19 new sources (vs the 22 target) but are mastery-complete: Copywriter, Customer Success, Finance Analyst.
+
+**New-agent SOP:** `GATHERING-HANDOFF.md` extended to all 34 roles + a documented SOP, so any role added later gets the identical deep treatment before it ships.
 
 ## 2026-08-14: BIAB Batch 2 packs (Web3, AgTech, Logistics, Telehealth) + RAG deepening campaign kicked off
 
