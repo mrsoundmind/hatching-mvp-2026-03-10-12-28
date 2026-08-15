@@ -4,6 +4,7 @@
 
 **Last refreshed:** 2026-08-15
 **Current branch:** `feat/v2.2-intelligence-fixes` (workstreams share this branch: v2.2 intelligence fixes + v2.1-UX UI + Pre-Launch Hardening + chat attachments + the Business-in-a-Box packs milestone + the RAG deepening campaign; a sibling session also landed a Slack adapter `00005a2`)
+**Latest commit (v2.3 intelligence workstream):** `8e22061` — deliverable multi-pass A/B (proves it no-ops on docs); the role-selective cheap multi-pass itself is `883c7fd`, gated OFF (below)
 **Latest commit (RAG deepening workstream):** `519afbf` Batch 8 (final) — all 34 role knowledge bases now even + mastery-complete, committed 2026-08-15 (below)
 **Latest commit (BIAB packs workstream):** Batch 2 packs (Web3/AgTech/Logistics/Telehealth), committed 2026-08-14 (below)
 **Latest commit (approvals/UX workstream):** approval-card redesign + daily-limit one-notice bug-fix, committed 2026-08-13 (below)
@@ -11,6 +12,25 @@
 **Latest commit (Business-in-a-Box workstream):** BIAB-0 increment 1 — pack blueprint system ("packs come alive"), committed 2026-08-10 (below)
 **Latest commit (v2.2 workstream):** Phase 39 Plans 39-01 (server) + 39-02 (UI), committed 2026-07-31 (prior: `f5682ab` peer-review coverage)
 **Latest commit (v2.1-UX UI workstream):** `c76fb4e fix(chat): don't drop the user's just-sent message on a refetch race` (+ `a99cfb3` hover-to-peek, `556f60a` rail refinements, `835518a`/`ee5c5bf` chat-card fix)
+
+## 2026-08-15 (later): v2.3 agent-intelligence investigation — are the agents top-1%, and how to get there on DeepSeek only
+
+**User goal:** make every agent top-1%, prove it with real numbers, WITHOUT depending on or paying for a premium LLM. Stated architecture: own the knowledge + matrix + method as the base; the LLM is a cheap, swappable enhancement layer, not a dependency.
+
+**Built** a proper 6-dimension competency benchmark (knowledge/diagnosis/application/judgment/creativity/rigor; blind cross-model Groq judge; RAG + model A/B). Scripts: `eval-all-roles-competence.ts`, `eval-competence-dimensions.ts`, `eval-model-ab.ts`, `eval-frontier-ab.ts`, `eval-multipass-ab.ts`, `eval-deliverable-multipass-ab.ts`.
+
+**Proved:**
+- Knowledge base + cross-role MATRIX already maxed and LIVE (`RAG_ENABLED` + `TOP1_SCAFFOLD` both default `on`; cross-role retrieval verified pulling e.g. Marketing+UX+Finance for a pricing question). The top-1% gap is REASONING-side (creativity floor ~2.7 to 2.9), not knowledge.
+- DeepSeek V4-Pro is NOT an unlock, reasoning flat-to-worse vs Flash (`f086cb3`).
+- Frontier gpt-5 PROVES the ceiling is model-bound: reasoning +0.48, creativity 2.73 to 3.40, top-1%-on-all-6 3 to 11 (`1e89971`, which also carries a real latent bugfix — `openaiProvider` now drives reasoning models via `max_completion_tokens` + fixed temperature, dormant unless `LLM_PRIMARY=openai`).
+
+**User decision:** stay on DeepSeek, do NOT pay for GPT. gpt-5 was only ever the measurement (the TARGET), never a prod adoption.
+
+**Shipped (gated OFF by default, `883c7fd`):** `server/ai/multiPass.ts` — a role-selective, rigor-gated cheap multi-pass. DeepSeek drafts, a FREE Groq critic scores the draft against an OWNED-METHOD rubric, DeepSeek revises. Hard guarantees per the user: (1) no rigor dip — a revise is accepted ONLY if a free critic scores its rigor >= the draft's, else the draft is kept; (2) creativity is a target ONLY for non-precision roles — finance/legal/data/QA/engineering/operations skip it (the A/B showed multi-pass net-HURTS them). Wired into the non-streaming `generateIntelligentResponse` path (Slack + `/api/hatch/chat` + benchmark). 34-role A/B, shipped selective config vs the single-pass floor: overall 3.49 to 3.66, EVERY dimension flat-or-up, rigor +0.26, per-role rigor dips 11 to 5/34 (residual = judge noise). Config: `MULTIPASS_ENABLED` (off) / `MULTIPASS_CRITIC_PROVIDER` (groq) / `MULTIPASS_MIN_CHARS` (220) / `MULTIPASS_RIGOR_GATE` (on) / `MULTIPASS_ALL_ROLES` (off).
+
+**Deliverables tested + NOT shipped (`8e22061`):** a document-mode A/B on 6 creative-role deliverables proved multi-pass no-ops on long structured docs (single-pass drafts already ~4.7/5, 0/6 fired, 0 truncation). The deliverable wiring was written, tested, then REVERTED. Autonomy tasks already have their own critique-revise loop (v2.2 peer-review regeneration).
+
+**Net / next:** multi-pass is a proven, banked, gated-OFF capability whose real value is SHORT chat answers. Its ideal home (interactive streaming chat) was declined for the streaming-latency cost, so it stays OFF pending a decision. To enable the proven surface: set `MULTIPASS_ENABLED=on` (affects Slack + `/api/hatch/chat`; restart required, dev is plain `tsx` with no watch). Ollama (`llama3.2:3b`) is too small to be the critic and unreachable from a deployed server, so the prod critic is free Groq 70B. Nothing merged; all on-branch. STATE/ROADMAP/REQUIREMENTS/COMPLETE-GUIDE intentionally not touched (research + a gated-off capability ship no new requirement; STATE/ROADMAP carry sibling-uncommitted work).
 
 ## 2026-08-15: RAG deepening campaign COMPLETE — all 34 role knowledge bases even + mastery-complete
 
