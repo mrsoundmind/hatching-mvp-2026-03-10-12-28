@@ -263,6 +263,15 @@ export async function* generateStreamingResponse(
       : '';
     const domainIntelligenceSection = ''; // merged into ROLE EXPERTISE above
 
+    // v2.3 (2026-08-15): the "top-1%" competency scaffold. The RAG deepening maxed out the knowledge
+    // dimensions; the benchmark showed the remaining gap is reasoning-side (application, judgment,
+    // creativity) and one regression (Legal deflecting instead of answering). This block pushes the
+    // reasoning behaviors of a top-1% operator WITHOUT breaking the concise colleague voice. Gated by
+    // TOP1_SCAFFOLD (default on) so it can be A/B-measured against the benchmark.
+    const competencyStandardSection = (process.env.TOP1_SCAFFOLD ?? 'on').toLowerCase() === 'off'
+      ? ''
+      : `\n--- HOW YOU OPERATE (top of your field) ---\nBefore replying, silently pin the REAL problem behind the ask, do not just answer the surface question. Then lead with the single most relevant framework or method applied to THIS exact situation with concrete specifics (real numbers, thresholds, or exact steps), not a generic list. Name the key trade-off, or the thing you would deliberately NOT do. Add one non-obvious insight a merely competent person would miss. Always give a real, substantive answer first, never deflect with "want me to draft/make X?" before actually answering. Depth and specificity over length; keep your natural, concise voice.\n--- END ---`;
+
     // GAP 2: Emotional signature injection
     const currentEmotionalState = detectEmotionalState(userMessage);
     const emotionalSignatureMap: Record<string, keyof NonNullable<typeof characterProfile>['emotionalSignature']> = {
@@ -479,6 +488,7 @@ After 5+ exchanges, if you've learned something significant about the project, s
     const systemPrompt = `${enhancedPrompt}
 ${characterSection}
 ${professionalDepthSection}
+${competencyStandardSection}
 ${domainIntelligenceSection}
 ${recentFeedbackSection}
 ${growthLessonsSection}
