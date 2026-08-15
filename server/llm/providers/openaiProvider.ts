@@ -22,6 +22,27 @@ function resolveOpenAIModel(request: LLMRequest): string {
   return request.model || process.env.OPENAI_MODEL || 'gpt-4o-mini';
 }
 
+// Reasoning models (o-series, gpt-5) reject the classic `max_tokens` + custom `temperature`
+// params: they require `max_completion_tokens` and only accept the default temperature. They
+// also spend part of the budget on hidden reasoning tokens BEFORE emitting visible content,
+// so a small cap returns an empty string. This detector lets the escape hatch actually drive
+// modern models (previously silently broken for gpt-5/o3). Additive + guarded — classic models
+// keep their exact prior behavior.
+const REASONING_MODEL_RE = /^(o1|o3|o4|gpt-5)/i;
+function isReasoningModel(model: string): boolean {
+  return REASONING_MODEL_RE.test(model);
+}
+
+// Returns the token/temperature params in the shape the given model accepts.
+type TokenTempParams = { temperature?: number; max_tokens?: number; max_completion_tokens?: number };
+function buildTokenTempParams(request: LLMRequest, model: string): TokenTempParams {
+  if (isReasoningModel(model)) {
+    // Generous floor so reasoning tokens don't starve the visible answer.
+    return { max_completion_tokens: Math.max(request.maxTokens ?? 500, 4000) };
+  }
+  return { temperature: request.temperature ?? 0.7, max_tokens: request.maxTokens ?? 500 };
+}
+
 export class OpenAIProvider implements LLMProvider {
   readonly id = 'openai' as const;
 
@@ -32,8 +53,7 @@ export class OpenAIProvider implements LLMProvider {
     const completion = await client.chat.completions.create({
       model,
       messages: request.messages,
-      temperature: request.temperature ?? 0.7,
-      max_tokens: request.maxTokens ?? 500,
+      ...buildTokenTempParams(request, model),
     });
 
     const content = completion.choices[0]?.message?.content || '';
@@ -66,8 +86,7 @@ export class OpenAIProvider implements LLMProvider {
       messages: request.messages,
       stream: true,
       stream_options: { include_usage: true },
-      temperature: request.temperature ?? 0.7,
-      max_tokens: request.maxTokens ?? 500,
+      ...buildTokenTempParams(request, model),
     });
 
     const metadata: LLMStreamResult['metadata'] = {
@@ -106,7 +125,7 @@ export class OpenAIProvider implements LLMProvider {
       await client.chat.completions.create({
         model: resolvedModel,
         messages: [{ role: 'user', content: 'ping' }],
-        max_tokens: 1,
+        ...(isReasoningModel(resolvedModel) ? { max_completion_tokens: 16 } : { max_tokens: 1 }),
       });
       return { status: 'ok' };
     } catch (error: any) {
