@@ -15,6 +15,7 @@ import {
 import type { LLMResponseMetadata } from '../llm/providerTypes.js';
 import { loadRoleBrain, renderRoleBrainContext } from '../knowledge/roleBrains/loader.js';
 import { retrieveKnowledgeBlockForChat, retrieveKnowledgeBlockForChatWithMeta } from '../knowledge/rag/retriever.js';
+import { maybeMultiPassEnhance } from './multiPass.js';
 import { enforceCiteOrAdmit, flagUnsupportedClaims } from './citeGuard.js';
 import { getQualityLessons } from './qualityLessons.js';
 import { getWebContextBlock } from './webContext.js';
@@ -748,17 +749,13 @@ export async function generateIntelligentResponse(
     // Enhance prompt with training data
     const enhancedPrompt = trainingSystem.generateEnhancedPrompt(agentRole, userMessage, basePrompt.systemPrompt);
 
+    // Author system prompt captured in a variable so the multi-pass revise can reuse it verbatim (voice + rules + sources).
+    const authorSystemPrompt = `${enhancedPrompt}\n\n--- ROLE BRAIN ---\n${roleBrainContext}\n--- END ROLE BRAIN ---${packPlaybookSectionNs}${retrievedKnowledgeSectionNs}${conversationDocsSectionNs}${growthLessonsNs}${webContextNs}\n\nNEVER attach a URL or cite a source from memory; only cite sources explicitly provided to you above. With no provided source, state the point plainly and attach no link.\n\n${AGENT_CAPABILITY_ENVELOPE}${context.autonomyLevel === 'autonomous' ? AUTONOMOUS_DIRECTIVE_BLOCK : ''}${context.autonomyLevel === 'autonomous' && context.agentIsSpecial ? `\n\n${MAYA_AUTONOMOUS_OVERRIDE}` : ''}`;
     const generation = await generateChatWithRuntimeFallback({
       model: resolveRuntimeModel(),
       messages: [
-        {
-          role: 'system',
-          content: `${enhancedPrompt}\n\n--- ROLE BRAIN ---\n${roleBrainContext}\n--- END ROLE BRAIN ---${packPlaybookSectionNs}${retrievedKnowledgeSectionNs}${conversationDocsSectionNs}${growthLessonsNs}${webContextNs}\n\nNEVER attach a URL or cite a source from memory; only cite sources explicitly provided to you above. With no provided source, state the point plainly and attach no link.\n\n${AGENT_CAPABILITY_ENVELOPE}${context.autonomyLevel === 'autonomous' ? AUTONOMOUS_DIRECTIVE_BLOCK : ''}${context.autonomyLevel === 'autonomous' && context.agentIsSpecial ? `\n\n${MAYA_AUTONOMOUS_OVERRIDE}` : ''}`
-        },
-        {
-          role: 'user',
-          content: basePrompt.userPrompt
-        }
+        { role: 'system', content: authorSystemPrompt },
+        { role: 'user', content: basePrompt.userPrompt }
       ],
       maxTokens: 300,
       temperature: 0.7,
@@ -772,6 +769,17 @@ export async function generateIntelligentResponse(
     if (logicResult.shouldExecute && logicResult.enhancedResponse) {
       responseContent = `${logicResult.enhancedResponse}\n\n${responseContent}`;
     }
+
+    // v2.3 multi-pass enhancement — free Groq critic scores the draft against our owned method rubric,
+    // DeepSeek revises to fix the gaps. Gated (MULTIPASS_ENABLED), fail-safe (returns draft on any issue).
+    // Runs BEFORE the cite-guard so any citation the revise introduces is validated below.
+    responseContent = await maybeMultiPassEnhance({
+      question: userMessage,
+      role: agentRole,
+      draft: responseContent,
+      systemPrompt: authorSystemPrompt,
+      userPrompt: basePrompt.userPrompt,
+    });
 
     // ITL-0 GRND-01/02 — enforce cite-or-admit against the sources actually retrieved this turn, and
     // flag unsupported hard facts on an ungrounded answer. Gated by CITE_ENFORCE (default on).
