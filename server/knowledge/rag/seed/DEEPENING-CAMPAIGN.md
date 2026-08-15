@@ -53,11 +53,15 @@ Batches run thinnest-first, ~4 roles per batch, one seed file per role (`batch-<
 | 7 | Brand Strategist | 74 | ✓ DONE 2026-08-14 → 207 (49% A, 26 new sources; A-tier top-up candidate) |
 | 7 | Creative Director | 77 (was 8% A) | ✓ DONE 2026-08-14 → 168 (39% A, up from 8%; 23 new sources at 65% A; A-tier top-up candidate) |
 | 7 | Idea Partner | 81 | ✓ DONE 2026-08-14 → 209 (78% A, 32 new sources) |
-| 8 | Business Strategist | 82 | pending |
-| 8 | Customer Success Manager | 82 | pending |
-| 8 | Legal Counsel | 90 | pending |
-| 8 | Copywriter | 91 | pending |
-| 9 | Finance Analyst | 103 | pending (already deep, top up to bar) |
+| 8 | Business Strategist | 82 | ✓ DONE 2026-08-15 → 173 (61% A, 22 new sources) |
+| 8 | Customer Success Manager | 82 | ✓ DONE 2026-08-15 → 187 (76% A, 19 new sources) |
+| 8 | Legal Counsel | 90 | ✓ DONE 2026-08-15 → 160 (74% A, 22 new sources) |
+| 8 | Copywriter | 91 | ✓ DONE 2026-08-15 → 181 (52% A, 19 new sources; A-tier top-up candidate) |
+| 8 | Finance Analyst | 103 | ✓ DONE 2026-08-15 → 181 (84% A, 16 new sources) |
+
+## ALL 34 ROLES DEEPENED (2026-08-15)
+
+Every role now sits at even, mastery-complete depth (130 to 209 chunks, except UX Designer's course-fed 2447). Corpus grew 4,429 → 7,852 chunks across 8 batches. Optional consolidated top-up pass (replace old low-tier chunks to lift A-tier past 60%) for: Copywriter (52%), Marketing Specialist (49%), Creative Director (39%, up from 8%), Brand Strategist (49%), Business Analyst (57%), Instructional Designer (57%). These are all mastery-covered; the dip is from pre-existing lower-tier chunks blending with the new A-tier content.
 | n/a | UX Designer | 2447 | done (course-fed, past bar) |
 
 ## New-agent SOP (so future agents get the same treatment)
