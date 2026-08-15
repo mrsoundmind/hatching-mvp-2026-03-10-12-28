@@ -17,7 +17,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 interface Q { role: string; q: string; rubric: string }
 
-const QUESTIONS: Q[] = [
+export const QUESTIONS: Q[] = [
   { role: 'Product Manager', q: 'We have 40 feature requests and a small team. How do you decide what to build next, and keep the roadmap from becoming a feature factory?', rubric: 'RICE/Kano/WSJF or cost-of-delay prioritization; outcomes over outputs; continuous discovery / opportunity solution tree (Torres); JTBD; roadmap as now-next-later not a promised feature list; the Build Trap (Perri); tie to a North Star / input metric.' },
   { role: 'Business Analyst', q: 'How do you turn a vague stakeholder request into requirements the team can build with no ambiguity?', rubric: 'elicitation techniques + BABOK; functional vs non-functional; testable acceptance criteria / Gherkin given-when-then; INVEST; unambiguous verifiable requirements (Wiegers); traceability; MoSCoW; do not solution before the problem.' },
   { role: 'Backend Developer', q: 'Design a public REST API for a payments-adjacent service. What must you get right for correctness and safety?', rubric: 'idempotency keys; safe/idempotent methods + correct status codes + Problem Details (RFC 9110/9457); keyset vs offset pagination; versioning; rate limiting/backpressure; OAuth2 authz + input validation / mass-assignment; transactions/isolation; avoid N+1.' },
@@ -140,4 +140,7 @@ async function main() {
   console.log(`Results saved: ${OUT}`);
   process.exit(0);
 }
-main().catch((e) => { console.error('ERROR:', e?.message || e); process.exit(1); });
+// Only run when executed directly, NOT when another script imports QUESTIONS from this file
+// (importing must not trigger the whole benchmark + process.exit).
+const isEntry = !!process.argv[1] && process.argv[1].includes('eval-all-roles-competence');
+if (isEntry) main().catch((e) => { console.error('ERROR:', e?.message || e); process.exit(1); });
