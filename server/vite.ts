@@ -156,6 +156,16 @@ export function serveStatic(app: Express) {
     }),
   );
 
+  // Self-hosted webfonts. Same reasoning as /media: not content-hashed, so a
+  // week with revalidation rather than immutable.
+  app.use(
+    "/fonts",
+    express.static(path.join(distPath, "fonts"), {
+      maxAge: "7d",
+      fallthrough: true,
+    }),
+  );
+
   // index.html must NEVER be cached: it is what points at the current hashes.
   // A stale copy sends browsers looking for chunks that no longer exist.
   app.use(

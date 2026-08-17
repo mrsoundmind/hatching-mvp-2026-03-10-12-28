@@ -35,7 +35,17 @@ export function useWebSocket(url: string, options?: {
 
   const retryCountRef = useRef(0);
   const maxRetries = 10;
+  /** Conversations we want joined. Survives reconnects, because the replay on
+   *  reconnect is what re-establishes them on the new socket. */
   const joinedConversationsRef = useRef<Set<string>>(new Set());
+  /** Conversations already joined ON THE CURRENT SOCKET.
+   *
+   *  Without this, every caller that asks to join re-sent the frame even when
+   *  the socket had already joined that exact conversation: a single page load
+   *  sent `join_conversation` for the same id SEVEN times (three call sites,
+   *  plus effect re-runs, plus the reconnect replay). Cleared whenever the
+   *  socket changes, so a genuine reconnect still re-joins everything. */
+  const activeJoinsRef = useRef<Set<string>>(new Set());
 
   onMessageRef.current = options?.onMessage;
   onConnectRef.current = options?.onConnect;
@@ -64,8 +74,12 @@ export function useWebSocket(url: string, options?: {
         setConnectionStatus('connected');
         setSocket(ws);
 
+        // New socket: nothing is joined on it yet, so the replay below is the
+        // one legitimate place that re-sends every desired join.
+        activeJoinsRef.current.clear();
         joinedConversationsRef.current.forEach(conversationId => {
           ws.send(JSON.stringify({ type: 'join_conversation', conversationId }));
+          activeJoinsRef.current.add(conversationId);
         });
 
         onConnectRef.current?.(ws);
@@ -140,7 +154,12 @@ export function useWebSocket(url: string, options?: {
 
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       if (validated.data.type === 'join_conversation' && (validated.data as any).conversationId) {
-        joinedConversationsRef.current.add((validated.data as any).conversationId);
+        const cid = (validated.data as any).conversationId as string;
+        joinedConversationsRef.current.add(cid);
+        // Already joined on THIS socket. Re-sending would only earn a second
+        // connection_confirmed for a room we are already in.
+        if (activeJoinsRef.current.has(cid)) return;
+        activeJoinsRef.current.add(cid);
       }
       const conversationId = (validated.data as any).conversationId || (validated.data as any).message?.conversationId || null;
       devLog('🚀 Sending active message:', validated.data.type, conversationId ?? '');
