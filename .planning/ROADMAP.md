@@ -547,6 +547,18 @@ See archived roadmap: [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
 | 45. Maya 3-Stage Interrogation | v2.1 | 0/? | Not started | — |
 | 46. AI Slop Detection | v2.1 | 0/? | Not started | — |
 
+## Backlog
+
+### Phase 999.1: External-repo borrow catalog (Accumulated Upgrades) (BACKLOG)
+
+**Goal:** Curate a running, license-checked list of reusable ideas, assets, and patterns to borrow from open-source repos the founder sends, built together later as ONE batch. Not active work; no product code until promoted.
+**Requirements:** TBD
+**Plans:** 0 plans
+**Catalog:** `.planning/phases/999.1-external-repo-borrow-catalog/BORROW-CATALOG.md` (the growing list, one section per repo). First entry: nexu-io/open-design (Apache-2.0).
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
 ---
 
 *Roadmap created: 2026-03-17*
