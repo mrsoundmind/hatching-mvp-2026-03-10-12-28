@@ -43,8 +43,37 @@ const RAIL_ITEMS = [
   { id: "start", n: "08", label: "Pricing" },
 ];
 
+// The hero background alternates between these two clips. Nothing else about
+// the hero changes: same headline, same copy, same nav, same CTA.
+//
+// It alternates rather than picking at random, because random repeats itself:
+// a coin flip shows the same clip twice in a row half the time, which reads as
+// "nothing changed". Storing the last index guarantees the other one next time.
+const HERO_VIDEOS = [
+  { src: "/media/hero.mp4", poster: "/media/hero-poster.jpg" },
+  { src: "/media/hero-v5.mp4", poster: "/media/hero-v5-poster.jpg" },
+];
+
+const HERO_VIDEO_KEY = "hatchin-hero-video";
+
+/** Resolved synchronously, before the first render commits. Choosing after
+ *  mount would paint one clip and then swap the src, making the browser
+ *  download both. */
+function pickHeroVideo() {
+  try {
+    const prev = Number(window.localStorage.getItem(HERO_VIDEO_KEY) ?? "-1");
+    const next = ((Number.isFinite(prev) ? prev : -1) + 1) % HERO_VIDEOS.length;
+    window.localStorage.setItem(HERO_VIDEO_KEY, String(next));
+    return HERO_VIDEOS[next];
+  } catch {
+    // private mode / storage disabled: fall back to the original clip
+    return HERO_VIDEOS[0];
+  }
+}
+
 export default function LandingPageV4() {
   const [mounted, setMounted] = useState(false);
+  const [heroVideo] = useState(pickHeroVideo);
 
   useEffect(() => {
     if (history.scrollRestoration) history.scrollRestoration = "manual";
@@ -94,8 +123,8 @@ export default function LandingPageV4() {
              was 96% of the whole page weight. Re-encoded at CRF 30 with no
              audio track it is 0.66 MB and frame-for-frame indistinguishable
              (it is a darkened background loop behind a scrim). */
-          videoSrc="/media/hero.mp4"
-          videoPoster="/media/hero-poster.jpg"
+          videoSrc={heroVideo.src}
+          videoPoster={heroVideo.poster}
           ctaBg="var(--lv3-blue)"
           ctaFg="#ffffff"
           overlay={

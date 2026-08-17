@@ -1,0 +1,156 @@
+/* 404 screen.
+ *
+ * Every rule is scoped under .nf404 so importing this file cannot restyle any
+ * other page. The exact pixel values (295.751px, -24.6459px, 247.328deg) come
+ * straight from the Figma composition and are expressed here rather than as
+ * Tailwind utilities, which cannot carry fractional letter-spacing or an
+ * arbitrary-angle gradient without becoming unreadable.
+ *
+ * The font is self-hosted. The composition named a Figma-hosted source
+ * (static.figma.com/font/GeistMono_wght__1); that URL does load cross-origin,
+ * but it serves 76 KB of raw sfnt while declaring woff2, and it is an internal
+ * Figma endpoint with no stability guarantee. This is the same typeface, Geist
+ * Mono at weight 600 (which IS SemiBold), as a real 9.9 KB woff2 subset. The
+ * CSS family name is kept verbatim so the composition's reference still
+ * resolves.
+ */
+
+@font-face {
+  font-family: "Geist Mono:SemiBold";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/geistmono-600.woff2") format("woff2");
+}
+
+.nf404 {
+  position: relative;
+  min-height: 100svh;
+  width: 100%;
+  overflow-x: hidden;
+  background: #000;
+}
+
+.nf404-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 1;
+  z-index: 0;
+}
+
+.nf404-brand {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  width: 233px;
+  height: 40px;
+}
+
+/* 14px between the mark and the logotype, per the composition. */
+.nf404-logotype {
+  margin-left: 14px;
+}
+
+.nf404-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  width: 483px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 44px;
+}
+
+.nf404-number {
+  margin: 0;
+  font-family: "Geist Mono:SemiBold", ui-monospace, monospace;
+  font-weight: 600;
+  font-size: 295.751px;
+  line-height: 1.1;
+  letter-spacing: -24.6459px;
+  text-align: center;
+
+  /* background-clip:text crops to the text box, so the descender room the
+     numerals need has to be added explicitly or the glyph bottoms are cut. */
+  padding-bottom: 0.12em;
+
+  background-image: linear-gradient(
+    247.3282658084845deg,
+    rgb(255, 255, 255) 2.5334%,
+    rgba(255, 255, 255, 0.4) 93.612%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.nf404-divider {
+  width: 425px;
+  height: 1px;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.nf404-message {
+  margin: 0;
+  font-family: "Geist Mono:SemiBold", ui-monospace, monospace;
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 1.1;
+  letter-spacing: -2px;
+  color: #fff;
+  text-align: center;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .nf404-brand {
+    top: 32px;
+    /* keep the horizontal centring while scaling the 233x40 frame to 75% */
+    transform: translateX(-50%) scale(0.75);
+    transform-origin: top center;
+  }
+
+  .nf404-content {
+    width: min(100% - 40px, 360px);
+    gap: 28px;
+  }
+
+  .nf404-number {
+    font-size: clamp(140px, 52vw, 200px);
+    letter-spacing: -0.09em;
+    height: auto;
+    min-height: 0;
+    padding-bottom: 0.14em;
+  }
+
+  .nf404-divider {
+    width: 100%;
+  }
+
+  .nf404-message {
+    font-size: clamp(16px, 4.5vw, 20px);
+    letter-spacing: -1.3px;
+  }
+}
+
+/* A viewport too short for the absolutely-centred group would otherwise clip
+   it with no way to reach the rest. Vertical scrolling only; the page never
+   scrolls horizontally. */
+@media (max-height: 620px) {
+  .nf404 {
+    overflow-y: auto;
+  }
+}

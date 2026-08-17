@@ -1,0 +1,59 @@
+/* Landing v5 — liquid glass.
+ *
+ * Every rule is scoped under .lv5. `.liquid-glass` is a generic name and CSS
+ * imported by a page is global in a Vite bundle, so leaving it unscoped would
+ * put a blur-and-border rule on that class name across the entire application.
+ *
+ * Instrument Serif is deliberately NOT @imported here. The composition asked
+ * for `@import url(...Instrument+Serif:ital@0;1...)`, but client/index.html
+ * already requests exactly that family, so a second import would cost an extra
+ * round trip for a font the page has already downloaded.
+ */
+
+.lv5 .liquid-glass {
+  background: rgba(255, 255, 255, 0.01);
+  background-blend-mode: luminosity;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: none;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Border-only rendering: the gradient fills the padding box, then the mask
+   subtracts the content box so only the 1.4px rim survives. */
+.lv5 .liquid-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.4px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.45) 0%,
+    rgba(255, 255, 255, 0.15) 20%,
+    rgba(255, 255, 255, 0) 40%,
+    rgba(255, 255, 255, 0) 60%,
+    rgba(255, 255, 255, 0.15) 80%,
+    rgba(255, 255, 255, 0.45) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  /* the unprefixed pair, without which the rim renders as a solid fill in
+     Firefox rather than a border */
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* The video's opacity is driven frame by frame from JavaScript. Any CSS
+   transition on it would fight the rAF loop and produce visible stepping, so
+   there is deliberately none. */
+.lv5-video {
+  opacity: 0;
+}
