@@ -57,8 +57,27 @@
 
 ---
 
+## Repo 3: xai-org/grok-build
+- **URL:** https://github.com/xai-org/grok-build
+- **What it is:** xAI's (x.ai) terminal-based AI **coding agent** (a Rust CLI/TUI). Understands a codebase, edits files, runs shell commands, searches the web, manages long-running tasks; interactive, headless for CI, or embedded in editors via the Agent Client Protocol (ACP). MCP servers, plugins, hooks, sandboxing.
+- **License:** Apache-2.0 (first-party; deps keep their own).
+- **Maturity:** official x.ai, ~25k stars, published binaries, active changelog.
+- **Relation to Hatchin (read this first, it is the weakest fit so far):** wrong domain AND wrong language. grok-build is a developer tool (a coding agent for people working in a terminal, like Claude Code); Hatchin serves NON-technical founders an AI team that produces plans and documents. Hatchin's Engineer/Coda Hatch writes breakdowns and plans, it does not edit the user's repo or run their shell. And it is Rust vs Hatchin's Node/TS. So there is nothing to borrow into the product today. Its only realistic value is (a) as a coding tool for YOU to build Hatchin faster (where it competes with Claude Code, which you already use), and (b) a far-future reference if Hatchin ever ships the long-term "Engineer Hatch writes/executes real code" idea.
+
+| # | Item | Verdict | Why for Hatchin | Where it informs | Effort | License |
+|---|---|---|---|---|---|---|
+| 3.1 | **Terminal coding-agent runtime (file edit, shell exec, Rust CLI/TUI)** | SKIP | Wrong domain (dev tool, not AI-team-for-founders) and wrong language (Rust). Not a product component. | n/a | n/a | Domain + stack mismatch |
+| 3.2 | **Agent Client Protocol (ACP) for embedding agents in external clients** | INSPIRATION (far-future) | A standard to know IF Hatchin later exposes its agents to external clients/editors (relates to the Mattermost/chat-bridge idea). Not now. | future bridge work | reference | Apache-2.0 |
+| 3.3 | **Sandboxing + safe shell/code execution** | INSPIRATION (far-future) | Only relevant if the Engineer/Coda Hatch ever executes real code (a long-term roadmap idea). A reference for doing it safely. | far-future feature | reference | Apache-2.0 |
+| 3.4 | **MCP servers + plugins + hooks extensibility** | INSPIRATION (low) | Reference for making Hatchin's tool router extensible, but ADK item 2.4 already covers the tool-abstraction angle, so this adds little. | `tools/toolRouter.ts` | reference | Apache-2.0 |
+| 3.5 | **As a founder coding tool (build Hatchin faster)** | NOTE, not a borrow | Another coding-agent CLI like Claude Code (already in use). Personal workflow choice, not something that goes into the product. | n/a | n/a | n/a |
+
+**Top pick from this repo:** honestly none for the product right now. It is a developer tool, not a source of Hatchin components. Keep it only as a far-future reference for the "Engineer Hatch executes real code" idea (items 3.2 and 3.3).
+
+---
+
 ## Repos pending (incoming from founder)
-- _Add the next repo as Repo 3 with the same structure._
+- _Add the next repo as Repo 4 with the same structure._
 
 ---
 
