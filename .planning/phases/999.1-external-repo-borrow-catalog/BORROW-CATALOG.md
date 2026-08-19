@@ -62,7 +62,8 @@
 - **What it is:** xAI's (x.ai) terminal-based AI **coding agent** (a Rust CLI/TUI). Understands a codebase, edits files, runs shell commands, searches the web, manages long-running tasks; interactive, headless for CI, or embedded in editors via the Agent Client Protocol (ACP). MCP servers, plugins, hooks, sandboxing.
 - **License:** Apache-2.0 (first-party; deps keep their own).
 - **Maturity:** official x.ai, ~25k stars, published binaries, active changelog.
-- **Relation to Hatchin (read this first, it is the weakest fit so far):** wrong domain AND wrong language. grok-build is a developer tool (a coding agent for people working in a terminal, like Claude Code); Hatchin serves NON-technical founders an AI team that produces plans and documents. Hatchin's Engineer/Coda Hatch writes breakdowns and plans, it does not edit the user's repo or run their shell. And it is Rust vs Hatchin's Node/TS. So there is nothing to borrow into the product today. Its only realistic value is (a) as a coding tool for YOU to build Hatchin faster (where it competes with Claude Code, which you already use), and (b) a far-future reference if Hatchin ever ships the long-term "Engineer Hatch writes/executes real code" idea.
+- **Relation to Hatchin (originally the weakest fit):** wrong domain AND wrong language. grok-build is a developer tool (a coding agent for people working in a terminal, like Claude Code); Hatchin serves NON-technical founders an AI team that produces plans and documents. Hatchin's Engineer/Coda Hatch writes breakdowns and plans, it does not edit the user's repo or run their shell. And it is Rust vs Hatchin's Node/TS. So there is nothing to copy into the product.
+- **UPDATE (2026-08-19, founder plan):** coding IS now a planned Hatchin capability, so this repo is re-rated UP. Items 3.2 (ACP) and 3.3 (sandboxed execution) move from far-future to ACTIVE REFERENCE. Recommended path is to DELEGATE coding to an existing runtime via ACP/MCP and run the output through Hatchin's peer review, NOT to fork this Rust codebase. See the cross-cutting decision below.
 
 | # | Item | Verdict | Why for Hatchin | Where it informs | Effort | License |
 |---|---|---|---|---|---|---|
@@ -72,7 +73,19 @@
 | 3.4 | **MCP servers + plugins + hooks extensibility** | INSPIRATION (low) | Reference for making Hatchin's tool router extensible, but ADK item 2.4 already covers the tool-abstraction angle, so this adds little. | `tools/toolRouter.ts` | reference | Apache-2.0 |
 | 3.5 | **As a founder coding tool (build Hatchin faster)** | NOTE, not a borrow | Another coding-agent CLI like Claude Code (already in use). Personal workflow choice, not something that goes into the product. | n/a | n/a | n/a |
 
-**Top pick from this repo:** honestly none for the product right now. It is a developer tool, not a source of Hatchin components. Keep it only as a far-future reference for the "Engineer Hatch executes real code" idea (items 3.2 and 3.3).
+**Top pick from this repo:** now items 3.2 (ACP) and 3.3 (sandboxing) as REFERENCE for the planned coding capability (see below). Still not a fork; grok-build is a reference/integration target, not a source of drop-in code.
+
+---
+
+## Cross-cutting decision: the "Hatchin can code" capability (founder plan, 2026-08-19)
+> Confirmed founder plan: give Hatchin's agents the ability to actually build and run code, not just describe it. This is a future MILESTONE, captured here because it re-rates several catalog items. Not built now.
+
+- **Recommended approach: DELEGATE, do not rebuild.** The Engineer/Coda Hatch emits a coding task; an existing coding-agent runtime or sandboxed executor does the work; Hatchin's peer-review Hatch plus the approval gate check it before it ships. This reuses Hatchin's real moat (orchestration + peer review + memory) and treats coding as one more specialist backend, instead of reinventing a coding agent (huge, and someone else's moat). Do NOT fork a Rust coding agent into a Node shop.
+- **Integration standards:** ACP (grok-build item 3.2) and MCP (already partly in the tool router) let Hatchin call a coding backend cleanly.
+- **The infra piece (the real hard part):** a sandboxed code-execution environment (a hosted sandbox service or ephemeral machines). This, not a coding-agent fork, is the necessary and dangerous piece. Add a research spike before building. Arbitrary code execution is a serious security surface.
+- **Positioning guardrail:** the differentiator must stay TEAM-WRAPPED, PEER-REVIEWED code, not the code engine. Do not try to out-code Cursor / Lovable / Replit; win on the team, review, and memory around the coding. Peer-reviewed code from a coordinated team is the edge; raw code generation is a commodity.
+- **Sequencing:** a MILESTONE (months), sitting AFTER the launch bottleneck (demo + analytics + activation). Scaffold a milestone brief when ready.
+- **Repos that inform it (reference, not forks):** grok-build (ACP, sandboxing, headless mode), ADK (tool-use, human-in-the-loop confirm-before-run, trajectory eval of code agents).
 
 ---
 
