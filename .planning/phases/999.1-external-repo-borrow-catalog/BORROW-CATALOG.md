@@ -77,6 +77,26 @@
 
 ---
 
+## Repo 4: illuin-tech/colpali
+- **URL:** https://github.com/illuin-tech/colpali
+- **What it is:** "Efficient Document Retrieval with Vision Language Models." OCR-free document retrieval: it embeds the PAGE IMAGE of a document with a vision-language model and uses ColBERT-style late interaction (multi-vector embeddings + MaxSim scoring), so it retrieves over layout, tables, charts, and scanned pages WITHOUT an OCR / text-extraction pipeline. Python + PyTorch. Models on HuggingFace (PaliGemma-3B, Qwen2-VL, SmolVLM variants).
+- **License:** MIT (original models use the Gemma license; newer variants Apache-2.0). Friendly.
+- **Maturity:** ~2.8k stars, active, stable PyPI releases, ViDoRe benchmark, models on HF.
+- **Relation to Hatchin:** the first repo that touches Hatchin's OWN territory, the RAG / knowledge layer worked on this session. Hatchin's "Upload & Ask" attachments and brain-docs RAG ingest files by extracting TEXT, then embedding it (OpenAI text-embedding-3-small). Fine for prose, but for VISUALLY-rich docs (pitch decks, financial models, scanned contracts, slide PDFs, exactly what the founder/agency ICP uploads) text extraction loses the layout and visual content. ColPali retrieves over the page image itself. A genuine potential upgrade to the attachment/brain experience for complex documents.
+
+| # | Item | Verdict | Why for Hatchin | Where it informs | Effort | License |
+|---|---|---|---|---|---|---|
+| 4.1 | **OCR-free visual document retrieval (embed the page image, ColBERT late interaction)** | INSPIRATION / future capability | Retrieve over visually-rich PDFs (decks, financials, scanned contracts) that text-extraction RAG loses. State of the art for this. | `conversationDocs.ts` / attachments + brain-docs RAG | L | MIT (models Gemma/Apache) |
+| 4.2 | **Token pooling compression (about 66% fewer vectors, ~98% performance kept)** | INSPIRATION | Keeps multi-vector storage affordable IF ColPali is adopted. | future retrieval store | reference | MIT |
+| 4.3 | **Interpretability / similarity-map visualization** | INSPIRATION (low) | Could show WHERE on a page an answer came from, a self-documenting "here is the source" UX that fits the cite-or-admit + source-chip work. | future artifact/source UX | reference | MIT |
+| 4.4 | **Direct library use inside Hatchin** | SKIP | Python + PyTorch in a Node app. Requires a separate Python inference service, VLM inference (GPU or a hosted endpoint), and a multi-vector / late-interaction store (Hatchin's pgvector is single-vector cosine). Not a drop-in. | n/a | n/a | Infra-gated |
+
+- **Precondition before pursuing:** confirm (a) real users upload visually-complex docs that the current text-extraction RAG demonstrably mishandles, and (b) the VLM inference infra (GPU or hosted) is justified. Cheaper first step: measure the problem, and consider a HOSTED ColPali-style retrieval endpoint before self-hosting a GPU.
+
+**Top pick from this repo:** 4.1 as the reference method IF Hatchin needs visual document retrieval. A real upgrade for complex PDFs, but infra-gated (Python service + VLM inference + multi-vector store), so it is a future capability, not a now-borrow.
+
+---
+
 ## Cross-cutting decision: the "Hatchin can code" capability (founder plan, 2026-08-19)
 > Confirmed founder plan: give Hatchin's agents the ability to actually build and run code, not just describe it. This is a future MILESTONE, captured here because it re-rates several catalog items. Not built now.
 
@@ -102,7 +122,7 @@
 ---
 
 ## Repos pending (incoming from founder)
-- _Add the next repo as Repo 4 with the same structure._
+- _Add the next repo as Repo 5 with the same structure._
 
 ---
 
