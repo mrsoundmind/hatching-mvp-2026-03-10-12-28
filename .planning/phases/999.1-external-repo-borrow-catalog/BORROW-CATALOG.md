@@ -89,6 +89,18 @@
 
 ---
 
+## Reference (not a borrow): October (october.dev)
+> Not open-source, so nothing to borrow. Logged as a landscape/architecture REFERENCE because it is a productized proof of the "Hatchin can code" delegate approach above.
+
+- **URL:** https://www.october.dev/
+- **What it is:** "Infrastructure for supervised AI collaboration." A desktop app (not primarily a CLI) that coordinates multiple real coding agents (Claude Code, Cursor, Cline, Gemini, up to 17 harnesses) across machines, with an "October Bus" for inter-agent messaging over MCP, shared task boards, and a human holding final decision authority. Aimed at TECHNICAL teams (developers, infra, incident response).
+- **Openness / license:** not stated on the page; appears to be a closed commercial product with no public repo. Treat as closed: NO code to borrow, and no license to rely on.
+- **Verdict:** REFERENCE / LANDSCAPE, not a borrow.
+  - **Why it matters:** it is a shipped, productized version of exactly the delegate architecture recommended for the "Hatchin can code" capability (delegate to existing coding agents over MCP + a coordination bus + shared task board + human-in-the-loop final authority). Strong evidence the delegate-not-rebuild direction is viable, and a reference for how the coordination + human-escalation layer can work. Study it, do not copy it.
+  - **Competitive read:** different audience (technical teams orchestrating dev agents vs Hatchin's non-technical founders getting a business team), so NOT a direct competitor to Hatchin's core today. Competitor-adjacent only in the future coding-coordination space; Hatchin's edge there stays "we own the team + peer review," not "agent-neutral infra." Watch it.
+
+---
+
 ## Repos pending (incoming from founder)
 - _Add the next repo as Repo 4 with the same structure._
 
