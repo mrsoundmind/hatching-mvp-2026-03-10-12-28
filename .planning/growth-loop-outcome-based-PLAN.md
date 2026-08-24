@@ -3,6 +3,25 @@
 > Status: **PLAN ONLY, not built.** Deliberate post-launch project (respects the no-mid-milestone-hotfix
 > rule). Nothing here ships without its own benchmark. Author: exploration session 2026-08.
 
+## Recommended sequencing (read this first — from the 2026-08 review)
+
+**Do NOT build the learning layer first. Build the outcome signal as a SCOREBOARD, not a brain.**
+
+The honest verdict on this whole plan: the design is sound, but as a near-term lever it is weak —
+its upside is capped by the frozen model (better notes, not a smarter brain), and the "learn across many
+users" gates only pay off at user volume Hatchin does not have pre-launch. Building it now is premature.
+
+BUT the linchpin it depends on — the honest "did it work?" outcome signal — is valuable on its OWN,
+immediately, as a **production quality metric** (the audit's "zero live quality metrics" gap). So:
+
+1. **Phase 1 (do soon, cheap, pre-launch-appropriate): capture the outcome signal as a MEASUREMENT.**
+   Wire the behavioral signals below (deliverable kept-vs-reverted, task done-vs-reopened, Keep/Refine
+   clicks, thumbs) into a simple read-only health view: *are the agents actually helping users?* No
+   learning, no promotion, no risk. This is the first honest answer to "is the product working."
+2. **Phase 2 (defer): the growing playbook.** Only once the scoreboard shows clear, repeatable patterns
+   AND there is enough user volume to make the repetition gate meaningful, build the learning layer on top
+   of the same signal. Everything below is the Phase 2 design, ready when that day comes.
+
 ## The problem (measured, not assumed)
 
 The agents remember what you tell them but do **not** get smarter from experience. This session measured why:
