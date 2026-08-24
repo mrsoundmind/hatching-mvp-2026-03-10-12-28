@@ -99,6 +99,27 @@
 
 ---
 
+## Repo 5: freqtrade/freqtrade
+- **URL:** https://github.com/freqtrade/freqtrade
+- **What it is:** a free, open-source crypto trading BOT written in Python. It runs unattended, trades on major exchanges, and ships the full autonomy toolchain: backtesting, ML parameter optimization (Hyperopt), adaptive prediction (FreqAI), a dry-run (paper-trading) mode, remote control via Telegram / REST / web UI, and a risk-management "protections" layer.
+- **License:** GPL-3.0 (strong copyleft). This is the decisive fact: see the license gate below.
+- **Maturity:** very mature, 53.6k stars, roughly 32.7k commits, stable/develop branch split, active. One of the most battle-tested open autonomy codebases there is.
+- **Relation to Hatchin (read this first):** the LOWEST domain fit of any repo so far. It is a single-purpose crypto trading bot for a finance vertical, not an AI-team platform, and it is Python. There is nothing product-shaped to take. Its ONE real value is as a hardened reference for the AUTONOMY problem Hatchin also has: a bot that acts on your behalf while you are away and needs brakes, a simulation mode, and remote oversight. Everything here is INSPIRATION for Hatchin's autonomy safety layer, never code.
+- **License gate (hard):** GPL-3.0 is viral copyleft. Copying any freqtrade code into Hatchin (a proprietary, closed SaaS) would force Hatchin's combined work to be GPL, a non-starter. Ideas and patterns are not copyrightable, so studying it and reimplementing our own is fine; literal code reuse is OUT. This alone caps the whole repo at INSPIRATION, no BORROW is possible.
+
+| # | Item | Verdict | Why for Hatchin | Where it informs | Effort | License |
+|---|---|---|---|---|---|---|
+| 5.1 | **Dry-run / paper-trading mode (full pipeline runs, produces the same logs and results, touches nothing real)** | INSPIRATION (strong) | The cleanest model for two Hatchin needs: a "preview what the team would do" mode before autonomy acts, and (bigger) the dry-run-before-live step for the future "Hatchin can code" sandboxed executor. Same code path, real output, zero real-world effect. | autonomy layer + the future coding executor (see cross-cutting decision) | M | Study, reimplement (GPL, no copy) |
+| 5.2 | **"Protections" layer (pluggable circuit-breakers: cooldown, max-drawdown stop, stoploss guard, lock after bad outcomes)** | INSPIRATION | A generalized registry of brakes that PAUSE autonomous action on adverse signals. Hatchin has cost caps + a stall watchdog + safety gates as separate pieces; freqtrade's protections is a clean pattern for unifying them into one pluggable safety framework. | `server/autonomy/` safety layer, cost guard, watchdog | M | Study, reimplement |
+| 5.3 | **Remote control surface (status / start / stop / performance / force-exit over Telegram + REST + WebSocket)** | INSPIRATION (low) | A reference command set for controlling and inspecting a long-running autonomous process from a chat platform, i.e. what the Mattermost bridge needs (approvals + status + pause). The bridge already has its own design, so this confirms rather than adds. | Mattermost bridge milestone | reference | Study, reimplement |
+| 5.4 | **Backtesting / evaluation harness (run a strategy against history, measure it)** | INSPIRATION (low) | Conceptually parallel to Hatchin's benchmark-suite + frozen rubrics + eval scripts, which already exist; ADK item 2.1 (trajectory eval) is the better reference for deepening evals. Low marginal value. | `eval/`, benchmark scripts | reference | Study, reimplement |
+| 5.5 | **Hyperopt (numeric hyperparameter search) + FreqAI (price-prediction ML)** | SKIP | Finance-domain-specific: numeric strategy tuning and price forecasting. Hatchin does not tune numeric hyperparameters or forecast prices. No fit. | n/a | n/a | Domain mismatch |
+| 5.6 | **Direct code / library use** | SKIP | Triple blocker: GPL-3.0 copyleft (legal no-go for a closed product), Python vs Node/TS, and wrong domain. | n/a | n/a | GPL-3.0 + stack + domain |
+
+**Top pick from this repo:** 5.1 (dry-run mode) as the reference pattern, most valuable for the future coding-executor's dry-run-before-live step, then 5.2 (a unified protections / circuit-breaker framework) for the autonomy safety layer. Everything is study-and-reimplement; GPL-3.0 rules out copying any code.
+
+---
+
 ## Cross-cutting decision: the "Hatchin can code" capability (founder plan, 2026-08-19)
 > Confirmed founder plan: give Hatchin's agents the ability to actually build and run code, not just describe it. This is a future MILESTONE, captured here because it re-rates several catalog items. Not built now.
 
@@ -107,7 +128,7 @@
 - **The infra piece (the real hard part):** a sandboxed code-execution environment (a hosted sandbox service or ephemeral machines). This, not a coding-agent fork, is the necessary and dangerous piece. Add a research spike before building. Arbitrary code execution is a serious security surface.
 - **Positioning guardrail:** the differentiator must stay TEAM-WRAPPED, PEER-REVIEWED code, not the code engine. Do not try to out-code Cursor / Lovable / Replit; win on the team, review, and memory around the coding. Peer-reviewed code from a coordinated team is the edge; raw code generation is a commodity.
 - **Sequencing:** a MILESTONE (months), sitting AFTER the launch bottleneck (demo + analytics + activation). Scaffold a milestone brief when ready.
-- **Repos that inform it (reference, not forks):** grok-build (ACP, sandboxing, headless mode), ADK (tool-use, human-in-the-loop confirm-before-run, trajectory eval of code agents).
+- **Repos that inform it (reference, not forks):** grok-build (ACP, sandboxing, headless mode), ADK (tool-use, human-in-the-loop confirm-before-run, trajectory eval of code agents), freqtrade (dry-run-before-live simulation as the safe pre-execution step; GPL so patterns only, never code).
 
 ---
 
