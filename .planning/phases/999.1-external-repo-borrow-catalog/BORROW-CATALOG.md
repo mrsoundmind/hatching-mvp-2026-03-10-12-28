@@ -181,6 +181,115 @@
 
 ---
 
+> **Note on Repos 9 to 14 (the Nous Research ecosystem):** these are one connected family, not six unrelated projects. `hermes-agent` (Repo 10) is the hub; `Hermes-Bot-Mode` (Repo 8), `hermes-agent-self-evolution` (Repo 9), `hermes-paperclip-adapter` (Repo 11), and `Hermes-Function-Calling` (Repo 12) plug into or extend it; `atropos` (Repo 13) is a model-training tool; `autonovel` (Repo 14) is a showcase pipeline. Almost all are Python (Hatchin is Node/TS) and most overlap Hatchin's core or sit at a layer Hatchin does not operate at (model training), so the value is concentrated in a few METHODS, not drop-in code.
+
+## Repo 9: NousResearch/hermes-agent-self-evolution
+- **URL:** https://github.com/NousResearch/hermes-agent-self-evolution
+- **What it is:** automated evolutionary improvement of an agent WITHOUT GPU training. It generates variant versions of skills / prompts / tool descriptions, reads execution traces to understand WHY something failed, proposes targeted textual mutations, evaluates the variants against a test set, passes survivors through constraint gates, and submits the winner as a PULL REQUEST for human review. Loop is DSPy + GEPA (Genetic-Pareto Prompt Evolution). Cost roughly $2 to $10 per optimization run.
+- **License:** MIT (friendly).
+- **Maturity:** 5.1k stars but VERY early (8 commits, Phase 1 only, rest planned). A promising method, not a finished tool.
+- **Relation to Hatchin (this is the most on-theme repo in the whole catalog):** directly targets Hatchin's own "Hatches that self-improve / remember and grow" thesis (v2.1, v2.2, and the DEFERRED growth loop). Hatchin already has runtime improvement (frozen rubrics + auto-revert on regression, feedback injection, personality evolution, gated multi-pass, peer review with teeth). What Hatchin does NOT have is a disciplined OFFLINE optimizer that evolves the role prompts against an eval set and gates changes behind human review. That is exactly the deferred growth loop, and this repo is a clean worked pattern for it, mapping onto Hatchin's existing eval infra (benchmark-suite, frozen rubrics, competence eval, quality lessons).
+
+| # | Item | Verdict | Why for Hatchin | Where it informs | Effort | License |
+|---|---|---|---|---|---|---|
+| 9.1 | **Offline optimize loop (propose prompt/skill variants to eval against a test set to keep the best to human PR)** | INSPIRATION (strong, top pick) | The disciplined form of Hatchin's deferred growth loop: improve the base quality of role prompts offline, measured against evals, gated by human approval. Maps onto benchmark-suite + frozen rubrics. | growth loop, `roleRegistry`/`roleIntelligence` prompts, eval infra | M to L | Study, reimplement |
+| 9.2 | **Trace-informed failure diagnosis to targeted mutation** | INSPIRATION | Hatchin already has run traces + `qualityLessons`; using them to DIAGNOSE then propose a specific prompt fix is the missing link. | `qualityLessons`, autonomy traces | M | Study, reimplement |
+| 9.3 | **Constraint gates before accepting a variant (tests pass, size limit, semantic preservation)** | INSPIRATION (confirms) | Matches Hatchin's own rigor-gate discipline (multi-pass rigor gate, auto-revert on regression). Good confirmation of the pattern. | growth loop gates | reference | Study, reimplement |
+| 9.4 | **DSPy + GEPA libraries directly** | SKIP | Python; Hatchin is Node/TS. Reimplement the METHOD, do not import the stack. | n/a | n/a | Python stack |
+| 9.5 | **Agents self-modifying prompts WITHOUT a human gate** | SKIP (caution) | Keep the human-PR gate this repo uses. Never let Hatchin's agents rewrite their own prompts unsupervised (safety + drift). | n/a | n/a | Safety |
+
+**Top pick from this repo:** 9.1, the offline propose-eval-keep-then-human-PR loop, the exact disciplined shape of Hatchin's deferred growth loop. Method only (Python), and keep the human gate (9.5).
+
+---
+
+## Repo 10: NousResearch/hermes-agent
+- **URL:** https://github.com/NousResearch/hermes-agent
+- **What it is:** the HUB the other Hermes repos extend. A self-improving agent framework: a CLI plus a messaging gateway that "lives where you do" (Telegram, Discord, Slack, WhatsApp, Signal), with autonomous skill creation, a closed learning loop + persistent memory, a cron scheduler, multi-model support, FTS5 session search with LLM summarization, spawnable isolated subagents, and SEVEN terminal backends (local, Docker, SSH, Singularity, Modal, Daytona, Vercel).
+- **License:** MIT. Python + JS/TS.
+- **Maturity:** very active (about 25k commits). The fetch read a star count near 235k, which is implausibly high for this repo, so treat that number as UNVERIFIED and check directly before ever citing it.
+- **Relation to Hatchin (read this first):** the closest full-framework sibling to Hatchin's whole thesis, and therefore mostly a REFERENCE + competitive signal, not a borrowable part (it overlaps Hatchin's core, and adopting it means rebuilding on someone else's runtime, which is Hatchin's moat). Crucial audience difference: this is a developer / power-user CLI for TECHNICAL people; Hatchin is a team-of-specialists product with peer review + deliverables for NON-technical founders. Its "self-improving agent with memory" claim is exactly Hatchin's differentiation line, so note the competitive reality: keep Hatchin positioned on the multi-agent TEAM + peer review + role depth, not on "an agent that learns."
+
+| # | Item | Verdict | Why for Hatchin | Where it informs | Effort | License |
+|---|---|---|---|---|---|---|
+| 10.1 | **Sandboxed execution backends (Docker / SSH / Modal / Daytona / Vercel as pluggable code-run targets)** | INSPIRATION (top pick, coding milestone) | The most concrete reference yet for the HARD part of "Hatchin can code": a real menu of sandbox / ephemeral execution backends to run delegated code safely, exactly the security surface flagged in the cross-cutting decision. | "Hatchin can code" sandbox executor | reference | MIT |
+| 10.2 | **Multi-platform messaging gateway (Telegram/Discord/Slack/WhatsApp/Signal)** | INSPIRATION (low) | Overlaps Hatchin's already-scoped Mattermost bridge milestone. Confirms the outbound-bot pattern, adds little new. | Mattermost bridge | reference | MIT |
+| 10.3 | **FTS5 session search + LLM summarization** | INSPIRATION | Maps to Hatchin's "conversation archival + search" short-term roadmap item. A concrete, cheap pattern to reference. | conversation search (roadmap) | S to M | Study, reimplement |
+| 10.4 | **Cron scheduler for automations** | INSPIRATION (dup of 8.1) | Same scheduled-routines idea as Bot-Mode; reinforces that feature is worth building. | autonomy scheduler | M | Study, reimplement |
+| 10.5 | **Direct code / framework adoption** | SKIP | Overlaps Hatchin's core, Python-centric, would mean rebuilding on their runtime. Hatchin's runtime is the moat. | n/a | n/a | Stack + core overlap |
+
+**Top pick from this repo:** 10.1, the sandbox execution backends, a genuinely useful reference for the coding milestone's dangerous part. Everything else is landscape + confirmation of things Hatchin already has or has scoped.
+
+---
+
+## Repo 11: NousResearch/hermes-paperclip-adapter
+- **URL:** https://github.com/NousResearch/hermes-paperclip-adapter
+- **What it is:** a bridge that lets Hermes Agent operate as an "employee" inside Paperclip (a management platform): task assignment + automated execution via Hermes's tools, session continuity, and cost tracking. It spawns the Hermes CLI in single-query mode, captures and parses the raw transcript into TYPED objects, post-processes to markdown, reclassifies stderr so benign logs are not treated as errors, and tracks cost per task. 8 inference providers; MCP client support.
+- **License:** MIT. **TypeScript** (the first repo in the coding cluster whose code is actually stack-compatible with Hatchin as a reference).
+- **Maturity:** 1.8k stars, early (14 commits).
+- **Relation to Hatchin:** this is the DELEGATE ADAPTER PATTERN made concrete, and in the right language. It is almost exactly the integration seam "Hatchin can code" needs: wrap an external coding-agent CLI as a managed worker, run it, capture and parse its output into structured results, track its cost, and hand it back for review. It is coupled to Hermes CLI + Paperclip's API so it is not a drop-in, but the PATTERN is the most directly relevant TypeScript reference in the whole coding cluster. (Landscape aside: "AI as an employee on a task board" is itself a shipped product here, worth watching.)
+
+| # | Item | Verdict | Why for Hatchin | Where it informs | Effort | License |
+|---|---|---|---|---|---|---|
+| 11.1 | **Wrap an external agent CLI as a managed worker (spawn single-query, capture and parse transcript to typed objects, post-process, cost-track)** | INSPIRATION (top pick, coding milestone) | The concrete, TypeScript version of Hatchin's delegate-not-rebuild plan: how to call an external coding agent and get safe structured results back. | "Hatchin can code" delegate/integration layer | M | Study, reimplement |
+| 11.2 | **Structured transcript parsing (raw agent output to typed objects) + stderr reclassification** | INSPIRATION | The discipline for safely consuming an external agent's messy output; analogous to Hatchin's `actionParser` but for a delegated agent. | coding delegate layer, actionParser analog | S to M | Study, reimplement |
+| 11.3 | **Per-delegated-task cost tracking** | INSPIRATION (low) | Hatchin already has a cost guard + usage tracker; per-task cost on a delegated agent is a small extension. | cost guard | reference | MIT |
+| 11.4 | **Direct adapter reuse** | SKIP | Bound to the Hermes CLI + Paperclip API, neither of which is Hatchin's agent or platform. Take the pattern, not the code. | n/a | n/a | Host-coupled |
+
+**Top pick from this repo:** 11.1, the "wrap an external agent CLI as a peer-reviewable worker" seam, the most stack-compatible reference for how "Hatchin can code" would actually delegate. Pattern, not code.
+
+---
+
+## Repo 12: NousResearch/Hermes-Function-Calling
+- **URL:** https://github.com/NousResearch/Hermes-Function-Calling
+- **What it is:** inference code that lets the Hermes Pro model do function calling + structured JSON output. ChatML with `<tool_call>` / `<tool_response>` XML tags, Pydantic schema validation, a JSON mode, and example scripts.
+- **License:** MIT. Python.
+- **Maturity:** 1.5k stars, active (111 commits). Targets Hermes 2 Pro (Llama 3 8B); the format is NOT fully model-agnostic (trained for Hermes).
+- **Relation to Hatchin (weakest fit of the Nous cluster):** it is a tool-use PROMPT FORMAT for a model family Hatchin does not use (Hatchin runs DeepSeek / Gemini / Groq), it is Python, and Hatchin already has its own action-block format (`[[ACTION]]`) + tool router + the providers' native JSON modes. ADK item 2.4 already covers "clean, testable, model-agnostic tool contract" better.
+
+| # | Item | Verdict | Why for Hatchin | Where it informs | Effort | License |
+|---|---|---|---|---|---|---|
+| 12.1 | **Tagged tool-call format + Pydantic-validated structured output** | INSPIRATION (low) | A reference IF Hatchin ever hardens its `[[ACTION]]` blocks into a stricter, schema-validated tagged format. But ADK 2.4 is the better, model-agnostic reference. | `actionParser`, tool contract | reference | Study |
+| 12.2 | **Direct use of this code / Hermes models** | SKIP | Hermes-specific, Python, and Hatchin has its own format on different providers. | n/a | n/a | Model + stack |
+
+**Top pick from this repo:** none worth acting on. 12.1 only as a distant reference behind ADK 2.4. This is the lowest-fit repo in the Nous set.
+
+---
+
+## Repo 13: NousResearch/atropos
+- **URL:** https://github.com/NousResearch/atropos
+- **What it is:** an environment microservice framework for asynchronous reinforcement learning with LLMs: collecting, distributing, and evaluating model TRAJECTORIES across environments (dataset tasks like GSM8K/MMLU, games, code execution, RLHF/RLAIF, multimodal), with WandB + HTML visualization and trainer integrations (Axolotl, Tinker) plus teacher distillation.
+- **License:** MIT. Python.
+- **Maturity:** 1.3k stars, ARCHIVED on 2026-07-04 (read-only), about 1.6k commits (mature but frozen). GPUs needed only for local inference/training.
+- **Relation to Hatchin:** wrong LAYER. This is model-TRAINING infrastructure (RL / RLHF / distillation). Hatchin explicitly does NOT train models (CLAUDE.md section 15 lists "training custom LLMs" as not realistic now). It is also archived and Python.
+
+| # | Item | Verdict | Why for Hatchin | Where it informs | Effort | License |
+|---|---|---|---|---|---|---|
+| 13.1 | **Standardized eval "environments" + trajectory collection/evaluation** | INSPIRATION (low) | A structural reference for a library of standardized test scenarios to run agents against, but ADK 2.1 already covers trajectory evaluation, is not archived, and is closer to Hatchin's needs. | eval / benchmark harness | reference | Study |
+| 13.2 | **RL training / RLHF trajectories / trainer integrations / distillation** | SKIP | Hatchin does not train models (out of scope per CLAUDE.md section 15). Archived, Python, GPU-oriented. | n/a | n/a | Wrong layer |
+
+**Top pick from this repo:** none. A model-training-layer tool, off Hatchin's path; 13.1 only as a distant reference behind ADK 2.1.
+
+---
+
+## Repo 14: NousResearch/autonovel
+- **URL:** https://github.com/NousResearch/autonovel
+- **What it is:** an autonomous pipeline that turns a seed concept into a complete, publication-ready NOVEL (print PDF, ePub, audiobook, landing page). Multi-phase: Foundation (world/characters/outline) to First Draft (chapters with evaluation) to Automated Revision (adversarial editing, reader panels, dual-persona Opus critic review, modify-evaluate-keep/discard) to Export. It runs a DUAL slop-detection "immune system" (mechanical regex + LLM evaluation) and co-evolving voice/world/character/plot/prose layers.
+- **License:** NOT SPECIFIED (no LICENSE file). This matters: no license means all rights reserved by default, so ZERO code reuse is permitted. Ideas and patterns are not copyrightable (inspiration is fine), but nothing can be copied.
+- **Maturity:** about 1.5k stars, very early (3 commits, one novel produced). A functional prototype. Depends on Claude (Sonnet + Opus), fal.ai, ElevenLabs, LaTeX.
+- **Relation to Hatchin:** the DOMAIN is fiction, not Hatchin's business deliverables, but the METHOD is a worked example of two things Hatchin has already PLANNED. Its dual slop-detection maps straight onto Hatchin's planned Phase 46 (AI Slop Detection), and its adversarial reader-panel revision loop maps onto Hatchin's Phase 39 (Reader Testing) + peer review with teeth. Honest caveat: Hatchin's v2.3 finding was that multi-pass revision NO-OPS on long structured deliverables (they already score about 4.7/5), so the revision-loop value is uncertain for Hatchin's document types; apply where it measurably helps, not blanket.
+
+| # | Item | Verdict | Why for Hatchin | Where it informs | Effort | License |
+|---|---|---|---|---|---|---|
+| 14.1 | **Dual slop-detection (mechanical regex + LLM evaluator)** | INSPIRATION (strong, top pick) | A direct worked reference for Hatchin's already-planned Phase 46 (AI Slop Detection). Pairs with the existing tone guard (mechanical) + peer-review judge (LLM). | Phase 46, `responsePostProcessing`, peer-review judge | M | Ideas only (no license) |
+| 14.2 | **Adversarial revision loop (reader panels + dual-persona critic + keep/discard)** | INSPIRATION | Reference for Phase 39 (Reader Testing) + peer review. Caveat: v2.3 showed multi-pass no-ops on long structured docs, so measure before applying broadly. | Phase 39, peer review, multi-pass | M | Ideas only |
+| 14.3 | **Multi-phase long-document pipeline (foundation to draft to revise to export)** | INSPIRATION (low) | A staged approach for very long deliverables; uncertain value given the v2.3 finding. | deliverable generator | reference | Ideas only |
+| 14.4 | **Multi-format publishing (ePub / audiobook / landing page)** | SKIP (low) | Far from Hatchin's business-deliverable domain; PDF already exists and PPTX/MP4 is covered by open-design 1.2. | n/a | n/a | Out of scope |
+| 14.5 | **Direct code reuse** | SKIP (hard) | No license = all rights reserved (no reuse permitted), and it is Python + fiction domain regardless. Ideas only. | n/a | n/a | No license |
+
+**Top pick from this repo:** 14.1, the dual (mechanical + LLM) slop-detection, a concrete worked reference for the already-planned Phase 46, and 14.2 for Phase 39 with the multi-pass caveat. Ideas only, no code (no license + wrong stack).
+
+---
+
 ## Cross-cutting decision: the "Hatchin can code" capability (founder plan, 2026-08-19)
 > Confirmed founder plan: give Hatchin's agents the ability to actually build and run code, not just describe it. This is a future MILESTONE, captured here because it re-rates several catalog items. Not built now.
 
@@ -189,7 +298,7 @@
 - **The infra piece (the real hard part):** a sandboxed code-execution environment (a hosted sandbox service or ephemeral machines). This, not a coding-agent fork, is the necessary and dangerous piece. Add a research spike before building. Arbitrary code execution is a serious security surface.
 - **Positioning guardrail:** the differentiator must stay TEAM-WRAPPED, PEER-REVIEWED code, not the code engine. Do not try to out-code Cursor / Lovable / Replit; win on the team, review, and memory around the coding. Peer-reviewed code from a coordinated team is the edge; raw code generation is a commodity.
 - **Sequencing:** a MILESTONE (months), sitting AFTER the launch bottleneck (demo + analytics + activation). Scaffold a milestone brief when ready.
-- **Repos that inform it (reference, not forks):** grok-build (ACP, sandboxing, headless mode), ADK (tool-use, human-in-the-loop confirm-before-run, trajectory eval of code agents), freqtrade (dry-run-before-live simulation as the safe pre-execution step; GPL so patterns only, never code), LangGraph (our own substrate: native durable execution + human-in-the-loop + subgraph/bounded-loop patterns to structure the long-running coding-task graph with confirm-before-run).
+- **Repos that inform it (reference, not forks):** grok-build (ACP, sandboxing, headless mode), ADK (tool-use, human-in-the-loop confirm-before-run, trajectory eval of code agents), freqtrade (dry-run-before-live simulation as the safe pre-execution step; GPL so patterns only, never code), LangGraph (our own substrate: native durable execution + human-in-the-loop + subgraph/bounded-loop patterns to structure the long-running coding-task graph with confirm-before-run), hermes-agent (item 10.1: a concrete menu of sandbox execution backends, Docker/SSH/Modal/Daytona/Vercel, for the dangerous sandbox-executor part), and hermes-paperclip-adapter (item 11.1: the TypeScript "wrap an external agent CLI as a managed, cost-tracked, peer-reviewable worker" seam, the most stack-compatible reference for the delegate layer).
 
 ---
 
