@@ -162,6 +162,25 @@
 
 ---
 
+## Repo 8: NousResearch/Hermes-Bot-Mode
+- **URL:** https://github.com/NousResearch/Hermes-Bot-Mode
+- **What it is:** a desktop-app plugin (JavaScript, `plugin.js`) for Nous Research's Hermes Agent / Hermes Desktop. It turns agent profiles into a managed roster of named bots, each with its own chat history, avatar, personality config, and scheduled routines, so you can run multi-agent workflows inside one desktop interface.
+- **License:** MIT (friendly).
+- **Maturity:** small (about 645 stars, 114 commits) and ARCHIVED on 2026-08-17. Its functionality was folded into core Hermes Desktop as a bundled, default-on plugin, so the standalone repo is now obsolete. It is a frozen snapshot, not a live project: no dependency, no upgrades.
+- **Relation to Hatchin (read this first):** the closest PRODUCT-CONCEPT overlap in the catalog so far. This is essentially a smaller, desktop version of Hatchin's own idea: a roster of named AI agents with avatars and personalities, per-agent chat + history, bot-to-bot messaging with @mentions, and coordinated group chats (2 to 6 bots). Hatchin already does nearly all of this, and usually deeper (conductor routing, peer review with teeth, deliberation, deliverables, RAG memory). So this is a UX / landscape REFERENCE, not a borrow. Two useful takeaways: (a) it VALIDATES the "team of named bots you chat with" category (a serious lab productized it), which also means that surface is now table stakes, not Hatchin's moat, so keep positioning on the orchestration depth; (b) one feature is a genuine idea worth taking (see 8.1). Code is a SKIP (archived + tightly coupled to the Hermes host runtime, not portable to React/Express).
+
+| # | Item | Verdict | Why for Hatchin | Where it informs | Effort | License |
+|---|---|---|---|---|---|---|
+| 8.1 | **Scheduled recurring agent routines (per-bot cron: "run this every Monday")** | INSPIRATION (top pick) | The one thing Hatchin may not have as a first-class user-facing feature. Hatchin has background/autonomy execution (pg-boss) but not a user-set "every Monday, Kai drafts the weekly growth update" scheduler. Pairs naturally with the marketing-loops idea and the autonomy layer. | autonomy scheduler + a user-facing "routines" UI | M | Study, reimplement |
+| 8.2 | **AI-generated portrait avatars for agents (also geometric / image options)** | INSPIRATION (low, polish) | Hatchin has agent avatars; distinct AI-generated Hatch portraits would be a nice identity polish. Caveat: image generation adds cost, so a low-priority nicety, not now. | agent identity / ProjectTree | S | Study, reimplement |
+| 8.3 | **Named-bot roster + per-bot chat + history** | REFERENCE (already covered) | Hatchin's agents + conversations already do this. | existing agents / conversations | reference | n/a |
+| 8.4 | **Bot-to-bot messaging + @mention + coordinated group chat (2 to 6)** | REFERENCE (already covered, Hatchin deeper) | Hatchin has handoffs, @mention routing, and conductor-coordinated multi-agent responses, with peer review on top. | existing conductor + handoff | reference | n/a |
+| 8.5 | **Direct code / plugin reuse** | SKIP | Archived snapshot, and it is a plugin bound to the Hermes Desktop host (Hermes gateway RPCs, Hermes profiles, Hermes image gen), not portable to Hatchin's stack despite being JS. | n/a | n/a | Host-coupled + archived |
+
+**Top pick from this repo:** 8.1, user-facing scheduled recurring agent routines, the one feature Hatchin does not already have as a first-class thing. Everything else Hatchin already does, usually deeper. Treat the whole repo as a landscape signal: the "named-bot team chat" surface is now table stakes, so Hatchin's edge stays the orchestration depth, not the roster.
+
+---
+
 ## Cross-cutting decision: the "Hatchin can code" capability (founder plan, 2026-08-19)
 > Confirmed founder plan: give Hatchin's agents the ability to actually build and run code, not just describe it. This is a future MILESTONE, captured here because it re-rates several catalog items. Not built now.
 
