@@ -120,6 +120,26 @@
 
 ---
 
+## Repo 6: TauricResearch/TradingAgents
+- **URL:** https://github.com/TauricResearch/TradingAgents
+- **What it is:** a multi-agent LLM framework that mimics a real trading firm. Specialist LLM agents (a fundamentals/sentiment/news/technical analyst team, bull and bear researchers, a trader, and risk/portfolio managers) collaborate and DEBATE to reach a trading decision. Built on LangGraph; model-agnostic (OpenAI, Google, Anthropic, xAI, DeepSeek). Implementation of arXiv paper 2412.20138.
+- **License:** Apache-2.0 (friendly). Unlike freqtrade, the license is NOT the blocker here.
+- **Maturity:** the page shows 99.6k stars, but it is v0.3.1 (2026-07) and explicitly a RESEARCH framework carrying a "not financial, investment, or trading advice, research purposes only" disclaimer. Treat the star count as paper virality, not production traction (verify before citing anywhere).
+- **Relation to Hatchin (read this first):** like ADK (Repo 2), this OVERLAPS Hatchin's core rather than filling a gap. It is a multi-agent orchestration framework, exactly what Hatchin already has (LangGraph JS + conductor + handoff + peer review + trust). It is also Python and domain-locked to trading. So there is nothing to drop in: it is a REFERENCE, all INSPIRATION. Its ONE distinctive idea that Hatchin does NOT already have is the structured BULL-vs-BEAR debate (see 6.1). Do not be tempted to add trading to Hatchin; the borrow is the debate pattern, not the trading domain (the repo itself disclaims real-trading use).
+
+| # | Item | Verdict | Why for Hatchin | Where it informs | Effort | License |
+|---|---|---|---|---|---|---|
+| 6.1 | **Bull-vs-Bear structured debate (two agents deliberately argue OPPOSING sides before a decision is committed)** | INSPIRATION (strong, top pick) | The one genuinely new idea here. Hatchin deliberates and peer-REVIEWS work after the fact, but it does not assign adversarial advocates to stress-test a decision BEFORE committing. An "argue both sides" mode would sharpen genuinely ambiguous calls (strategy, positioning, risky autonomy actions). Distinct from peer review: pre-decision divergence vs post-work check. | conductor / deliberation traces / a "stress-test this decision" mode | M | Study, reimplement |
+| 6.2 | **Analyst-team decomposition to trader synthesis (many specialists feed one synthesizer)** | INSPIRATION (low, already covered) | Hatchin's conductor + role specialists + Maya synthesizer already does this. Reference only. | existing conductor + Maya | reference | Study, reimplement |
+| 6.3 | **Risk / portfolio manager approve-reject gate before an action runs** | INSPIRATION (low, already covered) | Maps to Hatchin's approval card + safety gate. Confirms the pattern, adds nothing new. | approval + safety layer | reference | Study, reimplement |
+| 6.4 | **A concrete, opinionated LangGraph multi-agent example (stateful graph, bounded debate rounds, checkpoint/resume)** | INSPIRATION | Hatchin runs on LangGraph JS; this is a real, non-toy LangGraph (Python) app to study for structuring stateful multi-agent graphs and bounded debate rounds. The API is parallel, not identical. | `server/ai/graph.ts`, conductor | reference | Apache-2.0, study |
+| 6.5 | **Direct code / library use** | SKIP | Python vs Node/TS, and domain-locked to trading (research-grade, disclaims real use). Overlaps Hatchin's core, fills no gap. License is fine; stack + domain block it. | n/a | n/a | Stack + domain |
+| 6.6 | **Adding a "trading agents" feature to Hatchin** | SKIP (caution) | Wrong product, and the repo itself says research-only. The value is the DEBATE PATTERN, not a trading capability. | n/a | n/a | Out of scope |
+
+**Top pick from this repo:** 6.1, the bull-vs-bear structured debate, the single pattern here that Hatchin does not already have. Everything else overlaps the existing orchestration core. Reference only; nothing to copy (Python + trading domain), though Apache-2.0 would permit code reuse if it were ever the same stack.
+
+---
+
 ## Cross-cutting decision: the "Hatchin can code" capability (founder plan, 2026-08-19)
 > Confirmed founder plan: give Hatchin's agents the ability to actually build and run code, not just describe it. This is a future MILESTONE, captured here because it re-rates several catalog items. Not built now.
 
