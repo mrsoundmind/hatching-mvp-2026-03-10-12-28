@@ -140,6 +140,28 @@
 
 ---
 
+## Repo 7: langchain-ai/langgraph
+- **URL:** https://github.com/langchain-ai/langgraph
+- **What it is:** a low-level orchestration framework for building long-running, stateful agents. Native durable execution with auto-resume from failure, human-in-the-loop (inspect and modify agent state mid-run), short and long-term memory, streaming, subgraphs, time-travel, LangSmith debugging, and a hosted deployment platform.
+- **License:** MIT (very friendly).
+- **Maturity:** production-ready, ~40.3k stars, ~7k commits, active.
+- **This repo is a SPECIAL CASE (read this first):** this is NOT an outside repo to borrow from. It is the FOUNDATION Hatchin already runs on. Hatchin depends on the JS twin, `@langchain/langgraph` (0.4.9), used in `server/ai/graph.ts` (router + hatch nodes). Note: this URL is the PYTHON repo; the API Hatchin actually tracks is [langgraphjs](https://github.com/langchain-ai/langgraphjs). So the normal BORROW/INSPIRATION/SKIP legend does not apply. The verdicts below are reframed as **UPSTREAM** (already in use), **ADOPT-MORE** (a native capability Hatchin hand-rolled, worth evaluating later), **REFERENCE**, and **SKIP (migration)**.
+- **The genuinely useful lens:** this is a chance to audit "what did Hatchin build itself that its own framework already provides natively?" The answer is durability, human-in-the-loop, and memory. The honest conclusion is at the bottom: know these exist, do NOT migrate now.
+
+| # | Item | Verdict | Why for Hatchin | Where it lands | Effort | License |
+|---|---|---|---|---|---|---|
+| 7.1 | **LangGraph JS core (orchestration substrate)** | UPSTREAM (already in use) | Already Hatchin's graph runtime. No action beyond hygiene: pin the version and test before upgrading (breaking changes are common; CLAUDE.md section 19 already flags this). Track langgraphjs, not this Python repo. | `server/ai/graph.ts` | n/a | MIT |
+| 7.2 | **Native durable execution + Postgres checkpointer** | ADOPT-MORE (evaluate, far future) | Hatchin hand-rolled durability (pg-boss + `autonomy_runs`/`run_steps` + the stall watchdog) and it is now battle-tested (the 57f2c94 half-open-socket fix). LangGraph offers this natively. A real consolidation opportunity, but the hand-rolled path is proven and integrated, so this is "know it exists," not "do it." | autonomy durability layer | L (if ever) | MIT |
+| 7.3 | **Native human-in-the-loop (interrupt/resume, inspect and edit state)** | REFERENCE | Hatchin's approval cards + safety gates sit ABOVE this as a product layer (humanized reasons, risk-tinted UI). LangGraph's `interrupt()` is a reference for the low-level mechanism; Hatchin's product layer is the value. Low reason to migrate. | approval + safety layer | reference | MIT |
+| 7.4 | **Native memory store (short and long term)** | REFERENCE | Hatchin already has `conversation_memory` + RAG (pgvector) + v2.2 outcome-aware memory extraction, all integrated. LangGraph's store is a reference, not a replacement. | memory + RAG layer | reference | MIT |
+| 7.5 | **Subgraph / bounded-loop / time-travel patterns** | ADOPT-MORE (low, as the graph grows) | The most forward-looking item: clean patterns for structuring bounded debate rounds (the Repo 6.1 bull/bear idea) and the future "Hatchin can code" delegate flow as the conductor graph gets more complex. Study the JS docs when that work starts. | conductor / graph.ts, future coding flow | S to M | MIT |
+| 7.6 | **LangGraph Platform / Studio / hosted deployment** | SKIP | Hatchin deploys on Fly + Supabase + its own Express/WS. Adopting the hosted runtime means rebuilding on someone else's deployment (and the Platform tier is commercial). Not for Hatchin. | n/a | n/a | Platform is commercial |
+| 7.7 | **Framework migration (rip out hand-rolled durability/HIL/memory for LangGraph-native)** | SKIP (now) | Big, risky, zero user-facing payoff, and Hatchin's hand-rolled pieces are proven in production. Never pre-launch; revisit only if maintenance burden becomes real. | n/a | n/a | n/a |
+
+**Top pick from this repo:** there is no "borrow" here, the value is the AUDIT LENS. Hatchin hand-rolled durability (7.2), human-in-the-loop (7.3), and memory (7.4) that its own framework provides natively. The honest call: know they exist, keep the JS lib pinned and tested (7.1), do NOT migrate now (proven hand-rolled code + solo founder + pre-launch). The one live adopt-more candidate is 7.5 (subgraph / bounded-loop patterns) as the conductor graph grows for bull/bear debate and the coding delegate.
+
+---
+
 ## Cross-cutting decision: the "Hatchin can code" capability (founder plan, 2026-08-19)
 > Confirmed founder plan: give Hatchin's agents the ability to actually build and run code, not just describe it. This is a future MILESTONE, captured here because it re-rates several catalog items. Not built now.
 
@@ -148,7 +170,7 @@
 - **The infra piece (the real hard part):** a sandboxed code-execution environment (a hosted sandbox service or ephemeral machines). This, not a coding-agent fork, is the necessary and dangerous piece. Add a research spike before building. Arbitrary code execution is a serious security surface.
 - **Positioning guardrail:** the differentiator must stay TEAM-WRAPPED, PEER-REVIEWED code, not the code engine. Do not try to out-code Cursor / Lovable / Replit; win on the team, review, and memory around the coding. Peer-reviewed code from a coordinated team is the edge; raw code generation is a commodity.
 - **Sequencing:** a MILESTONE (months), sitting AFTER the launch bottleneck (demo + analytics + activation). Scaffold a milestone brief when ready.
-- **Repos that inform it (reference, not forks):** grok-build (ACP, sandboxing, headless mode), ADK (tool-use, human-in-the-loop confirm-before-run, trajectory eval of code agents), freqtrade (dry-run-before-live simulation as the safe pre-execution step; GPL so patterns only, never code).
+- **Repos that inform it (reference, not forks):** grok-build (ACP, sandboxing, headless mode), ADK (tool-use, human-in-the-loop confirm-before-run, trajectory eval of code agents), freqtrade (dry-run-before-live simulation as the safe pre-execution step; GPL so patterns only, never code), LangGraph (our own substrate: native durable execution + human-in-the-loop + subgraph/bounded-loop patterns to structure the long-running coding-task graph with confirm-before-run).
 
 ---
 
