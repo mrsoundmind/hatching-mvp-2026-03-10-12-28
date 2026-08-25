@@ -21,7 +21,9 @@
 
 ## Wave 1: Safe server-side wins (no UI gate, build + runtime-verify first)
 
-### 1A. DESIGN.md brand-system (catalog item 1.1) [BUILD]
+### 1A. DESIGN.md brand-system (catalog item 1.1) [SHIPPED, verified 2026-08-25]
+> Done on-branch (not merged). New `server/ai/brandSpec.ts` (single canonical spec: voice + writing conventions + visual tokens for the future export wave), injected into BOTH deliverable prompt paths (`buildGenerationPrompt` + `iterateDeliverable`). Gated by `BRAND_SPEC_ENABLED` (default on). Verified in the REAL generation path via the capture provider: `scripts/test-brand-spec.ts` 21/21 (block content + on/off gate + injected-when-on + absent-when-off), tsc clean.
+
 - **What:** one canonical brand spec (color, type, spacing, voice) injected into deliverable generation so every generated deliverable is visually and tonally consistent. Doubles as the brand spec for marketing assets.
 - **Where:** a new brand-spec module injected into `server/ai/deliverableGenerator.ts` (and reused by the marketing playbook). Server-side prompt injection, next to the role-knowledge and pack-playbook blocks.
 - **Effort:** S. **Risk:** low (additive prompt context; fail-safe to current behavior if empty).

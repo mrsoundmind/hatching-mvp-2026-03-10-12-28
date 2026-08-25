@@ -11,6 +11,7 @@ import { generateChatWithRuntimeFallback } from '../llm/providerResolver.js';
 import type { Deliverable } from '@shared/schema';
 import { scoreIteration, type RubricScoreResult } from './rubricScorer.js';
 import { runReaderTest, countResolvedAnnotations, type ReaderTestResult } from './readerTestReviewer.js';
+import { renderBrandSpecBlock } from './brandSpec.js';
 
 /**
  * Phase 36 — Iterate result shape (RUBR-02).
@@ -90,9 +91,14 @@ Requirements:
 - Use markdown formatting (headers, lists, bold)
 - Each section should have substantive content (not just placeholders)
 - Total length: 800-2000 words
-- Format each section with a ## heading
+- Format each section with a ## heading`;
 
-Output ONLY the document content in markdown. No meta-commentary.`;
+  const brandBlock = renderBrandSpecBlock();
+  if (brandBlock) {
+    prompt += `\n\n${brandBlock}`;
+  }
+
+  prompt += `\n\nOutput ONLY the document content in markdown. No meta-commentary.`;
 
   return prompt;
 }
@@ -284,6 +290,8 @@ export async function iterateDeliverable(
   if (!existing) return { deliverable: undefined, reverted: false };
 
   let candidate = '';
+  const brandBlock = renderBrandSpecBlock();
+  const brandSuffix = brandBlock ? `\n\n${brandBlock}` : '';
   try {
     const response = await generateChatWithRuntimeFallback({
       messages: [
@@ -293,7 +301,7 @@ export async function iterateDeliverable(
         },
         {
           role: 'user',
-          content: `Here is the current document:\n\n${existing.content}\n\n---\n\nUser's request: ${instruction}\n\nApply the requested changes and output the FULL updated document in markdown. Keep the same section structure unless the user asked to change it.`,
+          content: `Here is the current document:\n\n${existing.content}\n\n---\n\nUser's request: ${instruction}\n\nApply the requested changes and output the FULL updated document in markdown. Keep the same section structure unless the user asked to change it.${brandSuffix}`,
         },
       ],
       maxTokens: 4000,
