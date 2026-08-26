@@ -225,6 +225,17 @@ export function registerAttachmentRoutes(app: Express) {
       const author = agents.find((a) => (a as any).isSpecialAgent) || agents[0] || null;
       const agentRole = (req.body?.agentRole as string | undefined) || (author as any)?.role;
 
+      // Resolve the live broadcaster once (best-effort; messages are persisted regardless).
+      let broadcast: ((c: string, p: unknown) => void) | null = null;
+      try { const m = await import('../routes.js'); broadcast = (m.getGlobalBroadcast() as any) ?? null; } catch { /* offline is fine */ }
+
+      // Post the user's request into the chat first, so the conversation reads naturally.
+      const userMsg = await storage.createMessage({
+        id: randomUUID(), conversationId, content: instruction, messageType: 'user',
+        userId, agentId: null, metadata: { editRequestFor: original.filename },
+      } as any);
+      broadcast?.(conversationId, { type: 'new_message', conversationId, message: userMsg });
+
       const edited = await editDocument({ buffer: original.buffer, filename: original.filename, instruction, agentRole });
 
       const editedId = await storeEditedDocument({
@@ -254,11 +265,7 @@ export function registerAttachmentRoutes(app: Express) {
       } as any);
 
       // Show it live in the chat (durable already — it's a persisted message).
-      try {
-        const { getGlobalBroadcast } = await import('../routes.js');
-        const broadcast = getGlobalBroadcast();
-        if (broadcast) broadcast(conversationId, { type: 'new_message', conversationId, message });
-      } catch { /* live push is best-effort; the message is persisted regardless */ }
+      broadcast?.(conversationId, { type: 'new_message', conversationId, message });
 
       return res.status(201).json({ message, editedDocument: { ...editedDocument, summary: edited.summary } });
     } catch (error) {

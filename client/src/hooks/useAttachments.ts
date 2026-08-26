@@ -106,5 +106,29 @@ export function useAttachments(conversationId?: string) {
     }
   }, [attachments, conversationId, patch]);
 
-  return { attachments, upload, remove, addToBrain };
+  // Edit an already-attached document per an instruction. The server edits it, posts an agent reply
+  // into the chat with a download link, and broadcasts it, so the reply shows up via the normal WS flow.
+  const editDocument = useCallback(async (docId: string, instruction: string): Promise<{ ok: boolean; error?: string }> => {
+    if (!conversationId) return { ok: false, error: 'No conversation' };
+    try {
+      const res = await fetch(`/api/conversations/${encodeURIComponent(conversationId)}/attachments/${docId}/edit`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ instruction }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { ok: false, error: data?.error || 'Could not edit the document' };
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'Could not edit the document' };
+    }
+  }, [conversationId]);
+
+  return { attachments, upload, remove, addToBrain, editDocument };
+}
+
+// Does this message read like a request to EDIT the attached document (vs a question about it)?
+export function looksLikeEditRequest(text: string): boolean {
+  return /\b(edit|add|rewrite|re-write|revise|update|expand|append|insert|remove|delete|change|fix|adjust|improve|reword|shorten|lengthen|rework|polish|go through|fill in|flesh out|turn this into|make it)\b/i.test(text || '');
 }

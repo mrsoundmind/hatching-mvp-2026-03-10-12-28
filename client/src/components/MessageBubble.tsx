@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
 import { SourceChips } from './chat/SourceChips';
+import { EditedDocumentCard, type EditedDocumentMeta } from './chat/EditedDocumentCard';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 
@@ -35,6 +36,7 @@ interface MessageBubbleProps {
         content: string;
         senderName: string;
       };
+      editedDocument?: EditedDocumentMeta;
     };
     replyTo?: {
       id: string;
@@ -395,6 +397,11 @@ export function MessageBubble({
 
                       {/* v2.3 Per-role RAG: Sources chips from the reply's inline citations (agent replies only) */}
                       {isAgent && <SourceChips content={cleanText} />}
+
+                      {/* In-chat document editing: an edited file the user can download */}
+                      {isAgent && message.metadata?.editedDocument && (
+                        <EditedDocumentCard doc={message.metadata.editedDocument} />
+                      )}
                     </>
                   )}
                 </div>

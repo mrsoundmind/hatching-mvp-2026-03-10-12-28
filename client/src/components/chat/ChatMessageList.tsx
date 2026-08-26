@@ -268,7 +268,8 @@ export function ChatMessageList({
                     agentRole: message.metadata?.role || message.metadata?.agentRole,
                     isStreaming: message.isStreaming,
                     llm: message.metadata?.llm,
-                    replyTo: message.metadata?.replyTo
+                    replyTo: message.metadata?.replyTo,
+                    editedDocument: message.metadata?.editedDocument
                   }
                 }}
                 isGrouped={isGrouped}

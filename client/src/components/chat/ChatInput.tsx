@@ -2,8 +2,9 @@ import { useRef, useEffect } from 'react';
 import { ArrowRightLeft, ArrowUpIcon, Paperclip } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import AgentAvatar from '@/components/avatars/AgentAvatar';
-import { useAttachments } from '@/hooks/useAttachments';
+import { useAttachments, looksLikeEditRequest } from '@/hooks/useAttachments';
 import { AttachmentChip } from './AttachmentChip';
+import { useToast } from '@/hooks/use-toast';
 
 interface ChatInputProps {
   inputValue: string;
@@ -47,7 +48,25 @@ export function ChatInput({
 }: ChatInputProps) {
   const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const { attachments, upload, remove, addToBrain } = useAttachments(conversationId);
+  const { attachments, upload, remove, addToBrain, editDocument } = useAttachments(conversationId);
+  const { toast } = useToast();
+
+  // If the user has a ready attached document and their message reads like an edit ("add a section",
+  // "rewrite the intro"), route it to the document editor instead of a normal chat turn. The server posts
+  // both the request and the edited-file reply into the chat, so we just clear the composer.
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const text = inputValue.trim();
+    const editable = attachments.find((a) => a.status === 'ready' && a.docId);
+    if (text && editable?.docId && looksLikeEditRequest(text)) {
+      e.preventDefault();
+      onInputChange('');
+      editDocument(editable.docId, text).then((r) => {
+        if (!r.ok) toast({ title: "Couldn't edit the document", description: r.error, variant: 'destructive' });
+      });
+      return;
+    }
+    onSubmit(e);
+  };
 
   const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -126,7 +145,7 @@ export function ChatInput({
           data-testid="attachment-file-input"
         />
 
-        <form onSubmit={onSubmit} className="relative bg-[var(--hatchin-surface)]/60 backdrop-blur-md rounded-xl border border-[var(--hatchin-border)]">
+        <form onSubmit={handleSubmit} className="relative bg-[var(--hatchin-surface)]/60 backdrop-blur-md rounded-xl border border-[var(--hatchin-border)]">
           {/* Hand off to... dropdown */}
           {activeProject && handoffableAgents.length > 0 && (
             <div className="flex items-center px-3 pt-2">
