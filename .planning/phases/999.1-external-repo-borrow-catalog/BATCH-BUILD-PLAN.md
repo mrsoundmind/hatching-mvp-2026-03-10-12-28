@@ -32,7 +32,9 @@
 - **Verify (runtime):** generate the same deliverable type before and after; confirm brand consistency improved and nothing regressed; tsc clean. Optional A/B via the existing benchmark harness.
 - **Why first:** the single cleanest, lowest-risk, genuinely-drop-in idea in the whole catalog.
 
-### 1B. Bull/bear structured debate (catalog item 6.1) [BUILD, gated]
+### 1B. Bull/bear structured debate (catalog item 6.1) [BUILT + MEASURED, kept OFF, 2026-08-26]
+> Engine shipped on-branch (not merged): `server/ai/debate.ts` (self-contained: `debateEnabled` gate default OFF, strict `shouldDebate` trigger, `runDebate` = for/against/synthesis, fail-safe null, outputs run through enforceBrandStyle). NOT wired into the live chat path or the DeliberationCard, deliberately: it must earn its keep first. Deterministic proof `scripts/test-debate.ts` 24/24 (gate + trigger + structure via capture). Measured `scripts/eval-debate-ab.ts` (blind judge, alternated order, OpenAI both sides today since Groq 404 + Gemini quota'd): single-pass 3.75/5 vs debate 4.00/5, a MARGINAL +0.25 lift, 1 win / 1 loss / 2 ties, at 3x the LLM calls and ~20s latency. Debate clearly won only the one genuinely-rough decision (5 vs 3). DECISION: keep gated OFF (same call as v2.3 multi-pass). Banked capability; revisit only if we find a decision surface where the lift is clear (the rough-call win suggests a targeted, not blanket, use). N=4 is a signal, not a definitive study.
+
 - **What:** an "argue both sides before deciding" mode. Two agents deliberately take OPPOSING positions on a genuinely ambiguous decision, then a synthesizer resolves. Distinct from peer review (which checks work AFTER it is produced); this is pre-decision divergence.
 - **Where:** `server/ai/conductor.ts` + deliberation traces; surfaced through the EXISTING `DeliberationCard.tsx` (reuse, so ideally no new UI). If any UI change is needed, it hits the mockup gate.
 - **Effort:** M. **Risk:** medium (adds LLM calls per debated decision, so cost; and quality must be measured, not assumed).
