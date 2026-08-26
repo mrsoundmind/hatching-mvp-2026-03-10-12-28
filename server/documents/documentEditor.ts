@@ -31,6 +31,21 @@ export interface EditDocumentResult {
   ext: SupportedExt;
   originalChars: number;
   editedChars: number;
+  addedSections: string[]; // headings present in the edit but not the original
+  keptSections: number;    // original headings still present
+  summary: string;         // one honest sentence for the chat reply
+}
+
+// Section titles from markdown headings, for a deterministic (free) change summary.
+function headings(md: string): string[] {
+  return (md.match(/^#{1,4}\s+.+$/gm) || []).map((h) => h.replace(/^#{1,4}\s+/, '').trim());
+}
+function buildSummary(filename: string, addedSections: string[], keptSections: number): string {
+  if (addedSections.length && keptSections) {
+    return `Added ${addedSections.length === 1 ? 'a new section' : `${addedSections.length} new sections`} (${addedSections.join(', ')}) and kept your ${keptSections} existing section${keptSections === 1 ? '' : 's'}.`;
+  }
+  if (addedSections.length) return `Added ${addedSections.length} new section${addedSections.length === 1 ? '' : 's'}: ${addedSections.join(', ')}.`;
+  return `Applied your requested changes throughout the document.`;
 }
 
 const MIME: Record<SupportedExt, string> = {
@@ -121,6 +136,11 @@ export async function editDocument(input: EditDocumentInput): Promise<EditDocume
       break;
   }
 
+  const origH = headings(currentMarkdown);
+  const newH = headings(editedMarkdown);
+  const addedSections = newH.filter((h) => !origH.includes(h));
+  const keptSections = origH.filter((h) => newH.includes(h)).length;
+
   return {
     buffer: outBuffer!,
     filename: `${base}-edited${ext}`,
@@ -128,5 +148,8 @@ export async function editDocument(input: EditDocumentInput): Promise<EditDocume
     ext,
     originalChars: currentMarkdown.length,
     editedChars: editedMarkdown.length,
+    addedSections,
+    keptSections,
+    summary: buildSummary(base, addedSections, keptSections),
   };
 }

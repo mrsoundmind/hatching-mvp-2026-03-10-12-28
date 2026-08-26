@@ -24,6 +24,7 @@ export interface IngestDocInput {
   text: string;
   uploadedByUserId?: string | null;
   scope: DocScope;
+  rawBytes?: Buffer | null; // original file bytes, kept so the document can be edited + returned later
 }
 
 export interface IngestDocResult {
@@ -55,8 +56,8 @@ export async function ingestConversationDocument(input: IngestDocInput): Promise
 
   const docRes = await pool.query(
     `INSERT INTO conversation_documents
-       (project_id, conversation_id, filename, mime, size_bytes, scope, char_count, uploaded_by_user_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+       (project_id, conversation_id, filename, mime, size_bytes, scope, char_count, uploaded_by_user_id, raw_bytes)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
     [
       input.projectId,
       scope === 'brain' ? null : input.conversationId,
@@ -66,6 +67,7 @@ export async function ingestConversationDocument(input: IngestDocInput): Promise
       scope,
       charCount,
       input.uploadedByUserId ?? null,
+      input.rawBytes ?? null,
     ],
   );
   const documentId = docRes.rows[0].id as string;

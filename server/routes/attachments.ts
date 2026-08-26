@@ -4,12 +4,15 @@
 // answer questions grounded in the file (see server/knowledge/rag/conversationDocs.ts). Ownership is
 // enforced via the conversation's project.
 import type { Express, Request, Response } from 'express';
+import { randomUUID } from 'crypto';
 import multer from 'multer';
 import { storage } from '../storage.js';
 import { extractDocumentText } from '../lib/extractDocumentText.js';
 import { sniffUpload } from '../lib/uploadSecurity.js';
 import { checkCostGuard, costGuardMessage } from '../billing/costGuard.js';
 import { parseConversationId } from '../../shared/conversationId.js';
+import { editDocument, isSupportedDocument, type SupportedExt } from '../documents/documentEditor.js';
+import { getOriginalDocument, storeEditedDocument, getEditedDocument } from '../documents/documentStore.js';
 import {
   ingestConversationDocument,
   listConversationDocuments,
@@ -107,6 +110,8 @@ export function registerAttachmentRoutes(app: Express) {
           text,
           uploadedByUserId: userId,
           scope,
+          // Keep the original bytes for editable doc types so the file can be edited + returned later.
+          rawBytes: isSupportedDocument(req.file.originalname) ? req.file.buffer : null,
         });
 
         return res.status(201).json({
@@ -182,6 +187,105 @@ export function registerAttachmentRoutes(app: Express) {
     } catch (error) {
       console.error('Failed to delete attachment:', error);
       return res.status(500).json({ error: 'Failed to delete attachment' });
+    }
+  });
+
+  const EXT_LABEL: Record<SupportedExt, string> = {
+    '.docx': 'Word document', '.pdf': 'PDF', '.md': 'Markdown file', '.txt': 'text file',
+  };
+
+  // POST /api/conversations/:conversationId/attachments/:docId/edit
+  // Edit a previously-attached document per an instruction, and post the edited file back INTO the chat
+  // as a normal agent message carrying a durable download link. This is the whole "edit my document in
+  // chat" feature — no separate UI, the reply just has a downloadable file.
+  app.post('/api/conversations/:conversationId/attachments/:docId/edit', async (req, res) => {
+    try {
+      const userId = getSessionUserId(req);
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+      const conversationId = req.params.conversationId;
+      const project = await getOwnedProjectForConversation(conversationId, userId);
+      if (!project) return res.status(404).json({ error: 'Conversation not found' });
+
+      const instruction = String(req.body?.instruction ?? '').trim();
+      if (!instruction) return res.status(400).json({ error: 'Tell me what to change in the document.' });
+
+      // Editing spends an LLM call — same brake as the chat path.
+      if (!(await enforceCostGuard(userId, res))) return;
+
+      const original = await getOriginalDocument(req.params.docId);
+      if (!original || original.projectId !== (project as any).id) {
+        return res.status(404).json({ error: 'That document is not available to edit (it may pre-date the editing feature).' });
+      }
+      if (!isSupportedDocument(original.filename)) {
+        return res.status(415).json({ error: 'That file type cannot be edited yet.' });
+      }
+
+      // Author the reply as a real teammate — Maya if present, else the first agent on the project.
+      const agents = await storage.getAgentsByProject((project as any).id);
+      const author = agents.find((a) => (a as any).isSpecialAgent) || agents[0] || null;
+      const agentRole = (req.body?.agentRole as string | undefined) || (author as any)?.role;
+
+      const edited = await editDocument({ buffer: original.buffer, filename: original.filename, instruction, agentRole });
+
+      const editedId = await storeEditedDocument({
+        projectId: (project as any).id,
+        conversationId,
+        sourceDocumentId: original.documentId,
+        filename: edited.filename,
+        mime: edited.mime,
+        bytes: edited.buffer,
+        createdByUserId: userId,
+      });
+      const downloadUrl = `/api/conversations/${encodeURIComponent(conversationId)}/attachments/edited/${editedId}/download`;
+
+      const reply = `Done. ${edited.summary} Your edited ${EXT_LABEL[edited.ext]} is ready to download below.`;
+      const editedDocument = {
+        id: editedId, filename: edited.filename, mime: edited.mime, downloadUrl,
+        addedSections: edited.addedSections, keptSections: edited.keptSections,
+      };
+      const message = await storage.createMessage({
+        id: randomUUID(),
+        conversationId,
+        content: reply,
+        messageType: 'agent',
+        agentId: (author as any)?.id ?? null,
+        userId: null,
+        metadata: { agentRole: agentRole ?? null, editedDocument },
+      } as any);
+
+      // Show it live in the chat (durable already — it's a persisted message).
+      try {
+        const { getGlobalBroadcast } = await import('../routes.js');
+        const broadcast = getGlobalBroadcast();
+        if (broadcast) broadcast(conversationId, { type: 'new_message', conversationId, message });
+      } catch { /* live push is best-effort; the message is persisted regardless */ }
+
+      return res.status(201).json({ message, editedDocument: { ...editedDocument, summary: edited.summary } });
+    } catch (error) {
+      console.error('Failed to edit document:', error);
+      return res.status(500).json({ error: 'Failed to edit the document' });
+    }
+  });
+
+  // GET /api/conversations/:conversationId/attachments/edited/:editedId/download — stream the edited file.
+  app.get('/api/conversations/:conversationId/attachments/edited/:editedId/download', async (req, res) => {
+    try {
+      const userId = getSessionUserId(req);
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+      const conversationId = req.params.conversationId;
+      const project = await getOwnedProjectForConversation(conversationId, userId);
+      if (!project) return res.status(404).json({ error: 'Conversation not found' });
+
+      const doc = await getEditedDocument(req.params.editedId);
+      if (!doc || doc.conversationId !== conversationId) return res.status(404).json({ error: 'File not found' });
+
+      res.setHeader('Content-Type', doc.mime || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${doc.filename.replace(/["\r\n]/g, '')}"`);
+      res.setHeader('Content-Length', String(doc.buffer.length));
+      return res.end(doc.buffer);
+    } catch (error) {
+      console.error('Failed to download edited document:', error);
+      return res.status(500).json({ error: 'Failed to download the file' });
     }
   });
 }
