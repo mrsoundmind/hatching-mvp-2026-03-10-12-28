@@ -11,7 +11,7 @@
  *   LLM_MODE=test TEST_LLM_PROVIDER=capture STORAGE_MODE=memory \
  *     ./node_modules/.bin/tsx -r dotenv/config scripts/test-brand-spec.ts
  */
-import { renderBrandSpecBlock, brandSpecEnabled, HATCHIN_BRAND_SPEC } from '../server/ai/brandSpec';
+import { renderBrandSpecBlock, brandSpecEnabled, enforceBrandStyle, HATCHIN_BRAND_SPEC } from '../server/ai/brandSpec';
 import { storage } from '../server/storage';
 import { generateDeliverable } from '../server/ai/deliverableGenerator';
 import { getCapturedPrompts, clearCapturedPrompts } from '../server/llm/providers/captureProvider';
@@ -49,6 +49,17 @@ function findGenerationPrompt() {
   }
   process.env.BRAND_SPEC_ENABLED = 'true';
   check('"true" re-enables it', brandSpecEnabled() && renderBrandSpecBlock().length > 0);
+
+  console.log('\n=== unit: enforceBrandStyle mechanical dash guarantee ===');
+  process.env.BRAND_SPEC_ENABLED = 'true';
+  const dirty = 'You wait weeks—sometimes months—to get paid, a 5–10 day delay is normal, but product-market fit still matters.';
+  const clean = enforceBrandStyle(dirty);
+  check('strips em/en dashes to zero', (clean.match(/[—–]/g) || []).length === 0, JSON.stringify(clean));
+  check('numeric range becomes "to"', /5 to 10 day/.test(clean));
+  check('preserves the hyphen in product-market', clean.includes('product-market'));
+  process.env.BRAND_SPEC_ENABLED = 'false';
+  check('passthrough (no strip) when disabled', enforceBrandStyle(dirty) === dirty);
+  process.env.BRAND_SPEC_ENABLED = 'true';
 
   console.log('\n=== unit: canonical spec shape (single source of truth) ===');
   check('visual tokens recorded for the future export wave', HATCHIN_BRAND_SPEC.visual.typeface === 'Inter' && HATCHIN_BRAND_SPEC.visual.accent === '#f97316');

@@ -20,6 +20,8 @@
  * new design decision.
  */
 
+import { stripDashes } from './responsePostProcessing.js';
+
 export interface BrandVisualTokens {
   /** Consumed by the export/render layer in a later wave. Not used in text generation. */
   typeface: string;
@@ -87,4 +89,19 @@ Writing:
 ${line(HATCHIN_BRAND_SPEC.writing)}
 Honesty:
 ${line(HATCHIN_BRAND_SPEC.honesty)}`;
+}
+
+/**
+ * Mechanically enforce the parts of the house style that must be GUARANTEED, not merely requested.
+ * Today that is the no-em/en-dash rule: the prompt block reduces dashes but a model can still slip
+ * one through, so we run the same canonical stripDashes the chat path uses (em/en only, hyphens and
+ * numeric ranges preserved) over generated document content before it is persisted. Belt-and-suspenders:
+ * the prompt asks, this enforces.
+ *
+ * Gated by the SAME BRAND_SPEC_ENABLED flag as the prompt block, so with the spec off nothing is
+ * stripped either and a before/after A/B stays a true comparison.
+ */
+export function enforceBrandStyle(content: string): string {
+  if (!brandSpecEnabled()) return content;
+  return stripDashes(content);
 }

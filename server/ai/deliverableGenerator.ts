@@ -11,7 +11,7 @@ import { generateChatWithRuntimeFallback } from '../llm/providerResolver.js';
 import type { Deliverable } from '@shared/schema';
 import { scoreIteration, type RubricScoreResult } from './rubricScorer.js';
 import { runReaderTest, countResolvedAnnotations, type ReaderTestResult } from './readerTestReviewer.js';
-import { renderBrandSpecBlock } from './brandSpec.js';
+import { renderBrandSpecBlock, enforceBrandStyle } from './brandSpec.js';
 
 /**
  * Phase 36 — Iterate result shape (RUBR-02).
@@ -139,6 +139,7 @@ export async function generateDeliverable(input: GenerateDeliverableInput): Prom
     content = sections.map(s => `## ${s}\n\n*Content generation in progress. This section will be populated by ${input.agentName}.*\n`).join('\n');
   }
 
+  content = enforceBrandStyle(content);
   content = withProfessionalDisclaimer(input.type, content);
 
   const generationTimeMs = Date.now() - startTime;
@@ -313,6 +314,7 @@ export async function iterateDeliverable(
     return { deliverable: existing, reverted: false };
   }
 
+  candidate = enforceBrandStyle(candidate);
   candidate = withProfessionalDisclaimer(existing.type, candidate);
 
   // Score OLD vs NEW. scoreIteration is fail-open: a flaky judge returns

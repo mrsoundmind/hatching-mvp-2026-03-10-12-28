@@ -165,7 +165,7 @@ const FORCED_NEXT_STEP_REGEX = /(^|\n|[.!?]\s+)[ \t]*(?:next step|next action|ne
 // ─── No em/en dashes (project rule: agents write with commas, not dashes) ──────
 // Only targets em (—) and en (–) dashes, never the hyphen (-), so "product-market", "5-user",
 // and code stay intact. Numeric ranges become "to"; every other dash becomes a comma.
-function stripDashes(input: string): string {
+export function stripDashes(input: string): string {
   return input
     .replace(/(\d)\s*[—–]\s*(\d)/g, '$1 to $2')  // "5–10" → "5 to 10"
     .replace(/\s*[—–]\s*/g, ', ')                 // em/en dash as punctuation → comma
