@@ -8,6 +8,8 @@
 
 **Effort:** 5-7 weeks (per V3) · **Hard dependency:** none (foundation milestone for the V3 critical path)
 
+> **Cross-milestone note (2026-08-28, on-branch).** In-chat document editing shipped as a real feature (attach a file → an agent edits it → download it back in the same format: Word/PDF/Markdown/text; Excel is the one follow-on). Server engine `server/documents/*` + edit/download endpoints + a download-card in the agent reply. Commits `5ebc25d`/`071e972`/`3c4114f`, proven live. It extends the existing chat-attachments capability rather than defining a v2.1 requirement; full detail in CLAUDE.md footer + HANDOFF + HATCHIN-COMPLETE-GUIDE.
+
 > **Cross-milestone note (2026-08-26, on-branch, no new v2.1 requirement).** A parallel v2.3 intelligence/learning workstream measured that Hatchin's agents are knowledge-strong (live cross-role RAG matrix) and that a gated-off role-selective multi-pass (`883c7fd`) improves short chat answers (+0.17 avg, proven live), but the "gets smarter from experience" loop remembers without measurably improving turn-to-turn (growth-loop lessons ~0; the AKL is dormant because web research is gated off). The fix is planned, not built: [`growth-loop-outcome-based-PLAN.md`](growth-loop-outcome-based-PLAN.md) (scoreboard-first, then a deferred learning layer). None of this adds a v2.1 requirement; full detail in CLAUDE.md footer + HANDOFF.md (2026-08-24 to 08-26).
 
 ---

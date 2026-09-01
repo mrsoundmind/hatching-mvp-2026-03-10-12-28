@@ -2,7 +2,8 @@
 
 > **Read this first if you're an AI (Claude Code, Cursor, Windsurf, Copilot, etc.) or a human picking up on Hatchin.** This file tells you what happened, where we are, and what to do next. Session-continuity log — updated at session boundaries.
 
-**Last refreshed:** 2026-08-26
+**Last refreshed:** 2026-09-01
+**Latest commit (document-editor workstream):** `3c4114f` in-chat document editing — UI (download card + edit trigger), proven live; backend `071e972`, engine `5ebc25d` (below)
 **Current branch:** `feat/v2.2-intelligence-fixes` (workstreams share this branch: v2.2 intelligence fixes + v2.1-UX UI + Pre-Launch Hardening + chat attachments + the Business-in-a-Box packs milestone + the RAG deepening campaign; a sibling session also landed a Slack adapter `00005a2`)
 **Latest commit (v2.3 intelligence workstream):** `bb90407` learning-loop benchmark (agents remember but don't get smarter turn-to-turn) + growth-loop PLAN `6091148`/`608b6f7` + live multi-pass proof 2026-08-26 (below); the role-selective multi-pass itself is `883c7fd`, gated OFF
 **Latest commit (v2.3 intelligence, earlier):** `8e22061` — deliverable multi-pass A/B (proves it no-ops on docs)
@@ -13,6 +14,20 @@
 **Latest commit (Business-in-a-Box workstream):** BIAB-0 increment 1 — pack blueprint system ("packs come alive"), committed 2026-08-10 (below)
 **Latest commit (v2.2 workstream):** Phase 39 Plans 39-01 (server) + 39-02 (UI), committed 2026-07-31 (prior: `f5682ab` peer-review coverage)
 **Latest commit (v2.1-UX UI workstream):** `c76fb4e fix(chat): don't drop the user's just-sent message on a refetch race` (+ `a99cfb3` hover-to-peek, `556f60a` rail refinements, `835518a`/`ee5c5bf` chat-card fix)
+
+## 2026-08-26 to 08-28: in-chat document editing shipped (attach → edit → download, same format)
+
+**A real user-facing feature, on-branch, nothing merged.** "Upload a document in chat, tell an agent to edit it, get it back in the same format" — exactly the ChatGPT/Claude behaviour the user asked for. It all happens in the chat; the only new UI is a download card in the agent's reply.
+
+**Engine** (`5ebc25d`): `server/documents/documentEditor.ts` extracts an uploaded file to Markdown, has DeepSeek apply the instruction (conservative: preserve + add relevantly, never invent facts/citations), and writes it BACK to the same format — `markdownToDocx.ts` (the installed `docx` package) and `markdownToPdf.ts` (playwright headless-Chromium HTML→PDF, a much better renderer than the old pdfkit; PDF uses the regenerate-a-fresh-PDF approach). Proven `scripts/test-document-editor.ts` 8/8 + a real GreenLeaf-brief PDF screenshot (`scripts/demo-doc-edit-visual.ts`).
+
+**Backend** (`071e972`): schema `conversation_documents.raw_bytes` (keep the ORIGINAL file — attachments previously stored only RAG chunks) + `conversation_edited_documents` (durable outputs), additive raw SQL (`scripts/setup-document-edit-tables.ts`, applied live). `POST /api/conversations/:cid/attachments/:docId/edit` runs the editor, then posts BOTH the user's request and an agent reply carrying `metadata.editedDocument{downloadUrl,...}` into the chat and broadcasts them; `GET .../attachments/edited/:editedId/download` streams the file (ownership + conversation scoped). The editor returns a deterministic added/kept-sections summary for an honest reply. Proven `scripts/test-doc-edit-backend.ts` 9/9 on real Supabase + DeepSeek.
+
+**UI** (`3c4114f`): `EditedDocumentCard.tsx` (the one new element — file + "same format you sent" + a real Download link), rendered in `MessageBubble` when a message has `metadata.editedDocument`; `ChatMessageList` passes that metadata through (it was being dropped in the bubble remap — the one bug found live); `useAttachments.editDocument()` + `looksLikeEditRequest()` intent helper; `ChatInput` routes a ready editable attachment + an edit-style message to the editor instead of a normal chat turn.
+
+**Formats:** Word (.docx), PDF, Markdown, text all round-trip. **Excel (.xlsx) is the one remaining follow-on** (needs `exceljs` installed; local npm has been flaky). Edit-vs-question routing is a conservative keyword heuristic.
+
+**Proven live end-to-end** on an isolated `:5090` server (real browser + real DeepSeek, memory mode, sibling `:5001` untouched): created a project, attached `Launch-Plan.md`, asked "add Risks + Success Metrics", Maya's reply rendered the download card and the download returned HTTP 200 with the sections added and the original kept. Screenshot `scratchpad/doc-edit-in-chat-proof.png`. Mockup-first honored: 2 clickable artifacts, the first (a wrongly-separate tool screen) corrected per the user to fully in-chat. Backed up to the `backup` remote. tsc clean throughout.
 
 ## 2026-08-24 to 08-26: learning-loop measured + growth-loop plan + live multi-pass proof + backup
 
