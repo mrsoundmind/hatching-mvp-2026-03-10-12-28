@@ -17,7 +17,7 @@ export interface Attachment {
   error?: string;
 }
 
-const ALLOWED_EXT = ['.pdf', '.docx', '.txt', '.md'];
+const ALLOWED_EXT = ['.pdf', '.docx', '.txt', '.md', '.xlsx', '.csv'];
 
 function extOf(name: string): string {
   const i = name.lastIndexOf('.');
@@ -62,7 +62,7 @@ export function useAttachments(conversationId?: string) {
     const ext = extOf(file.name);
     const localId = nextLocalId();
     if (!ALLOWED_EXT.includes(ext)) {
-      setAttachments((prev) => [...prev, { localId, filename: file.name, sizeBytes: file.size, status: 'error', scope: 'ephemeral', error: 'Only PDF, DOCX, TXT, MD' }]);
+      setAttachments((prev) => [...prev, { localId, filename: file.name, sizeBytes: file.size, status: 'error', scope: 'ephemeral', error: 'Only PDF, DOCX, XLSX, CSV, TXT, MD' }]);
       return;
     }
     setAttachments((prev) => [...prev, { localId, filename: file.name, sizeBytes: file.size, status: 'uploading', scope: 'ephemeral' }]);

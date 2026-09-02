@@ -205,7 +205,7 @@ export function ChatInput({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={!conversationId}
-                title={conversationId ? 'Attach a file (PDF, DOCX, TXT, MD)' : 'Open a chat to attach a file'}
+                title={conversationId ? 'Attach a file (PDF, DOCX, XLSX, CSV, TXT, MD)' : 'Open a chat to attach a file'}
                 aria-label="Attach a file"
                 data-testid="attachment-button"
                 className="hit-target flex-none rounded-lg p-1.5 text-[var(--hatchin-text-muted)] hover:text-[var(--hatchin-orange)] hover:bg-[var(--hatchin-surface-elevated)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"

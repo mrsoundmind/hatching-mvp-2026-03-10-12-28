@@ -192,6 +192,7 @@ export function registerAttachmentRoutes(app: Express) {
 
   const EXT_LABEL: Record<SupportedExt, string> = {
     '.docx': 'Word document', '.pdf': 'PDF', '.md': 'Markdown file', '.txt': 'text file',
+    '.xlsx': 'Excel spreadsheet', '.csv': 'CSV file',
   };
 
   // POST /api/conversations/:conversationId/attachments/:docId/edit

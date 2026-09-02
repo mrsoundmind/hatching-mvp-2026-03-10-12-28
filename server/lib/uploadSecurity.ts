@@ -3,8 +3,8 @@
 // Text-framing against prompt injection already exists at the prompt layer; this is the binary gate.
 import path from 'path';
 
-export type AllowedExt = '.pdf' | '.docx' | '.txt' | '.md';
-export const ALLOWED_EXTS: AllowedExt[] = ['.pdf', '.docx', '.txt', '.md'];
+export type AllowedExt = '.pdf' | '.docx' | '.txt' | '.md' | '.xlsx' | '.csv';
+export const ALLOWED_EXTS: AllowedExt[] = ['.pdf', '.docx', '.txt', '.md', '.xlsx', '.csv'];
 
 /** Heuristic: does this buffer look like human-readable text (no NUL bytes, mostly printable)? */
 export function looksLikeText(buffer: Buffer): boolean {
@@ -32,7 +32,7 @@ export interface SniffResult {
 export function sniffUpload(buffer: Buffer, filename: string): SniffResult {
   const ext = path.extname(filename || '').toLowerCase();
   if (!ALLOWED_EXTS.includes(ext as AllowedExt)) {
-    return { ok: false, ext, reason: 'Only PDF, DOCX, TXT, and MD files are supported' };
+    return { ok: false, ext, reason: 'Only PDF, DOCX, XLSX, CSV, TXT, and MD files are supported' };
   }
   if (!buffer || buffer.length === 0) return { ok: false, ext, reason: 'File is empty' };
   const head = buffer.subarray(0, 8);
@@ -42,12 +42,14 @@ export function sniffUpload(buffer: Buffer, filename: string): SniffResult {
         ? { ok: true, ext }
         : { ok: false, ext, reason: 'File is not a valid PDF' };
     case '.docx':
-      // DOCX is a ZIP container; every ZIP starts with the local-file-header signature "PK\x03\x04".
+    case '.xlsx':
+      // DOCX/XLSX are ZIP containers; every ZIP starts with the local-file-header signature "PK\x03\x04".
       return head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04
         ? { ok: true, ext }
-        : { ok: false, ext, reason: 'File is not a valid DOCX' };
+        : { ok: false, ext, reason: `File is not a valid ${ext === '.xlsx' ? 'XLSX' : 'DOCX'}` };
     case '.txt':
     case '.md':
+    case '.csv':
       return looksLikeText(buffer)
         ? { ok: true, ext }
         : { ok: false, ext, reason: 'File does not look like plain text' };

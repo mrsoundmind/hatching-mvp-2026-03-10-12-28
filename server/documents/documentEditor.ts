@@ -14,8 +14,9 @@ import { PDFParse } from 'pdf-parse';
 import { generateChatWithRuntimeFallback } from '../llm/providerResolver.js';
 import { markdownToDocx } from './markdownToDocx.js';
 import { markdownToPdf } from './markdownToPdf.js';
+import { xlsxToMarkdown, markdownToXlsx, csvToMarkdown, markdownToCsv } from './spreadsheet.js';
 
-export const SUPPORTED_EXTS = ['.docx', '.pdf', '.md', '.txt'] as const;
+export const SUPPORTED_EXTS = ['.docx', '.pdf', '.md', '.txt', '.xlsx', '.csv'] as const;
 export type SupportedExt = (typeof SUPPORTED_EXTS)[number];
 
 export interface EditDocumentInput {
@@ -53,6 +54,8 @@ const MIME: Record<SupportedExt, string> = {
   '.pdf': 'application/pdf',
   '.md': 'text/markdown',
   '.txt': 'text/plain',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.csv': 'text/csv',
 };
 
 export function isSupportedDocument(filename: string): boolean {
@@ -74,6 +77,10 @@ async function extractToMarkdown(buffer: Buffer, ext: string): Promise<string> {
       const r = await parser.getText();
       return r.text;
     }
+    case '.xlsx':
+      return await xlsxToMarkdown(buffer);
+    case '.csv':
+      return csvToMarkdown(buffer.toString('utf-8'));
     default:
       throw new Error(`Unsupported document type: ${ext}`);
   }
@@ -133,6 +140,12 @@ export async function editDocument(input: EditDocumentInput): Promise<EditDocume
       break;
     case '.pdf':
       outBuffer = await markdownToPdf(editedMarkdown, base);
+      break;
+    case '.xlsx':
+      outBuffer = await markdownToXlsx(editedMarkdown);
+      break;
+    case '.csv':
+      outBuffer = Buffer.from(markdownToCsv(editedMarkdown), 'utf-8');
       break;
   }
 
