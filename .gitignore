@@ -28,3 +28,21 @@ eval/drift/
 .claude/worktrees/
 .playwright-mcp/
 cookies.txt
+
+# --- repo hygiene (2026-08 cleanup) ---
+# dev screenshots dumped at repo root (keep images inside client/public, docs/, etc.)
+/*.png
+/*.jpg
+/*.jpeg
+/*.gif
+/*.webp
+# cloned/scraped sites + one-off audit / evidence / probe artifact folders
+website-clones/
+.audit-*/
+.evidence/
+.persona-reports/
+.economics/
+.feature-specs/
+.superpowers/
+test-results/
+tests/e2e/.artifacts/
