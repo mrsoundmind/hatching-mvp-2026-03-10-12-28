@@ -17,7 +17,7 @@ Hatchin is an **AI-powered collaborative project execution platform**. Think of 
 - Execute tasks autonomously in the background and hand off work between specialists
 - Self-review quality via peer review gates and progressive trust scoring
 
-**Current Phase**: v2.1 in progress (Phases 35, 36, 36.5 shipped of 12). v3.0 closed partial 2026-04-28 (Phase 22 atomic budget + Phase 28 Maya bug fix shipped, remaining 11 phases re-scoped into V3). v2.0 shipped 2026-03-30. v1.3 / v1.2 / v1.1 / v1.0 all shipped.
+**Current Phase**: v2.1 in progress (Phases 35, 36, 36.5, 37 shipped; Phase 38 CLOSED 2026-07-21). v3.0 closed partial 2026-04-28 (Phase 22 atomic budget + Phase 28 Maya bug fix shipped, remaining 11 phases re-scoped into V3). v2.0 shipped 2026-03-30. v1.3 / v1.2 / v1.1 / v1.0 all shipped.
 
 **Latest Milestone in flight**: **v2.1 — Hatches That Self-Improve** (5–7w, 12 phases per ROADMAP-V3). Shipped so far:
 - Phase 35 — Production Hotfix Pass (2026-05-11, Fly v19; re-verified 2026-06-03 on Supabase, 7/7 Playwright PASS): legal modal + deep-link hybrid (Privacy/Terms), PROVIDER_DEGRADED toast banner, AUDIT-01 Playwright spec

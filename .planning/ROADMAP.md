@@ -17,7 +17,7 @@
 
 ---
 
-## 📋 v2.1-UX — Look, Feel and First Impression (planned 2026-07-20, NOT STARTED)
+## 🔨 v2.1-UX — Look, Feel and First Impression (planned 2026-07-20; Phases 0-2 shipped 2026-07-27, Phase 4 shipped 2026-07-31, Phase 3 intentionally not built)
 
 **Source:** `.audit-ux-2026-07-20/` — an independent UX audit (`AUDIT-HATCHIN.pdf`, plus
 `direction-mockup.html`, `flows-and-ux.html`, `narrative-and-differentiation.html`,
