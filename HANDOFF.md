@@ -25,7 +25,7 @@
 
 **UI** (`3c4114f`): `EditedDocumentCard.tsx` (the one new element — file + "same format you sent" + a real Download link), rendered in `MessageBubble` when a message has `metadata.editedDocument`; `ChatMessageList` passes that metadata through (it was being dropped in the bubble remap — the one bug found live); `useAttachments.editDocument()` + `looksLikeEditRequest()` intent helper; `ChatInput` routes a ready editable attachment + an edit-style message to the editor instead of a normal chat turn.
 
-**Formats:** Word (.docx), PDF, Markdown, text all round-trip. **Excel (.xlsx) is the one remaining follow-on** (needs `exceljs` installed; local npm has been flaky). Edit-vs-question routing is a conservative keyword heuristic.
+**Formats:** Word (.docx), PDF, Markdown, text, **Excel (.xlsx), and CSV** all round-trip — Excel/CSV shipped 2026-09-02 (`6e5c7a8`, `server/documents/spreadsheet.ts` via `exceljs` 4.4.0; each sheet becomes a markdown table the agent edits; v1 tabular data, no formulas/charts; `scripts/test-spreadsheet-editor.ts` 9/9, agent computed a Total column correctly). All six formats now edit in chat. Edit-vs-question routing is a conservative keyword heuristic.
 
 **Proven live end-to-end** on an isolated `:5090` server (real browser + real DeepSeek, memory mode, sibling `:5001` untouched): created a project, attached `Launch-Plan.md`, asked "add Risks + Success Metrics", Maya's reply rendered the download card and the download returned HTTP 200 with the sections added and the original kept. Screenshot `scratchpad/doc-edit-in-chat-proof.png`. Mockup-first honored: 2 clickable artifacts, the first (a wrongly-separate tool screen) corrected per the user to fully in-chat. Backed up to the `backup` remote. tsc clean throughout.
 
