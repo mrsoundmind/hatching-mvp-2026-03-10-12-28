@@ -1,13 +1,14 @@
 /**
  * extractDocumentText — Extract plain text from uploaded document buffers.
  *
- * Supports: PDF (.pdf), DOCX (.docx), plain text (.txt), Markdown (.md)
+ * Supports: PDF (.pdf), DOCX (.docx), XLSX (.xlsx), CSV (.csv), plain text (.txt), Markdown (.md)
  * All output is truncated to MAX_CHARS characters.
  * Any error or unsupported extension returns an empty string.
  */
 import path from 'path';
 import { PDFParse } from 'pdf-parse';
 import mammoth from 'mammoth';
+import { xlsxToMarkdown } from '../documents/spreadsheet.js';
 
 export const MAX_CHARS = 50_000;
 
@@ -33,8 +34,13 @@ export async function extractDocumentText(buffer: Buffer, filename: string): Pro
         return result.value.slice(0, MAX_CHARS);
       }
       case '.txt':
-      case '.md': {
+      case '.md':
+      case '.csv': {
         return buffer.toString('utf-8').slice(0, MAX_CHARS);
+      }
+      case '.xlsx': {
+        // Represent the workbook as markdown tables (per sheet) — good for both RAG and the text check.
+        return (await xlsxToMarkdown(buffer)).slice(0, MAX_CHARS);
       }
       default:
         return '';
