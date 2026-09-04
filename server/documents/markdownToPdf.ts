@@ -38,7 +38,50 @@ function mdToHtml(md: string): string {
   return out.join('\n');
 }
 
+// Fallback renderer: pdfkit, which is pure JS and needs NO browser binary. Used when Chromium is not
+// installed (a fresh machine, a slim deploy image). Plainer than the Chromium output, but it always works,
+// so "edit my PDF" can never hard-fail on a missing browser.
+async function markdownToPdfViaPdfkit(md: string, title: string): Promise<Buffer> {
+  const { default: PDFDocument } = await import('pdfkit');
+  return await new Promise<Buffer>((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ size: 'A4', margins: { top: 62, bottom: 62, left: 62, right: 62 }, info: title ? { Title: title } : undefined });
+      const chunks: Buffer[] = [];
+      doc.on('data', (c: Buffer) => chunks.push(c));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+      const strip = (t: string) => t.replace(/\*\*([^*]+)\*\*/g, '$1');
+      for (const raw of (md || '').replace(/\r\n/g, '\n').split('\n')) {
+        const line = raw.replace(/\s+$/, '');
+        let m: RegExpMatchArray | null;
+        if (!line.trim()) { doc.moveDown(0.5); continue; }
+        if ((m = line.match(/^(#{1,4})\s+(.*)$/))) {
+          const sizes = [20, 15, 12.5, 11.5];
+          doc.moveDown(0.6).font('Helvetica-Bold').fontSize(sizes[m[1].length - 1]).text(strip(m[2]));
+          doc.moveDown(0.3);
+        } else if ((m = line.match(/^\s*[-*]\s+(.*)$/))) {
+          doc.font('Helvetica').fontSize(11).text(`•  ${strip(m[1])}`, { indent: 12 });
+        } else {
+          doc.font('Helvetica').fontSize(11).text(strip(line), { align: 'left' });
+        }
+      }
+      doc.end();
+    } catch (e) { reject(e); }
+  });
+}
+
 export async function markdownToPdf(md: string, title = ''): Promise<Buffer> {
+  try {
+    return await markdownToPdfViaChromium(md, title);
+  } catch (err) {
+    // Most common cause: the Playwright Chromium binary isn't installed on this machine/image.
+    // eslint-disable-next-line no-console
+    console.warn(`[markdownToPdf] Chromium renderer unavailable (${(err as Error)?.message?.split('\n')[0]?.slice(0, 90)}); falling back to pdfkit`);
+    return await markdownToPdfViaPdfkit(md, title);
+  }
+}
+
+async function markdownToPdfViaChromium(md: string, title = ''): Promise<Buffer> {
   const body = mdToHtml(md);
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>
